@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import Link from "next/link"
 
 type Lead = {
   id: string; name: string; phone: string; email: string | null
@@ -9,7 +10,7 @@ type Lead = {
 }
 type Property = {
   id: string; title: string; type: string; status: string
-  price: number; city: string; area_sqm: number; rooms: number; featured: boolean
+  price: number; city: string; area_sqm: number; rooms: number; featured: boolean; slug: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -48,8 +49,17 @@ export default function AdminPage() {
 
   const togglePublished = async (id: string, status: string) => {
     const newStatus = status === "PUBLISHED" ? "DRAFT" : "PUBLISHED"
-    await supabase.from("properties").update({ status: newStatus }).eq("id", id)
+    await supabase.from("properties").update({
+      status: newStatus,
+      published_at: newStatus === "PUBLISHED" ? new Date().toISOString() : null
+    }).eq("id", id)
     setProps(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p))
+  }
+
+  const deleteProp = async (id: string) => {
+    if (!confirm("Sigur ștergi această proprietate?")) return
+    await supabase.from("properties").delete().eq("id", id)
+    setProps(prev => prev.filter(p => p.id !== id))
   }
 
   const stats = [
@@ -61,20 +71,22 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary">
-      {/* Header */}
       <header className="bg-bg-secondary border-b border-bg-surface px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <span className="text-lg font-bold"><span className="text-accent">HQS</span> Admin</span>
           <span className="bg-accent/10 text-accent border border-accent/20 text-xs px-2 py-0.5 rounded-full">Dashboard</span>
         </div>
-        <a href="/" className="text-sm text-text-muted hover:text-accent transition-colors flex items-center gap-1">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-          Vezi site
-        </a>
+        <div className="flex items-center gap-3">
+          <Link href="/admin/proprietate-noua"
+            className="bg-accent text-bg-primary text-sm px-4 py-2 rounded-xl font-bold hover:bg-green-400 transition-colors flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            Proprietate nouă
+          </Link>
+          <a href="/" target="_blank" className="text-sm text-text-muted hover:text-accent transition-colors">Site →</a>
+        </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {stats.map(s => (
             <div key={s.label} className="bg-bg-card border border-bg-surface rounded-2xl p-5">
@@ -84,7 +96,6 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-6">
           {[
             { key: "leads", label: `Leads (${leads.length})` },
@@ -119,18 +130,17 @@ export default function AdminPage() {
                 <tbody>
                   {leads.map((l, i) => (
                     <tr key={l.id} className={`border-b border-bg-surface hover:bg-bg-secondary transition-colors ${i % 2 === 0 ? "" : "bg-bg-primary/30"}`}>
-                      <td className="px-5 py-4 font-medium text-text-primary">{l.name}</td>
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-4 font-medium text-text-primary whitespace-nowrap">{l.name}</td>
+                      <td className="px-5 py-4 whitespace-nowrap">
                         <a href={`tel:${l.phone}`} className="text-accent hover:underline">{l.phone}</a>
                       </td>
                       <td className="px-5 py-4 text-text-muted">{l.email || "—"}</td>
                       <td className="px-5 py-4 text-text-muted max-w-xs truncate" title={l.message || ""}>{l.message || "—"}</td>
                       <td className="px-5 py-4">
-                        <span className="bg-bg-surface text-text-muted text-xs px-2 py-1 rounded-lg">{l.source}</span>
+                        <span className="bg-bg-surface text-text-muted text-xs px-2 py-1 rounded-lg whitespace-nowrap">{l.source}</span>
                       </td>
                       <td className="px-5 py-4">
-                        <select value={l.status}
-                          onChange={e => updateLeadStatus(l.id, e.target.value)}
+                        <select value={l.status} onChange={e => updateLeadStatus(l.id, e.target.value)}
                           className={`text-xs font-semibold px-2 py-1 rounded-lg border cursor-pointer bg-transparent ${STATUS_COLORS[l.status] || STATUS_COLORS.NEW}`}>
                           {["NEW", "CONTACTED", "CLOSED", "LOST"].map(s => <option key={s} value={s} className="bg-bg-card text-text-primary">{s}</option>)}
                         </select>
@@ -140,9 +150,7 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   ))}
-                  {leads.length === 0 && (
-                    <tr><td colSpan={7} className="text-center py-12 text-text-muted">Niciun lead încă.</td></tr>
-                  )}
+                  {leads.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-text-muted">Niciun lead încă.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -160,30 +168,44 @@ export default function AdminPage() {
                     <th className="text-left px-5 py-3">Oraș</th>
                     <th className="text-left px-5 py-3">Featured</th>
                     <th className="text-left px-5 py-3">Status</th>
+                    <th className="text-left px-5 py-3">Acțiuni</th>
                   </tr>
                 </thead>
                 <tbody>
                   {props.map((p, i) => (
                     <tr key={p.id} className={`border-b border-bg-surface hover:bg-bg-secondary transition-colors ${i % 2 === 0 ? "" : "bg-bg-primary/30"}`}>
-                      <td className="px-5 py-4 font-medium text-text-primary max-w-xs truncate">{p.title}</td>
-                      <td className="px-5 py-4 text-text-muted capitalize">{p.type}</td>
-                      <td className="px-5 py-4 text-accent font-semibold">€{p.price?.toLocaleString("ro-RO")}</td>
-                      <td className="px-5 py-4 text-text-muted">{p.area_sqm} mp</td>
+                      <td className="px-5 py-4 font-medium text-text-primary max-w-[200px] truncate">{p.title}</td>
+                      <td className="px-5 py-4 text-text-muted">{p.type}</td>
+                      <td className="px-5 py-4 text-accent font-semibold whitespace-nowrap">€{p.price?.toLocaleString("ro-RO")}</td>
+                      <td className="px-5 py-4 text-text-muted whitespace-nowrap">{p.area_sqm} mp</td>
                       <td className="px-5 py-4 text-text-muted">{p.city}</td>
                       <td className="px-5 py-4">
                         <button onClick={() => toggleFeatured(p.id, p.featured)}
-                          className={`text-xs px-3 py-1 rounded-lg border transition-all ${p.featured ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" : "bg-bg-surface text-text-muted border-bg-surface hover:border-yellow-500/30"}`}>
-                          {p.featured ? "⭐ Featured" : "Setează featured"}
+                          className={`text-xs px-3 py-1 rounded-lg border transition-all whitespace-nowrap ${p.featured ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" : "bg-bg-surface text-text-muted border-bg-surface hover:border-yellow-500/30"}`}>
+                          {p.featured ? "⭐ Featured" : "— Setează"}
                         </button>
                       </td>
                       <td className="px-5 py-4">
                         <button onClick={() => togglePublished(p.id, p.status)}
-                          className={`text-xs px-3 py-1 rounded-lg border transition-all font-semibold ${p.status === "PUBLISHED" ? "bg-accent/20 text-accent border-accent/30" : "bg-bg-surface text-text-muted border-bg-surface hover:border-accent/30"}`}>
+                          className={`text-xs px-3 py-1 rounded-lg border transition-all font-semibold whitespace-nowrap ${p.status === "PUBLISHED" ? "bg-accent/20 text-accent border-accent/30" : "bg-bg-surface text-text-muted border-bg-surface hover:border-accent/30"}`}>
                           {p.status === "PUBLISHED" ? "✓ Live" : "Draft"}
                         </button>
                       </td>
+                      <td className="px-5 py-4">
+                        <div className="flex gap-2">
+                          <Link href={`/proprietate/${p.slug}`} target="_blank"
+                            className="text-xs text-text-muted hover:text-accent transition-colors px-2 py-1 border border-bg-surface rounded-lg hover:border-accent">
+                            ↗
+                          </Link>
+                          <button onClick={() => deleteProp(p.id)}
+                            className="text-xs text-red-400 hover:text-red-300 px-2 py-1 border border-bg-surface rounded-lg hover:border-red-500/30 transition-all">
+                            ✕
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
+                  {props.length === 0 && <tr><td colSpan={8} className="text-center py-12 text-text-muted">Nicio proprietate. <Link href="/admin/proprietate-noua" className="text-accent hover:underline">Adaugă prima</Link></td></tr>}
                 </tbody>
               </table>
             </div>
