@@ -1,4 +1,5 @@
 import { Proprietate } from "@/lib/proprietati"
+import Link from "next/link"
 
 export default function ProprietateCard({ proprietate: p }: { proprietate: Proprietate }) {
   const pretFormatat = p.tranzactie === "inchiriere"
@@ -8,23 +9,14 @@ export default function ProprietateCard({ proprietate: p }: { proprietate: Propr
   return (
     <div className="bg-bg-card border border-bg-surface rounded-2xl overflow-hidden hover:border-accent/50 transition-all duration-300 group">
       <div className="relative h-52 overflow-hidden">
-        <img
-          src={p.imagineUrl}
-          alt={p.titlu}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100"
-        />
+        <img src={p.imagineUrl} alt={p.titlu}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100" />
         <div className="absolute inset-0 bg-gradient-to-t from-bg-primary/60 to-transparent" />
         <div className="absolute top-3 left-3 flex gap-2">
-          <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-            p.tranzactie === "vanzare"
-              ? "bg-accent text-bg-primary"
-              : "bg-bg-surface text-text-primary border border-accent/30"
-          }`}>
+          <span className={`text-xs font-bold px-3 py-1 rounded-full ${p.tranzactie === "vanzare" ? "bg-accent text-bg-primary" : "bg-bg-surface text-text-primary border border-accent/30"}`}>
             {p.tranzactie === "vanzare" ? "De vânzare" : "De închiriat"}
           </span>
-          <span className="bg-bg-primary/80 text-text-muted text-xs font-medium px-3 py-1 rounded-full capitalize border border-bg-surface">
-            {p.tip}
-          </span>
+          <span className="bg-bg-primary/80 text-text-muted text-xs font-medium px-3 py-1 rounded-full border border-bg-surface capitalize">{p.tip}</span>
         </div>
       </div>
       <div className="p-5">
@@ -40,12 +32,15 @@ export default function ProprietateCard({ proprietate: p }: { proprietate: Propr
           <span>{p.camere} camere</span>
           <span className="text-bg-surface">|</span>
           <span>{p.suprafata} mp</span>
+          <span className="text-bg-surface">|</span>
+          <span>{p.bai} băi</span>
         </div>
         <div className="flex items-center justify-between pt-4 border-t border-bg-surface">
           <span className="text-xl font-bold text-accent">{pretFormatat}</span>
-          <a href="#contact" className="bg-accent/10 text-accent border border-accent/30 text-sm px-4 py-2 rounded-lg hover:bg-accent hover:text-bg-primary transition-all font-medium">
-            Detalii
-          </a>
+          <Link href={`/proprietate/${p.id}`}
+            className="bg-accent/10 text-accent border border-accent/30 text-sm px-4 py-2 rounded-lg hover:bg-accent hover:text-bg-primary transition-all font-medium">
+            Vezi detalii
+          </Link>
         </div>
       </div>
     </div>
