@@ -12,19 +12,15 @@ const info = [
 export default function Contact() {
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ nume: "", telefon: "", email: "", mesaj: "" })
+  const [form, setForm] = useState({ name: "", phone: "", email: "", message: "" })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await supabase.from("contacte").insert([form])
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-      setSent(true)
-    }
+      await supabase.from("leads").insert([{ ...form, source: "CONTACT_FORM", status: "NEW" }])
+    } catch (err) { console.error(err) }
+    finally { setLoading(false); setSent(true) }
   }
 
   return (
@@ -51,9 +47,7 @@ export default function Contact() {
             {sent ? (
               <div className="text-center py-8">
                 <div className="w-16 h-16 bg-accent/10 border border-accent/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                  <svg className="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                 </div>
                 <h3 className="text-xl font-bold text-text-primary mb-2">Mesaj trimis!</h3>
                 <p className="text-text-muted text-sm">Te contactăm în cel mai scurt timp.</p>
@@ -62,13 +56,13 @@ export default function Contact() {
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4">
                   {[
-                    { key: "nume", label: "Nume *", placeholder: "Ion Popescu", required: true },
-                    { key: "telefon", label: "Telefon *", placeholder: "07XX XXX XXX", required: true },
+                    { key: "name", label: "Nume *", placeholder: "Ion Popescu", required: true },
+                    { key: "phone", label: "Telefon *", placeholder: "07XX XXX XXX", required: true },
                   ].map(f => (
                     <div key={f.key}>
                       <label className="text-xs font-medium text-text-muted mb-1.5 block uppercase tracking-wider">{f.label}</label>
                       <input required={f.required} value={(form as any)[f.key]} onChange={e => setForm({...form, [f.key]: e.target.value})}
-                        className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent placeholder-text-muted/50 transition-colors"
+                        className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors placeholder-text-muted/50"
                         placeholder={f.placeholder} />
                     </div>
                   ))}
@@ -76,13 +70,13 @@ export default function Contact() {
                 <div>
                   <label className="text-xs font-medium text-text-muted mb-1.5 block uppercase tracking-wider">Email</label>
                   <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})}
-                    className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent placeholder-text-muted/50 transition-colors"
+                    className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors placeholder-text-muted/50"
                     placeholder="email@exemplu.ro" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-text-muted mb-1.5 block uppercase tracking-wider">Ce proprietate cauți?</label>
-                  <textarea rows={4} value={form.mesaj} onChange={e => setForm({...form, mesaj: e.target.value})}
-                    className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent placeholder-text-muted/50 transition-colors resize-none"
+                  <textarea rows={4} value={form.message} onChange={e => setForm({...form, message: e.target.value})}
+                    className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors resize-none placeholder-text-muted/50"
                     placeholder="Ex: Apartament 3 camere în Floreasca, buget ~200k€..." />
                 </div>
                 <button type="submit" disabled={loading}
