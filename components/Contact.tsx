@@ -1,5 +1,6 @@
 "use client"
 import { useState } from "react"
+import { supabase } from "@/lib/supabase"
 
 const info = [
   { icon: "📍", title: "Adresă", val: "Bd. Unirii 45, Sector 3, București" },
@@ -10,7 +11,21 @@ const info = [
 
 export default function Contact() {
   const [sent, setSent] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ nume: "", telefon: "", email: "", mesaj: "" })
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await supabase.from("contacte").insert([form])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+      setSent(true)
+    }
+  }
 
   return (
     <section id="contact" className="py-20 px-4 bg-bg-secondary border-t border-bg-surface">
@@ -32,7 +47,6 @@ export default function Contact() {
               </div>
             ))}
           </div>
-
           <div className="bg-bg-card border border-bg-surface rounded-2xl p-8">
             {sent ? (
               <div className="text-center py-8">
@@ -45,7 +59,7 @@ export default function Contact() {
                 <p className="text-text-muted text-sm">Te contactăm în cel mai scurt timp.</p>
               </div>
             ) : (
-              <form onSubmit={(e) => { e.preventDefault(); setSent(true) }} className="flex flex-col gap-4">
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4">
                   {[
                     { key: "nume", label: "Nume *", placeholder: "Ion Popescu", required: true },
@@ -53,10 +67,8 @@ export default function Contact() {
                   ].map(f => (
                     <div key={f.key}>
                       <label className="text-xs font-medium text-text-muted mb-1.5 block uppercase tracking-wider">{f.label}</label>
-                      <input required={f.required}
-                        value={(form as any)[f.key]}
-                        onChange={e => setForm({...form, [f.key]: e.target.value})}
-                        className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent placeholder-bg-surface transition-colors"
+                      <input required={f.required} value={(form as any)[f.key]} onChange={e => setForm({...form, [f.key]: e.target.value})}
+                        className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent placeholder-text-muted/50 transition-colors"
                         placeholder={f.placeholder} />
                     </div>
                   ))}
@@ -64,18 +76,18 @@ export default function Contact() {
                 <div>
                   <label className="text-xs font-medium text-text-muted mb-1.5 block uppercase tracking-wider">Email</label>
                   <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})}
-                    className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent placeholder-bg-surface transition-colors"
+                    className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent placeholder-text-muted/50 transition-colors"
                     placeholder="email@exemplu.ro" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-text-muted mb-1.5 block uppercase tracking-wider">Ce proprietate cauți?</label>
                   <textarea rows={4} value={form.mesaj} onChange={e => setForm({...form, mesaj: e.target.value})}
-                    className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent placeholder-bg-surface transition-colors resize-none"
+                    className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent placeholder-text-muted/50 transition-colors resize-none"
                     placeholder="Ex: Apartament 3 camere în Floreasca, buget ~200k€..." />
                 </div>
-                <button type="submit"
-                  className="bg-accent text-bg-primary py-3 rounded-xl font-bold hover:bg-green-400 transition-colors shadow-lg shadow-accent/20">
-                  Trimite mesajul
+                <button type="submit" disabled={loading}
+                  className="bg-accent text-bg-primary py-3 rounded-xl font-bold hover:bg-green-400 transition-colors disabled:opacity-60 shadow-lg shadow-accent/20">
+                  {loading ? "Se trimite..." : "Trimite mesajul"}
                 </button>
               </form>
             )}
