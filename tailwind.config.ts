@@ -8,8 +8,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: '#1a3c5e',
-        accent: '#c9a84c',
+        bg: {
+          primary: '#060B0F',
+          secondary: '#0F1419',
+          card: '#121921',
+          surface: '#242C33',
+        },
+        text: {
+          primary: '#F2F3F5',
+          muted: '#586367',
+        },
+        accent: '#2DCD7A',
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
