@@ -7,6 +7,7 @@
   NEXT_TELEMETRY_DISABLED = "1"
   NEXT_PUBLIC_SUPABASE_URL = "https://spmapzhlcwhzfrxuvgxd.supabase.co"
   NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_24oJXCI0JLY1VyLq_Ls-AA_-tYFf729"
+  ADMIN_PASSWORD = "hqs2026admin"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
