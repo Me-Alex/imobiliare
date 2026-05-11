@@ -23,6 +23,8 @@ export default function AdminPage() {
   const [lastNoteFilter, setLastNoteFilter] = useState("ALL")
   const [leadNoteCounts, setLeadNoteCounts] = useState<Record<string, number>>({})
   const [editingProperty, setEditingProperty] = useState<Property | null>(null)
+  const [propertyTitle, setPropertyTitle] = useState("")
+  const [propertyStatus, setPropertyStatus] = useState("PUBLISHED")
   const [lastNoteAt, setLastNoteAt] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -49,6 +51,12 @@ export default function AdminPage() {
     if (!leadDrawer) return
     setLeadNotes(prev => prev.filter(n => n.lead_id === leadDrawer.id))
   }, [leadDrawer])
+
+  useEffect(() => {
+    if (!editingProperty) return
+    setPropertyTitle(editingProperty.title)
+    setPropertyStatus(editingProperty.status)
+  }, [editingProperty])
 
   const filteredLeads = useMemo(() => leads.filter(l => {
     if (leadStatusFilter !== "ALL" && l.status !== leadStatusFilter) return false
@@ -78,6 +86,16 @@ export default function AdminPage() {
         </div>
 
         <section className="rounded-2xl border border-bg-surface bg-bg-secondary overflow-hidden">
+          <div className="px-4 py-3 border-b border-bg-surface flex items-center justify-between"><h2 className="font-semibold">Proprietăți</h2><span className="text-sm text-text-muted">{properties.length}</span></div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-bg-primary/50"><tr><th className="px-3 py-2 text-left">Titlu</th><th className="px-3 py-2 text-left">Status</th><th className="px-3 py-2 text-left">Acțiuni</th></tr></thead>
+              <tbody>{properties.filter(p => propStatusFilter === 'ALL' || p.status === propStatusFilter).map(p => <tr key={p.id} className="border-t border-bg-surface"><td className="px-3 py-2">{p.title}</td><td className="px-3 py-2">{p.status}</td><td className="px-3 py-2"><button onClick={() => setEditingProperty(p)} className="rounded-lg border border-bg-surface px-3 py-1">Editează</button></td></tr>)}</tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-bg-surface bg-bg-secondary overflow-hidden">
           <div className="px-4 py-3 border-b border-bg-surface flex items-center justify-between"><h2 className="font-semibold">Lead-uri</h2><span className="text-sm text-text-muted">{filteredLeads.length}</span></div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -94,7 +112,7 @@ export default function AdminPage() {
         </section>
 
         {leadDrawer && <div className="fixed inset-0 z-50 bg-black/60 flex justify-end" onClick={() => setLeadDrawer(null)}><div role="dialog" aria-modal="true" aria-label="Detalii lead" tabIndex={-1} className="w-full max-w-md h-full bg-bg-secondary border-l border-bg-surface p-6 overflow-y-auto outline-none" onClick={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') setLeadDrawer(null) }}><div className="flex items-center justify-between mb-4"><h3 className="text-xl font-semibold">Lead detail</h3><button onClick={() => setLeadDrawer(null)} className="text-text-muted">Închide</button></div><div className="space-y-4 text-sm"><p><span className="text-text-muted">Nume:</span> {leadDrawer.name}</p><p><span className="text-text-muted">Telefon:</span> {leadDrawer.phone}</p><p><span className="text-text-muted">Email:</span> {leadDrawer.email || '-'}</p><p><span className="text-text-muted">Sursă:</span> {leadDrawer.source}</p><p><span className="text-text-muted">Status:</span> {leadDrawer.status}</p><div><label className="block text-text-muted mb-1">Mesaj</label><textarea readOnly value={leadDrawer.message || ''} className="w-full min-h-32 rounded-lg border border-bg-surface bg-bg-primary px-3 py-2" /></div><div><label className="block text-text-muted mb-1">Notiță internă</label><textarea value={leadNote} onChange={e => setLeadNote(e.target.value)} className="w-full min-h-24 rounded-lg border border-bg-surface bg-bg-primary px-3 py-2" placeholder="Ex: a cerut callback mâine la 11" /></div><div className="flex gap-2"><button onClick={async () => { if (!leadNote.trim()) return; await supabase.from("lead_notes").insert({ lead_id: leadDrawer.id, note: leadNote.trim() }); setLeadNotes(prev => [{ id: crypto.randomUUID(), lead_id: leadDrawer.id, note: leadNote.trim(), created_at: new Date().toISOString() }, ...prev]); setLeadNote("") }} className="rounded-lg bg-accent px-4 py-2 text-bg-primary font-semibold">Salvează notița</button><button onClick={() => supabase.from("leads").update({ status: "CONTACTED" }).eq("id", leadDrawer.id).then(() => setLeads(prev => prev.map(l => l.id === leadDrawer.id ? { ...l, status: "CONTACTED" } : l)))} className="rounded-lg border border-bg-surface px-4 py-2">Marchează contacted</button><button onClick={() => setLeadDrawer(null)} className="rounded-lg border border-bg-surface px-4 py-2">Închide</button></div><div className="pt-4 border-t border-bg-surface"><p className="text-text-muted mb-2">Istoric notițe</p><div className="space-y-2">{leadNotes.filter(n => n.lead_id === leadDrawer.id).map(n => <div key={n.id} className="rounded-lg border border-bg-surface bg-bg-primary p-3 text-xs text-text-muted"><div className="mb-1">{new Date(n.created_at).toLocaleString('ro-RO')}</div><div>{n.note}</div></div>)}</div></div></div></div></div>}
-        {editingProperty && <div className="fixed inset-0 z-50 bg-black/60 flex justify-end" onClick={() => setEditingProperty(null)}><div role="dialog" aria-modal="true" aria-label="Editează proprietatea" className="w-full max-w-md h-full bg-bg-secondary border-l border-bg-surface p-6 overflow-y-auto" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-4"><h3 className="text-xl font-semibold">Editează proprietate</h3><button onClick={() => setEditingProperty(null)} className="text-text-muted">Închide</button></div><div className="space-y-4"><div><label className="block text-text-muted mb-1">Titlu</label><input defaultValue={editingProperty.title} className="w-full rounded-lg border border-bg-surface bg-bg-primary px-3 py-2" /></div><div><label className="block text-text-muted mb-1">Status</label><select defaultValue={editingProperty.status} className="w-full rounded-lg border border-bg-surface bg-bg-primary px-3 py-2"><option value="PUBLISHED">PUBLISHED</option><option value="DRAFT">DRAFT</option><option value="SOLD">SOLD</option><option value="RENTED">RENTED</option></select></div><div className="flex gap-2"><button className="rounded-lg bg-accent px-4 py-2 text-bg-primary font-semibold">Salvează</button><button onClick={() => setEditingProperty(null)} className="rounded-lg border border-bg-surface px-4 py-2">Renunță</button></div></div></div></div>}
+        {editingProperty && <div className="fixed inset-0 z-50 bg-black/60 flex justify-end" onClick={() => setEditingProperty(null)}><div role="dialog" aria-modal="true" aria-label="Editează proprietatea" className="w-full max-w-md h-full bg-bg-secondary border-l border-bg-surface p-6 overflow-y-auto" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-4"><h3 className="text-xl font-semibold">Editează proprietate</h3><button onClick={() => setEditingProperty(null)} className="text-text-muted">Închide</button></div><div className="space-y-4"><div><label className="block text-text-muted mb-1">Titlu</label><input value={propertyTitle} onChange={e => setPropertyTitle(e.target.value)} className="w-full rounded-lg border border-bg-surface bg-bg-primary px-3 py-2" /></div><div><label className="block text-text-muted mb-1">Status</label><select value={propertyStatus} onChange={e => setPropertyStatus(e.target.value)} className="w-full rounded-lg border border-bg-surface bg-bg-primary px-3 py-2"><option value="PUBLISHED">PUBLISHED</option><option value="DRAFT">DRAFT</option><option value="SOLD">SOLD</option><option value="RENTED">RENTED</option></select></div><div className="flex gap-2"><button onClick={async () => { await supabase.from("properties").update({ title: propertyTitle.trim(), status: propertyStatus }).eq("id", editingProperty.id); setProperties(prev => prev.map(p => p.id === editingProperty.id ? { ...p, title: propertyTitle.trim(), status: propertyStatus } : p)); setEditingProperty(null) }} className="rounded-lg bg-accent px-4 py-2 text-bg-primary font-semibold">Salvează</button><button onClick={() => setEditingProperty(null)} className="rounded-lg border border-bg-surface px-4 py-2">Renunță</button></div></div></div></div>}
       </div>
     </main>
   )
