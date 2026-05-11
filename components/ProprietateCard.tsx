@@ -18,7 +18,7 @@ export default function ProprietateCard({ proprietate: p, isFavorite, isCompared
   return (
     <div className="bg-bg-card border border-bg-surface rounded-lg overflow-hidden hover:border-accent/50 hover:-translate-y-0.5 transition-all duration-300 group">
       <div className="relative h-52 overflow-hidden">
-        <img src={img} alt={p.title}
+        <img src={img} alt={p.title || "Proprietate HQS"}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
         <div className="absolute top-3 left-3 flex gap-2">
@@ -44,7 +44,7 @@ export default function ProprietateCard({ proprietate: p, isFavorite, isCompared
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657 13.414 20.9a2 2 0 0 1-2.827 0l-4.244-4.243a8 8 0 1 1 11.314 0Z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
           </svg>
-          {p.address || p.city}, {p.county || "Romania"}
+          {[p.address, p.city, p.county].filter(Boolean).join(", ") || "Romania"}
         </p>
         <div className="flex flex-wrap gap-3 text-sm text-text-muted mb-4">
           {p.rooms > 0 && <span>{p.rooms} camere</span>}
