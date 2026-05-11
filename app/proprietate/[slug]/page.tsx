@@ -6,6 +6,8 @@ import ContactDetaliu from "@/components/ContactDetaliu"
 import Link from "next/link"
 import type { Metadata } from "next"
 
+export const runtime = "edge"
+
 const TIP_LABEL: Record<string, string> = {
   APARTMENT: "Apartament", HOUSE: "Casă", VILLA: "Vilă",
   LAND: "Teren", COMMERCIAL: "Comercial"
