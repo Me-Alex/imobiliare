@@ -135,6 +135,22 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary">
+      <div className="grid lg:grid-cols-[260px_1fr]">
+        <aside className="hidden lg:block min-h-screen border-r border-bg-surface bg-bg-secondary p-6 sticky top-0">
+          <p className="text-xs uppercase tracking-widest text-accent font-semibold">Admin HQS</p>
+          <h2 className="mt-2 text-2xl font-bold">Panou</h2>
+          <nav className="mt-8 space-y-2 text-sm">
+            <a href="#overview" className="block rounded-lg px-3 py-2 bg-bg-primary/70 hover:text-accent">Overview</a>
+            <a href="#leads" className="block rounded-lg px-3 py-2 hover:bg-bg-primary/70 hover:text-accent">Lead-uri</a>
+            <a href="#proprietati" className="block rounded-lg px-3 py-2 hover:bg-bg-primary/70 hover:text-accent">Proprietăți</a>
+            <a href="#audit" className="block rounded-lg px-3 py-2 hover:bg-bg-primary/70 hover:text-accent">Audit</a>
+          </nav>
+          <div className="mt-8 rounded-2xl border border-bg-surface bg-bg-primary/60 p-4">
+            <p className="text-sm font-semibold mb-2">Stare</p>
+            <p className="text-xs text-text-muted">Filtre, bulk actions, drawer și audit activ.</p>
+          </div>
+        </aside>
+        <div>
       <header className="bg-bg-secondary border-b border-bg-surface px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <span className="text-lg font-bold"><span className="text-accent">HQS</span> Admin</span>
