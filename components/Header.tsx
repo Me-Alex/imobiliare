@@ -34,6 +34,9 @@ export default function Header() {
           <Link href="/proprietati" className="border border-bg-surface text-text-primary px-4 py-2 rounded-lg text-sm font-medium hover:border-accent hover:text-accent transition-all">
             Vezi oferte
           </Link>
+          <a href="tel:+40700000000" className="border border-accent text-accent px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent hover:text-bg-primary transition-all">
+            Sună acum
+          </a>
           <Link href="/contact" className="bg-accent text-bg-primary px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
             Contact
           </Link>
