@@ -51,6 +51,9 @@ export default function ProprietatiSection() {
       if (error) {
         setError(`Nu am putut încărca proprietățile: ${error.message}`)
       }
+      if (!data || data.length === 0) {
+        setError((curr) => curr || "Nu există proprietăți publicate sau accesul la tabel este blocat.")
+      }
       setProprietati(data || [])
       setLoading(false)
     }
