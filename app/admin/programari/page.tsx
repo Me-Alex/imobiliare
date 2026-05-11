@@ -1,0 +1,1 @@
+export default function AdminAppointmentsPage() { return <main className="p-6">Admin Programări</main> }
