@@ -38,10 +38,14 @@ export default function CompararePage() {
         <div className="max-w-7xl mx-auto">
           <span className="text-accent font-semibold text-xs uppercase tracking-widest">Comparare</span>
           <h1 className="text-4xl md:text-5xl font-bold text-text-primary mt-3">Compară proprietăți</h1>
-          <p className="text-text-muted mt-4 max-w-2xl leading-relaxed">Selectează 2–3 proprietăți din listă pentru a vedea diferențele direct, înainte de contact.</p>
+          <p className="text-text-muted mt-4 max-w-2xl leading-relaxed">Folosește compararea pentru a vedea rapid diferențele relevante înainte de a suna sau a trimite un mesaj.</p>
         </div>
       </section>
       <section className="px-4 py-16">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 mb-6">
+          <div className="text-sm text-text-muted">{items.length} proprietăți selectate</div>
+          <a href="/proprietati" className="text-sm font-semibold text-accent">Înapoi la listă</a>
+        </div>
         <div className="max-w-7xl mx-auto">
           {items.length < 2 ? (
             <div className="border border-bg-surface bg-bg-card rounded-lg p-6 text-text-muted">Selectează minim două proprietăți din listă pentru a activa comparația.</div>
