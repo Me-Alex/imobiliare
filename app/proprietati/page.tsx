@@ -3,8 +3,8 @@ import Header from "@/components/Header"
 import ProprietatiSection from "@/components/ProprietatiSection"
 
 export const metadata = {
-  title: "Proprietăți disponibile | HQS Imobiliare",
-  description: "Apartamente, case, vile și terenuri verificate de HQS Imobiliare.",
+  title: "Proprietati disponibile | HQS Imobiliare",
+  description: "Apartamente, case, vile si terenuri verificate de HQS Imobiliare.",
 }
 
 export default function ProprietatiPage() {
@@ -14,9 +14,9 @@ export default function ProprietatiPage() {
       <section className="bg-bg-secondary px-4 py-16 border-b border-bg-surface">
         <div className="max-w-7xl mx-auto">
           <span className="text-accent font-semibold text-xs uppercase tracking-widest">Portofoliu</span>
-          <h1 className="text-4xl md:text-5xl font-bold text-text-primary mt-3">Proprietăți disponibile</h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-text-primary mt-3">Proprietati disponibile</h1>
           <p className="text-text-muted mt-4 max-w-2xl leading-relaxed">
-            O listă scurtă și verificată este mai utilă decât zeci de anunțuri neclare. Aici găsești ofertele pe care le putem prezenta rapid, cu informațiile importante la zi.
+            O lista scurta si verificata este mai utila decat zeci de anunturi neclare. Aici gasesti ofertele pe care le putem prezenta rapid, cu informatiile importante la zi.
           </p>
         </div>
       </section>
