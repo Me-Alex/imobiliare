@@ -77,6 +77,7 @@ export default function ProprietatiSection() {
   }, [proprietati, filtruTip, filtruZona, filtruCamere, pretMax, doarFeatured, query, sort])
 
   const featuredCount = proprietati.filter((p) => p.featured).length
+  const favoriteCount = favorites.length
   const activeFilters =
     query.trim() !== "" ||
     filtruTip !== "toate" ||
@@ -125,8 +126,8 @@ export default function ProprietatiSection() {
               <div className="text-xs text-text-muted">selectate</div>
             </div>
             <div className="border border-bg-surface bg-bg-card rounded-lg p-3">
-              <div className="text-xl font-bold text-text-primary">24h</div>
-              <div className="text-xs text-text-muted">raspuns</div>
+              <div className="text-xl font-bold text-text-primary">{favoriteCount}</div>
+              <div className="text-xs text-text-muted">favorite</div>
             </div>
           </div>
         </div>
