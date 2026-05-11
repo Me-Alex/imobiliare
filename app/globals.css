@@ -34,6 +34,27 @@ body {
   color: rgb(var(--color-text-primary));
 }
 
+.form-input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(var(--color-bg-surface));
+  background: rgb(var(--color-bg-secondary));
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: rgb(var(--color-text-primary));
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.form-input::placeholder {
+  color: rgb(var(--color-text-muted) / 0.55);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: rgb(var(--color-accent));
+  box-shadow: 0 0 0 3px rgb(var(--color-accent) / 0.12);
+}
+
 ::selection {
   background: rgb(var(--color-accent));
   color: rgb(var(--color-bg-primary));
