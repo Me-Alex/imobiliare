@@ -9,16 +9,16 @@ const config: Config = {
     extend: {
       colors: {
         bg: {
-          primary: '#060B0F',
-          secondary: '#0F1419',
-          card: '#121921',
-          surface: '#242C33',
+          primary: 'rgb(var(--color-bg-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--color-bg-secondary) / <alpha-value>)',
+          card: 'rgb(var(--color-bg-card) / <alpha-value>)',
+          surface: 'rgb(var(--color-bg-surface) / <alpha-value>)',
         },
         text: {
-          primary: '#F2F3F5',
-          muted: '#586367',
+          primary: 'rgb(var(--color-text-primary) / <alpha-value>)',
+          muted: 'rgb(var(--color-text-muted) / <alpha-value>)',
         },
-        accent: '#2DCD7A',
+        accent: 'rgb(var(--color-accent) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
