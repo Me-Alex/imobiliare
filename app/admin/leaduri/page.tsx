@@ -1,0 +1,1 @@
+export default function AdminLeadsPage() { return <main className="p-6">Admin Lead-uri</main> }
