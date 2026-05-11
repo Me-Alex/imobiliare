@@ -1,0 +1,2 @@
+"use client"
+export function Topbar(){return <header className="flex items-center justify-between gap-4 border-b border-bg-surface bg-bg-secondary px-4 py-3"><div><div className="text-sm text-text-muted">HQS Imobiliare</div><div className="font-semibold">Admin panel</div></div><div className="flex items-center gap-2"><button className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Command</button><button className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Dark/Light</button></div></header>}
