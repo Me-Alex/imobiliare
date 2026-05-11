@@ -5,8 +5,8 @@ import Link from "next/link"
 import ThemeToggle from "./ThemeToggle"
 
 const links = [
-  { href: "/", label: "Acasă" },
-  { href: "/proprietati", label: "Proprietăți" },
+  { href: "/", label: "Acasa" },
+  { href: "/proprietati", label: "Proprietati" },
   { href: "/despre", label: "Despre" },
   { href: "/contact", label: "Contact" },
 ]
@@ -22,7 +22,7 @@ export default function Header() {
         </Link>
 
         <nav className="hidden md:flex gap-8 text-sm font-medium text-text-muted">
-          {links.map(link => (
+          {links.map((link) => (
             <Link key={link.href} href={link.href} className="hover:text-accent transition-colors">
               {link.label}
             </Link>
@@ -51,7 +51,7 @@ export default function Header() {
 
       {menuOpen && (
         <div className="md:hidden bg-bg-card border-t border-bg-surface px-4 py-4 flex flex-col gap-4 text-sm">
-          {links.map(link => (
+          {links.map((link) => (
             <Link key={link.href} href={link.href} className="text-text-muted hover:text-accent" onClick={() => setMenuOpen(false)}>
               {link.label}
             </Link>
