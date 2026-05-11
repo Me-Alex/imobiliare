@@ -28,6 +28,9 @@ export default function CompararePage() {
     ["Tip", (p: Property) => p.type],
   ] as const
 
+  const bestPrice = items.length ? Math.min(...items.map((p) => p.price)) : 0
+  const bestArea = items.length ? Math.max(...items.map((p) => p.area_sqm)) : 0
+
   return (
     <main>
       <Header />
@@ -55,7 +58,11 @@ export default function CompararePage() {
                   {rows.map(([label, getter]) => (
                     <tr key={label} className="border-b border-bg-surface last:border-0 align-top">
                       <td className="p-4 text-text-muted font-medium">{label}</td>
-                      {items.map((p) => <td key={p.id} className="p-4 text-text-primary">{getter(p)}</td>)}
+                      {items.map((p) => {
+                        const isBestPrice = label === "Preț" && p.price === bestPrice
+                        const isBestArea = label === "Suprafață" && p.area_sqm === bestArea
+                        return <td key={p.id} className={`p-4 text-text-primary ${isBestPrice || isBestArea ? 'bg-accent/10' : ''}`}>{getter(p)}</td>
+                      })}
                     </tr>
                   ))}
                 </tbody>
