@@ -63,14 +63,14 @@ export default function AdminPage() {
   }
 
   const bulkDeleteLeads = async () => {
-    if (!selectedLeadIds.length || !confirm(`Ștergi ${selectedLeadIds.length} lead-uri?`)) return
+    if (!selectedLeadIds.length || !confirm(`Ștergi ${selectedLeadIds.length} lead-uri selectate? Operația nu se poate anula.`)) return
     await Promise.all(selectedLeadIds.map(id => supabase.from("leads").delete().eq("id", id)))
     setLeads(prev => prev.filter(l => !selectedLeadIds.includes(l.id)))
     setSelectedLeadIds([])
   }
 
   const bulkDeleteProps = async () => {
-    if (!selectedPropIds.length || !confirm(`Ștergi ${selectedPropIds.length} proprietăți?`)) return
+    if (!selectedPropIds.length || !confirm(`Ștergi ${selectedPropIds.length} proprietăți selectate? Operația nu se poate anula.`)) return
     await Promise.all(selectedPropIds.map(id => supabase.from("properties").delete().eq("id", id)))
     setProps(prev => prev.filter(p => !selectedPropIds.includes(p.id)))
     setSelectedPropIds([])
@@ -119,6 +119,9 @@ export default function AdminPage() {
               {stats.map(s => <div key={s.label} className="bg-bg-secondary border border-bg-surface rounded-xl p-5"><p className="text-sm text-text-muted mb-2">{s.label}</p><p className="text-3xl font-bold text-accent">{s.value}</p></div>)}
             </div>
             <div className="mb-6 flex flex-wrap gap-2 items-center">
+              <div className="w-full rounded-xl border border-bg-surface bg-bg-secondary/80 px-4 py-3 text-sm text-text-muted mb-3">
+                {selectedLeadIds.length} lead-uri selectate · {selectedPropIds.length} proprietăți selectate
+              </div>
               <select value={leadStatusFilter} onChange={e => setLeadStatusFilter(e.target.value)} className="rounded-lg border border-bg-surface bg-bg-secondary px-3 py-2 text-sm"><option value="ALL">Toate lead-urile</option><option value="NEW">NEW</option><option value="CONTACTED">CONTACTED</option><option value="CLOSED">CLOSED</option><option value="LOST">LOST</option></select>
               <select value={propStatusFilter} onChange={e => setPropStatusFilter(e.target.value)} className="rounded-lg border border-bg-surface bg-bg-secondary px-3 py-2 text-sm"><option value="ALL">Toate proprietățile</option><option value="PUBLISHED">PUBLISHED</option><option value="DRAFT">DRAFT</option><option value="SOLD">SOLD</option><option value="RENTED">RENTED</option></select>
               <button onClick={() => setTab("overview")} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Overview</button>
