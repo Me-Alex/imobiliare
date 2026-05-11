@@ -26,6 +26,7 @@ export default function AdminPage() {
   const [props, setProps] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [audit, setAudit] = useState<any[]>([])
   const [leadFilter, setLeadFilter] = useState("ALL")
   const [propFilter, setPropFilter] = useState("ALL")
   const [search, setSearch] = useState("")
@@ -39,10 +40,12 @@ export default function AdminPage() {
     Promise.all([
       supabase.from("leads").select("*").order("created_at", { ascending: false }),
       supabase.from("properties").select("*").order("created_at", { ascending: false }),
-    ]).then(([l, p]) => {
-      if (l.error || p.error) setError(l.error?.message || p.error?.message || "Eroare la încărcarea datelor.")
+      supabase.from("admin_audit_log").select("*").order("created_at", { ascending: false }).limit(10),
+    ]).then(([l, p, a]) => {
+      if (l.error || p.error || a.error) setError(l.error?.message || p.error?.message || a.error?.message || "Eroare la încărcarea datelor.")
       setLeads(l.data || [])
       setProps(p.data || [])
+      setAudit(a.data || [])
       setLoading(false)
     })
   }, [])
