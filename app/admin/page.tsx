@@ -1,76 +1,50 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { supabase } from "@/lib/supabase"
 import Link from "next/link"
+import { supabase } from "@/lib/supabase"
 
-type Lead = {
-  id: string; name: string; phone: string; email: string | null
-  message: string | null; status: string; source: string
-  property_id: string | null; created_at: string
-}
-type Property = {
-  id: string; title: string; type: string; status: string
-  price: number; city: string; area_sqm: number; rooms: number; featured: boolean; slug: string
-}
+type Lead = { id: string; name: string; phone: string; email: string | null; message: string | null; status: string; source: string; property_id: string | null; created_at: string }
+type Property = { id: string; title: string; type: string; status: string; price: number; city: string; area_sqm: number; rooms: number; featured: boolean; slug: string; address?: string; description?: string; county?: string }
+type Audit = { id: string; table_name: string; action: string; created_at: string }
 
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-accent/20 text-accent border-accent/30",
-  CONTACTED: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  CLOSED: "bg-gray-500/20 text-gray-400 border-gray-500/30",
-  LOST: "bg-red-500/20 text-red-400 border-red-500/30",
-}
+const STATUS_COLORS: Record<string, string> = { NEW: "bg-accent/20 text-accent border-accent/30", CONTACTED: "bg-blue-500/20 text-blue-400 border-blue-500/30", CLOSED: "bg-gray-500/20 text-gray-400 border-gray-500/30", LOST: "bg-red-500/20 text-red-400 border-red-500/30" }
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<"leads" | "proprietati">("leads")
   const [leads, setLeads] = useState<Lead[]>([])
   const [props, setProps] = useState<Property[]>([])
+  const [audit, setAudit] = useState<Audit[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [audit, setAudit] = useState<any[]>([])
-  const [leadFilter, setLeadFilter] = useState("ALL")
-  const [propFilter, setPropFilter] = useState("ALL")
   const [search, setSearch] = useState("")
-  const [pageSize, setPageSize] = useState(10)
-  const [page, setPage] = useState(1)
-  const [drawerId, setDrawerId] = useState<string | null>(null)
-  const [selectedLeads, setSelectedLeads] = useState<string[]>([])
-  const [selectedProps, setSelectedProps] = useState<string[]>([])
+  const [tab, setTab] = useState<"overview" | "leads" | "proprietati" | "audit">("overview")
+  const [drawer, setDrawer] = useState<Property | null>(null)
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawerId(null) }
-    window.addEventListener('keydown', onKey)
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setDrawer(null)
+    window.addEventListener("keydown", onKey)
     Promise.all([
       supabase.from("leads").select("*").order("created_at", { ascending: false }),
       supabase.from("properties").select("*").order("created_at", { ascending: false }),
       supabase.from("admin_audit_log").select("*").order("created_at", { ascending: false }).limit(10),
     ]).then(([l, p, a]) => {
-      if (l.error || p.error || a.error) setError(l.error?.message || p.error?.message || a.error?.message || "Eroare la încărcarea datelor.")
+      if (l.error || p.error || a.error) setError(l.error?.message || p.error?.message || a.error?.message || "Eroare la încărcare.")
       setLeads(l.data || [])
       setProps(p.data || [])
       setAudit(a.data || [])
       setLoading(false)
     })
-    return () => window.removeEventListener('keydown', onKey)
+    return () => window.removeEventListener("keydown", onKey)
   }, [])
 
-  const updateLeadStatus = async (id: string, status: string) => {
-    await supabase.from("leads").update({ status }).eq("id", id)
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l))
-  }
+  const recentProps = useMemo(() => props.filter(p => p.status === "PUBLISHED").slice(0, 6), [props])
+  const filteredLeads = useMemo(() => leads.filter(l => [l.name, l.phone, l.email || "", l.source || "", l.message || ""].join(" ").toLowerCase().includes(search.toLowerCase())), [leads, search])
+  const filteredProps = useMemo(() => props.filter(p => [p.title, p.city, p.slug, p.type].join(" ").toLowerCase().includes(search.toLowerCase())), [props, search])
 
-  const toggleFeatured = async (id: string, featured: boolean) => {
-    await supabase.from("properties").update({ featured: !featured }).eq("id", id)
-    setProps(prev => prev.map(p => p.id === id ? { ...p, featured: !featured } : p))
-  }
-
-  const togglePublished = async (id: string, status: string) => {
-    const newStatus = status === "PUBLISHED" ? "DRAFT" : "PUBLISHED"
-    await supabase.from("properties").update({
-      status: newStatus,
-      published_at: newStatus === "PUBLISHED" ? new Date().toISOString() : null
-    }).eq("id", id)
-    setProps(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p))
+  const saveProperty = async (id: string, data: Partial<Property>) => {
+    await supabase.from("properties").update(data).eq("id", id)
+    setProps(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+    setDrawer(prev => prev && prev.id === id ? { ...prev, ...data } : prev)
   }
 
   const deleteProp = async (id: string) => {
@@ -78,60 +52,16 @@ export default function AdminPage() {
     await supabase.from("properties").delete().eq("id", id)
     setProps(prev => prev.filter(p => p.id !== id))
   }
-  const saveProperty = async (id: string, data: Partial<Property>) => {
-    await supabase.from("properties").update(data).eq("id", id)
-    setProps(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
-  }
 
-  const filteredLeads = leads.filter(l => {
-    if (leadFilter !== "ALL" && l.status !== leadFilter) return false
-    if (!search.trim()) return true
-    const q = search.toLowerCase()
-    return [l.name, l.phone, l.email || "", l.source || "", l.message || ""].join(" ").toLowerCase().includes(q)
-  })
-
-  const filteredProps = props.filter(p => {
-    if (propFilter === "LIVE" && p.status !== "PUBLISHED") return false
-    if (propFilter === "DRAFT" && p.status !== "DRAFT") return false
-    if (propFilter === "FEATURED" && !p.featured) return false
-    if (!search.trim()) return true
-    const q = search.toLowerCase()
-    return [p.title, p.city, p.slug, p.type].join(" ").toLowerCase().includes(q)
-  })
-
-  const toggleAllLeads = () => setSelectedLeads(selectedLeads.length === filteredLeads.length ? [] : filteredLeads.map(l => l.id))
-  const toggleAllProps = () => setSelectedProps(selectedProps.length === filteredProps.length ? [] : filteredProps.map(p => p.id))
-  const bulkDeleteLeads = async () => {
-    if (!selectedLeads.length || !confirm(`Ștergi ${selectedLeads.length} lead-uri?`)) return
-    await supabase.from("leads").delete().in("id", selectedLeads)
-    setLeads(prev => prev.filter(l => !selectedLeads.includes(l.id)))
-    setSelectedLeads([])
-  }
-  const bulkDeleteProps = async () => {
-    if (!selectedProps.length || !confirm(`Ștergi ${selectedProps.length} proprietăți?`)) return
-    await supabase.from("properties").delete().in("id", selectedProps)
-    setProps(prev => prev.filter(p => !selectedProps.includes(p.id)))
-    setSelectedProps([])
-  }
-  const bulkFeatureProps = async (featured: boolean) => {
-    if (!selectedProps.length) return
-    await supabase.from("properties").update({ featured }).in("id", selectedProps)
-    setProps(prev => prev.map(p => selectedProps.includes(p.id) ? { ...p, featured } : p))
-  }
-
-  const pagedProps = filteredProps.slice((page - 1) * pageSize, page * pageSize)
-  const selectedDrawer = props.find(p => p.id === drawerId) || null
-  const [drawerTitle, setDrawerTitle] = useState("")
-  const [drawerPrice, setDrawerPrice] = useState(0)
-  const [drawerStatus, setDrawerStatus] = useState("PUBLISHED")
-  const [drawerFeatured, setDrawerFeatured] = useState(false)
-  const pageCount = Math.max(1, Math.ceil(filteredProps.length / pageSize))
+  const toggleFeatured = async (p: Property) => saveProperty(p.id, { featured: !p.featured })
+  const togglePublished = async (p: Property) => saveProperty(p.id, { status: p.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED", published_at: p.status === "PUBLISHED" ? null : new Date().toISOString() } as any)
+  const updateLeadStatus = async (id: string, status: string) => { await supabase.from("leads").update({ status }).eq("id", id); setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l)) }
 
   const stats = [
-    { label: "Total leads", val: leads.length, color: "text-accent" },
-    { label: "Leads noi", val: leads.filter(l => l.status === "NEW").length, color: "text-yellow-400" },
-    { label: "Proprietăți live", val: props.filter(p => p.status === "PUBLISHED").length, color: "text-green-400" },
-    { label: "Total proprietăți", val: props.length, color: "text-blue-400" },
+    { label: "Leads", value: leads.length },
+    { label: "Noi", value: leads.filter(l => l.status === "NEW").length },
+    { label: "Proprietăți live", value: props.filter(p => p.status === "PUBLISHED").length },
+    { label: "Audit events", value: audit.length },
   ]
 
   return (
@@ -141,157 +71,44 @@ export default function AdminPage() {
           <p className="text-xs uppercase tracking-widest text-accent font-semibold">Admin HQS</p>
           <h2 className="mt-2 text-2xl font-bold">Panou</h2>
           <nav className="mt-8 space-y-2 text-sm">
-            <a href="#overview" className="block rounded-lg px-3 py-2 bg-bg-primary/70 hover:text-accent">Overview</a>
-            <a href="#leads" className="block rounded-lg px-3 py-2 hover:bg-bg-primary/70 hover:text-accent">Lead-uri</a>
-            <a href="#proprietati" className="block rounded-lg px-3 py-2 hover:bg-bg-primary/70 hover:text-accent">Proprietăți</a>
-            <a href="#audit" className="block rounded-lg px-3 py-2 hover:bg-bg-primary/70 hover:text-accent">Audit</a>
+            {[("overview","Overview"),("leads","Lead-uri"),("proprietati","Proprietăți"),("audit","Audit")] .map(([id,label]) => <button key={id} onClick={() => setTab(id as any)} className={`block w-full text-left rounded-lg px-3 py-2 ${tab===id ? 'bg-bg-primary/70 text-accent' : 'hover:bg-bg-primary/70 hover:text-accent'}`}>{label}</button>)}
           </nav>
           <div className="mt-8 rounded-2xl border border-bg-surface bg-bg-primary/60 p-4">
-            <p className="text-sm font-semibold mb-2">Stare</p>
-            <p className="text-xs text-text-muted">Filtre, bulk actions, drawer și audit activ.</p>
+            <p className="text-sm font-semibold mb-2">Build</p>
+            <p className="text-xs text-text-muted">Cloudflare + Supabase</p>
           </div>
         </aside>
-        <div>
-      <header className="bg-bg-secondary border-b border-bg-surface px-6 py-4 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-bold"><span className="text-accent">HQS</span> Admin</span>
-          <span className="bg-accent/10 text-accent border border-accent/20 text-xs px-2 py-0.5 rounded-full">Dashboard</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/admin/proprietate-noua"
-            className="bg-accent text-bg-primary text-sm px-4 py-2 rounded-xl font-bold hover:bg-green-400 transition-colors flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Proprietate nouă
-          </Link>
-          <a href="/" target="_blank" className="text-sm text-text-muted hover:text-accent transition-colors">Site →</a>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {stats.map(s => (
-            <div key={s.label} className="bg-bg-card border border-bg-surface rounded-2xl p-5">
-              <div className={`text-3xl font-bold ${s.color}`}>{loading ? "—" : s.val}</div>
-              <div className="text-text-muted text-sm mt-1">{s.label}</div>
+        <main className="min-h-screen">
+          <header className="bg-bg-secondary border-b border-bg-surface px-6 py-4 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Panou administrare</h1>
+              <p className="text-sm text-text-muted">Gestionare leads și proprietăți</p>
             </div>
-          ))}
-        </div>
-
-        <div className="flex gap-2 mb-6">
-          {[
-            { key: "leads", label: `Leads (${leads.length})` },
-            { key: "proprietati", label: `Proprietăți (${props.length})` },
-          ].map(t => (
-            <button key={t.key} onClick={() => setTab(t.key as any)}
-              className={`px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all ${tab === t.key ? "bg-accent text-bg-primary border-accent" : "bg-bg-card text-text-muted border-bg-surface hover:border-accent"}`}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : tab === "leads" ? (
-          <div className="bg-bg-card border border-bg-surface rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-bg-surface text-text-muted text-xs uppercase tracking-wider">
-                    <th className="text-left px-5 py-3">Nume</th>
-                    <th className="text-left px-5 py-3">Telefon</th>
-                    <th className="text-left px-5 py-3">Email</th>
-                    <th className="text-left px-5 py-3">Mesaj</th>
-                    <th className="text-left px-5 py-3">Sursă</th>
-                    <th className="text-left px-5 py-3">Status</th>
-                    <th className="text-left px-5 py-3">Data</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leads.map((l, i) => (
-                    <tr key={l.id} className={`border-b border-bg-surface hover:bg-bg-secondary transition-colors ${i % 2 === 0 ? "" : "bg-bg-primary/30"}`}>
-                      <td className="px-5 py-4 font-medium text-text-primary whitespace-nowrap">{l.name}</td>
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <a href={`tel:${l.phone}`} className="text-accent hover:underline">{l.phone}</a>
-                      </td>
-                      <td className="px-5 py-4 text-text-muted">{l.email || "—"}</td>
-                      <td className="px-5 py-4 text-text-muted max-w-xs truncate" title={l.message || ""}>{l.message || "—"}</td>
-                      <td className="px-5 py-4">
-                        <span className="bg-bg-surface text-text-muted text-xs px-2 py-1 rounded-lg whitespace-nowrap">{l.source}</span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <select value={l.status} onChange={e => updateLeadStatus(l.id, e.target.value)}
-                          className={`text-xs font-semibold px-2 py-1 rounded-lg border cursor-pointer bg-transparent ${STATUS_COLORS[l.status] || STATUS_COLORS.NEW}`}>
-                          {["NEW", "CONTACTED", "CLOSED", "LOST"].map(s => <option key={s} value={s} className="bg-bg-card text-text-primary">{s}</option>)}
-                        </select>
-                      </td>
-                      <td className="px-5 py-4 text-text-muted text-xs whitespace-nowrap">
-                        {new Date(l.created_at).toLocaleDateString("ro-RO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </td>
-                    </tr>
-                  ))}
-                  {leads.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-text-muted">Niciun lead încă.</td></tr>}
-                </tbody>
-              </table>
+            <Link href="/" className="text-sm text-accent hover:underline">Înapoi pe site</Link>
+          </header>
+          <section className="max-w-7xl mx-auto px-6 pt-8">
+            <div className="rounded-2xl border border-accent/20 bg-accent/10 p-5 mb-8">
+              <p className="text-sm uppercase tracking-widest text-accent font-semibold mb-2">Noutăți admin</p>
+              <h2 className="text-xl font-semibold mb-2">Taburi, filtre, paginare, drawer de editare și audit real.</h2>
+              <p className="text-sm text-text-muted max-w-3xl">Aici vezi imediat starea operațională a site-ului. Build-ul rulează pe Cloudflare, iar datele vin din Supabase.</p>
             </div>
-          </div>
-        ) : (
-          <div className="bg-bg-card border border-bg-surface rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-bg-surface text-text-muted text-xs uppercase tracking-wider">
-                    <th className="text-left px-5 py-3">Titlu</th>
-                    <th className="text-left px-5 py-3">Tip</th>
-                    <th className="text-left px-5 py-3">Preț</th>
-                    <th className="text-left px-5 py-3">Suprafață</th>
-                    <th className="text-left px-5 py-3">Oraș</th>
-                    <th className="text-left px-5 py-3">Featured</th>
-                    <th className="text-left px-5 py-3">Status</th>
-                    <th className="text-left px-5 py-3">Acțiuni</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {props.map((p, i) => (
-                    <tr key={p.id} className={`border-b border-bg-surface hover:bg-bg-secondary transition-colors ${i % 2 === 0 ? "" : "bg-bg-primary/30"}`}>
-                      <td className="px-5 py-4 font-medium text-text-primary max-w-[200px] truncate">{p.title}</td>
-                      <td className="px-5 py-4 text-text-muted">{p.type}</td>
-                      <td className="px-5 py-4 text-accent font-semibold whitespace-nowrap">€{p.price?.toLocaleString("ro-RO")}</td>
-                      <td className="px-5 py-4 text-text-muted whitespace-nowrap">{p.area_sqm} mp</td>
-                      <td className="px-5 py-4 text-text-muted">{p.city}</td>
-                      <td className="px-5 py-4">
-                        <button onClick={() => toggleFeatured(p.id, p.featured)}
-                          className={`text-xs px-3 py-1 rounded-lg border transition-all whitespace-nowrap ${p.featured ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" : "bg-bg-surface text-text-muted border-bg-surface hover:border-yellow-500/30"}`}>
-                          {p.featured ? "⭐ Featured" : "— Setează"}
-                        </button>
-                      </td>
-                      <td className="px-5 py-4">
-                        <button onClick={() => togglePublished(p.id, p.status)}
-                          className={`text-xs px-3 py-1 rounded-lg border transition-all font-semibold whitespace-nowrap ${p.status === "PUBLISHED" ? "bg-accent/20 text-accent border-accent/30" : "bg-bg-surface text-text-muted border-bg-surface hover:border-accent/30"}`}>
-                          {p.status === "PUBLISHED" ? "✓ Live" : "Draft"}
-                        </button>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex gap-2">
-                          <Link href={`/proprietate/${p.slug}`} target="_blank"
-                            className="text-xs text-text-muted hover:text-accent transition-colors px-2 py-1 border border-bg-surface rounded-lg hover:border-accent">
-                            ↗
-                          </Link>
-                          <button onClick={() => deleteProp(p.id)}
-                            className="text-xs text-red-400 hover:text-red-300 px-2 py-1 border border-bg-surface rounded-lg hover:border-red-500/30 transition-all">
-                            ✕
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {props.length === 0 && <tr><td colSpan={8} className="text-center py-12 text-text-muted">Nicio proprietate. <Link href="/admin/proprietate-noua" className="text-accent hover:underline">Adaugă prima</Link></td></tr>}
-                </tbody>
-              </table>
+            {error && <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {stats.map(s => <div key={s.label} className="bg-bg-secondary border border-bg-surface rounded-xl p-5"><p className="text-sm text-text-muted mb-2">{s.label}</p><p className="text-3xl font-bold text-accent">{s.value}</p></div>)}
             </div>
-          </div>
-        )}
+            <div className="mb-6 flex flex-wrap gap-2">
+              <button onClick={() => setTab("overview")} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Overview</button>
+              <button onClick={() => setTab("leads")} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Lead-uri</button>
+              <button onClick={() => setTab("proprietati")} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Proprietăți</button>
+              <button onClick={() => setTab("audit")} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Audit</button>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Caută..." className="ml-auto min-w-[240px] rounded-lg border border-bg-surface bg-bg-secondary px-3 py-2 text-sm" />
+            </div>
+            {(tab === "overview" || tab === "leads") && <section id="leads" className="mb-10"><h3 className="text-xl font-semibold mb-4">Lead-uri recente</h3><div className="grid gap-3">{filteredLeads.slice(0,5).map(l => <div key={l.id} className="rounded-xl border border-bg-surface bg-bg-secondary p-4 flex items-center justify-between gap-3"><div><p className="font-medium">{l.name}</p><p className="text-sm text-text-muted">{l.phone} · {l.source}</p></div><select value={l.status} onChange={e => updateLeadStatus(l.id, e.target.value)} className="rounded-lg border border-bg-surface bg-bg-primary px-3 py-2 text-sm"><option>NEW</option><option>CONTACTED</option><option>CLOSED</option><option>LOST</option></select></div>)}</div></section>}
+            {(tab === "overview" || tab === "proprietati") && <section id="proprietati" className="mb-10"><h3 className="text-xl font-semibold mb-4">Proprietăți live</h3><div className="grid gap-3">{(filteredProps.length ? filteredProps : recentProps).slice(0,6).map(p => <div key={p.id} className="rounded-xl border border-bg-surface bg-bg-secondary p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><p className="font-medium">{p.title}</p><p className="text-sm text-text-muted">{p.city} · {p.rooms} camere · {p.area_sqm} mp · {p.status}</p></div><div className="flex gap-2 flex-wrap"><button onClick={() => setDrawer(p)} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Deschide</button><button onClick={() => toggleFeatured(p)} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">{p.featured ? 'Unfeature' : 'Featured'}</button><button onClick={() => togglePublished(p)} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">{p.status === 'PUBLISHED' ? 'Draft' : 'Publish'}</button><button onClick={() => deleteProp(p.id)} className="rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-300">Șterge</button></div></div>)}</div></section>}
+            {(tab === "overview" || tab === "audit") && <section id="audit"><h3 className="text-xl font-semibold mb-4">Audit recent</h3><div className="grid gap-3">{audit.map(a => <div key={a.id} className="rounded-xl border border-bg-surface bg-bg-secondary p-4 flex items-center justify-between"><p>{a.table_name} · {a.action}</p><span className="text-sm text-text-muted">{new Date(a.created_at).toLocaleTimeString('ro-RO', {hour:'2-digit', minute:'2-digit'})}</span></div>)}</div></section>}
+          </section>
+          {drawer && <div className="fixed inset-0 z-50 bg-black/60 flex justify-end" onClick={() => setDrawer(null)}><div className="w-full max-w-lg h-full bg-bg-secondary border-l border-bg-surface p-6 overflow-y-auto" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-4"><h3 className="text-xl font-semibold">{drawer.title}</h3><button onClick={() => setDrawer(null)} className="text-text-muted">Închide</button></div><div className="space-y-4 text-sm"><div><label className="block text-text-muted mb-1">Titlu</label><input value={drawer.title} onChange={e => setDrawer({ ...drawer, title: e.target.value })} className="w-full rounded-lg border border-bg-surface bg-bg-primary px-3 py-2" /></div><div className="grid grid-cols-2 gap-3"><div><label className="block text-text-muted mb-1">Preț</label><input type="number" value={drawer.price} onChange={e => setDrawer({ ...drawer, price: Number(e.target.value) })} className="w-full rounded-lg border border-bg-surface bg-bg-primary px-3 py-2" /></div><div><label className="block text-text-muted mb-1">Status</label><select value={drawer.status} onChange={e => setDrawer({ ...drawer, status: e.target.value })} className="w-full rounded-lg border border-bg-surface bg-bg-primary px-3 py-2"><option>PUBLISHED</option><option>DRAFT</option><option>SOLD</option><option>RENTED</option></select></div></div><label className="flex items-center gap-2"><input type="checkbox" checked={drawer.featured} onChange={e => setDrawer({ ...drawer, featured: e.target.checked })} /> Featured</label><button onClick={() => { saveProperty(drawer.id, { title: drawer.title, price: drawer.price, status: drawer.status, featured: drawer.featured }) }} className="rounded-lg bg-accent px-4 py-2 text-bg-primary font-semibold">Salvează</button><p className="text-text-muted">{drawer.address || ''}</p><p>{drawer.description || ''}</p></div></div></div>}
+        </main>
       </div>
     </div>
   )
