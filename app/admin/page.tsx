@@ -21,6 +21,7 @@ export default function AdminPage() {
   const [leadNote, setLeadNote] = useState("")
   const [leadNotes, setLeadNotes] = useState<{ id: string; note: string; created_at: string; lead_id?: string }[]>([])
   const [leadNoteCounts, setLeadNoteCounts] = useState<Record<string, number>>({})
+  const [lastNoteAt, setLastNoteAt] = useState<Record<string, string>>({})
   const [lastNoteFilter, setLastNoteFilter] = useState("ALL")
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([])
   const [selectedPropIds, setSelectedPropIds] = useState<string[]>([])
@@ -51,7 +52,7 @@ export default function AdminPage() {
       if (lastNoteFilter === "NO_NOTES" && hasNotes) return false
     }
     return [l.name, l.phone, l.email || "", l.source || "", l.message || ""].join(" ").toLowerCase().includes(search.toLowerCase())
-  }).sort((a, b) => (leadNoteCounts[b.id] || 0) - (leadNoteCounts[a.id] || 0)), [leads, search, leadStatusFilter, lastNoteFilter, leadNoteCounts])
+  }).sort((a, b) => (new Date(lastNoteAt[b.id] || 0).getTime()) - (new Date(lastNoteAt[a.id] || 0).getTime()) || (leadNoteCounts[b.id] || 0) - (leadNoteCounts[a.id] || 0)), [leads, search, leadStatusFilter, lastNoteFilter, leadNoteCounts, lastNoteAt])
   const allFilteredLeadIds = filteredLeads.map(l => l.id)
   const filteredProps = useMemo(() => props.filter(p => {
     if (propStatusFilter !== "ALL" && p.status !== propStatusFilter) return false
@@ -91,7 +92,9 @@ export default function AdminPage() {
       const rows = (data || []) as any[]
       setLeadNotes(rows)
       const counts = rows.reduce((acc, row) => { acc[row.lead_id] = (acc[row.lead_id] || 0) + 1; return acc }, {} as Record<string, number>)
+      const latest = rows.reduce((acc, row) => { if (!acc[row.lead_id] || new Date(row.created_at).getTime() > new Date(acc[row.lead_id]).getTime()) acc[row.lead_id] = row.created_at; return acc }, {} as Record<string, string>)
       setLeadNoteCounts(counts)
+      setLastNoteAt(latest)
     })
   }, [leadDrawer])
 
