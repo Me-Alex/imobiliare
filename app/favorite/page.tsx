@@ -18,6 +18,19 @@ export default function FavoritePage() {
 
   const items = useMemo(() => all.filter((p) => selected.includes(p.id)), [all, selected])
 
+  const removeFavorite = (id: string) => {
+    setSelected((curr) => {
+      const next = curr.filter((x) => x !== id)
+      localStorage.setItem("hq-favorites", JSON.stringify(next))
+      return next
+    })
+  }
+
+  const clearFavorites = () => {
+    setSelected([])
+    localStorage.removeItem("hq-favorites")
+  }
+
   return (
     <main>
       <Header />
@@ -29,6 +42,13 @@ export default function FavoritePage() {
         </div>
       </section>
       <section className="px-4 py-16">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 mb-6">
+          <div className="text-sm text-text-muted">{items.length} salvate</div>
+          <div className="flex items-center gap-3">
+            <a href="/comparare" className="text-sm font-semibold text-accent">Comparare</a>
+            {items.length > 0 && <button onClick={clearFavorites} className="text-sm font-semibold text-text-muted hover:text-accent">Golește lista</button>}
+          </div>
+        </div>
         <div className="max-w-7xl mx-auto">
           {items.length === 0 ? (
             <div className="border border-bg-surface bg-bg-card rounded-lg p-6 text-text-muted">Nu ai încă favorite. Adaugă proprietăți din listă și revino aici.</div>
@@ -38,9 +58,12 @@ export default function FavoritePage() {
                 <div key={p.id} className="border border-bg-surface bg-bg-card rounded-lg p-5">
                   <h3 className="font-bold text-text-primary mb-2">{p.title}</h3>
                   <p className="text-sm text-text-muted mb-4">{[p.address, p.city, p.county].filter(Boolean).join(", ")}</p>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <span className="font-bold text-accent">EUR {p.price.toLocaleString("ro-RO")}</span>
-                    <Link href={`/proprietate/${p.slug}`} className="text-sm font-semibold text-accent">Vezi</Link>
+                    <div className="flex gap-3">
+                      <button onClick={() => removeFavorite(p.id)} className="text-sm font-semibold text-text-muted hover:text-accent">Scoate</button>
+                      <Link href={`/proprietate/${p.slug}`} className="text-sm font-semibold text-accent">Vezi</Link>
+                    </div>
                   </div>
                 </div>
               ))}
