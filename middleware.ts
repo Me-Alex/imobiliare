@@ -4,8 +4,8 @@ import type { NextRequest } from "next/server"
 export function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/admin")) {
     const auth = request.headers.get("authorization")
-    const adminPass = process.env.ADMIN_PASSWORD || "hqs2024admin"
-    const expected = "Basic " + Buffer.from(`admin:${adminPass}`).toString("base64")
+    const adminPass = process.env.ADMIN_PASSWORD
+    const expected = adminPass ? "Basic " + btoa(`admin:${adminPass}`) : null
     if (auth !== expected) {
       return new NextResponse("Autentificare necesară", {
         status: 401,
