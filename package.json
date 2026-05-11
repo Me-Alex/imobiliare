@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "pages:build": "npx @cloudflare/next-on-pages@1",
+    "cloudflare:build": "npm run pages:build",
     "start": "next start"
   },
   "dependencies": {
