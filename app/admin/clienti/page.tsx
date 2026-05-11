@@ -1,1 +1,8 @@
-export default function AdminClientsPage() { return <main className="p-6">Admin Clienți</main> }
+"use client"
+
+import { useEffect, useState } from "react"
+import { createClient } from "@supabase/supabase-js"
+import { AppShell } from "@/components/admin/app-shell"
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "")
+type Client = { id: string; full_name: string; email?: string | null; phone?: string | null; status: string; created_at: string }
+export default function AdminClientsPage(){ const [rows, setRows] = useState<Client[]>([]); useEffect(() => { supabase.from("clients").select("id, full_name, email, phone, status, created_at").order("created_at", { ascending: false }).then(({ data }) => setRows((data || []) as Client[])) }, []); return <AppShell><div className="rounded-3xl border border-bg-surface bg-gradient-to-br from-bg-secondary via-bg-secondary to-bg-primary p-6"><h1 className="text-3xl font-semibold">Clienți</h1><p className="text-text-muted mt-1">Profiluri, preferințe și istoric.</p></div><div className="mt-6 rounded-2xl border border-bg-surface bg-bg-secondary overflow-hidden"><table className="w-full text-sm"><thead className="bg-bg-primary/50"><tr><th className="px-4 py-3 text-left">Nume</th><th className="px-4 py-3 text-left">Email</th><th className="px-4 py-3 text-left">Telefon</th><th className="px-4 py-3 text-left">Status</th></tr></thead><tbody>{rows.map(r => <tr key={r.id} className="border-t border-bg-surface"><td className="px-4 py-3">{r.full_name}</td><td className="px-4 py-3">{r.email || '-'}</td><td className="px-4 py-3">{r.phone || '-'}</td><td className="px-4 py-3">{r.status}</td></tr>)}</tbody></table></div></AppShell>}
