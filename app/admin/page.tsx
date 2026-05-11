@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
+import AdminChecklist from "@/components/AdminChecklist"
 
 type Lead = { id: string; name: string; phone: string; email: string | null; message: string | null; status: string; source: string; property_id: string | null; created_at: string }
 type Property = { id: string; title: string; type: string; status: string; price: number; city: string; area_sqm: number; rooms: number; featured: boolean; slug: string; address?: string; description?: string; county?: string; published_at?: string | null }
@@ -88,6 +89,7 @@ export default function AdminPage() {
               <p className="text-sm text-text-muted max-w-3xl">Build-ul rulează pe Cloudflare, iar datele vin din Supabase.</p>
             </div>
             {error && <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>}
+            <AdminChecklist />
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               {stats.map(s => <div key={s.label} className="bg-bg-secondary border border-bg-surface rounded-xl p-5"><p className="text-sm text-text-muted mb-2">{s.label}</p><p className="text-3xl font-bold text-accent">{s.value}</p></div>)}
             </div>
