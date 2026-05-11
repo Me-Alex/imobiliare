@@ -1,0 +1,4 @@
+"use client"
+import Link from "next/link"
+const items=[['Dashboard','/admin'],['Proprietăți','/admin/proprietati'],['Lead-uri','/admin/leaduri'],['Clienți','/admin/clienti'],['Programări','/admin/programari'],['Agenți','/admin/agenti'],['SEO','/admin/seo'],['Analytics','/admin/analytics'],['Setări','/admin/setari'],['Conținut','/admin/conținut']]
+export function Sidebar(){return <aside className="w-72 hidden lg:flex flex-col border-r border-bg-surface bg-bg-secondary p-4 gap-2"><div className="mb-4"><div className="text-lg font-semibold">HQS Admin</div><div className="text-xs text-text-muted">Premium control panel</div></div>{items.map(([label,href])=><Link key={href} href={href} className="rounded-lg px-3 py-2 hover:bg-bg-primary/60">{label}</Link>)}</aside>}
