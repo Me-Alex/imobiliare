@@ -14,7 +14,6 @@ const DEFAULT_IMAGES: Record<string, string> = {
 export default function ProprietateCard({ proprietate: p }: { proprietate: Property }) {
   const img = DEFAULT_IMAGES[p.type] || DEFAULT_IMAGES.APARTMENT
   const pret = `€${p.price.toLocaleString("ro-RO")}`
-  const isRent = p.status === "RENTED"
 
   return (
     <div className="bg-bg-card border border-bg-surface rounded-2xl overflow-hidden hover:border-accent/50 transition-all duration-300 group">
