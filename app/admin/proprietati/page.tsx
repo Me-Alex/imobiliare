@@ -1,0 +1,1 @@
+export default function AdminPropertiesPage() { return <main className="p-6">Admin Proprietăți</main> }
