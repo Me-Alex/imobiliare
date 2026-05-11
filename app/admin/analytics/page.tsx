@@ -1,0 +1,1 @@
+export default function AdminAnalyticsPage() { return <main className="p-6">Admin Analytics</main> }
