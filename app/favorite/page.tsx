@@ -31,6 +31,12 @@ export default function FavoritePage() {
     localStorage.removeItem("hq-favorites")
   }
 
+  const addAllToCompare = () => {
+    const ids = items.slice(0, 3).map((p) => p.id)
+    localStorage.setItem("hq-compare", JSON.stringify(ids))
+    window.location.href = "/comparare"
+  }
+
   return (
     <main>
       <Header />
@@ -42,9 +48,10 @@ export default function FavoritePage() {
         </div>
       </section>
       <section className="px-4 py-16">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 mb-6">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="text-sm text-text-muted">{items.length} salvate</div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {items.length >= 2 && <button onClick={addAllToCompare} className="text-sm font-semibold text-accent">Compară selectatele</button>}
             <a href="/comparare" className="text-sm font-semibold text-accent">Comparare</a>
             {items.length > 0 && <button onClick={clearFavorites} className="text-sm font-semibold text-text-muted hover:text-accent">Golește lista</button>}
           </div>
