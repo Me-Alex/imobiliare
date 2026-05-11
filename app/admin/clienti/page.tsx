@@ -1,0 +1,1 @@
+export default function AdminClientsPage() { return <main className="p-6">Admin Clienți</main> }
