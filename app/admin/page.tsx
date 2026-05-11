@@ -71,6 +71,10 @@ export default function AdminPage() {
     await supabase.from("properties").delete().eq("id", id)
     setProps(prev => prev.filter(p => p.id !== id))
   }
+  const saveProperty = async (id: string, data: Partial<Property>) => {
+    await supabase.from("properties").update(data).eq("id", id)
+    setProps(prev => prev.map(p => p.id === id ? { ...p, ...data } : p))
+  }
 
   const filteredLeads = leads.filter(l => {
     if (leadFilter !== "ALL" && l.status !== leadFilter) return false
@@ -110,6 +114,10 @@ export default function AdminPage() {
 
   const pagedProps = filteredProps.slice((page - 1) * pageSize, page * pageSize)
   const selectedDrawer = props.find(p => p.id === drawerId) || null
+  const [drawerTitle, setDrawerTitle] = useState("")
+  const [drawerPrice, setDrawerPrice] = useState(0)
+  const [drawerStatus, setDrawerStatus] = useState("PUBLISHED")
+  const [drawerFeatured, setDrawerFeatured] = useState(false)
   const pageCount = Math.max(1, Math.ceil(filteredProps.length / pageSize))
 
   const stats = [
