@@ -29,6 +29,9 @@ export default function AdminPage() {
   const [leadFilter, setLeadFilter] = useState("ALL")
   const [propFilter, setPropFilter] = useState("ALL")
   const [search, setSearch] = useState("")
+  const [pageSize, setPageSize] = useState(10)
+  const [page, setPage] = useState(1)
+  const [drawerId, setDrawerId] = useState<string | null>(null)
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
   const [selectedProps, setSelectedProps] = useState<string[]>([])
 
@@ -104,6 +107,10 @@ export default function AdminPage() {
     await supabase.from("properties").update({ featured }).in("id", selectedProps)
     setProps(prev => prev.map(p => selectedProps.includes(p.id) ? { ...p, featured } : p))
   }
+
+  const pagedProps = filteredProps.slice((page - 1) * pageSize, page * pageSize)
+  const selectedDrawer = props.find(p => p.id === drawerId) || null
+  const pageCount = Math.max(1, Math.ceil(filteredProps.length / pageSize))
 
   const stats = [
     { label: "Total leads", val: leads.length, color: "text-accent" },
