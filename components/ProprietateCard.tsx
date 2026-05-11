@@ -11,7 +11,7 @@ const DEFAULT_IMAGES: Record<string, string> = {
   COMMERCIAL: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",
 }
 
-export default function ProprietateCard({ proprietate: p, isFavorite, onToggleFavorite }: { proprietate: Property; isFavorite: boolean; onToggleFavorite: () => void }) {
+export default function ProprietateCard({ proprietate: p, isFavorite, isCompared, onToggleFavorite, onToggleCompare }: { proprietate: Property; isFavorite: boolean; isCompared: boolean; onToggleFavorite: () => void; onToggleCompare: () => void }) {
   const img = DEFAULT_IMAGES[p.type] || DEFAULT_IMAGES.APARTMENT
   const pret = `EUR ${p.price.toLocaleString("ro-RO")}`
 
@@ -25,10 +25,15 @@ export default function ProprietateCard({ proprietate: p, isFavorite, onToggleFa
           <span className="bg-accent text-bg-primary text-xs font-bold px-3 py-1 rounded-full">De vanzare</span>
           <span className="bg-black/55 text-white text-xs font-medium px-3 py-1 rounded-full border border-white/15">{TIP_LABEL[p.type] || p.type}</span>
         </div>
-        <div className="absolute top-3 right-3 flex gap-2">
-          {p.featured && <span className="bg-white text-black text-xs font-bold px-3 py-1 rounded-full">Selectata</span>}
-          <button onClick={onToggleFavorite} aria-label={isFavorite ? "Scoate din favorite" : "Adauga la favorite"} className="bg-black/55 text-white text-xs font-medium px-3 py-1 rounded-full border border-white/15 hover:bg-white hover:text-black transition-colors">
-            {isFavorite ? "Salvat" : "Favorite"}
+        <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
+          <div className="flex gap-2">
+            {p.featured && <span className="bg-white text-black text-xs font-bold px-3 py-1 rounded-full">Selectata</span>}
+            <button onClick={onToggleFavorite} aria-label={isFavorite ? "Scoate din favorite" : "Adauga la favorite"} className="bg-black/55 text-white text-xs font-medium px-3 py-1 rounded-full border border-white/15 hover:bg-white hover:text-black transition-colors">
+              {isFavorite ? "Salvat" : "Favorite"}
+            </button>
+          </div>
+          <button onClick={onToggleCompare} aria-label={isCompared ? "Scoate din comparare" : "Adauga la comparare"} className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${isCompared ? 'bg-accent text-bg-primary border-accent' : 'bg-black/55 text-white border-white/15 hover:bg-white hover:text-black'}`}>
+            {isCompared ? "Comparat" : "Compară"}
           </button>
         </div>
       </div>
