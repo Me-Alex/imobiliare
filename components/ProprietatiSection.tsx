@@ -28,6 +28,7 @@ export default function ProprietatiSection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [query, setQuery] = useState("")
+  const [favorites, setFavorites] = useState<string[]>([])
   const [sort, setSort] = useState<SortKey>("newest")
   const [filtruTip, setFiltruTip] = useState("toate")
   const [filtruZona, setFiltruZona] = useState("Toate zonele")
@@ -37,6 +38,8 @@ export default function ProprietatiSection() {
   const [showFiltre, setShowFiltre] = useState(false)
 
   useEffect(() => {
+    const stored = localStorage.getItem("hq-favorites")
+    if (stored) setFavorites(JSON.parse(stored))
     supabase
       .from("properties")
       .select("*")
@@ -81,6 +84,14 @@ export default function ProprietatiSection() {
     filtruCamere > 0 ||
     pretMax < 1000000 ||
     doarFeatured
+
+  const toggleFavorite = (id: string) => {
+    setFavorites((curr) => {
+      const next = curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id]
+      localStorage.setItem("hq-favorites", JSON.stringify(next))
+      return next
+    })
+  }
 
   const resetFiltre = () => {
     setQuery("")
@@ -222,7 +233,7 @@ export default function ProprietatiSection() {
           </div>
         ) : filtered.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((p) => <ProprietateCard key={p.id} proprietate={p} />)}
+            {filtered.map((p) => <ProprietateCard key={p.id} proprietate={p} isFavorite={favorites.includes(p.id)} onToggleFavorite={() => toggleFavorite(p.id)} />)}
           </div>
         ) : (
           <div className="text-center py-16 px-6 border border-bg-surface bg-bg-card rounded-lg">
