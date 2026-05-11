@@ -20,6 +20,7 @@ export default function AdminPage() {
   const [leadDrawer, setLeadDrawer] = useState<Lead | null>(null)
   const [leadNote, setLeadNote] = useState("")
   const [leadNotes, setLeadNotes] = useState<{ id: string; note: string; created_at: string }[]>([])
+  const [lastNoteFilter, setLastNoteFilter] = useState("ALL")
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([])
   const [selectedPropIds, setSelectedPropIds] = useState<string[]>([])
   const [leadStatusFilter, setLeadStatusFilter] = useState("ALL")
@@ -43,8 +44,13 @@ export default function AdminPage() {
 
   const filteredLeads = useMemo(() => leads.filter(l => {
     if (leadStatusFilter !== "ALL" && l.status !== leadStatusFilter) return false
+    if (lastNoteFilter !== "ALL") {
+      const hasNotes = leadNotes.some(n => n.id && leadDrawer && l.id === leadDrawer.id)
+      if (lastNoteFilter === "HAS_NOTES" && !hasNotes) return false
+      if (lastNoteFilter === "NO_NOTES" && hasNotes) return false
+    }
     return [l.name, l.phone, l.email || "", l.source || "", l.message || ""].join(" ").toLowerCase().includes(search.toLowerCase())
-  }), [leads, search, leadStatusFilter])
+  }), [leads, search, leadStatusFilter, lastNoteFilter, leadDrawer, leadNotes])
   const allFilteredLeadIds = filteredLeads.map(l => l.id)
   const filteredProps = useMemo(() => props.filter(p => {
     if (propStatusFilter !== "ALL" && p.status !== propStatusFilter) return false
@@ -131,6 +137,7 @@ export default function AdminPage() {
                 {selectedLeadIds.length} lead-uri selectate · {selectedPropIds.length} proprietăți selectate
               </div>
               <select value={leadStatusFilter} onChange={e => setLeadStatusFilter(e.target.value)} className="rounded-lg border border-bg-surface bg-bg-secondary px-3 py-2 text-sm"><option value="ALL">Toate lead-urile</option><option value="NEW">NEW</option><option value="CONTACTED">CONTACTED</option><option value="CLOSED">CLOSED</option><option value="LOST">LOST</option></select>
+              <select value={lastNoteFilter} onChange={e => setLastNoteFilter(e.target.value)} className="rounded-lg border border-bg-surface bg-bg-secondary px-3 py-2 text-sm"><option value="ALL">Toate notițele</option><option value="HAS_NOTES">Cu notițe</option><option value="NO_NOTES">Fără notițe</option></select>
               <select value={propStatusFilter} onChange={e => setPropStatusFilter(e.target.value)} className="rounded-lg border border-bg-surface bg-bg-secondary px-3 py-2 text-sm"><option value="ALL">Toate proprietățile</option><option value="PUBLISHED">PUBLISHED</option><option value="DRAFT">DRAFT</option><option value="SOLD">SOLD</option><option value="RENTED">RENTED</option></select>
               <button onClick={() => setTab("overview")} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Overview</button>
               <button onClick={() => setTab("leads")} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Lead-uri</button>
