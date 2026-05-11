@@ -29,6 +29,8 @@ export default function AdminPage() {
   const [leadFilter, setLeadFilter] = useState("ALL")
   const [propFilter, setPropFilter] = useState("ALL")
   const [search, setSearch] = useState("")
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([])
+  const [selectedProps, setSelectedProps] = useState<string[]>([])
 
   useEffect(() => {
     Promise.all([
@@ -82,6 +84,26 @@ export default function AdminPage() {
     const q = search.toLowerCase()
     return [p.title, p.city, p.slug, p.type].join(" ").toLowerCase().includes(q)
   })
+
+  const toggleAllLeads = () => setSelectedLeads(selectedLeads.length === filteredLeads.length ? [] : filteredLeads.map(l => l.id))
+  const toggleAllProps = () => setSelectedProps(selectedProps.length === filteredProps.length ? [] : filteredProps.map(p => p.id))
+  const bulkDeleteLeads = async () => {
+    if (!selectedLeads.length || !confirm(`Ștergi ${selectedLeads.length} lead-uri?`)) return
+    await supabase.from("leads").delete().in("id", selectedLeads)
+    setLeads(prev => prev.filter(l => !selectedLeads.includes(l.id)))
+    setSelectedLeads([])
+  }
+  const bulkDeleteProps = async () => {
+    if (!selectedProps.length || !confirm(`Ștergi ${selectedProps.length} proprietăți?`)) return
+    await supabase.from("properties").delete().in("id", selectedProps)
+    setProps(prev => prev.filter(p => !selectedProps.includes(p.id)))
+    setSelectedProps([])
+  }
+  const bulkFeatureProps = async (featured: boolean) => {
+    if (!selectedProps.length) return
+    await supabase.from("properties").update({ featured }).in("id", selectedProps)
+    setProps(prev => prev.map(p => selectedProps.includes(p.id) ? { ...p, featured } : p))
+  }
 
   const stats = [
     { label: "Total leads", val: leads.length, color: "text-accent" },
