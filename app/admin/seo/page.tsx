@@ -1,0 +1,1 @@
+export default function AdminSeoPage() { return <main className="p-6">Admin SEO</main> }
