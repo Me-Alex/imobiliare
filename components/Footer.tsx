@@ -8,7 +8,7 @@ export default function Footer() {
         <p className="text-sm text-text-muted">© {new Date().getFullYear()} HQS Imobiliare. Toate drepturile rezervate.</p>
         <div className="flex gap-6 text-sm text-text-muted">
           <a href="/despre" className="hover:text-accent transition-colors">Despre</a>
-          <a href="/proprietati" className="hover:text-accent transition-colors">Proprietăți</a>
+          <a href="/proprietati" className="hover:text-accent transition-colors">Proprietati</a>
           <a href="/contact" className="hover:text-accent transition-colors">Contact</a>
         </div>
       </div>
