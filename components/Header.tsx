@@ -9,6 +9,8 @@ const links = [
   { href: "/proprietati", label: "Proprietati" },
   { href: "/despre", label: "Despre" },
   { href: "/contact", label: "Contact" },
+  { href: "/comparare", label: "Comparare" },
+  { href: "/favorite", label: "Favorite" },
 ]
 
 export default function Header() {
@@ -33,6 +35,9 @@ export default function Header() {
           <ThemeToggle />
           <Link href="/proprietati" className="border border-bg-surface text-text-primary px-4 py-2 rounded-lg text-sm font-medium hover:border-accent hover:text-accent transition-all">
             Vezi oferte
+          </Link>
+          <Link href="/comparare" className="border border-bg-surface text-text-primary px-4 py-2 rounded-lg text-sm font-medium hover:border-accent hover:text-accent transition-all">
+            Comparare
           </Link>
           <a href="tel:+40700000000" className="border border-accent text-accent px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent hover:text-bg-primary transition-all">
             Sună acum
