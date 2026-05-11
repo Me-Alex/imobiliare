@@ -26,6 +26,9 @@ export default function AdminPage() {
   const [props, setProps] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [leadFilter, setLeadFilter] = useState("ALL")
+  const [propFilter, setPropFilter] = useState("ALL")
+  const [search, setSearch] = useState("")
 
   useEffect(() => {
     Promise.all([
@@ -63,6 +66,22 @@ export default function AdminPage() {
     await supabase.from("properties").delete().eq("id", id)
     setProps(prev => prev.filter(p => p.id !== id))
   }
+
+  const filteredLeads = leads.filter(l => {
+    if (leadFilter !== "ALL" && l.status !== leadFilter) return false
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return [l.name, l.phone, l.email || "", l.source || "", l.message || ""].join(" ").toLowerCase().includes(q)
+  })
+
+  const filteredProps = props.filter(p => {
+    if (propFilter === "LIVE" && p.status !== "PUBLISHED") return false
+    if (propFilter === "DRAFT" && p.status !== "DRAFT") return false
+    if (propFilter === "FEATURED" && !p.featured) return false
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return [p.title, p.city, p.slug, p.type].join(" ").toLowerCase().includes(q)
+  })
 
   const stats = [
     { label: "Total leads", val: leads.length, color: "text-accent" },
