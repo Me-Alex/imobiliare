@@ -143,6 +143,10 @@ export default function ProprietatiSection() {
               <div className="text-xs text-text-muted">favorite</div>
             </div>
           </div>
+          <div className="flex flex-wrap gap-3 lg:justify-end">
+            <Link href="/favorite" className="text-sm font-semibold text-accent">Favorite</Link>
+            <Link href="/comparare" className="text-sm font-semibold text-accent">Comparare</Link>
+          </div>
         </div>
 
         <div className="border border-bg-surface bg-bg-card rounded-lg p-3 md:p-4 mb-5">
