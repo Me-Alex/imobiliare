@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import { getOptionalRequestContext } from "@cloudflare/next-on-pages"
 import { NextResponse } from "next/server"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -30,7 +31,9 @@ export function getAdminClient() {
 }
 
 export function getAdminRpcSecret() {
-  const secret = process.env.ADMIN_RPC_SECRET
+  const context = getOptionalRequestContext()
+  const env = context?.env as Record<string, string | undefined> | undefined
+  const secret = env?.ADMIN_RPC_SECRET || process.env.ADMIN_RPC_SECRET
   if (!secret) throw new Error("ADMIN_RPC_SECRET is missing")
   return secret
 }
