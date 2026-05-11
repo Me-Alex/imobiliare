@@ -24,18 +24,20 @@ export default function Hero() {
             Imobiliare explicate clar
           </span>
           <h1 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight text-white">
-            Proprietati alese cu grija, pentru decizii luate in liniste.
+            Cumpără sau vinde
+            <span className="text-accent block">fără haos și fără presiune</span>
           </h1>
-          <p className="text-lg md:text-xl text-white/80 mb-9 max-w-2xl leading-relaxed">
-            Selectam ofertele care merita vazute, verificam detaliile importante si discutam deschis despre pret, zona si pasii urmatori.
+          <p className="text-lg md:text-xl text-white/88 mb-10 max-w-2xl leading-relaxed">
+            O listă scurtă de proprietăți relevante, prezentate clar, cu discuție directă despre preț, zonă și pașii următori.
           </p>
           <div className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr] max-w-2xl">
-            <input type="text" placeholder="Cauta zona, tip sau buget" className="form-input bg-white/95 text-text-primary placeholder:text-text-muted border-0" />
+            <input type="text" placeholder="Caută zona, tip sau buget" className="form-input bg-white/95 text-text-primary placeholder:text-text-muted border-0" />
             <a href="/proprietati" className="bg-accent text-bg-primary px-7 py-3.5 rounded-lg font-bold text-base hover:opacity-90 transition-opacity shadow-lg shadow-black/20 text-center">
-              Vezi proprietati
+              Vezi proprietăți
             </a>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 mt-3">on-all">
+          <div className="flex flex-col sm:flex-row gap-3 mt-3">
+            <a href="/contact" className="border border-white/20 text-white px-6 py-3 rounded-lg font-medium hover:bg-white/10 transition-colors text-center">
               Cere o recomandare
             </a>
           </div>
