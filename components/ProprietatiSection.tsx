@@ -45,16 +45,17 @@ export default function ProprietatiSection() {
     if (stored) setFavorites(JSON.parse(stored))
     const compareStored = localStorage.getItem("hq-compare")
     if (compareStored) setCompare(JSON.parse(compareStored))
-    supabase
-      .from("properties")
-      .select("*")
-      .eq("status", "PUBLISHED")
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) setError("Nu am putut incarca proprietatile. Incercam din nou in cateva momente.")
-        setProprietati(data || [])
-        setLoading(false)
-      })
+
+    const load = async () => {
+      const { data, error } = await supabase.from("properties").select("*").eq("status", "PUBLISHED").order("created_at", { ascending: false })
+      if (error) {
+        setError(`Nu am putut încărca proprietățile: ${error.message}`)
+      }
+      setProprietati(data || [])
+      setLoading(false)
+    }
+
+    load()
   }, [])
 
   const filtered = useMemo(() => {
