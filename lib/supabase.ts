@@ -66,6 +66,6 @@ export const propertiesSeed = [
 
 
 export async function seedPropertiesClient() {
-  const key = serviceKey || key
-  return { keyPresent: Boolean(key), count: propertiesSeed.length }
+  const currentKey = serviceKey || key
+  return { keyPresent: Boolean(currentKey), count: propertiesSeed.length }
 }
