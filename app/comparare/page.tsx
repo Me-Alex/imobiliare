@@ -42,9 +42,12 @@ export default function CompararePage() {
         </div>
       </section>
       <section className="px-4 py-16">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 mb-6">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="text-sm text-text-muted">{items.length} proprietăți selectate</div>
-          <a href="/proprietati" className="text-sm font-semibold text-accent">Înapoi la listă</a>
+          <div className="flex items-center gap-3">
+            <a href="/favorite" className="text-sm font-semibold text-accent">Favorite</a>
+            <a href="/proprietati" className="text-sm font-semibold text-accent">Înapoi la listă</a>
+          </div>
         </div>
         <div className="max-w-7xl mx-auto">
           {items.length < 2 ? (
