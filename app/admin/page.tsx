@@ -51,7 +51,7 @@ export default function AdminPage() {
       if (lastNoteFilter === "NO_NOTES" && hasNotes) return false
     }
     return [l.name, l.phone, l.email || "", l.source || "", l.message || ""].join(" ").toLowerCase().includes(search.toLowerCase())
-  }), [leads, search, leadStatusFilter, lastNoteFilter, leadDrawer, leadNotes])
+  }).sort((a, b) => (leadNoteCounts[b.id] || 0) - (leadNoteCounts[a.id] || 0)), [leads, search, leadStatusFilter, lastNoteFilter, leadNoteCounts])
   const allFilteredLeadIds = filteredLeads.map(l => l.id)
   const filteredProps = useMemo(() => props.filter(p => {
     if (propStatusFilter !== "ALL" && p.status !== propStatusFilter) return false
