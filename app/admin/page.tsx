@@ -19,6 +19,8 @@ export default function AdminPage() {
   const [drawer, setDrawer] = useState<Property | null>(null)
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([])
   const [selectedPropIds, setSelectedPropIds] = useState<string[]>([])
+  const [leadStatusFilter, setLeadStatusFilter] = useState("ALL")
+  const [propStatusFilter, setPropStatusFilter] = useState("ALL")
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setDrawer(null) }
@@ -36,9 +38,15 @@ export default function AdminPage() {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
-  const filteredLeads = useMemo(() => leads.filter(l => [l.name, l.phone, l.email || "", l.source || "", l.message || ""].join(" ").toLowerCase().includes(search.toLowerCase())), [leads, search])
+  const filteredLeads = useMemo(() => leads.filter(l => {
+    if (leadStatusFilter !== "ALL" && l.status !== leadStatusFilter) return false
+    return [l.name, l.phone, l.email || "", l.source || "", l.message || ""].join(" ").toLowerCase().includes(search.toLowerCase())
+  }), [leads, search, leadStatusFilter])
   const allFilteredLeadIds = filteredLeads.map(l => l.id)
-  const filteredProps = useMemo(() => props.filter(p => [p.title, p.city, p.slug, p.type].join(" ").toLowerCase().includes(search.toLowerCase())), [props, search])
+  const filteredProps = useMemo(() => props.filter(p => {
+    if (propStatusFilter !== "ALL" && p.status !== propStatusFilter) return false
+    return [p.title, p.city, p.slug, p.type].join(" ").toLowerCase().includes(search.toLowerCase())
+  }), [props, search, propStatusFilter])
   const allFilteredPropIds = filteredProps.map(p => p.id)
   const liveCount = props.filter(p => p.status === "PUBLISHED").length
 
@@ -111,6 +119,8 @@ export default function AdminPage() {
               {stats.map(s => <div key={s.label} className="bg-bg-secondary border border-bg-surface rounded-xl p-5"><p className="text-sm text-text-muted mb-2">{s.label}</p><p className="text-3xl font-bold text-accent">{s.value}</p></div>)}
             </div>
             <div className="mb-6 flex flex-wrap gap-2 items-center">
+              <select value={leadStatusFilter} onChange={e => setLeadStatusFilter(e.target.value)} className="rounded-lg border border-bg-surface bg-bg-secondary px-3 py-2 text-sm"><option value="ALL">Toate lead-urile</option><option value="NEW">NEW</option><option value="CONTACTED">CONTACTED</option><option value="CLOSED">CLOSED</option><option value="LOST">LOST</option></select>
+              <select value={propStatusFilter} onChange={e => setPropStatusFilter(e.target.value)} className="rounded-lg border border-bg-surface bg-bg-secondary px-3 py-2 text-sm"><option value="ALL">Toate proprietățile</option><option value="PUBLISHED">PUBLISHED</option><option value="DRAFT">DRAFT</option><option value="SOLD">SOLD</option><option value="RENTED">RENTED</option></select>
               <button onClick={() => setTab("overview")} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Overview</button>
               <button onClick={() => setTab("leads")} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Lead-uri</button>
               <button onClick={() => setTab("proprietati")} className="rounded-lg border border-bg-surface px-3 py-2 text-sm">Proprietăți</button>
