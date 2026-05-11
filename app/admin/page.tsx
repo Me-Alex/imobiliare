@@ -19,6 +19,7 @@ export default function AdminPage() {
   const [drawer, setDrawer] = useState<Property | null>(null)
   const [leadDrawer, setLeadDrawer] = useState<Lead | null>(null)
   const [leadNote, setLeadNote] = useState("")
+  const [leadNotes, setLeadNotes] = useState<{ id: string; note: string; created_at: string }[]>([])
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([])
   const [selectedPropIds, setSelectedPropIds] = useState<string[]>([])
   const [leadStatusFilter, setLeadStatusFilter] = useState("ALL")
@@ -77,6 +78,11 @@ export default function AdminPage() {
     setProps(prev => prev.filter(p => !selectedPropIds.includes(p.id)))
     setSelectedPropIds([])
   }
+  useEffect(() => {
+    if (!leadDrawer) return
+    supabase.from("lead_notes").select("id, note, created_at").eq("lead_id", leadDrawer.id).order("created_at", { ascending: false }).then(({ data }) => setLeadNotes((data || []) as any))
+  }, [leadDrawer])
+
   const stats = [
     { label: "Leads", value: leads.length },
     { label: "Noi", value: leads.filter(l => l.status === "NEW").length },
