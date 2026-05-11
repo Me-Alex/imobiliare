@@ -23,6 +23,7 @@ const SORT_LABELS = {
 } as const
 
 type SortKey = keyof typeof SORT_LABELS
+const MAX_COMPARE = 3
 
 export default function ProprietatiSection() {
   const [proprietati, setProprietati] = useState<Property[]>([])
