@@ -19,7 +19,8 @@ export default function AdminPage() {
   const [drawer, setDrawer] = useState<Property | null>(null)
   const [leadDrawer, setLeadDrawer] = useState<Lead | null>(null)
   const [leadNote, setLeadNote] = useState("")
-  const [leadNotes, setLeadNotes] = useState<{ id: string; note: string; created_at: string }[]>([])
+  const [leadNotes, setLeadNotes] = useState<{ id: string; note: string; created_at: string; lead_id?: string }[]>([])
+  const [leadNoteCounts, setLeadNoteCounts] = useState<Record<string, number>>({})
   const [lastNoteFilter, setLastNoteFilter] = useState("ALL")
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([])
   const [selectedPropIds, setSelectedPropIds] = useState<string[]>([])
@@ -45,7 +46,7 @@ export default function AdminPage() {
   const filteredLeads = useMemo(() => leads.filter(l => {
     if (leadStatusFilter !== "ALL" && l.status !== leadStatusFilter) return false
     if (lastNoteFilter !== "ALL") {
-      const hasNotes = leadNotes.some(n => n.id && leadDrawer && l.id === leadDrawer.id)
+      const hasNotes = (leadNoteCounts[l.id] || 0) > 0
       if (lastNoteFilter === "HAS_NOTES" && !hasNotes) return false
       if (lastNoteFilter === "NO_NOTES" && hasNotes) return false
     }
@@ -86,7 +87,12 @@ export default function AdminPage() {
   }
   useEffect(() => {
     if (!leadDrawer) return
-    supabase.from("lead_notes").select("id, note, created_at").eq("lead_id", leadDrawer.id).order("created_at", { ascending: false }).then(({ data }) => setLeadNotes((data || []) as any))
+    supabase.from("lead_notes").select("id, note, created_at, lead_id").order("created_at", { ascending: false }).then(({ data }) => {
+      const rows = (data || []) as any[]
+      setLeadNotes(rows)
+      const counts = rows.reduce((acc, row) => { acc[row.lead_id] = (acc[row.lead_id] || 0) + 1; return acc }, {} as Record<string, number>)
+      setLeadNoteCounts(counts)
+    })
   }, [leadDrawer])
 
   const stats = [
