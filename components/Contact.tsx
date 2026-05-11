@@ -1,87 +1,138 @@
 "use client"
+
 import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 
 const info = [
-  { icon: "📍", title: "Adresă", val: "Bd. Unirii 45, Sector 3, București" },
-  { icon: "📞", title: "Telefon", val: "+40 700 000 000" },
-  { icon: "📧", title: "Email", val: "contact@hqsimobiliare.ro" },
-  { icon: "🕐", title: "Program", val: "Lun–Vin: 09:00–18:00, Sâm: 10:00–14:00" },
+  { title: "Birou", val: "Bd. Unirii 45, Sector 3, Bucuresti" },
+  { title: "Telefon", val: "+40 700 000 000" },
+  { title: "Email", val: "contact@hqsimobiliare.ro" },
+  { title: "Program", val: "Luni - Vineri, 09:00 - 18:00" },
+]
+
+const intentOptions = [
+  "Vreau sa cumpar",
+  "Vreau sa vand",
+  "Caut chirie",
+  "Vreau o evaluare",
 ]
 
 export default function Contact() {
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: "", phone: "", email: "", message: "" })
+  const [error, setError] = useState("")
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    intent: intentOptions[0],
+    budget: "",
+    message: "",
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    try {
-      await supabase.from("leads").insert([{ ...form, source: "CONTACT_FORM", status: "NEW" }])
-    } catch (err) { console.error(err) }
-    finally { setLoading(false); setSent(true) }
+    setError("")
+
+    const message = [
+      `Interes: ${form.intent}`,
+      form.budget ? `Buget / valoare estimata: ${form.budget}` : "",
+      form.message ? `Detalii: ${form.message}` : "",
+    ].filter(Boolean).join("\n")
+
+    const { error } = await supabase.from("leads").insert([{
+      name: form.name,
+      phone: form.phone,
+      email: form.email || null,
+      message,
+      source: "CONTACT_FORM",
+      status: "NEW",
+    }])
+
+    setLoading(false)
+    if (error) {
+      setError("Mesajul nu a putut fi trimis acum. Te rugam sa ne contactezi telefonic sau sa incerci din nou.")
+      return
+    }
+
+    setSent(true)
   }
 
   return (
     <section id="contact" className="py-20 px-4 bg-bg-secondary border-t border-bg-surface">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-12">
-          <span className="text-accent font-semibold text-xs uppercase tracking-widest">Hai să vorbim</span>
-          <h2 className="text-3xl md:text-4xl font-bold text-text-primary mt-2">Contactează-ne</h2>
-          <p className="text-text-muted mt-2">Echipa noastră îți răspunde în maxim 2 ore</p>
-        </div>
-        <div className="grid md:grid-cols-2 gap-12">
-          <div className="flex flex-col gap-6">
-            {info.map(item => (
-              <div key={item.title} className="flex items-start gap-4">
-                <span className="text-xl bg-bg-card border border-bg-surface w-10 h-10 flex items-center justify-center rounded-xl flex-shrink-0">{item.icon}</span>
-                <div>
-                  <div className="text-accent font-semibold text-xs uppercase tracking-wider mb-0.5">{item.title}</div>
-                  <div className="text-text-primary text-sm">{item.val}</div>
+      <div className="max-w-6xl mx-auto">
+        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+          <div>
+            <span className="text-accent font-semibold text-xs uppercase tracking-widest">Contact</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-text-primary mt-2">Spune-ne ce cauti, apoi iti raspundem concret.</h2>
+            <p className="text-text-muted mt-4 leading-relaxed">
+              Nu trimitem raspunsuri automate si nu impingem proprietati nepotrivite. Daca avem o varianta buna, iti explicam de ce. Daca nu, iti spunem direct.
+            </p>
+
+            <div className="mt-8 grid gap-3">
+              {info.map((item) => (
+                <div key={item.title} className="flex items-start gap-4 border border-bg-surface bg-bg-card rounded-lg p-4">
+                  <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent font-bold">
+                    {item.title.slice(0, 1)}
+                  </div>
+                  <div>
+                    <div className="text-accent font-semibold text-xs uppercase tracking-wider mb-1">{item.title}</div>
+                    <div className="text-text-primary text-sm">{item.val}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-          <div className="bg-bg-card border border-bg-surface rounded-2xl p-8">
+
+          <div className="bg-bg-card border border-bg-surface rounded-lg p-6 md:p-8">
             {sent ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-accent/10 border border-accent/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+              <div className="text-center py-10">
+                <div className="w-14 h-14 bg-accent/10 border border-accent/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-7 h-7 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
-                <h3 className="text-xl font-bold text-text-primary mb-2">Mesaj trimis!</h3>
-                <p className="text-text-muted text-sm">Te contactăm în cel mai scurt timp.</p>
+                <h3 className="text-xl font-bold text-text-primary mb-2">Am primit mesajul.</h3>
+                <p className="text-text-muted text-sm">Revenim cu un raspuns clar, de obicei in aceeasi zi lucratoare.</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { key: "name", label: "Nume *", placeholder: "Ion Popescu", required: true },
-                    { key: "phone", label: "Telefon *", placeholder: "07XX XXX XXX", required: true },
-                  ].map(f => (
-                    <div key={f.key}>
-                      <label className="text-xs font-medium text-text-muted mb-1.5 block uppercase tracking-wider">{f.label}</label>
-                      <input required={f.required} value={(form as any)[f.key]} onChange={e => setForm({...form, [f.key]: e.target.value})}
-                        className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors placeholder-text-muted/50"
-                        placeholder={f.placeholder} />
-                    </div>
-                  ))}
+              <form onSubmit={handleSubmit} className="grid gap-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Field label="Nume complet" required>
+                    <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      className="form-input" placeholder="Numele tau" />
+                  </Field>
+                  <Field label="Telefon" required>
+                    <input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      className="form-input" placeholder="07XX XXX XXX" />
+                  </Field>
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-text-muted mb-1.5 block uppercase tracking-wider">Email</label>
-                  <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})}
-                    className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors placeholder-text-muted/50"
-                    placeholder="email@exemplu.ro" />
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Field label="Email">
+                    <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      className="form-input" placeholder="email@exemplu.ro" />
+                  </Field>
+                  <Field label="Interes">
+                    <select value={form.intent} onChange={(e) => setForm({ ...form, intent: e.target.value })} className="form-input">
+                      {intentOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                    </select>
+                  </Field>
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-text-muted mb-1.5 block uppercase tracking-wider">Ce proprietate cauți?</label>
-                  <textarea rows={4} value={form.message} onChange={e => setForm({...form, message: e.target.value})}
-                    className="w-full bg-bg-secondary border border-bg-surface rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors resize-none placeholder-text-muted/50"
-                    placeholder="Ex: Apartament 3 camere în Floreasca, buget ~200k€..." />
-                </div>
+                <Field label="Buget sau valoare estimata">
+                  <input value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })}
+                    className="form-input" placeholder="Ex: 180.000 EUR sau 900 EUR/luna" />
+                </Field>
+                <Field label="Detalii utile">
+                  <textarea rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })}
+                    className="form-input resize-none" placeholder="Zona, camere, termen, preferinte sau adresa proprietatii." />
+                </Field>
+
+                {error && <p className="text-sm text-red-500">{error}</p>}
+
                 <button type="submit" disabled={loading}
-                  className="bg-accent text-bg-primary py-3 rounded-xl font-bold hover:bg-green-400 transition-colors disabled:opacity-60 shadow-lg shadow-accent/20">
-                  {loading ? "Se trimite..." : "Trimite mesajul"}
+                  className="bg-accent text-bg-primary py-3 rounded-lg font-bold hover:opacity-90 transition-opacity disabled:opacity-60 shadow-lg shadow-accent/20">
+                  {loading ? "Se trimite..." : "Trimite cererea"}
                 </button>
               </form>
             )}
@@ -89,5 +140,16 @@ export default function Contact() {
         </div>
       </div>
     </section>
+  )
+}
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-medium text-text-muted mb-1.5 block uppercase tracking-wider">
+        {label}{required ? " *" : ""}
+      </span>
+      {children}
+    </label>
   )
 }
