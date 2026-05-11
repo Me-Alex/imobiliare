@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
 
@@ -25,12 +25,14 @@ export default function AdminPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [props, setProps] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     Promise.all([
       supabase.from("leads").select("*").order("created_at", { ascending: false }),
       supabase.from("properties").select("*").order("created_at", { ascending: false }),
     ]).then(([l, p]) => {
+      if (l.error || p.error) setError(l.error?.message || p.error?.message || "Eroare la încărcarea datelor.")
       setLeads(l.data || [])
       setProps(p.data || [])
       setLoading(false)
