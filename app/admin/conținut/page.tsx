@@ -1,0 +1,1 @@
+export default function AdminContentPage() { return <main className="p-6">Admin Conținut</main> }
