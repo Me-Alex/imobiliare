@@ -37,6 +37,8 @@ export default function AdminPage() {
   const [selectedProps, setSelectedProps] = useState<string[]>([])
 
   useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawerId(null) }
+    window.addEventListener('keydown', onKey)
     Promise.all([
       supabase.from("leads").select("*").order("created_at", { ascending: false }),
       supabase.from("properties").select("*").order("created_at", { ascending: false }),
@@ -48,6 +50,7 @@ export default function AdminPage() {
       setAudit(a.data || [])
       setLoading(false)
     })
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   const updateLeadStatus = async (id: string, status: string) => {
