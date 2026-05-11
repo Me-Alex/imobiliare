@@ -27,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ro" className="dark" suppressHydrationWarning>
       <body>
+        <a href="#continut" className="skip-link">Sari la conținut</a>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
