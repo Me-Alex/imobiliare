@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import ThemeToggle from "./ThemeToggle"
 
@@ -15,6 +15,23 @@ const links = [
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [favoriteCount, setFavoriteCount] = useState(0)
+  const [compareCount, setCompareCount] = useState(0)
+
+  useEffect(() => {
+    const sync = () => {
+      try {
+        setFavoriteCount(JSON.parse(localStorage.getItem("hq-favorites") || "[]").length)
+        setCompareCount(JSON.parse(localStorage.getItem("hq-compare") || "[]").length)
+      } catch {
+        setFavoriteCount(0)
+        setCompareCount(0)
+      }
+    }
+    sync()
+    window.addEventListener("storage", sync)
+    return () => window.removeEventListener("storage", sync)
+  }, [])
 
   return (
     <header className="sticky top-0 z-50 border-b border-bg-surface bg-bg-secondary/95 backdrop-blur">
@@ -37,13 +54,13 @@ export default function Header() {
             Vezi oferte
           </Link>
           <Link href="/comparare" className="border border-bg-surface text-text-primary px-4 py-2 rounded-lg text-sm font-medium hover:border-accent hover:text-accent transition-all">
-            Comparare
+            Comparare {compareCount > 0 ? `(${compareCount})` : ''}
           </Link>
           <a href="tel:+40700000000" className="border border-accent text-accent px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent hover:text-bg-primary transition-all">
             Sună acum
           </a>
           <Link href="/contact" className="bg-accent text-bg-primary px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
-            Contact
+            Contact {favoriteCount > 0 ? `(${favoriteCount})` : ''}
           </Link>
         </div>
 
