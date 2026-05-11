@@ -10,6 +10,7 @@ export default function Footer() {
           <a href="/despre" className="hover:text-accent transition-colors">Despre</a>
           <a href="/proprietati" className="hover:text-accent transition-colors">Proprietati</a>
           <a href="/contact" className="hover:text-accent transition-colors">Contact</a>
+          <a href="https://wa.me/40700000000" className="hover:text-accent transition-colors">WhatsApp</a>
         </div>
       </div>
     </footer>
