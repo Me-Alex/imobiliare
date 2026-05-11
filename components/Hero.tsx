@@ -29,11 +29,13 @@ export default function Hero() {
           <p className="text-lg md:text-xl text-white/80 mb-9 max-w-2xl leading-relaxed">
             Selectam ofertele care merita vazute, verificam detaliile importante si discutam deschis despre pret, zona si pasii urmatori.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <a href="/proprietati" className="bg-accent text-bg-primary px-7 py-3.5 rounded-lg font-bold text-base hover:opacity-90 transition-opacity shadow-lg shadow-black/20">
+          <div className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr] max-w-2xl">
+            <input type="text" placeholder="Cauta zona, tip sau buget" className="form-input bg-white/95 text-text-primary placeholder:text-text-muted border-0" />
+            <a href="/proprietati" className="bg-accent text-bg-primary px-7 py-3.5 rounded-lg font-bold text-base hover:opacity-90 transition-opacity shadow-lg shadow-black/20 text-center">
               Vezi proprietati
             </a>
-            <a href="/contact" className="border border-white/30 text-white px-7 py-3.5 rounded-lg font-semibold text-base hover:bg-white hover:text-black transition-all">
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 mt-3">on-all">
               Cere o recomandare
             </a>
           </div>
