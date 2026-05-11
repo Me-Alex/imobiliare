@@ -4,7 +4,7 @@ import Header from "@/components/Header"
 
 export const metadata = {
   title: "Contact | HQS Imobiliare",
-  description: "Contactează echipa HQS Imobiliare pentru proprietăți, vizionări și recomandări.",
+  description: "Contacteaza echipa HQS Imobiliare pentru proprietati, vizionari si recomandari.",
 }
 
 export default function ContactPage() {
