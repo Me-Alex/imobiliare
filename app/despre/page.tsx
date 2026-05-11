@@ -1,0 +1,39 @@
+import Benefits from "@/components/Benefits"
+import Footer from "@/components/Footer"
+import Header from "@/components/Header"
+
+export const metadata = {
+  title: "Despre HQS Imobiliare",
+  description: "Cum lucrăm cu proprietarii, cumpărătorii și chiriașii.",
+}
+
+export default function DesprePage() {
+  return (
+    <main>
+      <Header />
+      <section className="px-4 py-20 bg-bg-primary">
+        <div className="max-w-5xl mx-auto">
+          <span className="text-accent font-semibold text-xs uppercase tracking-widest">Despre noi</span>
+          <h1 className="text-4xl md:text-5xl font-bold text-text-primary mt-3">Lucrăm cu puține proprietăți, dar le tratăm serios.</h1>
+          <p className="text-text-muted mt-6 text-lg leading-relaxed max-w-3xl">
+            HQS Imobiliare este gândit pentru oameni care vor răspunsuri clare: ce cumpăr, cât merită, ce acte verific și care este următorul pas. Preferăm prezentările oneste, fotografiile curate și discuțiile directe.
+          </p>
+          <div className="grid md:grid-cols-3 gap-4 mt-10">
+            {[
+              ["Verificare", "Strângem datele de bază înainte ca oferta să ajungă pe site."],
+              ["Context", "Explicăm zona, prețul și lucrurile care pot conta la revânzare."],
+              ["Ritm normal", "Programăm vizionări fără presiune și fără mesaje insistente."],
+            ].map(([title, text]) => (
+              <div key={title} className="bg-bg-card border border-bg-surface rounded-2xl p-6">
+                <h2 className="text-text-primary font-semibold">{title}</h2>
+                <p className="text-text-muted text-sm leading-relaxed mt-2">{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      <Benefits />
+      <Footer />
+    </main>
+  )
+}
