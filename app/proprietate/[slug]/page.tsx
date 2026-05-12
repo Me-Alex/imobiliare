@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import Header from "@/components/Header"
 import Footer from "@/components/Footer"
 import ContactDetaliu from "@/components/ContactDetaliu"
+import ProprietateCard from "@/components/ProprietateCard"
 import Link from "next/link"
 import type { Metadata } from "next"
 
@@ -46,9 +47,18 @@ export default async function PaginaProprietate({ params }: { params: { slug: st
   const { data: p } = await supabase.from("properties").select("*").eq("slug", params.slug).single()
   if (!p) notFound()
 
+  const { data: similare } = await supabase
+    .from("properties")
+    .select("*")
+    .eq("status", "PUBLISHED")
+    .eq("city", p.city)
+    .neq("id", p.id)
+    .limit(3)
+
   const galerie = DEFAULT_IMAGES[p.type] || DEFAULT_IMAGES.APARTMENT
   const pret = `EUR ${p.price.toLocaleString("ro-RO")}`
   const pricePerMeter = p.area_sqm > 0 && p.price > 0 ? Math.round(p.price / p.area_sqm).toLocaleString("ro-RO") : null
+  const estimatedMonthly = p.price > 0 ? Math.round((p.price * 0.8) / 300).toLocaleString("ro-RO") : null
 
   return (
     <main>
@@ -108,6 +118,18 @@ export default async function PaginaProprietate({ params }: { params: { slug: st
                 <p className="text-text-muted leading-relaxed text-sm whitespace-pre-line">{p.description}</p>
               </div>
             )}
+            <div className="grid gap-4 mt-6 md:grid-cols-3">
+              {[
+                { title: "Verificare", text: "Discutam actele si contextul proprietatii inainte de vizionare." },
+                { title: "Comparatie", text: "Comparam pretul cu zona, suprafata si alternativele active." },
+                { title: "Urmatorul pas", text: "Stabilim vizionare, oferta sau evaluare, fara presiune inutila." },
+              ].map((item) => (
+                <div key={item.title} className="rounded-lg border border-bg-surface bg-bg-card p-5">
+                  <h3 className="font-bold text-text-primary">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-text-muted">{item.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="lg:col-span-1">
             <div className="sticky top-24">
@@ -119,11 +141,32 @@ export default async function PaginaProprietate({ params }: { params: { slug: st
                     Aproximativ EUR {pricePerMeter} / mp
                   </div>
                 )}
+                {estimatedMonthly && (
+                  <div className="mt-5 rounded-lg bg-bg-secondary p-4">
+                    <div className="text-xs uppercase tracking-wider text-text-muted">Rata orientativa</div>
+                    <div className="mt-1 text-xl font-black text-text-primary">EUR {estimatedMonthly}/luna</div>
+                    <p className="mt-1 text-xs text-text-muted">Calcul rapid: 20% avans, 25 ani, fara costuri bancare incluse.</p>
+                  </div>
+                )}
               </div>
               <ContactDetaliu proprietate={p.title} propertyId={p.id} />
             </div>
           </div>
         </div>
+        {similare && similare.length > 0 && (
+          <section className="mt-14 border-t border-bg-surface pt-10">
+            <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-text-primary">Proprietati similare in {p.city}</h2>
+                <p className="text-sm text-text-muted">Alternative apropiate, utile pentru comparatie inainte de vizionare.</p>
+              </div>
+              <Link href="/proprietati" className="text-sm font-bold text-accent">Vezi tot portofoliul</Link>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {similare.map((item) => <ProprietateCard key={item.id} proprietate={item} />)}
+            </div>
+          </section>
+        )}
       </div>
       <Footer />
     </main>
