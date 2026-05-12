@@ -1,8 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+import { supabaseAnonKey, supabaseUrl } from "@/lib/supabase"
 
 export function isAdminRequest(request: Request) {
   const adminPassword = process.env.ADMIN_PASSWORD
@@ -20,11 +18,7 @@ export function unauthorized() {
 }
 
 export function getAdminClient() {
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Supabase public environment variables are missing")
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
+  return createClient(supabaseUrl, supabaseAnonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 }
