@@ -4,6 +4,7 @@ import ProprietatiSection from '@/components/ProprietatiSection'
 import PropertyHighlights from '@/components/PropertyHighlights'
 import ProcessSection from '@/components/ProcessSection'
 import Benefits from '@/components/Benefits'
+import FeatureCommandCenter from '@/components/FeatureCommandCenter'
 import Contact from '@/components/Contact'
 import FAQ from '@/components/FAQ'
 import Footer from '@/components/Footer'
@@ -17,6 +18,7 @@ export default function Home() {
       <ProprietatiSection />
       <ProcessSection />
       <Benefits />
+      <FeatureCommandCenter />
       <FAQ />
       <Contact />
       <Footer />
