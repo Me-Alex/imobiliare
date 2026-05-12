@@ -7,6 +7,7 @@ import ThemeToggle from "./ThemeToggle"
 const links = [
   { href: "/", label: "Acasa" },
   { href: "/proprietati", label: "Proprietati" },
+  { href: "/functionalitati", label: "Functionalitati" },
   { href: "/despre", label: "Despre" },
   { href: "/contact", label: "Contact" },
   { href: "/comparare", label: "Comparare" },
@@ -54,13 +55,13 @@ export default function Header() {
             Vezi oferte
           </Link>
           <Link href="/comparare" className="border border-bg-surface text-text-primary px-4 py-2 rounded-lg text-sm font-medium hover:border-accent hover:text-accent transition-all">
-            Comparare {compareCount > 0 ? `(${compareCount})` : ''}
+            Comparare {compareCount > 0 ? `(${compareCount})` : ""}
           </Link>
           <a href="tel:+40700000000" className="border border-accent text-accent px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent hover:text-bg-primary transition-all">
-            Sună acum
+            Suna acum
           </a>
           <Link href="/contact" className="bg-accent text-bg-primary px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
-            Contact {favoriteCount > 0 ? `(${favoriteCount})` : ''}
+            Contact {favoriteCount > 0 ? `(${favoriteCount})` : ""}
           </Link>
         </div>
 
