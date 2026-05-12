@@ -1,0 +1,55 @@
+import { requireClient } from "@/lib/client-api"
+import { buildOfferDraft } from "@/lib/complexity"
+import { NextResponse } from "next/server"
+
+export const runtime = "edge"
+
+export async function GET(request: Request) {
+  const session = await requireClient(request)
+  if ("error" in session) return session.error
+
+  const { data, error } = await session.supabase
+    .from("property_offers")
+    .select("*, property:properties(title,slug,city,price)")
+    .eq("user_id", session.user.id)
+    .order("created_at", { ascending: false })
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  return NextResponse.json({ offers: data || [] })
+}
+
+export async function POST(request: Request) {
+  const session = await requireClient(request)
+  if ("error" in session) return session.error
+
+  const body = await request.json().catch(() => ({}))
+  const draft = buildOfferDraft({
+    propertyTitle: String(body.property_title || "Proprietate HQS"),
+    listPrice: Number(body.list_price || 0),
+    clientBudget: Number(body.offer_price || body.client_budget || body.list_price || 0),
+    advancePercent: Number(body.advance_percent || 20),
+    closingDays: Number(body.closing_days || 30),
+    riskLevel: ["scazut", "mediu", "ridicat"].includes(body.risk_level) ? body.risk_level : "mediu",
+  })
+
+  const { data, error } = await session.supabase
+    .from("property_offers")
+    .insert({
+      user_id: session.user.id,
+      property_id: body.property_id || null,
+      property_title: String(body.property_title || draft.propertyTitle),
+      client_name: String(body.client_name || session.user.email || "Client HQS"),
+      client_email: session.user.email,
+      list_price: Number(body.list_price || draft.recommended),
+      offer_price: Number(body.offer_price || draft.recommended),
+      advance_percent: Number(body.advance_percent || 20),
+      closing_days: Number(body.closing_days || 30),
+      risk_level: String(body.risk_level || "mediu"),
+      notes: body.notes ? String(body.notes) : draft.clauses.join("; "),
+    })
+    .select("*")
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  return NextResponse.json({ offer: data, draft })
+}

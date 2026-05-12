@@ -1,6 +1,7 @@
 "use client"
 
 import { Property } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
@@ -14,60 +15,71 @@ const DEFAULT_IMAGES: Record<string, string> = {
   COMMERCIAL: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",
 }
 
-type Props = {
-  proprietate: Property
-  isFavorite?: boolean
-  isCompared?: boolean
-  onToggleFavorite?: () => void
-  onToggleCompare?: () => void
-}
-
-export default function ProprietateCard({ proprietate: p, isFavorite, isCompared, onToggleFavorite, onToggleCompare }: Props) {
+export default function ProprietateCard({ proprietate: p }: { proprietate: Property }) {
   const img = DEFAULT_IMAGES[p.type] || DEFAULT_IMAGES.APARTMENT
   const pret = `EUR ${p.price.toLocaleString("ro-RO")}`
-  const [localFavorite, setLocalFavorite] = useState(false)
-  const [localCompare, setLocalCompare] = useState(false)
+  const [favorite, setFavorite] = useState(false)
+  const [compare, setCompare] = useState(false)
 
   useEffect(() => {
-    if (typeof isFavorite === "boolean" && typeof isCompared === "boolean") return
-    setLocalFavorite(readIds("hq-favorites").includes(p.id) || readIds("hqs-favorites").includes(p.id))
-    setLocalCompare(readIds("hq-compare").includes(p.id) || readIds("hqs-compare").includes(p.id))
-  }, [p.id, isFavorite, isCompared])
+    const favorites = readIds("hqs-favorites")
+    const compared = readIds("hqs-compare")
+    setFavorite(favorites.includes(p.id))
+    setCompare(compared.includes(p.id))
+  }, [p.id])
 
-  const favorite = typeof isFavorite === "boolean" ? isFavorite : localFavorite
-  const compared = typeof isCompared === "boolean" ? isCompared : localCompare
-
-  const toggleFavorite = () => {
-    if (onToggleFavorite) return onToggleFavorite()
-    const next = toggleId("hqs-favorites", p.id)
-    setLocalFavorite(next.includes(p.id))
-  }
-
-  const toggleCompare = () => {
-    if (onToggleCompare) return onToggleCompare()
-    const next = toggleId("hqs-compare", p.id, 3)
-    setLocalCompare(next.includes(p.id))
+  const toggleStored = async (key: "hqs-favorites" | "hqs-compare") => {
+    const current = readIds(key)
+    const exists = current.includes(p.id)
+    const next = exists ? current.filter((id) => id !== p.id) : key === "hqs-compare" ? [...current, p.id].slice(-3) : [...current, p.id]
+    localStorage.setItem(key, JSON.stringify(next))
+    window.dispatchEvent(new Event("hqs-selection"))
+    if (key === "hqs-favorites") setFavorite(!exists)
+    if (key === "hqs-compare") setCompare(!exists)
+    if (key === "hqs-favorites") {
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      if (token) {
+        await fetch(`/api/client/favorites${exists ? `?property_id=${p.id}` : ""}`, {
+          method: exists ? "DELETE" : "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: exists ? undefined : JSON.stringify({ property_id: p.id }),
+        }).catch(() => null)
+      }
+    }
   }
 
   return (
     <div className="bg-bg-card border border-bg-surface rounded-lg overflow-hidden hover:border-accent/50 hover:-translate-y-0.5 transition-all duration-300 group">
       <div className="relative h-52 overflow-hidden">
-        <img src={img} alt={p.title || "Proprietate HQS"}
+        <img src={img} alt={p.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
         <div className="absolute top-3 left-3 flex gap-2">
           <span className="bg-accent text-bg-primary text-xs font-bold px-3 py-1 rounded-full">De vanzare</span>
           <span className="bg-black/55 text-white text-xs font-medium px-3 py-1 rounded-full border border-white/15">{TIP_LABEL[p.type] || p.type}</span>
         </div>
-        <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
-          <div className="flex gap-2">
-            {p.featured && <span className="bg-white text-black text-xs font-bold px-3 py-1 rounded-full">Selectata</span>}
-            <button onClick={toggleFavorite} aria-label={favorite ? "Scoate din favorite" : "Adauga la favorite"} className="bg-black/55 text-white text-xs font-medium px-3 py-1 rounded-full border border-white/15 hover:bg-white hover:text-black transition-colors">
-              {favorite ? "Salvat" : "Favorite"}
-            </button>
+        {p.featured && (
+          <div className="absolute top-3 right-3">
+            <span className="bg-white text-black text-xs font-bold px-3 py-1 rounded-full">Selectata</span>
           </div>
-          <button onClick={toggleCompare} aria-label={compared ? "Scoate din comparare" : "Adauga la comparare"} className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${compared ? "bg-accent text-bg-primary border-accent" : "bg-black/55 text-white border-white/15 hover:bg-white hover:text-black"}`}>
-            {compared ? "Comparat" : "Compara"}
+        )}
+        <div className="absolute bottom-3 right-3 flex gap-2">
+          <button
+            type="button"
+            onClick={() => toggleStored("hqs-favorites")}
+            className={`h-9 w-9 rounded-lg border border-white/25 backdrop-blur transition-all ${favorite ? "bg-accent text-bg-primary" : "bg-black/45 text-white hover:bg-white hover:text-black"}`}
+            title={favorite ? "Scoate de la favorite" : "Adauga la favorite"}
+          >
+            <span aria-hidden>{favorite ? "F" : "+"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleStored("hqs-compare")}
+            className={`h-9 w-9 rounded-lg border border-white/25 text-xs font-black backdrop-blur transition-all ${compare ? "bg-accent text-bg-primary" : "bg-black/45 text-white hover:bg-white hover:text-black"}`}
+            title={compare ? "Scoate din comparatie" : "Compara proprietatea"}
+          >
+            CMP
           </button>
         </div>
       </div>
@@ -78,7 +90,7 @@ export default function ProprietateCard({ proprietate: p, isFavorite, isCompared
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657 13.414 20.9a2 2 0 0 1-2.827 0l-4.244-4.243a8 8 0 1 1 11.314 0Z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
           </svg>
-          {[p.address, p.city, p.county].filter(Boolean).join(", ") || "Romania"}
+          {p.address || p.city}, {p.county || "Romania"}
         </p>
         <div className="flex flex-wrap gap-3 text-sm text-text-muted mb-4">
           {p.rooms > 0 && <span>{p.rooms} camere</span>}
@@ -106,13 +118,4 @@ function readIds(key: string) {
   } catch {
     return []
   }
-}
-
-function toggleId(key: string, id: string, max?: number) {
-  const current = readIds(key)
-  const exists = current.includes(id)
-  const next = exists ? current.filter((item) => item !== id) : max ? [...current, id].slice(-max) : [...current, id]
-  localStorage.setItem(key, JSON.stringify(next))
-  window.dispatchEvent(new Event("hqs-selection"))
-  return next
 }
