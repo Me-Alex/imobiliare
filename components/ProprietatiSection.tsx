@@ -37,6 +37,7 @@ export default function ProprietatiSection() {
   const [filtruZona, setFiltruZona] = useState("Toate zonele")
   const [filtruCamere, setFiltruCamere] = useState(0)
   const [pretMax, setPretMax] = useState(1000000)
+  const [suprafataMin, setSuprafataMin] = useState(0)
   const [doarFeatured, setDoarFeatured] = useState(false)
   const [showFiltre, setShowFiltre] = useState(false)
 
@@ -48,12 +49,8 @@ export default function ProprietatiSection() {
 
     const load = async () => {
       const { data, error } = await supabase.from("properties").select("*").eq("status", "PUBLISHED").order("created_at", { ascending: false })
-      if (error) {
-        setError(`Nu am putut încărca proprietățile: ${error.message}`)
-      }
-      if (!data || data.length === 0) {
-        setError((curr) => curr || "Nu există proprietăți publicate sau accesul la tabel este blocat.")
-      }
+      if (error) setError(`Nu am putut incarca proprietatile: ${error.message}`)
+      if (!data || data.length === 0) setError((curr) => curr || "Nu exista proprietati publicate sau accesul la tabel este blocat.")
       setProprietati(data || [])
       setLoading(false)
     }
@@ -70,6 +67,7 @@ export default function ProprietatiSection() {
         if (filtruZona !== "Toate zonele" && p.city !== filtruZona) return false
         if (filtruCamere > 0 && p.rooms < filtruCamere) return false
         if (p.price > pretMax) return false
+        if (suprafataMin > 0 && p.area_sqm < suprafataMin) return false
         if (doarFeatured && !p.featured) return false
         if (text) {
           const searchable = [p.title, p.city, p.county, p.address, p.description].filter(Boolean).join(" ").toLowerCase()
@@ -83,7 +81,7 @@ export default function ProprietatiSection() {
         if (sort === "areaDesc") return b.area_sqm - a.area_sqm
         return new Date(b.created_at || b.published_at).getTime() - new Date(a.created_at || a.published_at).getTime()
       })
-  }, [proprietati, filtruTip, filtruZona, filtruCamere, pretMax, doarFeatured, query, sort])
+  }, [proprietati, filtruTip, filtruZona, filtruCamere, pretMax, suprafataMin, doarFeatured, query, sort])
 
   const featuredCount = proprietati.filter((p) => p.featured).length
   const favoriteCount = favorites.length
@@ -93,6 +91,7 @@ export default function ProprietatiSection() {
     filtruZona !== "Toate zonele" ||
     filtruCamere > 0 ||
     pretMax < 1000000 ||
+    suprafataMin > 0 ||
     doarFeatured
 
   const toggleFavorite = (id: string) => {
@@ -117,6 +116,7 @@ export default function ProprietatiSection() {
     setFiltruZona("Toate zonele")
     setFiltruCamere(0)
     setPretMax(1000000)
+    setSuprafataMin(0)
     setDoarFeatured(false)
     setSort("newest")
   }
@@ -206,7 +206,7 @@ export default function ProprietatiSection() {
           </div>
 
           {showFiltre && (
-            <div className="grid grid-cols-1 gap-5 mt-5 pt-5 border-t border-bg-surface md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 mt-5 pt-5 border-t border-bg-surface md:grid-cols-4">
               <div>
                 <label className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2 block">Zona / oras</label>
                 <select value={filtruZona} onChange={(e) => setFiltruZona(e.target.value)}
@@ -228,6 +228,13 @@ export default function ProprietatiSection() {
                 <input type="range" min={50000} max={1000000} step={10000} value={pretMax} onChange={(e) => setPretMax(Number(e.target.value))} className="w-full accent-accent" />
                 <div className="flex justify-between text-xs text-text-muted mt-1"><span>EUR 50k</span><span>EUR 1M+</span></div>
               </div>
+              <div>
+                <label className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2 block">
+                  Suprafata minima: <span className="text-accent">{suprafataMin === 0 ? "orice" : `${suprafataMin} mp`}</span>
+                </label>
+                <input type="range" min={0} max={300} step={10} value={suprafataMin} onChange={(e) => setSuprafataMin(Number(e.target.value))} className="w-full accent-accent" />
+                <div className="flex justify-between text-xs text-text-muted mt-1"><span>Orice</span><span>300 mp</span></div>
+              </div>
             </div>
           )}
         </div>
@@ -237,8 +244,8 @@ export default function ProprietatiSection() {
             {loading ? "Se incarca proprietatile..." : `${filtered.length} ${filtered.length === 1 ? "rezultat gasit" : "rezultate gasite"}`}
           </p>
           <div className="flex items-center gap-3 flex-wrap">
-            <Link href="/comparare" className={`text-sm font-semibold px-4 py-2 rounded-lg border transition-all ${compare.length >= 2 ? 'bg-accent text-bg-primary border-accent' : 'bg-bg-secondary text-text-muted border-bg-surface pointer-events-none opacity-50'}`}>
-              Compară ({compare.length})
+            <Link href="/comparare" className={`text-sm font-semibold px-4 py-2 rounded-lg border transition-all ${compare.length >= 2 ? "bg-accent text-bg-primary border-accent" : "bg-bg-secondary text-text-muted border-bg-surface pointer-events-none opacity-50"}`}>
+              Compara ({compare.length})
             </Link>
             {activeFilters && (
               <button onClick={resetFiltre} className="text-sm font-semibold text-accent hover:text-text-primary transition-colors">
