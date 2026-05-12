@@ -7,12 +7,20 @@ const upsertRpc = {
   payment_plans: "admin_upsert_payment_plan",
   projects: "admin_upsert_project",
   team_users: "admin_upsert_team_user",
+  owners: "admin_upsert_owner",
+  documents: "admin_upsert_document",
+  notifications: "admin_upsert_notification",
+  activities: "admin_upsert_activity",
 } as const
 
 const deleteRpc = {
   payment_plans: { fn: "admin_delete_payment_plan", idKey: "plan_id" },
   projects: { fn: "admin_delete_project", idKey: "project_id" },
   team_users: { fn: "admin_delete_team_user", idKey: "user_id" },
+  owners: { fn: "admin_delete_owner", idKey: "owner_id" },
+  documents: { fn: "admin_delete_document", idKey: "document_id" },
+  notifications: { fn: "admin_delete_notification", idKey: "notification_id" },
+  activities: { fn: "admin_delete_activity", idKey: "activity_id" },
 } as const
 
 type ModuleType = keyof typeof upsertRpc

@@ -11,11 +11,16 @@ type AuditLog = { id: string; action: string; entity: string; entity_id: string 
 type PaymentPlan = { id: string; name: string; property: string | null; total: number; advance: number; months: number; status: string; notes: string | null }
 type Project = { id: string; name: string; area: string | null; stage: string; progress: number; deadline: string | null; notes: string | null }
 type TeamUser = { id: string; name: string; email: string | null; role: string; status: string }
+type Owner = { id: string; name: string; phone: string | null; email: string | null; type: string; status: string; notes: string | null }
+type DocumentItem = { id: string; title: string; owner_name: string | null; property: string | null; type: string; status: string; expires_at: string | null; url: string | null; notes: string | null }
+type NotificationItem = { id: string; title: string; body: string | null; channel: string; status: string; due_at: string | null; target: string | null }
+type ActivityItem = { id: string; title: string; entity: string; status: string; priority: string; due_at: string | null; notes: string | null }
 type AdminSettings = { agency: string; commission: number; target: number; vat: number; theme: string }
-type ModuleType = "payment_plans" | "projects" | "team_users"
+type ModuleType = "payment_plans" | "projects" | "team_users" | "owners" | "documents" | "notifications" | "activities"
 
 const views = [
   ["dashboard", "Dashboard"], ["properties", "Proprietati"], ["clients", "Clienti"], ["appointments", "Vizionari"],
+  ["owners", "Proprietari"], ["documents", "Documente"], ["notifications", "Notificari"], ["activities", "Activitati"],
   ["payments", "Planuri plata"], ["projects", "Proiecte"], ["offplan", "Constructii"], ["commission", "Comisioane"],
   ["calculator", "Calculator"], ["evaluator", "Evaluator"], ["users", "Utilizatori"], ["audit", "Audit"], ["settings", "Setari"],
 ] as const
@@ -51,6 +56,10 @@ export default function AdminPage() {
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [teamUsers, setTeamUsers] = useState<TeamUser[]>([])
+  const [owners, setOwners] = useState<Owner[]>([])
+  const [documents, setDocuments] = useState<DocumentItem[]>([])
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [activities, setActivities] = useState<ActivityItem[]>([])
   const [settings, setSettings] = useState<AdminSettings>(defaultSettings)
 
   const load = async () => {
@@ -59,6 +68,7 @@ export default function AdminPage() {
       const [data, modules] = await Promise.all([api("/api/admin/data"), api("/api/admin/modules")])
       setLeads(data.leads || []); setProperties(data.properties || []); setAppointments(data.appointments || []); setAudit(data.audit || [])
       setPaymentPlans(modules.payment_plans || []); setProjects(modules.projects || []); setTeamUsers(modules.team_users || [])
+      setOwners(modules.owners || []); setDocuments(modules.documents || []); setNotifications(modules.notifications || []); setActivities(modules.activities || [])
       setSettings({ ...defaultSettings, ...(modules.settings || {}) })
     } catch (err: any) { setError(err.message || "Nu am putut incarca baza de date.") }
     finally { setLoading(false) }
@@ -69,6 +79,10 @@ export default function AdminPage() {
     leads: useMemo(() => rowSearch(leads, query), [leads, query]),
     properties: useMemo(() => rowSearch(properties, query), [properties, query]),
     appointments: useMemo(() => rowSearch(appointments, query), [appointments, query]),
+    owners: useMemo(() => rowSearch(owners, query), [owners, query]),
+    documents: useMemo(() => rowSearch(documents, query), [documents, query]),
+    notifications: useMemo(() => rowSearch(notifications, query), [notifications, query]),
+    activities: useMemo(() => rowSearch(activities, query), [activities, query]),
     audit: useMemo(() => rowSearch(audit, query), [audit, query]),
   }
   const portfolio = properties.filter((p) => p.status === "PUBLISHED").reduce((sum, p) => sum + Number(p.price || 0), 0)
@@ -92,14 +106,14 @@ export default function AdminPage() {
   }
   const saveModule = async (type: ModuleType, payload: Record<string, unknown>) => withSave(String(payload.id || type), async () => {
     const data = await api("/api/admin/modules", { method: "POST", body: JSON.stringify({ type, payload }) })
-    const setters = { payment_plans: setPaymentPlans, projects: setProjects, team_users: setTeamUsers }
+    const setters = { payment_plans: setPaymentPlans, projects: setProjects, team_users: setTeamUsers, owners: setOwners, documents: setDocuments, notifications: setNotifications, activities: setActivities }
     setters[type]((rows: any[]) => rows.some((row) => row.id === data.item.id) ? rows.map((row) => row.id === data.item.id ? data.item : row) : [data.item, ...rows])
   })
   const deleteModule = async (type: ModuleType, id: string) => {
     if (!confirm("Sigur stergi acest element?")) return
     await withSave(id, async () => {
       await api(`/api/admin/modules?type=${type}&id=${id}`, { method: "DELETE" })
-      const setters = { payment_plans: setPaymentPlans, projects: setProjects, team_users: setTeamUsers }
+      const setters = { payment_plans: setPaymentPlans, projects: setProjects, team_users: setTeamUsers, owners: setOwners, documents: setDocuments, notifications: setNotifications, activities: setActivities }
       setters[type]((rows: any[]) => rows.filter((row) => row.id !== id))
     })
   }
@@ -112,7 +126,7 @@ export default function AdminPage() {
     try { await fn() } catch (err: any) { setError(err.message || "Actiunea a esuat") } finally { setSavingId("") }
   }
   const exportReport = () => {
-    const rows = [["Tip", "Nume", "Status", "Valoare"], ...properties.map((p) => ["Proprietate", p.title, p.status, p.price]), ...leads.map((l) => ["Lead", l.name, l.status, l.phone || l.email || ""]), ...appointments.map((a) => ["Vizionare", a.client_name, a.status || "", a.requested_at])]
+    const rows = [["Tip", "Nume", "Status", "Valoare"], ...properties.map((p) => ["Proprietate", p.title, p.status, p.price]), ...leads.map((l) => ["Lead", l.name, l.status, l.phone || l.email || ""]), ...appointments.map((a) => ["Vizionare", a.client_name, a.status || "", a.requested_at]), ...owners.map((o) => ["Proprietar", o.name, o.status, o.phone || o.email || ""]), ...documents.map((d) => ["Document", d.title, d.status, d.expires_at || ""]), ...notifications.map((n) => ["Notificare", n.title, n.status, n.due_at || ""]), ...activities.map((a) => ["Activitate", a.title, a.status, a.priority])]
     const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n")
     const link = document.createElement("a")
     link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }))
@@ -134,10 +148,14 @@ export default function AdminPage() {
         <nav className="flex gap-2 overflow-x-auto border-b border-slate-200 bg-white p-3 lg:hidden dark:border-bg-surface dark:bg-bg-card">{views.map(([key, label]) => <button key={key} onClick={() => setView(key)} className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-bold ${view === key ? "border-accent bg-accent text-white" : "border-slate-200 dark:border-bg-surface"}`}>{label}</button>)}</nav>
         <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 lg:px-8">
           {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">{error}</div>}
-          {view === "dashboard" && <Dashboard loading={loading} leads={leads} properties={properties} appointments={appointments} portfolio={portfolio} paymentPlans={paymentPlans} projects={projects} settings={settings} exportReport={exportReport} />}
+          {view === "dashboard" && <Dashboard loading={loading} leads={leads} properties={properties} appointments={appointments} portfolio={portfolio} paymentPlans={paymentPlans} projects={projects} owners={owners} documents={documents} notifications={notifications} activities={activities} settings={settings} exportReport={exportReport} />}
           {view === "properties" && <Properties rows={filtered.properties} savingId={savingId} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
           {view === "clients" && <Clients rows={filtered.leads} savingId={savingId} updateLead={updateLead} />}
           {view === "appointments" && <Appointments rows={filtered.appointments} savingId={savingId} updateAppointment={updateAppointment} />}
+          {view === "owners" && <Owners rows={filtered.owners} savingId={savingId} save={(payload: any) => saveModule("owners", payload)} remove={(id: string) => deleteModule("owners", id)} />}
+          {view === "documents" && <Documents rows={filtered.documents} savingId={savingId} save={(payload: any) => saveModule("documents", payload)} remove={(id: string) => deleteModule("documents", id)} />}
+          {view === "notifications" && <Notifications rows={filtered.notifications} savingId={savingId} save={(payload: any) => saveModule("notifications", payload)} remove={(id: string) => deleteModule("notifications", id)} />}
+          {view === "activities" && <Activities rows={filtered.activities} savingId={savingId} save={(payload: any) => saveModule("activities", payload)} remove={(id: string) => deleteModule("activities", id)} />}
           {view === "payments" && <PaymentPlans rows={paymentPlans} savingId={savingId} save={(payload: any) => saveModule("payment_plans", payload)} remove={(id: string) => deleteModule("payment_plans", id)} />}
           {view === "projects" && <Projects rows={projects} savingId={savingId} save={(payload: any) => saveModule("projects", payload)} remove={(id: string) => deleteModule("projects", id)} />}
           {view === "offplan" && <Offplan rows={projects} />}
@@ -153,12 +171,13 @@ export default function AdminPage() {
   )
 }
 
-function Dashboard({ loading, leads, properties, appointments, portfolio, paymentPlans, projects, settings, exportReport }: any) {
-  const cards = [["Proprietati", properties.length], ["Clienti activi", leads.filter((l: Lead) => !["CLOSED", "LOST"].includes(l.status)).length], ["Vizionari active", appointments.filter((a: Appointment) => !["DONE", "CANCELLED"].includes(a.status || "")).length], ["Portofoliu", money(portfolio)]]
+function Dashboard({ loading, leads, properties, appointments, portfolio, paymentPlans, projects, owners, documents, notifications, activities, settings, exportReport }: any) {
+  const cards = [["Proprietati", properties.length], ["Clienti activi", leads.filter((l: Lead) => !["CLOSED", "LOST"].includes(l.status)).length], ["Sarcini deschise", activities.filter((a: ActivityItem) => a.status !== "DONE").length], ["Portofoliu", money(portfolio)]]
   return <Section title="Dashboard" subtitle="Overview pentru business, clienti si portofoliu." action={<button onClick={exportReport} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white">Genereaza raport</button>}>
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cards.map(([label, value]) => <Panel key={String(label)}><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-black">{loading ? "-" : value}</p><p className="mt-3 text-sm font-bold text-emerald-600">+12.5%</p></Panel>)}</div>
     <div className="grid gap-5 xl:grid-cols-[1fr_340px]"><Panel><h2 className="mb-4 text-lg font-black">Evolutie vanzari</h2><SalesChart /></Panel><Panel><h2 className="mb-4 text-lg font-black">Tendinte piata</h2>{["Bucuresti Nord", "Pipera", "Corbeanca", "Floreasca"].map((area, i) => <Mini key={area} title={area} meta="Pret mediu" value={`EUR ${[2450, 2190, 1680, 3010][i]}/mp`} />)}</Panel></div>
     <div className="grid gap-5 xl:grid-cols-3"><Panel><h2 className="mb-3 font-black">Vizionari apropiate</h2>{appointments.slice(0, 4).map((a: Appointment) => <Mini key={a.id} title={a.client_name} meta={a.property_title || a.client_phone || "Vizionare"} value={new Date(a.requested_at).toLocaleDateString("ro-RO")} />)}</Panel><Panel><h2 className="mb-3 font-black">Proiecte active</h2>{projects.slice(0, 4).map((p: Project) => <Mini key={p.id} title={p.name} meta={`${p.area || "-"} - ${p.stage}`} value={`${p.progress}%`} />)}</Panel><Panel><h2 className="mb-3 font-black">Planuri plata</h2>{paymentPlans.slice(0, 4).map((p: PaymentPlan) => <Mini key={p.id} title={p.name} meta={p.property || "Portofoliu"} value={money(p.total - p.advance)} />)}<p className="mt-3 text-xs text-slate-500">Comision curent: {settings.commission}%</p></Panel></div>
+    <div className="grid gap-5 xl:grid-cols-4"><Panel><h2 className="mb-3 font-black">Proprietari</h2>{owners.slice(0, 4).map((o: Owner) => <Mini key={o.id} title={o.name} meta={o.phone || o.email || o.type} value={o.status} />)}</Panel><Panel><h2 className="mb-3 font-black">Documente</h2>{documents.slice(0, 4).map((d: DocumentItem) => <Mini key={d.id} title={d.title} meta={d.owner_name || d.property || d.type} value={d.status} />)}</Panel><Panel><h2 className="mb-3 font-black">Notificari</h2>{notifications.slice(0, 4).map((n: NotificationItem) => <Mini key={n.id} title={n.title} meta={n.target || n.channel} value={n.status} />)}</Panel><Panel><h2 className="mb-3 font-black">Activitati</h2>{activities.slice(0, 4).map((a: ActivityItem) => <Mini key={a.id} title={a.title} meta={a.entity} value={a.priority} />)}</Panel></div>
   </Section>
 }
 
@@ -177,12 +196,16 @@ function Appointments({ rows, savingId, updateAppointment }: any) {
 function PaymentPlans({ rows, savingId, save, remove }: any) { return <ModuleEditor title="Planuri plata" subtitle="Planuri reale salvate in Supabase." fields={["name", "property", "total", "advance", "months", "status", "notes"]} defaults={{ months: "24", status: "ACTIVE" }} rows={rows} savingId={savingId} save={save} remove={remove} render={(row: PaymentPlan) => <Mini key={row.id} title={row.name} meta={`${row.property || "Fara proprietate"} - ${row.months} luni`} value={money(row.total - row.advance)} onDelete={() => remove(row.id)} />} /> }
 function Projects({ rows, savingId, save, remove }: any) { return <ModuleEditor title="Proiecte" subtitle="Urmarire operationala pentru etape si progres." fields={["name", "area", "stage", "progress", "deadline", "notes"]} defaults={{ stage: "Planificare", progress: "0" }} rows={rows} savingId={savingId} save={save} remove={remove} render={(row: Project) => <Mini key={row.id} title={row.name} meta={`${row.area || "-"} - ${row.stage}`} value={`${row.progress}%`} onDelete={() => remove(row.id)} />} /> }
 function Users({ rows, savingId, save, remove }: any) { return <ModuleEditor title="Utilizatori" subtitle="Echipa operationala salvata in Supabase." fields={["name", "email", "role", "status"]} defaults={{ role: "Agent", status: "ACTIVE" }} rows={rows} savingId={savingId} save={save} remove={remove} render={(row: TeamUser) => <Mini key={row.id} title={row.name} meta={`${row.role} - ${row.email || "fara email"}`} value={row.status} onDelete={() => remove(row.id)} />} /> }
+function Owners({ rows, savingId, save, remove }: any) { return <ModuleEditor title="Proprietari" subtitle="CRM pentru proprietari, vanzatori si parteneri." fields={["name", "phone", "email", "type", "status", "notes"]} defaults={{ type: "Persoana fizica", status: "ACTIVE" }} rows={rows} savingId={savingId} save={save} remove={remove} render={(row: Owner) => <Mini key={row.id} title={row.name} meta={`${row.type} - ${row.phone || row.email || "fara contact"}`} value={row.status} onDelete={() => remove(row.id)} />} /> }
+function Documents({ rows, savingId, save, remove }: any) { return <ModuleEditor title="Documente" subtitle="Contracte, acte si termene importante pentru portofoliu." fields={["title", "owner_name", "property", "type", "status", "expires_at", "url", "notes"]} requiredKey="title" defaults={{ type: "Contract", status: "PENDING" }} rows={rows} savingId={savingId} save={save} remove={remove} render={(row: DocumentItem) => <Mini key={row.id} title={row.title} meta={`${row.owner_name || row.property || "Fara asociere"} - ${row.type}`} value={row.expires_at ? new Date(row.expires_at).toLocaleDateString("ro-RO") : row.status} onDelete={() => remove(row.id)} />} /> }
+function Notifications({ rows, savingId, save, remove }: any) { return <ModuleEditor title="Notificari" subtitle="Reminder-e si mesaje planificate pentru clienti si echipa." fields={["title", "body", "channel", "status", "due_at", "target"]} requiredKey="title" defaults={{ channel: "EMAIL", status: "DRAFT" }} rows={rows} savingId={savingId} save={save} remove={remove} render={(row: NotificationItem) => <Mini key={row.id} title={row.title} meta={`${row.channel} - ${row.target || "fara destinatar"}`} value={row.status} onDelete={() => remove(row.id)} />} /> }
+function Activities({ rows, savingId, save, remove }: any) { return <ModuleEditor title="Activitati" subtitle="Task-uri operationale pentru follow-up, documente si tranzactii." fields={["title", "entity", "status", "priority", "due_at", "notes"]} requiredKey="title" defaults={{ entity: "CRM", status: "OPEN", priority: "MEDIUM" }} rows={rows} savingId={savingId} save={save} remove={remove} render={(row: ActivityItem) => <Mini key={row.id} title={row.title} meta={`${row.entity} - ${row.status}`} value={row.priority} onDelete={() => remove(row.id)} />} /> }
 
-function ModuleEditor({ title, subtitle, fields, defaults, rows, savingId, save, render }: any) {
+function ModuleEditor({ title, subtitle, fields, defaults, rows, savingId, save, render, requiredKey = "name" }: any) {
   const blank = fields.reduce((acc: any, key: string) => ({ ...acc, [key]: defaults?.[key] || "" }), {})
   const [form, setForm] = useState(blank)
-  const submit = () => { if (form.name) { save(form); setForm(blank) } }
-  return <Section title={title} subtitle={subtitle}><Panel><FormGrid>{fields.filter((f: string) => f !== "notes").map((key: string) => <Input key={key} label={key} value={form[key]} setValue={(v: string) => setForm({ ...form, [key]: v })} />)}</FormGrid>{fields.includes("notes") && <Textarea label="notes" value={form.notes} setValue={(v: string) => setForm({ ...form, notes: v })} />}<button onClick={submit} disabled={!form.name || savingId === title} className="mt-4 rounded-lg bg-accent px-4 py-3 font-bold text-white disabled:opacity-50">Adauga</button><div className="mt-5 grid gap-3 lg:grid-cols-2">{rows.map(render)}</div></Panel></Section>
+  const submit = () => { if (form[requiredKey]) { save(form); setForm(blank) } }
+  return <Section title={title} subtitle={subtitle}><Panel><FormGrid>{fields.filter((f: string) => !["notes", "body"].includes(f)).map((key: string) => <Input key={key} label={key} value={form[key]} setValue={(v: string) => setForm({ ...form, [key]: v })} />)}</FormGrid>{fields.includes("body") && <Textarea label="body" value={form.body} setValue={(v: string) => setForm({ ...form, body: v })} />}{fields.includes("notes") && <Textarea label="notes" value={form.notes} setValue={(v: string) => setForm({ ...form, notes: v })} />}<button onClick={submit} disabled={!form[requiredKey] || savingId === title} className="mt-4 rounded-lg bg-accent px-4 py-3 font-bold text-white disabled:opacity-50">Adauga</button><div className="mt-5 grid gap-3 lg:grid-cols-2">{rows.map(render)}</div></Panel></Section>
 }
 
 function Offplan({ rows }: any) { return <Section title="Constructii" subtitle="Status off-plan si santiere active conectate la proiecte."><div className="grid gap-4 lg:grid-cols-2">{rows.map((row: Project) => <Panel key={row.id}><div className="flex items-start justify-between gap-4"><div><h2 className="font-black">{row.name}</h2><p className="text-sm text-slate-500">{row.area || "Zona necompletata"} - {row.stage}</p></div><Badge>{row.deadline ? new Date(row.deadline).toLocaleDateString("ro-RO") : "fara termen"}</Badge></div><div className="mt-5 h-3 rounded-full bg-slate-100 dark:bg-bg-secondary"><div className="h-3 rounded-full bg-accent" style={{ width: `${row.progress}%` }} /></div><p className="mt-3 text-sm text-slate-500">{row.notes || "Fara note."}</p></Panel>)}</div></Section> }
