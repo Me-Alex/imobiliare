@@ -5,6 +5,7 @@ import PropertyHighlights from '@/components/PropertyHighlights'
 import ProcessSection from '@/components/ProcessSection'
 import Benefits from '@/components/Benefits'
 import RecommendationStudio from '@/components/RecommendationStudio'
+import ExperienceCommandCenter from '@/components/ExperienceCommandCenter'
 import Contact from '@/components/Contact'
 import FAQ from '@/components/FAQ'
 import Footer from '@/components/Footer'
@@ -22,6 +23,7 @@ export default async function Home() {
       <PropertyHighlights />
       <ProprietatiSection />
       <RecommendationStudio properties={properties || []} />
+      <ExperienceCommandCenter properties={properties || []} />
       <ProcessSection />
       <Benefits />
       <FAQ />

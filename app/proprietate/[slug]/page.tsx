@@ -6,6 +6,8 @@ import ContactDetaliu from "@/components/ContactDetaliu"
 import ProprietateCard from "@/components/ProprietateCard"
 import Link from "next/link"
 import type { Metadata } from "next"
+import { documentChecklist, estimateMonthlyPayment, zoneProfiles } from "@/lib/experience"
+import { buildOfferDraft, buildViewingSlots, calculateValuation } from "@/lib/complexity"
 
 export const runtime = "edge"
 
@@ -58,10 +60,25 @@ export default async function PaginaProprietate({ params }: { params: { slug: st
   const galerie = DEFAULT_IMAGES[p.type] || DEFAULT_IMAGES.APARTMENT
   const pret = `EUR ${p.price.toLocaleString("ro-RO")}`
   const pricePerMeter = p.area_sqm > 0 && p.price > 0 ? Math.round(p.price / p.area_sqm).toLocaleString("ro-RO") : null
-  const estimatedMonthly = p.price > 0 ? Math.round((p.price * 0.8) / 300).toLocaleString("ro-RO") : null
+  const estimatedMonthly = p.price > 0 ? estimateMonthlyPayment(p.price).toLocaleString("ro-RO") : null
+  const matchScore = Math.min(98, 62 + (p.featured ? 12 : 0) + (p.parking_spots > 0 ? 8 : 0) + (p.rooms >= 3 ? 8 : 0))
+  const zone = zoneProfiles.find((item) => p.city?.toLowerCase().includes(item.name.toLowerCase().split(" ")[0]))
+  const valuation = calculateValuation({ area: p.area_sqm || 80, rooms: p.rooms || 2, zone: p.city || "Bucuresti Nord", condition: p.featured ? "premium" : "bun", parking: p.parking_spots || 0 })
+  const offer = buildOfferDraft({ propertyTitle: p.title, listPrice: p.price, clientBudget: p.price, advancePercent: 20, closingDays: 30, riskLevel: valuation.market.risk as "scazut" | "mediu" | "ridicat" })
+  const slots = buildViewingSlots("normal")
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Residence",
+    name: p.title,
+    address: `${p.address}, ${p.city}`,
+    floorSize: { "@type": "QuantitativeValue", value: p.area_sqm, unitCode: "MTK" },
+    numberOfRooms: p.rooms,
+    offers: { "@type": "Offer", price: p.price, priceCurrency: p.currency || "EUR", availability: "https://schema.org/InStock" },
+  }
 
   return (
     <main>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Header />
       <div className="max-w-7xl mx-auto px-4 py-10">
         <Link href="/proprietati" className="inline-flex items-center gap-2 text-text-muted text-sm hover:text-accent transition-colors mb-6">
@@ -129,6 +146,46 @@ export default async function PaginaProprietate({ params }: { params: { slug: st
                   <p className="mt-2 text-sm leading-relaxed text-text-muted">{item.text}</p>
                 </div>
               ))}
+            </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
+                <p className="text-xs uppercase tracking-wider text-text-muted">Scor potrivire</p>
+                <p className="mt-2 text-4xl font-black text-accent">{matchScore}</p>
+                <p className="mt-2 text-sm text-text-muted">Calcul orientativ dupa selectie HQS, camere, parcare si pozitionare.</p>
+              </div>
+              <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
+                <p className="text-xs uppercase tracking-wider text-text-muted">Checklist acte</p>
+                <p className="mt-2 text-2xl font-black text-text-primary">{documentChecklist.length} pasi</p>
+                <p className="mt-2 text-sm text-text-muted">Verificare documente inainte de oferta sau avans.</p>
+              </div>
+              <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
+                <p className="text-xs uppercase tracking-wider text-text-muted">Zona</p>
+                <p className="mt-2 text-2xl font-black text-text-primary">{zone?.name || p.city}</p>
+                <p className="mt-2 text-sm text-text-muted">{zone ? `Pret mediu zona: EUR ${zone.avgPrice}/mp` : "Analiza locala disponibila la cerere."}</p>
+              </div>
+            </div>
+            <div className="mt-6 rounded-lg border border-bg-surface bg-bg-card p-6">
+              <h2 className="text-lg font-semibold text-text-primary">Documente si risc</h2>
+              <div className="mt-4 grid gap-2 md:grid-cols-2">
+                {documentChecklist.map((item) => <span key={item} className="rounded-lg bg-bg-secondary px-3 py-2 text-sm text-text-muted">{item}</span>)}
+              </div>
+            </div>
+            <div className="mt-6 grid gap-4 lg:grid-cols-3">
+              <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
+                <p className="text-xs font-bold uppercase text-text-muted">Evaluare HQS</p>
+                <p className="mt-2 text-2xl font-black text-accent">EUR {valuation.mid.toLocaleString("ro-RO")}</p>
+                <p className="mt-2 text-sm text-text-muted">Interval realist: EUR {valuation.low.toLocaleString("ro-RO")} - EUR {valuation.high.toLocaleString("ro-RO")}.</p>
+              </div>
+              <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
+                <p className="text-xs font-bold uppercase text-text-muted">Oferta recomandata</p>
+                <p className="mt-2 text-2xl font-black text-accent">EUR {offer.recommended.toLocaleString("ro-RO")}</p>
+                <p className="mt-2 text-sm text-text-muted">Avans orientativ: EUR {offer.advance.toLocaleString("ro-RO")}.</p>
+              </div>
+              <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
+                <p className="text-xs font-bold uppercase text-text-muted">Vizionare</p>
+                <p className="mt-2 text-lg font-black text-text-primary">{slots[0].label}</p>
+                <p className="mt-2 text-sm text-text-muted">Slot recomandat automat, scor {slots[0].score}%.</p>
+              </div>
             </div>
           </div>
           <div className="lg:col-span-1">
