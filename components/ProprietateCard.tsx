@@ -1,5 +1,8 @@
+"use client"
+
 import { Property } from "@/lib/supabase"
 import Link from "next/link"
+import { useEffect, useState } from "react"
 
 const TIP_LABEL: Record<string, string> = { APARTMENT: "Apartament", HOUSE: "Casa", VILLA: "Vila", LAND: "Teren", COMMERCIAL: "Comercial" }
 
@@ -11,9 +14,40 @@ const DEFAULT_IMAGES: Record<string, string> = {
   COMMERCIAL: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",
 }
 
-export default function ProprietateCard({ proprietate: p, isFavorite, isCompared, onToggleFavorite, onToggleCompare }: { proprietate: Property; isFavorite: boolean; isCompared: boolean; onToggleFavorite: () => void; onToggleCompare: () => void }) {
+type Props = {
+  proprietate: Property
+  isFavorite?: boolean
+  isCompared?: boolean
+  onToggleFavorite?: () => void
+  onToggleCompare?: () => void
+}
+
+export default function ProprietateCard({ proprietate: p, isFavorite, isCompared, onToggleFavorite, onToggleCompare }: Props) {
   const img = DEFAULT_IMAGES[p.type] || DEFAULT_IMAGES.APARTMENT
   const pret = `EUR ${p.price.toLocaleString("ro-RO")}`
+  const [localFavorite, setLocalFavorite] = useState(false)
+  const [localCompare, setLocalCompare] = useState(false)
+
+  useEffect(() => {
+    if (typeof isFavorite === "boolean" && typeof isCompared === "boolean") return
+    setLocalFavorite(readIds("hq-favorites").includes(p.id) || readIds("hqs-favorites").includes(p.id))
+    setLocalCompare(readIds("hq-compare").includes(p.id) || readIds("hqs-compare").includes(p.id))
+  }, [p.id, isFavorite, isCompared])
+
+  const favorite = typeof isFavorite === "boolean" ? isFavorite : localFavorite
+  const compared = typeof isCompared === "boolean" ? isCompared : localCompare
+
+  const toggleFavorite = () => {
+    if (onToggleFavorite) return onToggleFavorite()
+    const next = toggleId("hqs-favorites", p.id)
+    setLocalFavorite(next.includes(p.id))
+  }
+
+  const toggleCompare = () => {
+    if (onToggleCompare) return onToggleCompare()
+    const next = toggleId("hqs-compare", p.id, 3)
+    setLocalCompare(next.includes(p.id))
+  }
 
   return (
     <div className="bg-bg-card border border-bg-surface rounded-lg overflow-hidden hover:border-accent/50 hover:-translate-y-0.5 transition-all duration-300 group">
@@ -28,12 +62,12 @@ export default function ProprietateCard({ proprietate: p, isFavorite, isCompared
         <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
           <div className="flex gap-2">
             {p.featured && <span className="bg-white text-black text-xs font-bold px-3 py-1 rounded-full">Selectata</span>}
-            <button onClick={onToggleFavorite} aria-label={isFavorite ? "Scoate din favorite" : "Adauga la favorite"} className="bg-black/55 text-white text-xs font-medium px-3 py-1 rounded-full border border-white/15 hover:bg-white hover:text-black transition-colors">
-              {isFavorite ? "Salvat" : "Favorite"}
+            <button onClick={toggleFavorite} aria-label={favorite ? "Scoate din favorite" : "Adauga la favorite"} className="bg-black/55 text-white text-xs font-medium px-3 py-1 rounded-full border border-white/15 hover:bg-white hover:text-black transition-colors">
+              {favorite ? "Salvat" : "Favorite"}
             </button>
           </div>
-          <button onClick={onToggleCompare} aria-label={isCompared ? "Scoate din comparare" : "Adauga la comparare"} className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${isCompared ? 'bg-accent text-bg-primary border-accent' : 'bg-black/55 text-white border-white/15 hover:bg-white hover:text-black'}`}>
-            {isCompared ? "Comparat" : "Compară"}
+          <button onClick={toggleCompare} aria-label={compared ? "Scoate din comparare" : "Adauga la comparare"} className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${compared ? "bg-accent text-bg-primary border-accent" : "bg-black/55 text-white border-white/15 hover:bg-white hover:text-black"}`}>
+            {compared ? "Comparat" : "Compara"}
           </button>
         </div>
       </div>
@@ -62,4 +96,23 @@ export default function ProprietateCard({ proprietate: p, isFavorite, isCompared
       </div>
     </div>
   )
+}
+
+function readIds(key: string) {
+  if (typeof window === "undefined") return []
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || "[]")
+    return Array.isArray(value) ? value.filter((id) => typeof id === "string") : []
+  } catch {
+    return []
+  }
+}
+
+function toggleId(key: string, id: string, max?: number) {
+  const current = readIds(key)
+  const exists = current.includes(id)
+  const next = exists ? current.filter((item) => item !== id) : max ? [...current, id].slice(-max) : [...current, id]
+  localStorage.setItem(key, JSON.stringify(next))
+  window.dispatchEvent(new Event("hqs-selection"))
+  return next
 }
