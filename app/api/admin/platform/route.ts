@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 
 export const runtime = "edge"
 
+
 export async function GET(request: Request) {
   if (!isAdminRequest(request)) return unauthorized()
 
@@ -44,6 +45,34 @@ export async function POST(request: Request) {
       })
       if (error) return jsonError(error.message, 400)
       return NextResponse.json({ entry: data })
+    }
+
+    if (body.type === "admin_role") {
+      const { data, error } = await supabase.rpc("admin_upsert_role", {
+        admin_secret,
+        payload: body.payload || {},
+      })
+      if (error) return jsonError(error.message, 400)
+      return NextResponse.json({ role: data })
+    }
+
+    if (body.type === "zone_poi") {
+      const { data, error } = await supabase.rpc("admin_upsert_zone_poi", {
+        admin_secret,
+        payload: body.payload || {},
+      })
+      if (error) return jsonError(error.message, 400)
+      return NextResponse.json({ poi: data })
+    }
+
+    if (body.type === "document_status") {
+      const { data, error } = await supabase.rpc("admin_update_client_document_status", {
+        admin_secret,
+        document_id: body.id,
+        next_status: body.status || "REVIEW",
+      })
+      if (error) return jsonError(error.message, 400)
+      return NextResponse.json({ document: data })
     }
 
     return jsonError("Tip actiune invalid", 400)

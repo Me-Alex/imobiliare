@@ -1,11 +1,10 @@
-import AdminPlatformConsole from "@/components/AdminPlatformConsole"
+import AdminIntegratedPlatform from "@/components/AdminIntegratedPlatform"
 
-export const runtime = "edge"
 
 export const metadata = {
   title: "Platform Console | HQS Admin",
 }
 
 export default function AdminPlatformPage() {
-  return <AdminPlatformConsole />
+  return <AdminIntegratedPlatform />
 }

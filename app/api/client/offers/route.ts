@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 
 export const runtime = "edge"
 
+
 export async function GET(request: Request) {
   const session = await requireClient(request)
   if ("error" in session) return session.error
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
     .from("property_offers")
     .insert({
       user_id: session.user.id,
+      client_user_id: session.user.id,
       property_id: body.property_id || null,
       property_title: String(body.property_title || draft.propertyTitle),
       client_name: String(body.client_name || session.user.email || "Client HQS"),
