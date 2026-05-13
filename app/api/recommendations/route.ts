@@ -3,6 +3,9 @@ import { scoreProperty, type BuyerProfile } from "@/lib/experience"
 import { supabase } from "@/lib/supabase"
 import { getClientSupabase, getClientToken } from "@/lib/client-api"
 
+export const runtime = "edge"
+
+
 
 export async function POST(request: Request) {
   try {

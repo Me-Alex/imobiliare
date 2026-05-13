@@ -1,6 +1,9 @@
 import { getAdminClient, getAdminRpcSecret, jsonError, requireAdminPermission } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
+export const runtime = "edge"
+
+
 
 const STATUSES = new Set(["NEW", "CONTACTED", "QUALIFIED", "CLOSED", "LOST"])
 
