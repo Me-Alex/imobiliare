@@ -43,5 +43,12 @@ export async function POST(request: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  await supabase.from("client_activity").insert({
+    user_id: user.id,
+    type: "PROFILE_UPDATED",
+    title: "Profil actualizat",
+    description: "Clientul a actualizat bugetul, zonele sau datele de contact.",
+    metadata: { budget: payload.budget, preferred_zones: payload.preferred_zones, rooms: payload.rooms, purpose: payload.purpose },
+  })
   return NextResponse.json({ profile: data })
 }

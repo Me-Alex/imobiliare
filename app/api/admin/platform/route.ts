@@ -75,6 +75,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ document: data })
     }
 
+    if (body.type === "client_notification") {
+      const { data, error } = await supabase.rpc("admin_add_client_notification", {
+        admin_secret,
+        payload: body.payload || {},
+      })
+      if (error) return jsonError(error.message, 400)
+      return NextResponse.json({ notification: data })
+    }
+
+    if (body.type === "audit_event") {
+      const { data, error } = await supabase.rpc("admin_log_audit_event", {
+        admin_secret,
+        payload: body.payload || {},
+      })
+      if (error) return jsonError(error.message, 400)
+      return NextResponse.json({ audit: data })
+    }
+
     return jsonError("Tip actiune invalid", 400)
   } catch (error: any) {
     return jsonError(error.message || "Admin platform save failed")

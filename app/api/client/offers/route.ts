@@ -53,5 +53,12 @@ export async function POST(request: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  await session.supabase.from("client_activity").insert({
+    user_id: session.user.id,
+    type: "OFFER_SUBMITTED",
+    title: "Oferta trimisa",
+    description: String(body.property_title || draft.propertyTitle),
+    metadata: { offer_id: data.id, offer_price: data.offer_price, status: data.status },
+  })
   return NextResponse.json({ offer: data, draft })
 }

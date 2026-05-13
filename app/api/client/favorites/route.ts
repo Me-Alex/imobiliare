@@ -32,6 +32,13 @@ export async function POST(request: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  await session.supabase.from("client_activity").insert({
+    user_id: session.user.id,
+    type: "FAVORITE_SAVED",
+    title: "Proprietate salvata",
+    description: "Clientul a salvat o proprietate in lista scurta.",
+    metadata: { property_id: propertyId },
+  })
   return NextResponse.json({ favorite: data })
 }
 

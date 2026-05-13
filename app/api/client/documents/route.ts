@@ -22,6 +22,11 @@ export async function POST(request: Request) {
   if ("error" in session) return session.error
 
   const body = await request.json().catch(() => ({}))
+  const checklist = Array.isArray(body.checklist) ? body.checklist : [
+    { label: "Fisier incarcat sau link document", done: Boolean(body.url) },
+    { label: "Verificare identitate", done: false },
+    { label: "Validare expirare", done: Boolean(body.expires_at) },
+  ]
   const { data, error } = await session.supabase
     .from("client_documents")
     .insert({
@@ -31,11 +36,19 @@ export async function POST(request: Request) {
       status: String(body.status || "PENDING"),
       url: body.url ? String(body.url) : null,
       expires_at: body.expires_at || null,
+      checklist,
       notes: body.notes ? String(body.notes) : null,
     })
     .select("*")
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  await session.supabase.from("client_activity").insert({
+    user_id: session.user.id,
+    type: "DOCUMENT_CREATED",
+    title: "Document adaugat",
+    description: String(body.title || "Document client"),
+    metadata: { document_id: data.id, status: data.status },
+  })
   return NextResponse.json({ document: data })
 }
