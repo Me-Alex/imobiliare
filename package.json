@@ -5,12 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "preview": "npm run cloudflare:build && opennextjs-cloudflare preview",
-    "deploy": "npm run cloudflare:build && opennextjs-cloudflare deploy",
-    "upload": "npm run cloudflare:build && opennextjs-cloudflare upload",
-    "pages:build": "npm run cloudflare:build",
-    "cloudflare:prepare": "node scripts/prepare-cloudflare-build.mjs",
-    "cloudflare:build": "npm run cloudflare:prepare && opennextjs-cloudflare build",
+    "pages:build": "npx @cloudflare/next-on-pages@1",
+    "cloudflare:build": "npm run pages:build",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start"
   },
