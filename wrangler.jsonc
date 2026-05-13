@@ -1,9 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "imobiliare2",
-  "pages_build_output_dir": ".vercel/output/static",
+  "name": "hqs-imobiliare",
+  "main": ".open-next/worker.js",
   "compatibility_date": "2026-05-13",
   "compatibility_flags": [
     "nodejs_compat"
-  ]
+  ],
+  "observability": {
+    "enabled": true
+  }
 }
