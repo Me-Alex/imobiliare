@@ -1,12 +1,13 @@
-import { getAdminClient, getAdminRpcSecret, hasAdminPermission, jsonError, requireAdminPermission } from "@/lib/admin-api"
+import { getAdminClient, getAdminRpcSecret, hasAdminPermission, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
 export const runtime = "edge"
 
 
 
+
 export async function GET(request: Request) {
-  const auth = requireAdminPermission(request, "leads")
+  const auth = await requireAdminPermissionAsync(request, "leads")
   if ("error" in auth) return auth.error
 
   try {
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       leads: hasAdminPermission(auth.session, "leads") ? leads.data || [] : [],
-      properties: hasAdminPermission(auth.session, "reports") ? properties.data || [] : [],
+      properties: hasAdminPermission(auth.session, "properties") || hasAdminPermission(auth.session, "reports") ? properties.data || [] : [],
       appointments: hasAdminPermission(auth.session, "appointments") ? appointments.data || [] : [],
       audit: hasAdminPermission(auth.session, "audit") ? audit.data || [] : [],
       _admin: auth.session,

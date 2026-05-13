@@ -10,7 +10,7 @@ export type AdminSession = {
 
 const rolePermissions: Record<AdminSession["role"], string[]> = {
   admin: ["all"],
-  manager: ["leads", "clients", "appointments", "slots", "offers", "documents", "reports", "cms", "zones", "notifications", "audit"],
+  manager: ["leads", "clients", "appointments", "slots", "offers", "documents", "properties", "reports", "exports", "cms", "zones", "notifications", "audit"],
   agent: ["leads", "clients", "appointments", "offers", "documents"],
 }
 
@@ -54,7 +54,10 @@ export function getAdminSession(request: Request): AdminSession | null {
 }
 
 export function hasAdminPermission(session: AdminSession, permission: string) {
-  return session.permissions.includes("all") || session.permissions.includes(permission)
+  if (session.permissions.includes("all") || session.permissions.includes(permission)) return true
+  if (permission === "exports" && session.permissions.includes("reports")) return true
+  if (permission === "properties" && session.permissions.includes("reports")) return true
+  return false
 }
 
 export function requireAdminPermission(request: Request, permission: string) {
@@ -69,6 +72,57 @@ export function requireAdminPermission(request: Request, permission: string) {
     }
   }
   return { session }
+}
+
+export async function getAdminSessionWithRoleSnapshot(request: Request): Promise<AdminSession | null> {
+  const session = getAdminSession(request)
+  if (!session) return null
+
+  try {
+    const { data, error } = await getAdminClient().rpc("admin_permission_snapshot", {
+      admin_secret: getAdminRpcSecret(),
+      actor_name: session.actor,
+    })
+    if (error || !data || typeof data !== "object") return session
+
+    const row = data as Record<string, unknown>
+    const role = row.role === "admin" || row.role === "manager" || row.role === "agent" ? row.role : session.role
+    const permissions = normalizePermissions(row.permissions)
+    return {
+      actor: String(row.email || session.actor),
+      role,
+      permissions: permissions.length ? permissions : session.permissions,
+    }
+  } catch {
+    return session
+  }
+}
+
+export async function requireAdminPermissionAsync(request: Request, permission: string) {
+  const session = await getAdminSessionWithRoleSnapshot(request)
+  if (!session) return { error: unauthorized() as Response }
+  if (!hasAdminPermission(session, permission)) {
+    return {
+      error: NextResponse.json(
+        { error: `Rolul ${session.role} nu are permisiunea ${permission}` },
+        { status: 403 },
+      ) as Response,
+    }
+  }
+  return { session }
+}
+
+function normalizePermissions(value: unknown) {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean)
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : value.split(",").map((item) => item.trim()).filter(Boolean)
+    } catch {
+      return value.split(",").map((item) => item.trim()).filter(Boolean)
+    }
+  }
+  return []
 }
 
 export function unauthorized() {

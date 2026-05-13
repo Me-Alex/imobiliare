@@ -1,4 +1,4 @@
-import { getAdminClient, getAdminRpcSecret, jsonError, requireAdminPermission } from "@/lib/admin-api"
+import { getAdminClient, getAdminRpcSecret, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { buildExecutiveReport } from "@/lib/platform-reports"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const limited = rateLimit(request, "admin-reports", 60, 60_000)
   if (limited) return limited
 
-  const auth = requireAdminPermission(request, "reports")
+  const auth = await requireAdminPermissionAsync(request, "reports")
   if ("error" in auth) return auth.error
 
   try {

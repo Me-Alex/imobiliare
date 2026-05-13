@@ -1,14 +1,11 @@
-import { getAdminClient, getAdminRpcSecret, hasAdminPermission, jsonError, requireAdminPermission } from "@/lib/admin-api"
+import { getAdminClient, getAdminRpcSecret, hasAdminPermission, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
 export const runtime = "edge"
 
-
-
-
 export async function GET(request: Request) {
-  const auth = requireAdminPermission(request, "leads")
+  const auth = await requireAdminPermissionAsync(request, "leads")
   if ("error" in auth) return auth.error
 
   try {
@@ -31,7 +28,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}))
     const permission = permissionForAction(String(body.type || ""))
-    const auth = requireAdminPermission(request, permission)
+    const auth = await requireAdminPermissionAsync(request, permission)
     if ("error" in auth) return auth.error
 
     const supabase = getAdminClient()

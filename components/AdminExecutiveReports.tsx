@@ -36,7 +36,10 @@ export default function AdminExecutiveReports() {
           <h2 className="text-2xl font-black">Executive business report</h2>
           <p className="text-sm text-slate-500">Portofoliu, funnel, oferte, documente blocate, capacitate calendar si riscuri.</p>
         </div>
-        <button onClick={() => downloadJson("hqs-executive-report.json", report)} className="rounded-lg border px-4 py-2 text-sm font-black">Export JSON</button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => downloadServerExport()} className="rounded-lg border px-4 py-2 text-sm font-black">Export CSV</button>
+          <button onClick={() => downloadJson("hqs-executive-report.json", report)} className="rounded-lg border px-4 py-2 text-sm font-black">Export JSON</button>
+        </div>
       </div>
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         <Metric label="Lead-uri active" value={summary.activeLeads || 0} />
@@ -90,6 +93,18 @@ function downloadJson(filename: string, data: any) {
   const a = document.createElement("a")
   a.href = url
   a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function downloadServerExport() {
+  const res = await fetch("/api/admin/export?format=csv", { credentials: "same-origin" })
+  if (!res.ok) return
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `hqs-export-${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }

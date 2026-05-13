@@ -1,4 +1,4 @@
-import { getAdminClient, getAdminRpcSecret, jsonError, requireAdminPermission } from "@/lib/admin-api"
+import { getAdminClient, getAdminRpcSecret, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { estimateLeadScore } from "@/lib/experience"
 import { NextResponse } from "next/server"
 
@@ -6,8 +6,9 @@ export const runtime = "edge"
 
 
 
+
 export async function POST(request: Request) {
-  const auth = requireAdminPermission(request, "leads")
+  const auth = await requireAdminPermissionAsync(request, "leads")
   if ("error" in auth) return auth.error
 
   try {

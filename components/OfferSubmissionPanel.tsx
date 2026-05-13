@@ -15,6 +15,20 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    if (!token) return
+    fetch("/api/client/property-view", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        property_id: propertyId,
+        property_title: propertyTitle,
+        price: listPrice,
+        source: "property_offer_panel",
+      }),
+    }).catch(() => null)
+  }, [token, propertyId, propertyTitle, listPrice])
+
   async function submitOffer() {
     setMessage("")
     if (!token) {
