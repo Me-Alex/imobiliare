@@ -5,24 +5,31 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "pages:build": "npx @cloudflare/next-on-pages@1",
-    "cloudflare:build": "npm run pages:build",
+    "preview": "npm run cloudflare:build && opennextjs-cloudflare preview",
+    "deploy": "npm run cloudflare:build && opennextjs-cloudflare deploy",
+    "upload": "npm run cloudflare:build && opennextjs-cloudflare upload",
+    "pages:build": "npm run cloudflare:build",
+    "cloudflare:prepare": "node scripts/prepare-cloudflare-build.mjs",
+    "cloudflare:build": "npm run cloudflare:prepare && opennextjs-cloudflare build",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start"
   },
   "dependencies": {
-    "next": "14.2.3",
+    "@supabase/supabase-js": "^2.43.1",
+    "next": "14.2.35",
     "react": "^18",
-    "react-dom": "^18",
-    "@netlify/plugin-nextjs": "^5.3.3",
-    "@supabase/supabase-js": "^2.43.1"
+    "react-dom": "^18"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@opennextjs/cloudflare": "1.14.10",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "tailwindcss": "^3.4.1",
     "autoprefixer": "^10.0.1",
-    "postcss": "^8"
+    "esbuild": "^0.28.0",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5",
+    "wrangler": "4.59.2"
   }
 }
