@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import ThemeToggle from "./ThemeToggle"
+import { COMPARE_KEY, FAVORITES_KEY, readStoredIds, subscribeClientPreferences } from "@/lib/client-preferences"
 
 const links = [
   { href: "/", label: "Acasa" },
@@ -22,17 +23,11 @@ export default function Header() {
 
   useEffect(() => {
     const sync = () => {
-      try {
-        setFavoriteCount(JSON.parse(localStorage.getItem("hqs-favorites") || "[]").length)
-        setCompareCount(JSON.parse(localStorage.getItem("hqs-compare") || "[]").length)
-      } catch {
-        setFavoriteCount(0)
-        setCompareCount(0)
-      }
+      setFavoriteCount(readStoredIds(FAVORITES_KEY).length)
+      setCompareCount(readStoredIds(COMPARE_KEY).length)
     }
     sync()
-    window.addEventListener("storage", sync)
-    return () => window.removeEventListener("storage", sync)
+    return subscribeClientPreferences(sync)
   }, [])
 
   return (

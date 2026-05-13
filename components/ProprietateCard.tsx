@@ -4,6 +4,7 @@ import { Property } from "@/lib/supabase"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import { COMPARE_KEY, FAVORITES_KEY, readStoredIds, toggleStoredId } from "@/lib/client-preferences"
 
 const TIP_LABEL: Record<string, string> = { APARTMENT: "Apartament", HOUSE: "Casa", VILLA: "Vila", LAND: "Teren", COMMERCIAL: "Comercial" }
 
@@ -15,35 +16,31 @@ const DEFAULT_IMAGES: Record<string, string> = {
   COMMERCIAL: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",
 }
 
-export default function ProprietateCard({ proprietate: p }: { proprietate: Property }) {
+export default function ProprietateCard({ proprietate: p, matchScore, matchReasons = [] }: { proprietate: Property; matchScore?: number; matchReasons?: string[] }) {
   const img = DEFAULT_IMAGES[p.type] || DEFAULT_IMAGES.APARTMENT
   const pret = `EUR ${p.price.toLocaleString("ro-RO")}`
   const [favorite, setFavorite] = useState(false)
   const [compare, setCompare] = useState(false)
 
   useEffect(() => {
-    const favorites = readIds("hqs-favorites")
-    const compared = readIds("hqs-compare")
+    const favorites = readStoredIds(FAVORITES_KEY)
+    const compared = readStoredIds(COMPARE_KEY)
     setFavorite(favorites.includes(p.id))
     setCompare(compared.includes(p.id))
   }, [p.id])
 
-  const toggleStored = async (key: "hqs-favorites" | "hqs-compare") => {
-    const current = readIds(key)
-    const exists = current.includes(p.id)
-    const next = exists ? current.filter((id) => id !== p.id) : key === "hqs-compare" ? [...current, p.id].slice(-3) : [...current, p.id]
-    localStorage.setItem(key, JSON.stringify(next))
-    window.dispatchEvent(new Event("hqs-selection"))
-    if (key === "hqs-favorites") setFavorite(!exists)
-    if (key === "hqs-compare") setCompare(!exists)
-    if (key === "hqs-favorites") {
+  const toggleStored = async (key: typeof FAVORITES_KEY | typeof COMPARE_KEY) => {
+    const { selected } = toggleStoredId(key, p.id, key === COMPARE_KEY ? 3 : undefined)
+    if (key === FAVORITES_KEY) setFavorite(selected)
+    if (key === COMPARE_KEY) setCompare(selected)
+    if (key === FAVORITES_KEY) {
       const { data } = await supabase.auth.getSession()
       const token = data.session?.access_token
       if (token) {
-        await fetch(`/api/client/favorites${exists ? `?property_id=${p.id}` : ""}`, {
-          method: exists ? "DELETE" : "POST",
+        await fetch(`/api/client/favorites${selected ? "" : `?property_id=${p.id}`}`, {
+          method: selected ? "POST" : "DELETE",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: exists ? undefined : JSON.stringify({ property_id: p.id }),
+          body: selected ? JSON.stringify({ property_id: p.id }) : undefined,
         }).catch(() => null)
       }
     }
@@ -64,10 +61,17 @@ export default function ProprietateCard({ proprietate: p }: { proprietate: Prope
             <span className="bg-white text-black text-xs font-bold px-3 py-1 rounded-full">Selectata</span>
           </div>
         )}
+        {typeof matchScore === "number" && (
+          <div className="absolute bottom-3 left-3">
+            <span className="rounded-full border border-white/20 bg-black/55 px-3 py-1 text-xs font-black text-white backdrop-blur">
+              Scor {matchScore}
+            </span>
+          </div>
+        )}
         <div className="absolute bottom-3 right-3 flex gap-2">
           <button
             type="button"
-            onClick={() => toggleStored("hqs-favorites")}
+            onClick={() => toggleStored(FAVORITES_KEY)}
             className={`h-9 w-9 rounded-lg border border-white/25 backdrop-blur transition-all ${favorite ? "bg-accent text-bg-primary" : "bg-black/45 text-white hover:bg-white hover:text-black"}`}
             title={favorite ? "Scoate de la favorite" : "Adauga la favorite"}
           >
@@ -75,7 +79,7 @@ export default function ProprietateCard({ proprietate: p }: { proprietate: Prope
           </button>
           <button
             type="button"
-            onClick={() => toggleStored("hqs-compare")}
+            onClick={() => toggleStored(COMPARE_KEY)}
             className={`h-9 w-9 rounded-lg border border-white/25 text-xs font-black backdrop-blur transition-all ${compare ? "bg-accent text-bg-primary" : "bg-black/45 text-white hover:bg-white hover:text-black"}`}
             title={compare ? "Scoate din comparatie" : "Compara proprietatea"}
           >
@@ -98,6 +102,15 @@ export default function ProprietateCard({ proprietate: p }: { proprietate: Prope
           <span>{p.area_sqm} mp</span>
           {p.bathrooms > 0 && <><span className="text-bg-surface">|</span><span>{p.bathrooms} bai</span></>}
         </div>
+        {matchReasons.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {matchReasons.slice(0, 2).map((reason) => (
+              <span key={reason} className="rounded-full border border-bg-surface px-2.5 py-1 text-xs text-text-muted">
+                {reason}
+              </span>
+            ))}
+          </div>
+        )}
         <div className="flex items-center justify-between pt-4 border-t border-bg-surface">
           <span className="text-xl font-bold text-accent">{pret}</span>
           <Link href={`/proprietate/${p.slug}`}
@@ -108,14 +121,4 @@ export default function ProprietateCard({ proprietate: p }: { proprietate: Prope
       </div>
     </div>
   )
-}
-
-function readIds(key: string) {
-  if (typeof window === "undefined") return []
-  try {
-    const value = JSON.parse(localStorage.getItem(key) || "[]")
-    return Array.isArray(value) ? value.filter((id) => typeof id === "string") : []
-  } catch {
-    return []
-  }
 }
