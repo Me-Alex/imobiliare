@@ -17,24 +17,30 @@ const faqs = [
   },
 ]
 
-export default function FAQ() {
+type CmsEntry = { content?: { headline?: string; items?: { q?: string; question?: string; a?: string; answer?: string }[] } }
+
+export default function FAQ({ entry }: { entry?: CmsEntry | null }) {
+  const items = entry?.content?.items || faqs
+
   return (
     <section className="px-4 py-20 bg-bg-primary">
       <div className="max-w-5xl mx-auto">
         <div className="max-w-2xl mb-10">
           <span className="text-accent font-semibold text-xs uppercase tracking-widest">Intrebari frecvente</span>
-          <h2 className="text-3xl md:text-4xl font-bold text-text-primary mt-2">Detalii care merita lamurite din start.</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-text-primary mt-2">{entry?.content?.headline || "Detalii care merita lamurite din start."}</h2>
         </div>
         <div className="grid gap-3">
-          {faqs.map((item) => (
-            <details key={item.question} className="group border border-bg-surface bg-bg-card rounded-lg p-5">
+          {items.map((item) => {
+            const question = "question" in item ? item.question : item.q
+            const answer = "answer" in item ? item.answer : item.a
+            return <details key={question} className="group border border-bg-surface bg-bg-card rounded-lg p-5">
               <summary className="cursor-pointer list-none flex items-center justify-between gap-4 text-text-primary font-semibold">
-                {item.question}
+                {question}
                 <span className="text-accent group-open:rotate-45 transition-transform">+</span>
               </summary>
-              <p className="text-text-muted text-sm leading-relaxed mt-3 pr-8">{item.answer}</p>
+              <p className="text-text-muted text-sm leading-relaxed mt-3 pr-8">{answer}</p>
             </details>
-          ))}
+          })}
         </div>
       </div>
     </section>

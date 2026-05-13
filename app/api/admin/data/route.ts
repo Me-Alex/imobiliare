@@ -1,10 +1,10 @@
-import { getAdminClient, getAdminRpcSecret, isAdminRequest, jsonError, unauthorized } from "@/lib/admin-api"
+import { getAdminClient, getAdminRpcSecret, hasAdminPermission, jsonError, requireAdminPermission } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 export async function GET(request: Request) {
-  if (!isAdminRequest(request)) return unauthorized()
+  const auth = requireAdminPermission(request, "leads")
+  if ("error" in auth) return auth.error
 
   try {
     const supabase = getAdminClient()
@@ -23,10 +23,11 @@ export async function GET(request: Request) {
     if (audit.error) return jsonError(audit.error.message)
 
     return NextResponse.json({
-      leads: leads.data || [],
-      properties: properties.data || [],
-      appointments: appointments.data || [],
-      audit: audit.data || [],
+      leads: hasAdminPermission(auth.session, "leads") ? leads.data || [] : [],
+      properties: hasAdminPermission(auth.session, "reports") ? properties.data || [] : [],
+      appointments: hasAdminPermission(auth.session, "appointments") ? appointments.data || [] : [],
+      audit: hasAdminPermission(auth.session, "audit") ? audit.data || [] : [],
+      _admin: auth.session,
     })
   } catch (error: any) {
     return jsonError(error.message || "Admin data request failed")

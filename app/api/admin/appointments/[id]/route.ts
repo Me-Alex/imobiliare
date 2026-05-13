@@ -1,17 +1,17 @@
-import { getAdminClient, getAdminRpcSecret, isAdminRequest, jsonError, unauthorized } from "@/lib/admin-api"
+import { getAdminClient, getAdminRpcSecret, jsonError, requireAdminPermission } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  if (!isAdminRequest(request)) return unauthorized()
+  const auth = requireAdminPermission(request, "appointments")
+  if ("error" in auth) return auth.error
 
   try {
     const payload = await request.json()
-    const { data, error } = await getAdminClient().rpc("admin_update_appointment_status", {
+    const { data, error } = await getAdminClient().rpc("admin_mutate_appointment", {
       admin_secret: getAdminRpcSecret(),
-      appointment_id: params.id,
-      next_status: payload.status,
+      actor_name: auth.session.actor,
+      payload: { ...payload, id: params.id },
     })
 
     if (error) return jsonError(error.message, 400)

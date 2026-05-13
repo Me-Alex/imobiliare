@@ -1,7 +1,6 @@
-import { getAdminClient, getAdminRpcSecret, isAdminRequest, jsonError, unauthorized } from "@/lib/admin-api"
+import { getAdminClient, getAdminRpcSecret, jsonError, requireAdminPermission } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 const upsertRpc = {
   payment_plans: "admin_upsert_payment_plan",
@@ -30,7 +29,8 @@ function isModuleType(type: string): type is ModuleType {
 }
 
 export async function GET(request: Request) {
-  if (!isAdminRequest(request)) return unauthorized()
+  const auth = requireAdminPermission(request, "reports")
+  if ("error" in auth) return auth.error
 
   try {
     const { data, error } = await getAdminClient().rpc("admin_list_modules", {
@@ -45,7 +45,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!isAdminRequest(request)) return unauthorized()
+  const auth = requireAdminPermission(request, "reports")
+  if ("error" in auth) return auth.error
 
   try {
     const body = await request.json()
@@ -76,7 +77,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (!isAdminRequest(request)) return unauthorized()
+  const auth = requireAdminPermission(request, "reports")
+  if ("error" in auth) return auth.error
 
   try {
     const url = new URL(request.url)

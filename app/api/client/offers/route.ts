@@ -1,8 +1,8 @@
 import { requireClient } from "@/lib/client-api"
 import { buildOfferDraft } from "@/lib/complexity"
+import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 
 export async function GET(request: Request) {
@@ -20,6 +20,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimit(request, "client-offers", 12, 60_000)
+  if (limited) return limited
+
   const session = await requireClient(request)
   if ("error" in session) return session.error
 
@@ -59,6 +62,6 @@ export async function POST(request: Request) {
     title: "Oferta trimisa",
     description: String(body.property_title || draft.propertyTitle),
     metadata: { offer_id: data.id, offer_price: data.offer_price, status: data.status },
-  })
+  }).throwOnError()
   return NextResponse.json({ offer: data, draft })
 }

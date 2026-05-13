@@ -1,5 +1,7 @@
-export default function Benefits() {
-  const cards = [
+type CmsEntry = { content?: { headline?: string; body?: string; items?: { title: string; text: string }[] } }
+
+export default function Benefits({ entry }: { entry?: CmsEntry | null }) {
+  const cards = entry?.content?.items || [
     {
       title: "Mai putine anunturi pierdute",
       text: "Tinem portofoliul scurt si actualizat, ca sa nu suni pentru proprietati care nu mai sunt disponibile.",
@@ -19,9 +21,9 @@ export default function Benefits() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-10">
           <span className="text-accent font-semibold text-xs uppercase tracking-widest">De ce conteaza</span>
-          <h2 className="text-3xl md:text-4xl font-bold text-text-primary mt-2">Claritate inainte de vizionare</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-text-primary mt-2">{entry?.content?.headline || "Claritate inainte de vizionare"}</h2>
           <p className="text-text-muted mt-3 max-w-2xl leading-relaxed">
-            O proprietate buna se intelege din primele minute. De aceea punem accent pe date concrete, nu pe descrieri pompoase.
+            {entry?.content?.body || "O proprietate buna se intelege din primele minute. De aceea punem accent pe date concrete, nu pe descrieri pompoase."}
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-5">

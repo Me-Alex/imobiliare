@@ -1,4 +1,4 @@
-type Poi = { id: string; zone: string; name: string; category: string; minutes: number; score: number; lat?: number | null; lng?: number | null; notes?: string | null }
+type Poi = { id: string; zone: string; name: string; category: string; minutes: number; score: number; lat?: number | null; lng?: number | null; latitude?: number | null; longitude?: number | null; notes?: string | null }
 
 const categoryColors: Record<string, string> = {
   transport: "bg-sky-500",
@@ -77,8 +77,10 @@ export default function ZoneIntelligenceMap({ zone, pois }: { zone: string; pois
 }
 
 function positionFromPoi(poi: Poi, index: number, axis: "x" | "y") {
-  if (typeof poi.lat === "number" && typeof poi.lng === "number") {
-    const normalized = axis === "x" ? ((poi.lng + 180) % 1) * 100 : ((poi.lat + 90) % 1) * 100
+  const lat = typeof poi.lat === "number" ? poi.lat : poi.latitude
+  const lng = typeof poi.lng === "number" ? poi.lng : poi.longitude
+  if (typeof lat === "number" && typeof lng === "number") {
+    const normalized = axis === "x" ? ((lng + 180) % 1) * 100 : ((lat + 90) % 1) * 100
     return Math.max(8, Math.min(78, Math.round(normalized)))
   }
   return axis === "x" ? 12 + (index * 21) % 70 : 12 + (index * 27) % 68

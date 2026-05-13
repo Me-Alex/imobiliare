@@ -1,12 +1,33 @@
 import { NextResponse } from "next/server"
 import { buildViewingSlots } from "@/lib/complexity"
+import { supabase } from "@/lib/supabase"
 
-export const runtime = "edge"
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const urgency = url.searchParams.get("urgency") || "normal"
-  const slots = buildViewingSlots(["rapid", "normal", "flexibil"].includes(urgency) ? urgency as any : "normal")
+  const propertyId = url.searchParams.get("property_id")
+  const now = new Date().toISOString()
+  const query = supabase
+    .from("appointment_slots")
+    .select("*, property:properties(title,slug,city)")
+    .eq("status", "AVAILABLE")
+    .gte("starts_at", now)
+    .order("starts_at", { ascending: true })
+    .limit(30)
 
-  return NextResponse.json({ slots })
+  const { data, error } = propertyId ? await query.eq("property_id", propertyId) : await query
+  const slots = data && data.length > 0
+    ? data.map((slot: any) => ({
+        id: slot.id,
+        label: new Date(slot.starts_at).toLocaleString("ro-RO"),
+        value: slot.starts_at,
+        starts_at: slot.starts_at,
+        ends_at: slot.ends_at,
+        agent_email: slot.agent_email,
+        property: slot.property,
+      }))
+    : buildViewingSlots(["rapid", "normal", "flexibil"].includes(urgency) ? urgency as any : "normal")
+
+  return NextResponse.json({ slots, live: !error && Boolean(data?.length) })
 }

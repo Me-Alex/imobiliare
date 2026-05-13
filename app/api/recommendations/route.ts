@@ -3,7 +3,6 @@ import { scoreProperty, type BuyerProfile } from "@/lib/experience"
 import { supabase } from "@/lib/supabase"
 import { getClientSupabase, getClientToken } from "@/lib/client-api"
 
-export const runtime = "edge"
 
 export async function POST(request: Request) {
   try {
@@ -20,9 +19,11 @@ export async function POST(request: Request) {
     const user = authData?.user
 
     if (client && user) {
-      const [{ data: savedProfile }, { data: favorites }] = await Promise.all([
+      const [{ data: savedProfile }, { data: favorites }, { data: offers }, { data: activity }] = await Promise.all([
         client.from("client_profiles").select("*").eq("user_id", user.id).maybeSingle(),
         client.from("client_favorites").select("property:properties(city,rooms,type,price)").eq("user_id", user.id),
+        client.from("property_offers").select("property_title, offer_price, status, property:properties(city,rooms,type,price)").eq("user_id", user.id).limit(20),
+        client.from("client_activity").select("type, metadata, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50),
       ])
       if (savedProfile) {
         profile.budget = Number(savedProfile.budget || profile.budget)
@@ -32,6 +33,10 @@ export async function POST(request: Request) {
       }
       const favoriteZone = (favorites || []).map((f: any) => f.property?.city).find(Boolean)
       if (favoriteZone && profile.area === "orice") profile.area = favoriteZone
+      const offerBudget = (offers || []).map((offer: any) => Number(offer.offer_price || 0)).filter(Boolean).sort((a: number, b: number) => b - a)[0]
+      if (offerBudget && offerBudget > profile.budget) profile.budget = offerBudget
+      const viewedZone = (activity || []).map((item: any) => item.metadata?.property_city || item.metadata?.city).find(Boolean)
+      if (viewedZone && profile.area === "orice") profile.area = viewedZone
     }
 
     const { data, error } = await supabase.from("properties").select("*").eq("status", "PUBLISHED").limit(30)
@@ -41,7 +46,11 @@ export async function POST(request: Request) {
       .map((property) => {
         const scored = scoreProperty(property, profile)
         const learnedBoost = user && profile.area !== "orice" && property.city.toLowerCase().includes(profile.area.toLowerCase()) ? 7 : 0
-        return { property, ...scored, score: Math.min(100, scored.score + learnedBoost), learnedBoost }
+        const behaviorBoost = user && property.featured ? 4 : 0
+        const reasons = [...scored.reasons]
+        if (learnedBoost) reasons.push("potrivire invatata din activitate")
+        if (behaviorBoost) reasons.push("selectie similara cu interesul tau")
+        return { property, ...scored, reasons: reasons.slice(0, 5), score: Math.min(100, scored.score + learnedBoost + behaviorBoost), learnedBoost, behaviorBoost }
       })
       .sort((a, b) => b.score - a.score)
       .slice(0, 8)

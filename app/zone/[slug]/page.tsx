@@ -7,7 +7,6 @@ import ZoneIntelligenceMap from "@/components/ZoneIntelligenceMap"
 import { zoneProfiles } from "@/lib/experience"
 import { supabase } from "@/lib/supabase"
 
-export const runtime = "edge"
 
 export function generateStaticParams() {
   return zoneProfiles.map((zone) => ({ slug: zone.slug }))
@@ -16,9 +15,10 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const zone = zoneProfiles.find((item) => item.slug === params.slug)
   if (!zone) return { title: "Zona negasita" }
+  const { data: cms } = await supabase.from("cms_entries").select("*").eq("key", `zone.${params.slug}`).eq("status", "PUBLISHED").maybeSingle()
   return {
-    title: `${zone.name} | Ghid imobiliar HQS`,
-    description: zone.description,
+    title: cms?.seo?.title || `${zone.name} | Ghid imobiliar HQS`,
+    description: cms?.seo?.description || cms?.content?.body || zone.description,
   }
 }
 
@@ -33,6 +33,9 @@ export default async function ZoneDetailPage({ params }: { params: { slug: strin
     .ilike("city", `%${zone.name.split(" ")[0]}%`)
     .limit(6)
   const { data: pois } = await supabase.from("zone_poi").select("*").ilike("zone", `%${zone.name.split(" ")[0]}%`).order("score", { ascending: false })
+  const { data: cms } = await supabase.from("cms_entries").select("*").eq("key", `zone.${params.slug}`).eq("status", "PUBLISHED").maybeSingle()
+  const headline = cms?.content?.headline || zone.headline
+  const description = cms?.content?.body || zone.description
 
   return (
     <main>
@@ -41,11 +44,11 @@ export default async function ZoneDetailPage({ params }: { params: { slug: strin
         <div className="mx-auto max-w-7xl">
           <Link href="/zone" className="text-sm font-bold text-accent">Inapoi la zone</Link>
           <h1 className="mt-4 text-4xl font-black text-text-primary">{zone.name}</h1>
-          <p className="mt-4 max-w-3xl text-text-muted">{zone.description}</p>
+          <p className="mt-4 max-w-3xl text-text-muted">{description}</p>
           <div className="mt-8 grid gap-4 md:grid-cols-4">
             <Metric label="Pret mediu" value={`EUR ${zone.avgPrice}/mp`} />
             <Metric label="Cerere" value={zone.demand} />
-            <Metric label="Profil" value={zone.headline} />
+            <Metric label="Profil" value={headline} />
             <Metric label="Strategie" value="vizionare + comparatie" />
           </div>
         </div>

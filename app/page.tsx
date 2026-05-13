@@ -12,26 +12,26 @@ import FAQ from '@/components/FAQ'
 import Footer from '@/components/Footer'
 import { supabase } from '@/lib/supabase'
 
-export const runtime = 'edge'
 
 export default async function Home() {
-  const [{ data: properties }, { data: cmsEntry }] = await Promise.all([
+  const [{ data: properties }, { data: cmsEntries }] = await Promise.all([
     supabase.from('properties').select('*').eq('status', 'PUBLISHED').limit(12),
-    supabase.from('cms_entries').select('*').eq('key', 'home.hero').maybeSingle(),
+    supabase.from('cms_entries').select('*').in('key', ['home.hero', 'home.benefits', 'home.faq']).eq('status', 'PUBLISHED'),
   ])
+  const cms = Object.fromEntries((cmsEntries || []).map((entry) => [entry.key, entry]))
 
   return (
     <main id="continut">
       <Header />
-      <Hero />
-      <CmsContentBand entry={cmsEntry} />
+      <Hero entry={cms['home.hero']} />
+      <CmsContentBand entry={cms['home.hero']} />
       <PropertyHighlights />
       <ProprietatiSection />
       <RecommendationStudio properties={properties || []} />
       <ExperienceCommandCenter properties={properties || []} />
       <ProcessSection />
-      <Benefits />
-      <FAQ />
+      <Benefits entry={cms['home.benefits']} />
+      <FAQ entry={cms['home.faq']} />
       <Contact />
       <Footer />
     </main>

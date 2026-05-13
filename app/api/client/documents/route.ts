@@ -1,7 +1,8 @@
 import { requireClient } from "@/lib/client-api"
+import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
+
 
 export async function GET(request: Request) {
   const session = await requireClient(request)
@@ -14,10 +15,18 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json({ documents: data || [] })
+  const documents = await Promise.all((data || []).map(async (document) => {
+    if (!document.url || /^https?:\/\//.test(document.url)) return document
+    const signed = await session.supabase.storage.from("client-documents").createSignedUrl(document.url, 60 * 15)
+    return { ...document, signed_url: signed.data?.signedUrl || null }
+  }))
+  return NextResponse.json({ documents })
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimit(request, "client-documents", 20, 60_000)
+  if (limited) return limited
+
   const session = await requireClient(request)
   if ("error" in session) return session.error
 
@@ -49,6 +58,6 @@ export async function POST(request: Request) {
     title: "Document adaugat",
     description: String(body.title || "Document client"),
     metadata: { document_id: data.id, status: data.status },
-  })
+  }).throwOnError()
   return NextResponse.json({ document: data })
 }
