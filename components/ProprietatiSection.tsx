@@ -23,15 +23,12 @@ const SORT_LABELS = {
 } as const
 
 type SortKey = keyof typeof SORT_LABELS
-const MAX_COMPARE = 3
 
 export default function ProprietatiSection() {
   const [proprietati, setProprietati] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [query, setQuery] = useState("")
-  const [favorites, setFavorites] = useState<string[]>([])
-  const [compare, setCompare] = useState<string[]>([])
   const [sort, setSort] = useState<SortKey>("newest")
   const [filtruTip, setFiltruTip] = useState("toate")
   const [filtruZona, setFiltruZona] = useState("Toate zonele")
@@ -40,22 +37,34 @@ export default function ProprietatiSection() {
   const [suprafataMin, setSuprafataMin] = useState(0)
   const [doarFeatured, setDoarFeatured] = useState(false)
   const [showFiltre, setShowFiltre] = useState(false)
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([])
+  const [compareIds, setCompareIds] = useState<string[]>([])
 
   useEffect(() => {
-    const stored = localStorage.getItem("hq-favorites")
-    if (stored) setFavorites(JSON.parse(stored))
-    const compareStored = localStorage.getItem("hq-compare")
-    if (compareStored) setCompare(JSON.parse(compareStored))
+    supabase
+      .from("properties")
+      .select("*")
+      .eq("status", "PUBLISHED")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) setError("Nu am putut incarca proprietatile. Incercam din nou in cateva momente.")
+        setProprietati(data || [])
+        setLoading(false)
+      })
+  }, [])
 
-    const load = async () => {
-      const { data, error } = await supabase.from("properties").select("*").eq("status", "PUBLISHED").order("created_at", { ascending: false })
-      if (error) setError(`Nu am putut incarca proprietatile: ${error.message}`)
-      if (!data || data.length === 0) setError((curr) => curr || "Nu exista proprietati publicate sau accesul la tabel este blocat.")
-      setProprietati(data || [])
-      setLoading(false)
+  useEffect(() => {
+    const syncSelection = () => {
+      setFavoriteIds(readStoredIds("hqs-favorites"))
+      setCompareIds(readStoredIds("hqs-compare"))
     }
-
-    load()
+    syncSelection()
+    window.addEventListener("hqs-selection", syncSelection)
+    window.addEventListener("storage", syncSelection)
+    return () => {
+      window.removeEventListener("hqs-selection", syncSelection)
+      window.removeEventListener("storage", syncSelection)
+    }
   }, [])
 
   const filtered = useMemo(() => {
@@ -84,7 +93,6 @@ export default function ProprietatiSection() {
   }, [proprietati, filtruTip, filtruZona, filtruCamere, pretMax, suprafataMin, doarFeatured, query, sort])
 
   const featuredCount = proprietati.filter((p) => p.featured).length
-  const favoriteCount = favorites.length
   const activeFilters =
     query.trim() !== "" ||
     filtruTip !== "toate" ||
@@ -93,22 +101,6 @@ export default function ProprietatiSection() {
     pretMax < 1000000 ||
     suprafataMin > 0 ||
     doarFeatured
-
-  const toggleFavorite = (id: string) => {
-    setFavorites((curr) => {
-      const next = curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id]
-      localStorage.setItem("hq-favorites", JSON.stringify(next))
-      return next
-    })
-  }
-
-  const toggleCompare = (id: string) => {
-    setCompare((curr) => {
-      const next = curr.includes(id) ? curr.filter((x) => x !== id) : curr.length >= MAX_COMPARE ? curr : [...curr, id]
-      localStorage.setItem("hq-compare", JSON.stringify(next))
-      return next
-    })
-  }
 
   const resetFiltre = () => {
     setQuery("")
@@ -119,6 +111,13 @@ export default function ProprietatiSection() {
     setSuprafataMin(0)
     setDoarFeatured(false)
     setSort("newest")
+  }
+
+  const favoriteRows = proprietati.filter((p) => favoriteIds.includes(p.id))
+  const compareRows = proprietati.filter((p) => compareIds.includes(p.id))
+  const clearSelection = (key: "hqs-favorites" | "hqs-compare") => {
+    localStorage.removeItem(key)
+    window.dispatchEvent(new Event("hqs-selection"))
   }
 
   return (
@@ -143,13 +142,9 @@ export default function ProprietatiSection() {
               <div className="text-xs text-text-muted">selectate</div>
             </div>
             <div className="border border-bg-surface bg-bg-card rounded-lg p-3">
-              <div className="text-xl font-bold text-text-primary">{favoriteCount}</div>
-              <div className="text-xs text-text-muted">favorite</div>
+              <div className="text-xl font-bold text-text-primary">24h</div>
+              <div className="text-xs text-text-muted">raspuns</div>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-3 lg:justify-end">
-            <Link href="/favorite" className="text-sm font-semibold text-accent">Favorite</Link>
-            <Link href="/comparare" className="text-sm font-semibold text-accent">Comparare</Link>
           </div>
         </div>
 
@@ -239,20 +234,48 @@ export default function ProprietatiSection() {
           )}
         </div>
 
+        {(favoriteRows.length > 0 || compareRows.length > 0) && (
+          <div className="grid gap-4 mb-6 lg:grid-cols-2">
+            {favoriteRows.length > 0 && (
+              <div className="border border-bg-surface bg-bg-card rounded-lg p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <h3 className="font-bold text-text-primary">Favorite salvate</h3>
+                  <button onClick={() => clearSelection("hqs-favorites")} className="text-xs font-bold text-accent">Goleste</button>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {favoriteRows.map((p) => <Link key={p.id} href={`/proprietate/${p.slug}`} className="shrink-0 rounded-lg border border-bg-surface px-3 py-2 text-sm text-text-muted hover:border-accent hover:text-accent">{p.title}</Link>)}
+                </div>
+              </div>
+            )}
+            {compareRows.length > 0 && (
+              <div className="border border-bg-surface bg-bg-card rounded-lg p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <h3 className="font-bold text-text-primary">Comparatie rapida</h3>
+                  <button onClick={() => clearSelection("hqs-compare")} className="text-xs font-bold text-accent">Goleste</button>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {compareRows.map((p) => (
+                    <div key={p.id} className="rounded-lg bg-bg-secondary p-3">
+                      <Link href={`/proprietate/${p.slug}`} className="font-bold text-sm text-text-primary hover:text-accent line-clamp-1">{p.title}</Link>
+                      <p className="text-xs text-text-muted mt-1">{p.city} - {p.rooms || "-"} camere - {p.area_sqm} mp</p>
+                      <p className="text-sm font-black text-accent mt-2">EUR {p.price.toLocaleString("ro-RO")}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-text-muted">
             {loading ? "Se incarca proprietatile..." : `${filtered.length} ${filtered.length === 1 ? "rezultat gasit" : "rezultate gasite"}`}
           </p>
-          <div className="flex items-center gap-3 flex-wrap">
-            <Link href="/comparare" className={`text-sm font-semibold px-4 py-2 rounded-lg border transition-all ${compare.length >= 2 ? "bg-accent text-bg-primary border-accent" : "bg-bg-secondary text-text-muted border-bg-surface pointer-events-none opacity-50"}`}>
-              Compara ({compare.length})
-            </Link>
-            {activeFilters && (
-              <button onClick={resetFiltre} className="text-sm font-semibold text-accent hover:text-text-primary transition-colors">
-                Reseteaza cautarea
-              </button>
-            )}
-          </div>
+          {activeFilters && (
+            <button onClick={resetFiltre} className="text-sm font-semibold text-accent hover:text-text-primary transition-colors">
+              Reseteaza cautarea
+            </button>
+          )}
         </div>
 
         {error && (
@@ -267,7 +290,7 @@ export default function ProprietatiSection() {
           </div>
         ) : filtered.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((p) => <ProprietateCard key={p.id} proprietate={p} isFavorite={favorites.includes(p.id)} isCompared={compare.includes(p.id)} onToggleFavorite={() => toggleFavorite(p.id)} onToggleCompare={() => toggleCompare(p.id)} />)}
+            {filtered.map((p) => <ProprietateCard key={p.id} proprietate={p} />)}
           </div>
         ) : (
           <div className="text-center py-16 px-6 border border-bg-surface bg-bg-card rounded-lg">
@@ -281,4 +304,13 @@ export default function ProprietatiSection() {
       </div>
     </section>
   )
+}
+
+function readStoredIds(key: string) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || "[]")
+    return Array.isArray(value) ? value.filter((id) => typeof id === "string") : []
+  } catch {
+    return []
+  }
 }
