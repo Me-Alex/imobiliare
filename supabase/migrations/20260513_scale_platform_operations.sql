@@ -42,6 +42,10 @@ create table if not exists public.admin_audit_log (
   created_at timestamptz not null default now()
 );
 
+insert into storage.buckets (id, name, public)
+values ('client-documents', 'client-documents', false)
+on conflict (id) do nothing;
+
 alter table public.client_documents add column if not exists notes text;
 alter table public.client_documents add column if not exists reviewed_by text;
 alter table public.client_documents add column if not exists reviewed_at timestamptz;
@@ -71,6 +75,12 @@ create policy "appointment slots public read" on public.appointment_slots for se
 grant select, insert on public.client_activity to authenticated;
 grant select, update on public.client_notifications to authenticated;
 grant select on public.appointment_slots to anon, authenticated;
+
+drop policy if exists "client documents storage own files" on storage.objects;
+create policy "client documents storage own files" on storage.objects
+  for all
+  using (bucket_id = 'client-documents' and auth.uid()::text = (storage.foldername(name))[1])
+  with check (bucket_id = 'client-documents' and auth.uid()::text = (storage.foldername(name))[1]);
 
 create or replace function public.admin_list_platform(admin_secret text)
 returns jsonb
@@ -156,6 +166,9 @@ begin
 end;
 $$;
 
+grant execute on function public.admin_add_client_notification(text, jsonb) to anon, authenticated;
+grant execute on function public.admin_log_audit_event(text, jsonb) to anon, authenticated;
+
 create or replace function public.admin_update_offer_status(admin_secret text, offer_id uuid, next_status text, counter numeric default null)
 returns jsonb
 language plpgsql
@@ -187,6 +200,4 @@ begin
 end;
 $$;
 
-grant execute on function public.admin_add_client_notification(text, jsonb) to anon, authenticated;
-grant execute on function public.admin_log_audit_event(text, jsonb) to anon, authenticated;
 grant execute on function public.admin_update_offer_status(text, uuid, text, numeric) to anon, authenticated;

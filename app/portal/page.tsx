@@ -1,10 +1,9 @@
 import Header from "@/components/Header"
 import Footer from "@/components/Footer"
 import ClientPropertyWorkspace from "@/components/ClientPropertyWorkspace"
-import ClientAccountPanel from "@/components/ClientAccountPanel"
+import ScaledClientPortal from "@/components/ScaledClientPortal"
 import { supabase } from "@/lib/supabase"
 
-export const runtime = "edge"
 
 export const metadata = {
   title: "Portal client | HQS Imobiliare",
@@ -13,5 +12,5 @@ export const metadata = {
 
 export default async function PortalPage() {
   const { data } = await supabase.from("properties").select("*").eq("status", "PUBLISHED").order("created_at", { ascending: false })
-  return <main><Header /><ClientAccountPanel /><ClientPropertyWorkspace properties={data || []} mode="portal" /><Footer /></main>
+  return <main><Header /><ScaledClientPortal /><ClientPropertyWorkspace properties={data || []} mode="portal" /><Footer /></main>
 }

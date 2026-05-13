@@ -1,4 +1,4 @@
-import AdminIntegratedPlatform from "@/components/AdminIntegratedPlatform"
+import AdminScaleConsole from "@/components/AdminScaleConsole"
 
 
 export const metadata = {
@@ -6,5 +6,5 @@ export const metadata = {
 }
 
 export default function AdminPlatformPage() {
-  return <AdminIntegratedPlatform />
+  return <AdminScaleConsole />
 }
