@@ -1,10 +1,1 @@
-import AdminScaleConsole from "@/components/AdminScaleConsole"
-
-
-export const metadata = {
-  title: "Platform Console | HQS Admin",
-}
-
-export default function AdminPlatformPage() {
-  return <AdminScaleConsole />
-}
+export default function AdminPlatformPage() { return <main className="p-6">Platform admin</main> }
