@@ -1,3 +1,4 @@
+import AdminExecutiveReports from "@/components/AdminExecutiveReports"
 import AdminScaleConsole from "@/components/AdminScaleConsole"
 
 
@@ -6,5 +7,10 @@ export const metadata = {
 }
 
 export default function AdminPlatformPage() {
-  return <AdminScaleConsole />
+  return (
+    <main className="space-y-8">
+      <AdminExecutiveReports />
+      <AdminScaleConsole />
+    </main>
+  )
 }

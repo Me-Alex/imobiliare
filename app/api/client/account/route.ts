@@ -1,7 +1,8 @@
 import { requireClient } from "@/lib/client-api"
+import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
+
 
 export async function GET(request: Request) {
   const session = await requireClient(request)
@@ -19,6 +20,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimit(request, "client-account", 20, 60_000)
+  if (limited) return limited
+
   const session = await requireClient(request)
   if ("error" in session) return session.error
 
@@ -49,6 +53,6 @@ export async function POST(request: Request) {
     title: "Profil actualizat",
     description: "Clientul a actualizat bugetul, zonele sau datele de contact.",
     metadata: { budget: payload.budget, preferred_zones: payload.preferred_zones, rooms: payload.rooms, purpose: payload.purpose },
-  })
+  }).throwOnError()
   return NextResponse.json({ profile: data })
 }

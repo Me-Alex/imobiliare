@@ -1,7 +1,7 @@
 import { requireClient } from "@/lib/client-api"
+import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 export async function GET(request: Request) {
   const session = await requireClient(request)
@@ -32,6 +32,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimit(request, "client-activity", 40, 60_000)
+  if (limited) return limited
+
   const session = await requireClient(request)
   if ("error" in session) return session.error
 

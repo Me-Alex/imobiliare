@@ -1,6 +1,7 @@
 import Header from "@/components/Header"
 import Footer from "@/components/Footer"
 import ClientPropertyWorkspace from "@/components/ClientPropertyWorkspace"
+import PortalAppointmentsConsole from "@/components/PortalAppointmentsConsole"
 import ScaledClientPortal from "@/components/ScaledClientPortal"
 import { supabase } from "@/lib/supabase"
 
@@ -12,5 +13,5 @@ export const metadata = {
 
 export default async function PortalPage() {
   const { data } = await supabase.from("properties").select("*").eq("status", "PUBLISHED").order("created_at", { ascending: false })
-  return <main><Header /><ScaledClientPortal /><ClientPropertyWorkspace properties={data || []} mode="portal" /><Footer /></main>
+  return <main><Header /><ScaledClientPortal /><PortalAppointmentsConsole /><ClientPropertyWorkspace properties={data || []} mode="portal" /><Footer /></main>
 }
