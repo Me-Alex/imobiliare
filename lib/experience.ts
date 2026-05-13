@@ -46,6 +46,14 @@ export const zoneProfiles = [
   },
 ]
 
+export const pipelineStages = [
+  { key: "NEW", label: "Nou", complexity: "captare rapida", color: "bg-sky-500" },
+  { key: "CONTACTED", label: "Contactat", complexity: "follow-up programat", color: "bg-indigo-500" },
+  { key: "QUALIFIED", label: "Calificat", complexity: "buget si criterii validate", color: "bg-amber-500" },
+  { key: "NEGOTIATION", label: "Negociere", complexity: "oferta si documente", color: "bg-orange-500" },
+  { key: "CLOSED", label: "Inchis", complexity: "contract finalizat", color: "bg-emerald-500" },
+]
+
 export const documentChecklist = [
   "extras de carte funciara actualizat",
   "act de proprietate si istoric tranzactie",
@@ -90,10 +98,22 @@ export function scoreProperty(property: Property, profile: BuyerProfile) {
     reasons.push("selectata de echipa HQS")
   }
 
-  return { score: Math.max(1, Math.min(100, score)), reasons: reasons.slice(0, 4) }
+  return {
+    score: Math.max(1, Math.min(100, score)),
+    reasons: reasons.slice(0, 4),
+  }
 }
 
 export function estimateMonthlyPayment(price: number, advancePercent = 20, years = 25) {
   const principal = price * (1 - advancePercent / 100)
   return Math.round(principal / (years * 12))
+}
+
+export function estimateLeadScore(payload: { budget?: number; urgency?: string; message?: string; phone?: string }) {
+  let score = 35
+  if ((payload.budget || 0) > 150000) score += 20
+  if (payload.urgency === "rapid") score += 20
+  if ((payload.message || "").length > 80) score += 12
+  if (payload.phone) score += 13
+  return Math.min(100, score)
 }
