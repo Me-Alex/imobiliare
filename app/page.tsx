@@ -6,6 +6,7 @@ import ProcessSection from '@/components/ProcessSection'
 import Benefits from '@/components/Benefits'
 import RecommendationStudio from '@/components/RecommendationStudio'
 import ExperienceCommandCenter from '@/components/ExperienceCommandCenter'
+import MarketPulseSection from '@/components/MarketPulseSection'
 import CmsContentBand from '@/components/CmsContentBand'
 import Contact from '@/components/Contact'
 import FAQ from '@/components/FAQ'
@@ -28,6 +29,7 @@ export default async function Home() {
       <PropertyHighlights />
       <ProprietatiSection />
       <RecommendationStudio properties={properties || []} />
+      <MarketPulseSection properties={properties || []} />
       <ExperienceCommandCenter properties={properties || []} />
       <ProcessSection />
       <Benefits entry={cms['home.benefits']} />

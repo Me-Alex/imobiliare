@@ -4,6 +4,21 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Property, supabase } from "@/lib/supabase"
 import ProprietateCard from "./ProprietateCard"
+import { scoreProperty } from "@/lib/experience"
+import {
+  COMPARE_KEY,
+  DEFAULT_BUYER_INTENT,
+  FAVORITES_KEY,
+  readBuyerIntent,
+  readRecentPropertyViews,
+  readSavedSearches,
+  readStoredIds,
+  subscribeClientPreferences,
+  writeSavedSearches,
+  type BuyerIntent,
+  type RecentPropertyView,
+  type SavedSearch,
+} from "@/lib/client-preferences"
 
 const ZONE = ["Toate zonele", "Corbeanca", "Bucuresti", "Floreasca", "Baneasa", "Pipera", "Dorobanti", "Aviatorilor"]
 const TIPURI: Record<string, string> = {
@@ -17,6 +32,7 @@ const TIPURI: Record<string, string> = {
 
 const SORT_LABELS = {
   newest: "Cele mai noi",
+  match: "Potrivire profil",
   priceAsc: "Pret crescator",
   priceDesc: "Pret descrescator",
   areaDesc: "Suprafata mai mare",
@@ -39,6 +55,9 @@ export default function ProprietatiSection() {
   const [showFiltre, setShowFiltre] = useState(false)
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [compareIds, setCompareIds] = useState<string[]>([])
+  const [buyerIntent, setBuyerIntent] = useState<BuyerIntent>(DEFAULT_BUYER_INTENT)
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([])
+  const [recentViews, setRecentViews] = useState<RecentPropertyView[]>([])
 
   useEffect(() => {
     supabase
@@ -55,16 +74,14 @@ export default function ProprietatiSection() {
 
   useEffect(() => {
     const syncSelection = () => {
-      setFavoriteIds(readStoredIds("hqs-favorites"))
-      setCompareIds(readStoredIds("hqs-compare"))
+      setFavoriteIds(readStoredIds(FAVORITES_KEY))
+      setCompareIds(readStoredIds(COMPARE_KEY))
+      setBuyerIntent(readBuyerIntent())
+      setSavedSearches(readSavedSearches())
+      setRecentViews(readRecentPropertyViews())
     }
     syncSelection()
-    window.addEventListener("hqs-selection", syncSelection)
-    window.addEventListener("storage", syncSelection)
-    return () => {
-      window.removeEventListener("hqs-selection", syncSelection)
-      window.removeEventListener("storage", syncSelection)
-    }
+    return subscribeClientPreferences(syncSelection)
   }, [])
 
   const filtered = useMemo(() => {
@@ -85,12 +102,15 @@ export default function ProprietatiSection() {
         return true
       })
       .sort((a, b) => {
+        if (sort === "match") return scoreProperty(b, buyerIntent).score - scoreProperty(a, buyerIntent).score
         if (sort === "priceAsc") return a.price - b.price
         if (sort === "priceDesc") return b.price - a.price
         if (sort === "areaDesc") return b.area_sqm - a.area_sqm
         return new Date(b.created_at || b.published_at).getTime() - new Date(a.created_at || a.published_at).getTime()
       })
-  }, [proprietati, filtruTip, filtruZona, filtruCamere, pretMax, suprafataMin, doarFeatured, query, sort])
+  }, [proprietati, filtruTip, filtruZona, filtruCamere, pretMax, suprafataMin, doarFeatured, query, sort, buyerIntent])
+
+  const scoredFiltered = useMemo(() => filtered.map((property) => ({ property, ...scoreProperty(property, buyerIntent) })), [filtered, buyerIntent])
 
   const featuredCount = proprietati.filter((p) => p.featured).length
   const activeFilters =
@@ -113,9 +133,51 @@ export default function ProprietatiSection() {
     setSort("newest")
   }
 
+  const applyBuyerIntent = () => {
+    setPretMax(buyerIntent.budget)
+    setFiltruCamere(buyerIntent.rooms)
+    if (buyerIntent.area !== "orice") setFiltruZona(buyerIntent.area)
+    setSort("match")
+  }
+
+  const saveSearch = () => {
+    const labelParts = [
+      query.trim() || TIPURI[filtruTip] || "Portofoliu",
+      filtruZona !== "Toate zonele" ? filtruZona : null,
+      filtruCamere > 0 ? `${filtruCamere}+ camere` : null,
+      pretMax < 1000000 ? `sub EUR ${pretMax.toLocaleString("ro-RO")}` : null,
+    ].filter(Boolean)
+    const next: SavedSearch = {
+      id: String(Date.now()),
+      label: labelParts.join(" / ") || "Cautare HQS",
+      query,
+      type: filtruTip,
+      zone: filtruZona,
+      rooms: filtruCamere,
+      maxPrice: pretMax,
+      minArea: suprafataMin,
+      featuredOnly: doarFeatured,
+      results: filtered.length,
+      createdAt: new Date().toISOString(),
+    }
+    const updated = [next, ...savedSearches.filter((item) => item.label !== next.label)].slice(0, 6)
+    setSavedSearches(updated)
+    writeSavedSearches(updated)
+  }
+
+  const applySavedSearch = (search: SavedSearch) => {
+    setQuery(search.query)
+    setFiltruTip(search.type)
+    setFiltruZona(search.zone)
+    setFiltruCamere(search.rooms)
+    setPretMax(search.maxPrice)
+    setSuprafataMin(search.minArea)
+    setDoarFeatured(search.featuredOnly)
+  }
+
   const favoriteRows = proprietati.filter((p) => favoriteIds.includes(p.id))
   const compareRows = proprietati.filter((p) => compareIds.includes(p.id))
-  const clearSelection = (key: "hqs-favorites" | "hqs-compare") => {
+  const clearSelection = (key: typeof FAVORITES_KEY | typeof COMPARE_KEY) => {
     localStorage.removeItem(key)
     window.dispatchEvent(new Event("hqs-selection"))
   }
@@ -234,6 +296,47 @@ export default function ProprietatiSection() {
           )}
         </div>
 
+        <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
+          <div className="rounded-lg border border-bg-surface bg-bg-card p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-text-muted">Profil cumparator</p>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+              <span className="rounded-lg bg-bg-secondary px-3 py-2 text-text-muted">EUR {buyerIntent.budget.toLocaleString("ro-RO")}</span>
+              <span className="rounded-lg bg-bg-secondary px-3 py-2 text-text-muted">{buyerIntent.area === "orice" ? "orice zona" : buyerIntent.area}</span>
+              <span className="rounded-lg bg-bg-secondary px-3 py-2 text-text-muted">{buyerIntent.rooms}+ camere</span>
+            </div>
+            <button onClick={applyBuyerIntent} className="mt-3 w-full rounded-lg border border-accent/40 px-4 py-2 text-sm font-bold text-accent hover:bg-accent hover:text-bg-primary">
+              Aplica profilul in cautare
+            </button>
+          </div>
+
+          <div className="rounded-lg border border-bg-surface bg-bg-card p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-bold uppercase tracking-wider text-text-muted">Cautari salvate</p>
+              <button onClick={saveSearch} className="text-xs font-black text-accent">Salveaza</button>
+            </div>
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              {savedSearches.length ? savedSearches.map((search) => (
+                <button key={search.id} onClick={() => applySavedSearch(search)} className="shrink-0 rounded-lg border border-bg-surface bg-bg-secondary px-3 py-2 text-left text-xs text-text-muted hover:border-accent hover:text-accent">
+                  <span className="block font-bold text-text-primary">{search.label}</span>
+                  <span>{search.results} rezultate</span>
+                </button>
+              )) : <p className="text-sm text-text-muted">Salveaza o combinatie de filtre ca sa o refolosesti rapid.</p>}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-bg-surface bg-bg-card p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-text-muted">Vizualizate recent</p>
+            <div className="mt-3 grid gap-2">
+              {recentViews.length ? recentViews.slice(0, 2).map((view) => (
+                <Link key={view.id} href={`/proprietate/${view.slug}`} className="rounded-lg bg-bg-secondary px-3 py-2 text-sm text-text-muted hover:text-accent">
+                  <span className="block font-bold text-text-primary line-clamp-1">{view.title}</span>
+                  <span>{view.city || "HQS"}{view.price ? ` - EUR ${view.price.toLocaleString("ro-RO")}` : ""}</span>
+                </Link>
+              )) : <p className="text-sm text-text-muted">Deschide o proprietate si o vei regasi aici.</p>}
+            </div>
+          </div>
+        </div>
+
         {(favoriteRows.length > 0 || compareRows.length > 0) && (
           <div className="grid gap-4 mb-6 lg:grid-cols-2">
             {favoriteRows.length > 0 && (
@@ -288,9 +391,9 @@ export default function ProprietatiSection() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => <div key={i} className="bg-bg-card border border-bg-surface rounded-lg h-80 animate-pulse" />)}
           </div>
-        ) : filtered.length > 0 ? (
+        ) : scoredFiltered.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((p) => <ProprietateCard key={p.id} proprietate={p} />)}
+            {scoredFiltered.map(({ property, score, reasons }) => <ProprietateCard key={property.id} proprietate={property} matchScore={score} matchReasons={reasons} />)}
           </div>
         ) : (
           <div className="text-center py-16 px-6 border border-bg-surface bg-bg-card rounded-lg">
@@ -304,13 +407,4 @@ export default function ProprietatiSection() {
       </div>
     </section>
   )
-}
-
-function readStoredIds(key: string) {
-  try {
-    const value = JSON.parse(localStorage.getItem(key) || "[]")
-    return Array.isArray(value) ? value.filter((id) => typeof id === "string") : []
-  } catch {
-    return []
-  }
 }

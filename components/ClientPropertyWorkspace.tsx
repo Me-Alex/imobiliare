@@ -5,6 +5,7 @@ import Link from "next/link"
 import type { Property } from "@/lib/supabase"
 import { documentChecklist, estimateMonthlyPayment } from "@/lib/experience"
 import { buildOfferDraft, buildPortfolioAnalytics, buildViewingSlots, calculateValuation } from "@/lib/complexity"
+import { readBuyerIntent, readRecentPropertyViews, writeBuyerIntent, type RecentPropertyView } from "@/lib/client-preferences"
 
 type Mode = "favorite" | "compare" | "portal"
 
@@ -13,20 +14,26 @@ export default function ClientPropertyWorkspace({ properties, mode }: { properti
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [clientName, setClientName] = useState("Client HQS")
   const [budget, setBudget] = useState(250000)
+  const [recentViews, setRecentViews] = useState<RecentPropertyView[]>([])
 
   useEffect(() => {
     const sync = () => {
       setFavoriteIds(readIds("hqs-favorites"))
       setCompareIds(readIds("hqs-compare"))
       setClientName(localStorage.getItem("hqs-client-name") || "Client HQS")
-      setBudget(Number(localStorage.getItem("hqs-client-budget") || 250000))
+      setBudget(readBuyerIntent().budget)
+      setRecentViews(readRecentPropertyViews())
     }
     sync()
     window.addEventListener("storage", sync)
     window.addEventListener("hqs-selection", sync)
+    window.addEventListener("hqs-buyer-intent", sync)
+    window.addEventListener("hqs-recent-views", sync)
     return () => {
       window.removeEventListener("storage", sync)
       window.removeEventListener("hqs-selection", sync)
+      window.removeEventListener("hqs-buyer-intent", sync)
+      window.removeEventListener("hqs-recent-views", sync)
     }
   }, [])
 
@@ -60,6 +67,7 @@ export default function ClientPropertyWorkspace({ properties, mode }: { properti
   const saveProfile = () => {
     localStorage.setItem("hqs-client-name", clientName)
     localStorage.setItem("hqs-client-budget", String(budget))
+    writeBuyerIntent({ ...readBuyerIntent(), budget })
   }
 
   const clear = (key: "hqs-favorites" | "hqs-compare") => {
@@ -123,6 +131,17 @@ export default function ClientPropertyWorkspace({ properties, mode }: { properti
               <h3 className="font-black text-text-primary">Lista scurta</h3>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 {portalRows.map((p) => <MiniProperty key={p.id} property={p} budget={budget} />)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
+              <h3 className="font-black text-text-primary">Vizualizate recent</h3>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {recentViews.length ? recentViews.slice(0, 4).map((view) => (
+                  <Link key={view.id} href={`/proprietate/${view.slug}`} className="rounded-lg bg-bg-secondary p-4 hover:text-accent">
+                    <p className="font-black text-text-primary">{view.title}</p>
+                    <p className="mt-1 text-sm text-text-muted">{view.city || "HQS"}{view.price ? ` - EUR ${view.price.toLocaleString("ro-RO")}` : ""}</p>
+                  </Link>
+                )) : <p className="text-sm text-text-muted">Istoricul se completeaza cand deschizi pagini de proprietate.</p>}
               </div>
             </div>
             <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
