@@ -14,7 +14,6 @@ const links = [
   { href: "/contact", label: "Contact" },
   { href: "/comparare", label: "Comparare" },
   { href: "/favorite", label: "Favorite" },
-  { href: "/portal", label: "Portal" },
 ]
 
 function labelWithCount(href: string, label: string, favoriteCount: number, compareCount: number) {
@@ -54,9 +53,14 @@ export default function Header() {
 
         <div className="hidden shrink-0 items-center gap-3 lg:flex">
           <ThemeToggle />
-          <Link href="/login" prefetch={false} className="inline-flex items-center gap-2 rounded-xl border border-bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-all hover:border-accent hover:text-accent">
+          <Link
+            href="/login"
+            prefetch={false}
+            aria-label="Cont client"
+            title="Cont client"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-bg-surface text-text-primary transition-all hover:border-accent hover:text-accent"
+          >
             <UserRound className="h-4 w-4" aria-hidden />
-            Login portal
           </Link>
           <Link href="/proprietati" prefetch={false} className="rounded-xl border border-bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-all hover:border-accent hover:text-accent">
             Vezi oferte
@@ -90,8 +94,9 @@ export default function Header() {
           <Link href="/contact" prefetch={false} className="rounded-xl bg-accent py-2 text-center font-semibold text-bg-primary" onClick={() => setMenuOpen(false)}>
             Contact
           </Link>
-          <Link href="/login" prefetch={false} className="rounded-xl border border-bg-surface py-2 text-center font-semibold text-text-primary" onClick={() => setMenuOpen(false)}>
-            Login portal
+          <Link href="/login" prefetch={false} className="inline-flex items-center justify-center gap-2 rounded-xl border border-bg-surface py-2 font-semibold text-text-primary" onClick={() => setMenuOpen(false)}>
+            <UserRound className="h-4 w-4" aria-hidden />
+            Cont client
           </Link>
         </div>
       )}

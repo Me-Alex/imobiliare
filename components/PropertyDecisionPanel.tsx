@@ -146,8 +146,8 @@ export default function PropertyDecisionPanel({ property }: { property: Property
         <Link href="/comparare" className="rounded-xl border border-bg-surface px-4 py-3 text-center text-sm font-black text-text-primary hover:border-accent hover:text-accent">
           Vezi compararea
         </Link>
-        <Link href="/portal" className="rounded-xl bg-accent px-4 py-3 text-center text-sm font-black text-bg-primary">
-          Deschide portalul
+        <Link href="/login" className="rounded-xl bg-accent px-4 py-3 text-center text-sm font-black text-bg-primary">
+          Cont client
         </Link>
       </div>
 

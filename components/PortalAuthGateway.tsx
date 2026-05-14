@@ -20,7 +20,7 @@ const modeLabels: Record<AuthMode, string> = {
 }
 
 const modeDescriptions: Record<AuthMode, string> = {
-  login: "Intra in portal cu email si parola.",
+  login: "Intra in cont cu email si parola.",
   signup: "Creeaza cont client si salveaza profilul in Supabase.",
   reset: "Primeste email pentru resetarea parolei.",
   magic: "Primeste un link temporar de autentificare.",
@@ -50,7 +50,7 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
         if (data.session?.access_token) {
-          setMessage("Autentificat. Portalul se incarca acum.")
+          setMessage("Autentificat. Contul se incarca acum.")
           onAuthenticated?.(data.session.access_token)
         }
       }
@@ -121,9 +121,9 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
     <section className="border-y border-bg-surface bg-bg-secondary px-4 py-12">
       <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1fr_460px]">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-accent">Portal client securizat</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">Cont client</p>
           <h2 className="mt-3 max-w-3xl text-3xl font-black text-text-primary md:text-5xl">
-            Login real pentru clienti, conectat la Supabase Auth.
+            Cont client securizat, conectat la Supabase Auth.
           </h2>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-text-muted">
             Clientii isi pot crea cont, intra cu parola, folosi link de email, reseta parola si accesa profilul, favoritele, documentele, ofertele si programarile salvate.
@@ -131,7 +131,7 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <AuthProof icon={ShieldCheck} label="Token verificat" text="API-urile client cer Bearer token valid." />
             <AuthProof icon={LockKeyhole} label="Date izolate" text="RLS limiteaza randurile la utilizatorul curent." />
-            <AuthProof icon={KeyRound} label="Recovery" text="Parola poate fi resetata din portal." />
+            <AuthProof icon={KeyRound} label="Recovery" text="Parola poate fi resetata din cont." />
           </div>
         </div>
 
@@ -186,7 +186,7 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
             className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-            {mode === "login" && "Intra in portal"}
+            {mode === "login" && "Intra in cont"}
             {mode === "signup" && "Creeaza cont"}
             {mode === "reset" && "Trimite resetare"}
             {mode === "magic" && "Trimite link login"}

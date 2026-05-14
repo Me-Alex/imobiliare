@@ -32,10 +32,10 @@ export default function PortalLoginEntry() {
         <ShieldCheck className="h-8 w-8 text-accent" aria-hidden />
         <h1 className="mt-4 text-3xl font-black text-text-primary">Esti autentificat.</h1>
         <p className="mt-3 text-sm leading-7 text-text-muted">
-          Sesiunea Supabase este activa{email ? ` pentru ${email}` : ""}. Continua catre portal pentru profil, favorite, documente, oferte si programari.
+          Sesiunea Supabase este activa{email ? ` pentru ${email}` : ""}. Continua catre cont pentru profil, favorite, documente, oferte si programari.
         </p>
         <Link href="/portal" className="mt-6 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary">
-          Deschide portalul
+          Deschide contul
           <ArrowRight className="h-4 w-4" aria-hidden />
         </Link>
       </div>
