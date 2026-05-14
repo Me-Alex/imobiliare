@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase"
 
 export const metadata = {
   title: "Portal client | HQS Imobiliare",
-  description: "Spatiu client pentru favorite, comparatii, buget, documente si urmatorii pasi.",
+  description: "Portal client cu login Supabase, profil, favorite, documente, oferte, programari si securitate cont.",
 }
 
 export default async function PortalPage() {
