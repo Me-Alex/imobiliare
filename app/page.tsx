@@ -7,12 +7,14 @@ import Benefits from '@/components/Benefits'
 import RecommendationStudio from '@/components/RecommendationStudio'
 import ExperienceCommandCenter from '@/components/ExperienceCommandCenter'
 import MarketPulseSection from '@/components/MarketPulseSection'
+import ScenarioLab from '@/components/ScenarioLab'
 import CmsContentBand from '@/components/CmsContentBand'
 import Contact from '@/components/Contact'
 import FAQ from '@/components/FAQ'
 import Footer from '@/components/Footer'
 import { supabase } from '@/lib/supabase'
 
+export const revalidate = 60
 
 export default async function Home() {
   const [{ data: properties }, { data: cmsEntries }] = await Promise.all([
@@ -27,9 +29,10 @@ export default async function Home() {
       <Hero entry={cms['home.hero']} />
       <CmsContentBand entry={cms['home.hero']} />
       <PropertyHighlights />
-      <ProprietatiSection />
+      <ProprietatiSection initialProperties={properties || []} />
       <RecommendationStudio properties={properties || []} />
       <MarketPulseSection properties={properties || []} />
+      <ScenarioLab />
       <ExperienceCommandCenter properties={properties || []} />
       <ProcessSection />
       <Benefits entry={cms['home.benefits']} />
