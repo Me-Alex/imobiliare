@@ -31,7 +31,7 @@ export default async function Home() {
       <CmsContentBand entry={cms['home.hero']} />
       <PropertyHighlights />
       <TrustProofSection />
-      <ProprietatiSection initialProperties={properties || []} />
+      <ProprietatiSection />
       <RecommendationStudio properties={properties || []} />
       <MarketPulseSection properties={properties || []} />
       <ScenarioLab />
