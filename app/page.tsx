@@ -5,10 +5,8 @@ import PropertyHighlights from '@/components/PropertyHighlights'
 import TrustProofSection from '@/components/TrustProofSection'
 import ProcessSection from '@/components/ProcessSection'
 import Benefits from '@/components/Benefits'
-import RecommendationStudio from '@/components/RecommendationStudio'
+import DecisionToolsSection from '@/components/DecisionToolsSection'
 import ExperienceCommandCenter from '@/components/ExperienceCommandCenter'
-import MarketPulseSection from '@/components/MarketPulseSection'
-import ScenarioLab from '@/components/ScenarioLab'
 import Contact from '@/components/Contact'
 import FAQ from '@/components/FAQ'
 import Footer from '@/components/Footer'
@@ -30,9 +28,7 @@ export default async function Home() {
       <PropertyHighlights />
       <TrustProofSection />
       <ProprietatiSection />
-      <RecommendationStudio properties={properties || []} />
-      <MarketPulseSection properties={properties || []} />
-      <ScenarioLab />
+      <DecisionToolsSection properties={properties || []} />
       <ExperienceCommandCenter properties={properties || []} />
       <ProcessSection />
       <Benefits entry={cms['home.benefits']} />
