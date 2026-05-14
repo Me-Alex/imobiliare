@@ -82,7 +82,11 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
       if (mode === "magic") {
         const { error } = await supabase.auth.signInWithOtp({
           email,
-          options: { emailRedirectTo: callbackUrl },
+          options: {
+            emailRedirectTo: callbackUrl,
+            shouldCreateUser: true,
+            data: { full_name: fullName || email.split("@")[0] || "Client HQS", phone },
+          },
         })
         if (error) throw error
         setMessage("Ti-am trimis link-ul de autentificare pe email.")
