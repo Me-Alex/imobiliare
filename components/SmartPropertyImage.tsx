@@ -19,7 +19,7 @@ export default function SmartPropertyImage({ src, fallbackSrc, ...props }: Smart
     <Image
       {...props}
       src={currentSrc}
-      unoptimized={currentSrc.startsWith("http")}
+      unoptimized
       onError={() => {
         if (currentSrc !== fallbackSrc) setCurrentSrc(fallbackSrc)
       }}
