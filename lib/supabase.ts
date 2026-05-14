@@ -25,6 +25,8 @@ export interface Property {
   bathrooms: number
   parking_spots: number
   featured: boolean
+  cover_image_url?: string | null
+  gallery_urls?: string[] | null
   published_at: string
   created_at: string
 }
