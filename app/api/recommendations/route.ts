@@ -2,18 +2,27 @@ import { NextResponse } from "next/server"
 import { scoreProperty, type BuyerProfile } from "@/lib/experience"
 import { supabase } from "@/lib/supabase"
 import { getClientSupabase, getClientToken } from "@/lib/client-api"
+import { rateLimit } from "@/lib/rate-limit"
 
 export const runtime = "edge"
 
 
+function numericInput(value: unknown, fallback: number, min: number, max: number) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return fallback
+  return Math.min(max, Math.max(min, numeric))
+}
 
 export async function POST(request: Request) {
+  const limited = rateLimit(request, "recommendations", 30, 60_000)
+  if (limited) return limited
+
   try {
     const body = await request.json().catch(() => ({}))
     const profile: BuyerProfile = {
-      budget: Number(body.budget || 250000),
-      area: String(body.area || "orice"),
-      rooms: Number(body.rooms || 2),
+      budget: numericInput(body.budget, 250000, 10_000, 50_000_000),
+      area: String(body.area || "orice").trim().slice(0, 80) || "orice",
+      rooms: Math.round(numericInput(body.rooms, 2, 1, 12)),
       purpose: ["locuire", "investitie", "familie", "birou"].includes(body.purpose) ? body.purpose : "locuire",
     }
     const token = getClientToken(request)
