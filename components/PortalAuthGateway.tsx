@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { KeyRound, Loader2, LockKeyhole, Mail, ShieldCheck, UserPlus } from "lucide-react"
+import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { supabase } from "@/lib/supabase"
 
 type AuthMode = "login" | "signup" | "reset" | "magic"
@@ -35,7 +36,7 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
 
-  const callbackUrl = typeof window !== "undefined" ? `${window.location.origin}${redirectTo || "/portal"}` : undefined
+  const callbackUrl = getAuthRedirectUrl(redirectTo || "/portal")
   const canSubmit = email.includes("@") && (mode === "reset" || mode === "magic" || password.length >= 8)
 
   async function submit() {

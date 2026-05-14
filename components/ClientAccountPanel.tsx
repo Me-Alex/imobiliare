@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { supabase } from "@/lib/supabase"
 
 type Profile = { full_name: string; phone: string | null; budget: number; preferred_zones: string[]; rooms: number; purpose: string; financing_status: string }
@@ -46,7 +47,7 @@ export default function ClientAccountPanel() {
     setMessage("")
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/portal` : undefined },
+      options: { emailRedirectTo: getAuthRedirectUrl("/portal") },
     })
     setMessage(error ? error.message : "Ti-am trimis link-ul de autentificare pe email.")
   }
