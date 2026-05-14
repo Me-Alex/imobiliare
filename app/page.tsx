@@ -9,7 +9,6 @@ import RecommendationStudio from '@/components/RecommendationStudio'
 import ExperienceCommandCenter from '@/components/ExperienceCommandCenter'
 import MarketPulseSection from '@/components/MarketPulseSection'
 import ScenarioLab from '@/components/ScenarioLab'
-import CmsContentBand from '@/components/CmsContentBand'
 import Contact from '@/components/Contact'
 import FAQ from '@/components/FAQ'
 import Footer from '@/components/Footer'
@@ -28,7 +27,6 @@ export default async function Home() {
     <main id="continut">
       <Header />
       <Hero entry={cms['home.hero']} />
-      <CmsContentBand entry={cms['home.hero']} />
       <PropertyHighlights />
       <TrustProofSection />
       <ProprietatiSection />
