@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server"
 import { calculateValuation } from "@/lib/complexity"
+import { rateLimit } from "@/lib/rate-limit"
 
 export const runtime = "edge"
 
 export async function POST(request: Request) {
+  const limited = rateLimit(request, "valuation", 30, 60_000)
+  if (limited) return limited
+
   try {
     const body = await request.json().catch(() => ({}))
     const valuation = calculateValuation({
