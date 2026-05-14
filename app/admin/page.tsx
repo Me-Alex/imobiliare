@@ -1,5 +1,5 @@
-import AdminCommandCenter from "@/components/admin/AdminCommandCenter"
+import { redirect } from "next/navigation"
 
 export default function AdminPage() {
-  return <AdminCommandCenter />
+  redirect("/admin/dashboard")
 }

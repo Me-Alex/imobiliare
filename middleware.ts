@@ -2,7 +2,8 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 export function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/admin")) {
+  const pathname = request.nextUrl.pathname
+  if (pathname.startsWith("/admin")) {
     const parsed = parseBasicAuth(request.headers.get("authorization"))
     const adminPass = process.env.ADMIN_PASSWORD
     if (!adminPass || parsed?.password !== adminPass || !parsed.username) {
@@ -10,6 +11,12 @@ export function middleware(request: NextRequest) {
         status: 401,
         headers: { "WWW-Authenticate": 'Basic realm="HQS Admin"' },
       })
+    }
+
+    if (pathname === "/admin" || pathname === "/admin/") {
+      const dashboardUrl = request.nextUrl.clone()
+      dashboardUrl.pathname = "/admin/dashboard"
+      return NextResponse.redirect(dashboardUrl)
     }
   }
   return NextResponse.next()

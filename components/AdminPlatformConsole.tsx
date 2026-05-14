@@ -62,7 +62,7 @@ export default function AdminPlatformConsole() {
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-4 backdrop-blur dark:border-bg-surface dark:bg-bg-card/95">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <div><h1 className="text-2xl font-black">HQS Platform Console</h1><p className="text-sm text-slate-500">Clienti, oferte, CMS, documente, harti, rapoarte si roluri.</p></div>
-          <div className="flex gap-2"><ThemeToggle /><button onClick={load} className="rounded-lg border px-3 py-2 text-sm font-bold">Refresh</button><Link href="/admin" className="rounded-lg border px-3 py-2 text-sm font-bold">Admin</Link></div>
+          <div className="flex gap-2"><ThemeToggle /><button onClick={load} className="rounded-lg border px-3 py-2 text-sm font-bold">Refresh</button><Link href="/admin/dashboard" className="rounded-lg border px-3 py-2 text-sm font-bold">Admin</Link></div>
         </div>
       </header>
       <section className="mx-auto max-w-7xl space-y-6 px-4 py-8">
