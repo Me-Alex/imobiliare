@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Menu, X } from "lucide-react"
+import { Menu, UserRound, X } from "lucide-react"
 import ThemeToggle from "./ThemeToggle"
 import { COMPARE_KEY, FAVORITES_KEY, readStoredIds, subscribeClientPreferences } from "@/lib/client-preferences"
 
@@ -54,6 +54,10 @@ export default function Header() {
 
         <div className="hidden shrink-0 items-center gap-3 lg:flex">
           <ThemeToggle />
+          <Link href="/login" prefetch={false} className="inline-flex items-center gap-2 rounded-xl border border-bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-all hover:border-accent hover:text-accent">
+            <UserRound className="h-4 w-4" aria-hidden />
+            Login portal
+          </Link>
           <Link href="/proprietati" prefetch={false} className="rounded-xl border border-bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-all hover:border-accent hover:text-accent">
             Vezi oferte
           </Link>
@@ -85,6 +89,9 @@ export default function Header() {
           ))}
           <Link href="/contact" prefetch={false} className="rounded-xl bg-accent py-2 text-center font-semibold text-bg-primary" onClick={() => setMenuOpen(false)}>
             Contact
+          </Link>
+          <Link href="/login" prefetch={false} className="rounded-xl border border-bg-surface py-2 text-center font-semibold text-text-primary" onClick={() => setMenuOpen(false)}>
+            Login portal
           </Link>
         </div>
       )}
