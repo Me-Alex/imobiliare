@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { Property } from "@/lib/supabase"
 import {
   buildOfferDraft,
@@ -22,11 +22,11 @@ export default function ExperienceCommandCenter({ properties }: { properties: Pr
   const [rooms, setRooms] = useState(3)
   const [condition, setCondition] = useState<"renovat" | "bun" | "de-renovat" | "premium">("renovat")
   const [urgency, setUrgency] = useState<"rapid" | "normal" | "flexibil">("normal")
+  const [slots, setSlots] = useState<ReturnType<typeof buildViewingSlots>>([])
 
   const analytics = useMemo(() => buildPortfolioAnalytics(properties), [properties])
   const valuation = useMemo(() => calculateValuation({ area, rooms, zone, condition, parking: 1, floor: 3 }), [area, rooms, zone, condition])
   const signal = useMemo(() => getMarketSignal(zone), [zone])
-  const slots = useMemo(() => buildViewingSlots(urgency), [urgency])
   const selected = properties[0]
   const offer = useMemo(() => buildOfferDraft({
     propertyTitle: selected?.title || "Proprietate selectata HQS",
@@ -37,6 +37,10 @@ export default function ExperienceCommandCenter({ properties }: { properties: Pr
     riskLevel: signal.risk as "scazut" | "mediu" | "ridicat",
   }), [budget, selected, signal.risk, urgency, valuation.mid])
   const seo = useMemo(() => buildSeoBlueprint(zone), [zone])
+
+  useEffect(() => {
+    setSlots(buildViewingSlots(urgency))
+  }, [urgency])
 
   return (
     <section className="border-y border-bg-surface bg-bg-secondary px-4 py-14">
