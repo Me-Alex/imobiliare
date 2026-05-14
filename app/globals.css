@@ -7,6 +7,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
+  --deployment-css-refresh: 1;
   --color-bg-primary: 247 249 247;
   --color-bg-secondary: 238 243 239;
   --color-bg-card: 255 255 255;
