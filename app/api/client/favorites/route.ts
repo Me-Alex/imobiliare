@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     title: "Proprietate salvata",
     description: "Clientul a salvat o proprietate in lista scurta.",
     metadata: { property_id: propertyId },
-  }).throwOnError()
+  })
   return NextResponse.json({ favorite: data })
 }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { Menu, X } from "lucide-react"
 import ThemeToggle from "./ThemeToggle"
 import { COMPARE_KEY, FAVORITES_KEY, readStoredIds, subscribeClientPreferences } from "@/lib/client-preferences"
 
@@ -15,6 +16,12 @@ const links = [
   { href: "/favorite", label: "Favorite" },
   { href: "/portal", label: "Portal" },
 ]
+
+function labelWithCount(href: string, label: string, favoriteCount: number, compareCount: number) {
+  if (href === "/favorite") return favoriteCount > 0 ? `${label} (${favoriteCount})` : label
+  if (href === "/comparare") return compareCount > 0 ? `${label} (${compareCount})` : label
+  return label
+}
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -32,53 +39,51 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-bg-surface bg-bg-secondary/95 backdrop-blur">
-      <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-        <Link href="/" className="text-xl font-bold tracking-tight">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-4">
+        <Link href="/" className="shrink-0 text-xl font-bold tracking-tight">
           <span className="text-accent">HQS</span><span className="text-text-primary">imobiliare</span>
         </Link>
 
-        <nav className="hidden md:flex gap-8 text-sm font-medium text-text-muted">
+        <nav className="hidden flex-1 justify-center gap-6 text-sm font-medium text-text-muted lg:flex">
           {links.map((link) => (
-            <Link key={link.href} href={link.href} className="hover:text-accent transition-colors">
-              {link.label}
+            <Link key={link.href} href={link.href} prefetch={false} className="hover:text-accent transition-colors">
+              {labelWithCount(link.href, link.label, favoriteCount, compareCount)}
             </Link>
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden shrink-0 items-center gap-3 lg:flex">
           <ThemeToggle />
-          <Link href="/proprietati" className="border border-bg-surface text-text-primary px-4 py-2 rounded-lg text-sm font-medium hover:border-accent hover:text-accent transition-all">
+          <Link href="/proprietati" prefetch={false} className="rounded-xl border border-bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-all hover:border-accent hover:text-accent">
             Vezi oferte
           </Link>
-          <Link href="/comparare" className="border border-bg-surface text-text-primary px-4 py-2 rounded-lg text-sm font-medium hover:border-accent hover:text-accent transition-all">
+          <Link href="/comparare" prefetch={false} className="rounded-xl border border-bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-all hover:border-accent hover:text-accent">
             Comparare {compareCount > 0 ? `(${compareCount})` : ""}
           </Link>
-          <a href="tel:+40700000000" className="border border-accent text-accent px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent hover:text-bg-primary transition-all">
+          <a href="tel:+40700000000" className="rounded-xl border border-accent px-4 py-2 text-sm font-medium text-accent transition-all hover:bg-accent hover:text-bg-primary">
             Suna acum
           </a>
-          <Link href="/contact" className="bg-accent text-bg-primary px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
-            Contact {favoriteCount > 0 ? `(${favoriteCount})` : ""}
+          <Link href="/favorite" prefetch={false} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg-primary transition-opacity hover:opacity-90">
+            Favorite {favoriteCount > 0 ? `(${favoriteCount})` : ""}
           </Link>
         </div>
 
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex items-center gap-2 lg:hidden">
           <ThemeToggle />
           <button className="text-text-primary" onClick={() => setMenuOpen(!menuOpen)} aria-label="Deschide meniul">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={menuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-            </svg>
+            {menuOpen ? <X className="h-6 w-6" aria-hidden /> : <Menu className="h-6 w-6" aria-hidden />}
           </button>
         </div>
       </div>
 
       {menuOpen && (
-        <div className="md:hidden bg-bg-card border-t border-bg-surface px-4 py-4 flex flex-col gap-4 text-sm">
+        <div className="flex flex-col gap-4 border-t border-bg-surface bg-bg-card px-4 py-4 text-sm lg:hidden">
           {links.map((link) => (
-            <Link key={link.href} href={link.href} className="text-text-muted hover:text-accent" onClick={() => setMenuOpen(false)}>
-              {link.label}
+            <Link key={link.href} href={link.href} prefetch={false} className="text-text-muted hover:text-accent" onClick={() => setMenuOpen(false)}>
+              {labelWithCount(link.href, link.label, favoriteCount, compareCount)}
             </Link>
           ))}
-          <Link href="/contact" className="bg-accent text-bg-primary text-center py-2 rounded-lg font-semibold" onClick={() => setMenuOpen(false)}>
+          <Link href="/contact" prefetch={false} className="rounded-xl bg-accent py-2 text-center font-semibold text-bg-primary" onClick={() => setMenuOpen(false)}>
             Contact
           </Link>
         </div>

@@ -2,9 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import type { Property } from "@/lib/supabase"
+import { Heart, Scale } from "lucide-react"
+import { supabase, type Property } from "@/lib/supabase"
 import { scoreProperty, type BuyerProfile } from "@/lib/experience"
-import { DEFAULT_BUYER_INTENT, readBuyerIntent, writeBuyerIntent } from "@/lib/client-preferences"
+import {
+  COMPARE_KEY,
+  DEFAULT_BUYER_INTENT,
+  FAVORITES_KEY,
+  readBuyerIntent,
+  readStoredIds,
+  subscribeClientPreferences,
+  toggleStoredId,
+  writeBuyerIntent,
+} from "@/lib/client-preferences"
 
 const purposeLabels = {
   locuire: "Locuire",
@@ -15,9 +25,17 @@ const purposeLabels = {
 
 export default function RecommendationStudio({ properties }: { properties: Property[] }) {
   const [profile, setProfile] = useState<BuyerProfile>(DEFAULT_BUYER_INTENT)
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([])
+  const [compareIds, setCompareIds] = useState<string[]>([])
 
   useEffect(() => {
-    setProfile(readBuyerIntent())
+    const sync = () => {
+      setProfile(readBuyerIntent())
+      setFavoriteIds(readStoredIds(FAVORITES_KEY))
+      setCompareIds(readStoredIds(COMPARE_KEY))
+    }
+    sync()
+    return subscribeClientPreferences(sync)
   }, [])
 
   const updateProfile = (next: BuyerProfile) => {
@@ -33,6 +51,24 @@ export default function RecommendationStudio({ properties }: { properties: Prope
   }, [properties, profile])
 
   const zones = ["orice", ...Array.from(new Set(properties.map((p) => p.city).filter(Boolean)))]
+
+  const toggleSelection = async (key: typeof FAVORITES_KEY | typeof COMPARE_KEY, propertyId: string) => {
+    const { selected, ids } = toggleStoredId(key, propertyId, key === COMPARE_KEY ? 3 : undefined)
+    if (key === FAVORITES_KEY) setFavoriteIds(ids)
+    if (key === COMPARE_KEY) setCompareIds(ids)
+
+    if (key === FAVORITES_KEY) {
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      if (token) {
+        await fetch(`/api/client/favorites${selected ? "" : `?property_id=${propertyId}`}`, {
+          method: selected ? "POST" : "DELETE",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: selected ? JSON.stringify({ property_id: propertyId }) : undefined,
+        }).catch(() => null)
+      }
+    }
+  }
 
   return (
     <section className="border-y border-bg-surface bg-bg-secondary px-4 py-16">
@@ -72,7 +108,7 @@ export default function RecommendationStudio({ properties }: { properties: Prope
 
           <div className="grid gap-3">
             {scored.map(({ property, score, reasons }) => (
-              <Link key={property.id} href={`/proprietate/${property.slug}`} className="grid gap-4 rounded-lg border border-bg-surface bg-bg-card p-4 transition-all hover:border-accent md:grid-cols-[120px_1fr_120px]">
+              <article key={property.id} className="grid gap-4 rounded-lg border border-bg-surface bg-bg-card p-4 transition-all hover:border-accent md:grid-cols-[120px_1fr_150px]">
                 <div className="rounded-lg bg-bg-secondary p-3">
                   <p className="text-xs text-text-muted">Scor</p>
                   <p className="text-3xl font-black text-accent">{score}</p>
@@ -87,8 +123,31 @@ export default function RecommendationStudio({ properties }: { properties: Prope
                 <div className="text-left md:text-right">
                   <p className="text-xs text-text-muted">Pret</p>
                   <p className="font-black text-accent">EUR {property.price.toLocaleString("ro-RO")}</p>
+                  <div className="mt-3 flex gap-2 md:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => toggleSelection(FAVORITES_KEY, property.id)}
+                      className={`grid h-9 w-9 place-items-center rounded-lg border transition ${favoriteIds.includes(property.id) ? "border-accent bg-accent text-bg-primary" : "border-bg-surface text-text-muted hover:border-accent hover:text-accent"}`}
+                      aria-label={favoriteIds.includes(property.id) ? "Scoate de la favorite" : "Adauga la favorite"}
+                      title={favoriteIds.includes(property.id) ? "Scoate de la favorite" : "Adauga la favorite"}
+                    >
+                      <Heart className={`h-4 w-4 ${favoriteIds.includes(property.id) ? "fill-current" : ""}`} aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleSelection(COMPARE_KEY, property.id)}
+                      className={`grid h-9 w-9 place-items-center rounded-lg border transition ${compareIds.includes(property.id) ? "border-accent bg-accent text-bg-primary" : "border-bg-surface text-text-muted hover:border-accent hover:text-accent"}`}
+                      aria-label={compareIds.includes(property.id) ? "Scoate din comparatie" : "Compara proprietatea"}
+                      title={compareIds.includes(property.id) ? "Scoate din comparatie" : "Compara proprietatea"}
+                    >
+                      <Scale className="h-4 w-4" aria-hidden />
+                    </button>
+                  </div>
+                  <Link href={`/proprietate/${property.slug}`} className="mt-3 inline-flex rounded-lg bg-accent/10 px-3 py-2 text-xs font-black text-accent hover:bg-accent hover:text-bg-primary">
+                    Detalii
+                  </Link>
                 </div>
-              </Link>
+              </article>
             ))}
           </div>
         </div>

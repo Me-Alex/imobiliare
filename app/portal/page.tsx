@@ -13,5 +13,5 @@ export const metadata = {
 
 export default async function PortalPage() {
   const { data } = await supabase.from("properties").select("*").eq("status", "PUBLISHED").order("created_at", { ascending: false })
-  return <main><Header /><ScaledClientPortal /><PortalAppointmentsConsole /><ClientPropertyWorkspace properties={data || []} mode="portal" /><Footer /></main>
+  return <main><Header /><ScaledClientPortal /><PortalAppointmentsConsole properties={data || []} /><ClientPropertyWorkspace properties={data || []} mode="portal" /><Footer /></main>
 }

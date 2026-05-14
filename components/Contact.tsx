@@ -1,13 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { Building2, CheckCircle2, Clock3, Mail, Phone, Send } from "lucide-react"
+import { readClientPreferenceSnapshot } from "@/lib/client-preferences"
 
 const info = [
-  { title: "Birou", val: "Bd. Unirii 45, Sector 3, Bucuresti" },
-  { title: "Telefon", val: "+40 700 000 000" },
-  { title: "Email", val: "contact@hqsimobiliare.ro" },
-  { title: "Program", val: "Luni - Vineri, 09:00 - 18:00" },
+  { icon: Building2, title: "Birou", val: "Bd. Unirii 45, Sector 3, Bucuresti" },
+  { icon: Phone, title: "Telefon", val: "+40 700 000 000" },
+  { icon: Mail, title: "Email", val: "contact@hqsimobiliare.ro" },
+  { icon: Clock3, title: "Program", val: "Luni - Vineri, 09:00 - 18:00" },
 ]
 
 const intentOptions = [
@@ -41,18 +42,33 @@ export default function Contact() {
       form.message ? `Detalii: ${form.message}` : "",
     ].filter(Boolean).join("\n")
 
-    const { error } = await supabase.from("leads").insert([{
+    const preferences = readClientPreferenceSnapshot()
+    const parsedBudget = Number(form.budget.replace(/[^\d]/g, ""))
+    const response = await fetch("/api/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
       name: form.name,
       phone: form.phone,
       email: form.email || null,
       message,
       source: "CONTACT_FORM",
-      status: "NEW",
-    }])
+      intent: form.intent,
+      budget: Number.isFinite(parsedBudget) && parsedBudget > 0 ? parsedBudget : preferences.buyerIntent.budget,
+      context: {
+        buyer_intent: preferences.buyerIntent,
+        favorites: preferences.favorites,
+        compare: preferences.compare,
+        recent_views: preferences.recentViews.slice(0, 4),
+        saved_searches: preferences.savedSearches.slice(0, 3),
+      },
+    }),
+    })
+    const body = await response.json().catch(() => ({}))
 
     setLoading(false)
-    if (error) {
-      setError("Mesajul nu a putut fi trimis acum. Te rugam sa ne contactezi telefonic sau sa incerci din nou.")
+    if (!response.ok) {
+      setError(body.error || "Mesajul nu a putut fi trimis acum. Te rugam sa ne contactezi telefonic sau sa incerci din nou.")
       return
     }
 
@@ -60,38 +76,38 @@ export default function Contact() {
   }
 
   return (
-    <section id="contact" className="py-20 px-4 bg-bg-secondary border-t border-bg-surface">
-      <div className="max-w-6xl mx-auto">
+    <section id="contact" className="border-t border-bg-surface bg-bg-secondary px-4 py-20">
+      <div className="mx-auto max-w-6xl">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div>
-            <span className="text-accent font-semibold text-xs uppercase tracking-widest">Contact</span>
-            <h2 className="text-3xl md:text-4xl font-bold text-text-primary mt-2">Spune-ne ce cauti, apoi iti raspundem concret.</h2>
-            <p className="text-text-muted mt-4 leading-relaxed">
+            <span className="text-xs font-semibold uppercase tracking-widest text-accent">Contact</span>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-text-primary md:text-5xl">Spune-ne ce cauti, apoi iti raspundem concret.</h2>
+            <p className="mt-4 leading-8 text-text-muted">
               Nu trimitem raspunsuri automate si nu impingem proprietati nepotrivite. Daca avem o varianta buna, iti explicam de ce. Daca nu, iti spunem direct.
             </p>
 
             <div className="mt-8 grid gap-3">
-              {info.map((item) => (
-                <div key={item.title} className="flex items-start gap-4 border border-bg-surface bg-bg-card rounded-lg p-4">
-                  <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent font-bold">
-                    {item.title.slice(0, 1)}
+              {info.map((item) => {
+                const Icon = item.icon
+                return (
+                <div key={item.title} className="flex items-start gap-4 rounded-2xl border border-bg-surface bg-bg-card p-4 shadow-card">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent">
+                    <Icon className="h-5 w-5" aria-hidden />
                   </div>
                   <div>
-                    <div className="text-accent font-semibold text-xs uppercase tracking-wider mb-1">{item.title}</div>
-                    <div className="text-text-primary text-sm">{item.val}</div>
+                    <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-accent">{item.title}</div>
+                    <div className="text-sm text-text-primary">{item.val}</div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
 
-          <div className="bg-bg-card border border-bg-surface rounded-lg p-6 md:p-8">
+          <div className="rounded-3xl border border-bg-surface bg-bg-card p-6 shadow-card md:p-8">
             {sent ? (
               <div className="text-center py-10">
-                <div className="w-14 h-14 bg-accent/10 border border-accent/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-7 h-7 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-accent/30 bg-accent/10 text-accent">
+                  <CheckCircle2 className="h-7 w-7" aria-hidden />
                 </div>
                 <h3 className="text-xl font-bold text-text-primary mb-2">Am primit mesajul.</h3>
                 <p className="text-text-muted text-sm">Revenim cu un raspuns clar, de obicei in aceeasi zi lucratoare.</p>
@@ -131,7 +147,8 @@ export default function Contact() {
                 {error && <p className="text-sm text-red-500">{error}</p>}
 
                 <button type="submit" disabled={loading}
-                  className="bg-accent text-bg-primary py-3 rounded-lg font-bold hover:opacity-90 transition-opacity disabled:opacity-60 shadow-lg shadow-accent/20">
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent py-3 font-bold text-bg-primary shadow-lg shadow-accent/20 transition-opacity hover:opacity-90 disabled:opacity-60">
+                  <Send className="h-4 w-4" aria-hidden />
                   {loading ? "Se trimite..." : "Trimite cererea"}
                 </button>
               </form>

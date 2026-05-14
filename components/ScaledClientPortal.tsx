@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { FAVORITES_KEY, readBuyerIntent, readStoredIds } from "@/lib/client-preferences"
 
 type Profile = { full_name: string; phone: string; budget: number; preferred_zones: string[]; rooms: number; purpose: string; financing_status: string }
 
@@ -40,16 +41,35 @@ export default function ScaledClientPortal() {
     setMessage(error ? error.message : "Ti-am trimis link-ul de autentificare pe email.")
   }
 
+  async function syncLocalFavorites(accessToken = token) {
+    const ids = readStoredIds(FAVORITES_KEY)
+    if (!ids.length || sessionStorage.getItem("hqs-local-favorites-synced") === "1") return
+
+    await Promise.allSettled(ids.map((propertyId) => fetch("/api/client/favorites", {
+      method: "POST",
+      headers: headers(accessToken),
+      body: JSON.stringify({ property_id: propertyId, notes: "Sincronizat din lista locala dupa autentificare." }),
+    })))
+    sessionStorage.setItem("hqs-local-favorites-synced", "1")
+  }
+
   async function load(accessToken = token) {
-    const [account, documents, offers, favorites, activity, recommendations] = await Promise.all([
-      fetch("/api/client/account", { headers: headers(accessToken) }).then((r) => r.json()).catch(() => ({})),
+    await syncLocalFavorites(accessToken)
+
+    const account = await fetch("/api/client/account", { headers: headers(accessToken) }).then((r) => r.json()).catch(() => ({}))
+    const localIntent = readBuyerIntent()
+    const nextProfile = account.profile
+      ? { ...emptyProfile, ...account.profile }
+      : { ...emptyProfile, budget: localIntent.budget, preferred_zones: localIntent.area === "orice" ? emptyProfile.preferred_zones : [localIntent.area], rooms: localIntent.rooms, purpose: localIntent.purpose }
+    setProfile(nextProfile)
+
+    const [documents, offers, favorites, activity, recommendations] = await Promise.all([
       fetch("/api/client/documents", { headers: headers(accessToken) }).then((r) => r.json()).catch(() => ({})),
       fetch("/api/client/offers", { headers: headers(accessToken) }).then((r) => r.json()).catch(() => ({})),
       fetch("/api/client/favorites", { headers: headers(accessToken) }).then((r) => r.json()).catch(() => ({})),
       fetch("/api/client/activity", { headers: headers(accessToken) }).then((r) => r.json()).catch(() => ({})),
-      fetch("/api/recommendations", { method: "POST", headers: headers(accessToken), body: JSON.stringify(profile) }).then((r) => r.json()).catch(() => ({})),
+      fetch("/api/recommendations", { method: "POST", headers: headers(accessToken), body: JSON.stringify(nextProfile) }).then((r) => r.json()).catch(() => ({})),
     ])
-    if (account.profile) setProfile({ ...emptyProfile, ...account.profile })
     setData({
       documents: documents.documents || [],
       offers: offers.offers || [],

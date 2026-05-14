@@ -1,32 +1,37 @@
 "use client"
 
-import { Property } from "@/lib/supabase"
-import { supabase } from "@/lib/supabase"
 import Link from "next/link"
+import { ArrowUpRight, Bath, BedDouble, Heart, MapPin, Ruler, Scale } from "lucide-react"
+import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
-import { COMPARE_KEY, FAVORITES_KEY, readStoredIds, toggleStoredId } from "@/lib/client-preferences"
+import { Property, supabase } from "@/lib/supabase"
+import { COMPARE_KEY, FAVORITES_KEY, readStoredIds, subscribeClientPreferences, toggleStoredId } from "@/lib/client-preferences"
+import { getPropertyMedia } from "@/lib/property-media"
+import SmartPropertyImage from "./SmartPropertyImage"
 
-const TIP_LABEL: Record<string, string> = { APARTMENT: "Apartament", HOUSE: "Casa", VILLA: "Vila", LAND: "Teren", COMMERCIAL: "Comercial" }
-
-const DEFAULT_IMAGES: Record<string, string> = {
-  VILLA: "https://images.unsplash.com/photo-1613977257363-707ba9348227?w=800&q=80",
-  HOUSE: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800&q=80",
-  APARTMENT: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80",
-  LAND: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80",
-  COMMERCIAL: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",
+const TIP_LABEL: Record<string, string> = {
+  APARTMENT: "Apartament",
+  HOUSE: "Casa",
+  VILLA: "Vila",
+  LAND: "Teren",
+  COMMERCIAL: "Comercial",
 }
 
 export default function ProprietateCard({ proprietate: p, matchScore, matchReasons = [] }: { proprietate: Property; matchScore?: number; matchReasons?: string[] }) {
-  const img = DEFAULT_IMAGES[p.type] || DEFAULT_IMAGES.APARTMENT
+  const media = getPropertyMedia(p)
   const pret = `EUR ${p.price.toLocaleString("ro-RO")}`
   const [favorite, setFavorite] = useState(false)
   const [compare, setCompare] = useState(false)
 
   useEffect(() => {
-    const favorites = readStoredIds(FAVORITES_KEY)
-    const compared = readStoredIds(COMPARE_KEY)
-    setFavorite(favorites.includes(p.id))
-    setCompare(compared.includes(p.id))
+    const sync = () => {
+      const favorites = readStoredIds(FAVORITES_KEY)
+      const compared = readStoredIds(COMPARE_KEY)
+      setFavorite(favorites.includes(p.id))
+      setCompare(compared.includes(p.id))
+    }
+    sync()
+    return subscribeClientPreferences(sync)
   }, [p.id])
 
   const toggleStored = async (key: typeof FAVORITES_KEY | typeof COMPARE_KEY) => {
@@ -47,78 +52,116 @@ export default function ProprietateCard({ proprietate: p, matchScore, matchReaso
   }
 
   return (
-    <div className="bg-bg-card border border-bg-surface rounded-lg overflow-hidden hover:border-accent/50 hover:-translate-y-0.5 transition-all duration-300 group">
-      <div className="relative h-52 overflow-hidden">
-        <img src={img} alt={p.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
-        <div className="absolute top-3 left-3 flex gap-2">
-          <span className="bg-accent text-bg-primary text-xs font-bold px-3 py-1 rounded-full">De vanzare</span>
-          <span className="bg-black/55 text-white text-xs font-medium px-3 py-1 rounded-full border border-white/15">{TIP_LABEL[p.type] || p.type}</span>
+    <article className="group overflow-hidden rounded-2xl border border-bg-surface/80 bg-bg-card shadow-[var(--shadow-card)] transition-all duration-300 hover:-translate-y-1 hover:border-accent/45">
+      <div className="relative aspect-[4/3] overflow-hidden bg-bg-secondary">
+        <SmartPropertyImage
+          src={media.cover}
+          fallbackSrc={media.fallbackCover}
+          alt={p.title}
+          fill
+          sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+          className="pointer-events-none object-cover transition duration-700 group-hover:scale-105"
+        />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/72 to-transparent" />
+        <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
+          <span className="rounded-full bg-accent px-3 py-1 text-xs font-black text-bg-primary">De vanzare</span>
+          <span className="rounded-full border border-white/20 bg-black/45 px-3 py-1 text-xs font-bold text-white backdrop-blur">
+            {TIP_LABEL[p.type] || p.type}
+          </span>
         </div>
         {p.featured && (
-          <div className="absolute top-3 right-3">
-            <span className="bg-white text-black text-xs font-bold px-3 py-1 rounded-full">Selectata</span>
-          </div>
+          <span className="absolute right-4 top-4 z-10 rounded-full bg-white px-3 py-1 text-xs font-black text-black shadow-lg">
+            Selectata
+          </span>
         )}
         {typeof matchScore === "number" && (
-          <div className="absolute bottom-3 left-3">
-            <span className="rounded-full border border-white/20 bg-black/55 px-3 py-1 text-xs font-black text-white backdrop-blur">
-              Scor {matchScore}
-            </span>
-          </div>
+          <span className="absolute bottom-4 left-4 z-10 rounded-full border border-white/18 bg-black/55 px-3 py-1 text-xs font-black text-white backdrop-blur">
+            Scor {matchScore}
+          </span>
         )}
-        <div className="absolute bottom-3 right-3 flex gap-2">
+        <div className="absolute bottom-4 right-4 z-10 flex gap-2">
           <button
             type="button"
             onClick={() => toggleStored(FAVORITES_KEY)}
-            className={`h-9 w-9 rounded-lg border border-white/25 backdrop-blur transition-all ${favorite ? "bg-accent text-bg-primary" : "bg-black/45 text-white hover:bg-white hover:text-black"}`}
+            className={`grid h-10 w-10 place-items-center rounded-xl border border-white/25 backdrop-blur transition-all ${favorite ? "bg-accent text-bg-primary" : "bg-black/45 text-white hover:bg-white hover:text-black"}`}
             title={favorite ? "Scoate de la favorite" : "Adauga la favorite"}
+            aria-label={favorite ? "Scoate de la favorite" : "Adauga la favorite"}
           >
-            <span aria-hidden>{favorite ? "F" : "+"}</span>
+            <Heart className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} aria-hidden />
           </button>
           <button
             type="button"
             onClick={() => toggleStored(COMPARE_KEY)}
-            className={`h-9 w-9 rounded-lg border border-white/25 text-xs font-black backdrop-blur transition-all ${compare ? "bg-accent text-bg-primary" : "bg-black/45 text-white hover:bg-white hover:text-black"}`}
+            className={`grid h-10 w-10 place-items-center rounded-xl border border-white/25 backdrop-blur transition-all ${compare ? "bg-accent text-bg-primary" : "bg-black/45 text-white hover:bg-white hover:text-black"}`}
             title={compare ? "Scoate din comparatie" : "Compara proprietatea"}
+            aria-label={compare ? "Scoate din comparatie" : "Compara proprietatea"}
           >
-            CMP
+            <Scale className="h-4 w-4" aria-hidden />
           </button>
         </div>
       </div>
+
       <div className="p-5">
-        <h3 className="font-bold text-text-primary text-base mb-1 line-clamp-1">{p.title}</h3>
-        <p className="text-text-muted text-sm mb-4 flex items-center gap-1">
-          <svg className="w-3.5 h-3.5 text-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657 13.414 20.9a2 2 0 0 1-2.827 0l-4.244-4.243a8 8 0 1 1 11.314 0Z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-          </svg>
-          {p.address || p.city}, {p.county || "Romania"}
-        </p>
-        <div className="flex flex-wrap gap-3 text-sm text-text-muted mb-4">
-          {p.rooms > 0 && <span>{p.rooms} camere</span>}
-          {p.rooms > 0 && <span className="text-bg-surface">|</span>}
-          <span>{p.area_sqm} mp</span>
-          {p.bathrooms > 0 && <><span className="text-bg-surface">|</span><span>{p.bathrooms} bai</span></>}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-accent">{p.city || "HQS"}</p>
+            <h3 className="mt-2 line-clamp-2 text-lg font-black leading-snug text-text-primary">{p.title}</h3>
+          </div>
+          <Link
+            href={`/proprietate/${p.slug}`}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-bg-surface text-text-primary transition-colors hover:border-accent hover:text-accent"
+            aria-label={`Vezi detalii pentru ${p.title}`}
+          >
+            <ArrowUpRight className="h-4 w-4" aria-hidden />
+          </Link>
         </div>
+
+        <p className="mt-4 flex items-start gap-2 text-sm leading-6 text-text-muted">
+          <MapPin className="mt-1 h-4 w-4 shrink-0 text-accent" aria-hidden />
+          <span className="line-clamp-2">{p.address || p.city}, {p.county || "Romania"}</span>
+        </p>
+
+        <div className="mt-5 grid grid-cols-3 gap-2 text-sm text-text-muted">
+          <Metric icon={<BedDouble className="h-4 w-4" />} value={p.rooms > 0 ? `${p.rooms}` : "-"} label="camere" />
+          <Metric icon={<Ruler className="h-4 w-4" />} value={`${p.area_sqm}`} label="mp" />
+          <Metric icon={<Bath className="h-4 w-4" />} value={p.bathrooms > 0 ? `${p.bathrooms}` : "-"} label="bai" />
+        </div>
+
         {matchReasons.length > 0 && (
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             {matchReasons.slice(0, 2).map((reason) => (
-              <span key={reason} className="rounded-full border border-bg-surface px-2.5 py-1 text-xs text-text-muted">
+              <span key={reason} className="rounded-full border border-bg-surface bg-bg-secondary px-3 py-1 text-xs font-semibold text-text-muted">
                 {reason}
               </span>
             ))}
           </div>
         )}
-        <div className="flex items-center justify-between pt-4 border-t border-bg-surface">
-          <span className="text-xl font-bold text-accent">{pret}</span>
-          <Link href={`/proprietate/${p.slug}`}
-            className="bg-accent/10 text-accent border border-accent/30 text-sm px-4 py-2 rounded-lg hover:bg-accent hover:text-bg-primary transition-all font-medium">
-            Vezi detalii
+
+        <div className="mt-5 flex items-end justify-between gap-4 border-t border-bg-surface pt-5">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-text-muted">Pret</p>
+            <p className="mt-1 text-2xl font-black text-accent">{pret}</p>
+          </div>
+          <Link
+            href={`/proprietate/${p.slug}`}
+            className="rounded-xl bg-accent/10 px-4 py-2.5 text-sm font-black text-accent transition-colors hover:bg-accent hover:text-bg-primary"
+          >
+            Detalii
           </Link>
         </div>
       </div>
+    </article>
+  )
+}
+
+function Metric({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
+  return (
+    <div className="rounded-xl border border-bg-surface bg-bg-secondary px-3 py-2">
+      <div className="flex items-center gap-1.5 text-text-primary">
+        <span className="text-accent">{icon}</span>
+        <span className="font-black">{value}</span>
+      </div>
+      <p className="mt-1 text-xs text-text-muted">{label}</p>
     </div>
   )
 }

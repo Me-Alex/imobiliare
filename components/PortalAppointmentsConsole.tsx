@@ -1,7 +1,14 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase, type Property } from "@/lib/supabase"
+import {
+  COMPARE_KEY,
+  FAVORITES_KEY,
+  readRecentPropertyViews,
+  readStoredIds,
+  subscribeClientPreferences,
+} from "@/lib/client-preferences"
 
 type Slot = {
   id?: string
@@ -24,16 +31,27 @@ type Appointment = {
   notes?: string | null
 }
 
-export default function PortalAppointmentsConsole() {
+export default function PortalAppointmentsConsole({ properties = [] }: { properties?: Property[] }) {
   const [token, setToken] = useState("")
   const [slots, setSlots] = useState<Slot[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [selectedSlot, setSelectedSlot] = useState("")
+  const [shortlistIds, setShortlistIds] = useState<string[]>([])
+  const [targetPropertyId, setTargetPropertyId] = useState("")
   const [notes, setNotes] = useState("As dori o vizionare si confirmare telefonica.")
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
 
   const selected = useMemo(() => slots.find((slot) => slot.id === selectedSlot || slot.value === selectedSlot), [slots, selectedSlot])
+  const targetProperty = useMemo(() => properties.find((property) => property.id === targetPropertyId), [properties, targetPropertyId])
+  const propertyOptions = useMemo(() => {
+    const preferred = shortlistIds
+      .map((id) => properties.find((property) => property.id === id))
+      .filter(Boolean) as Property[]
+    const fallback = properties.filter((property) => property.featured).slice(0, 4)
+    const rows = [...preferred, ...fallback, ...properties.slice(0, 4)]
+    return rows.filter((property, index, list) => list.findIndex((item) => item.id === property.id) === index).slice(0, 8)
+  }, [properties, shortlistIds])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -48,6 +66,20 @@ export default function PortalAppointmentsConsole() {
     })
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    const sync = () => {
+      const recentIds = readRecentPropertyViews().map((view) => view.id)
+      const ids = Array.from(new Set([...readStoredIds(FAVORITES_KEY), ...readStoredIds(COMPARE_KEY), ...recentIds]))
+      setShortlistIds(ids)
+      setTargetPropertyId((current) => {
+        if (current && properties.some((property) => property.id === current)) return current
+        return ids.find((id) => properties.some((property) => property.id === id)) || properties.find((property) => property.featured)?.id || properties[0]?.id || ""
+      })
+    }
+    sync()
+    return subscribeClientPreferences(sync)
+  }, [properties])
 
   async function load(accessToken = token) {
     setLoading(true)
@@ -81,8 +113,9 @@ export default function PortalAppointmentsConsole() {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           slot_id: selected.id || null,
+          property_id: targetProperty?.id || null,
           requested_at: selected.starts_at || selected.value,
-          notes,
+          notes: [targetProperty ? `Proprietate: ${targetProperty.title}` : "", notes].filter(Boolean).join("\n"),
         }),
       })
       const body = await response.json().catch(() => ({}))
@@ -136,6 +169,16 @@ export default function PortalAppointmentsConsole() {
           <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
             <h3 className="font-black text-text-primary">Solicita vizionare</h3>
             <p className="mt-2 text-sm text-text-muted">{selected ? `${selected.label || formatDate(selected.starts_at || selected.value)} - ${selected.agent_email || "agent disponibil"}` : "Alege un slot disponibil."}</p>
+            {propertyOptions.length > 0 && (
+              <>
+                <label className="mt-4 block text-xs font-bold uppercase text-text-muted">Proprietate</label>
+                <select className="form-input mt-2" value={targetPropertyId} onChange={(event) => setTargetPropertyId(event.target.value)}>
+                  {propertyOptions.map((property) => (
+                    <option key={property.id} value={property.id}>{property.title}</option>
+                  ))}
+                </select>
+              </>
+            )}
             <textarea className="form-input mt-4 min-h-28" value={notes} onChange={(event) => setNotes(event.target.value)} />
             <button onClick={requestAppointment} disabled={loading || !selectedSlot} className="mt-4 w-full rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary disabled:opacity-50">
               Trimite programarea

@@ -33,6 +33,14 @@ export type SavedSearch = {
   createdAt: string
 }
 
+export type ClientPreferenceSnapshot = {
+  favorites: string[]
+  compare: string[]
+  buyerIntent: BuyerIntent
+  recentViews: RecentPropertyView[]
+  savedSearches: SavedSearch[]
+}
+
 export const DEFAULT_BUYER_INTENT: BuyerIntent = {
   budget: 250000,
   area: "orice",
@@ -53,6 +61,12 @@ export function readStoredIds(key: string) {
 export function writeStoredIds(key: string, ids: string[]) {
   if (typeof window === "undefined") return
   localStorage.setItem(key, JSON.stringify(Array.from(new Set(ids))))
+  dispatchClientEvent("hqs-selection")
+}
+
+export function clearStoredIds(key: string) {
+  if (typeof window === "undefined") return
+  localStorage.removeItem(key)
   dispatchClientEvent("hqs-selection")
 }
 
@@ -131,6 +145,16 @@ export function writeSavedSearches(searches: SavedSearch[]) {
   if (typeof window === "undefined") return
   localStorage.setItem(SAVED_SEARCHES_KEY, JSON.stringify(searches.slice(0, 6)))
   dispatchClientEvent("hqs-saved-searches")
+}
+
+export function readClientPreferenceSnapshot(): ClientPreferenceSnapshot {
+  return {
+    favorites: readStoredIds(FAVORITES_KEY),
+    compare: readStoredIds(COMPARE_KEY),
+    buyerIntent: readBuyerIntent(),
+    recentViews: readRecentPropertyViews(),
+    savedSearches: readSavedSearches(),
+  }
 }
 
 export function subscribeClientPreferences(callback: () => void) {
