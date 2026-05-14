@@ -2,6 +2,7 @@ import Header from '@/components/Header'
 import Hero from '@/components/Hero'
 import ProprietatiSection from '@/components/ProprietatiSection'
 import PropertyHighlights from '@/components/PropertyHighlights'
+import TrustProofSection from '@/components/TrustProofSection'
 import ProcessSection from '@/components/ProcessSection'
 import Benefits from '@/components/Benefits'
 import RecommendationStudio from '@/components/RecommendationStudio'
@@ -29,6 +30,7 @@ export default async function Home() {
       <Hero entry={cms['home.hero']} />
       <CmsContentBand entry={cms['home.hero']} />
       <PropertyHighlights />
+      <TrustProofSection />
       <ProprietatiSection initialProperties={properties || []} />
       <RecommendationStudio properties={properties || []} />
       <MarketPulseSection properties={properties || []} />
