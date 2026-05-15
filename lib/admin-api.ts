@@ -34,9 +34,11 @@ function parseBasicAuth(request: Request) {
 export function isAdminRequest(request: Request) {
   const adminPassword = process.env.ADMIN_PASSWORD
   const parsed = parseBasicAuth(request)
+  const allowedUsers = parseAllowedUsers(process.env.ADMIN_ALLOWED_USERS)
+  const userAllowed = !allowedUsers.length || Boolean(parsed?.username && allowedUsers.includes(parsed.username))
 
   if (!adminPassword || !parsed?.username) return false
-  return parsed.password === adminPassword
+  return parsed.password === adminPassword && userAllowed
 }
 
 export function getAdminSession(request: Request): AdminSession | null {
@@ -123,6 +125,10 @@ function normalizePermissions(value: unknown) {
     }
   }
   return []
+}
+
+function parseAllowedUsers(value: string | undefined) {
+  return (value || "").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean)
 }
 
 export function unauthorized() {

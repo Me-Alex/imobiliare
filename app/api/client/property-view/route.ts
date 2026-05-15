@@ -1,3 +1,4 @@
+import { parseJsonBody, propertyViewSchema } from "@/lib/api-validation"
 import { requireClient } from "@/lib/client-api"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
@@ -12,18 +13,18 @@ export async function POST(request: Request) {
   if ("error" in session) return session.error
 
   try {
-    const body = await request.json().catch(() => ({}))
-    const propertyId = String(body.property_id || "")
-    if (!propertyId) return NextResponse.json({ error: "property_id lipseste" }, { status: 400 })
+    const parsed = await parseJsonBody(request, propertyViewSchema)
+    if ("error" in parsed) return parsed.error
+    const body = parsed.data
 
     const metadata = {
-      property_id: propertyId,
-      property_slug: body.property_slug ? String(body.property_slug) : null,
-      property_title: body.property_title ? String(body.property_title) : null,
-      property_city: body.property_city ? String(body.property_city) : null,
-      price: Number(body.price || 0),
-      rooms: Number(body.rooms || 0),
-      source: String(body.source || "property_page"),
+      property_id: body.property_id,
+      property_slug: body.property_slug,
+      property_title: body.property_title,
+      property_city: body.property_city,
+      price: body.price,
+      rooms: body.rooms,
+      source: body.source,
     }
 
     const { data, error } = await session.supabase

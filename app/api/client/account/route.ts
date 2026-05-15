@@ -1,3 +1,4 @@
+import { clientAccountSchema, parseJsonBody } from "@/lib/api-validation"
 import { requireClient } from "@/lib/client-api"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
@@ -27,17 +28,23 @@ export async function POST(request: Request) {
   if ("error" in session) return session.error
 
   const { supabase, user } = session
-  const body = await request.json().catch(() => ({}))
+  const parsed = await parseJsonBody(request, clientAccountSchema)
+  if ("error" in parsed) return parsed.error
+  const body = parsed.data
+  const preferredZones = Array.isArray(body.preferred_zones)
+    ? body.preferred_zones.map(String)
+    : String(body.preferred_zones || "").split(",").map((x) => x.trim()).filter(Boolean)
+
   const payload = {
     user_id: user.id,
     email: user.email,
-    full_name: String(body.full_name || body.name || user.email || "Client HQS"),
-    phone: body.phone ? String(body.phone) : null,
-    budget: Number(body.budget || 250000),
-    preferred_zones: Array.isArray(body.preferred_zones) ? body.preferred_zones.map(String) : String(body.preferred_zones || "").split(",").map((x) => x.trim()).filter(Boolean),
-    rooms: Number(body.rooms || 2),
-    purpose: String(body.purpose || "locuire"),
-    financing_status: String(body.financing_status || "neconfirmat"),
+    full_name: body.full_name || body.name || user.email || "Client HQS",
+    phone: body.phone || null,
+    budget: body.budget,
+    preferred_zones: preferredZones,
+    rooms: body.rooms,
+    purpose: body.purpose,
+    financing_status: body.financing_status,
   }
 
   const { data, error } = await supabase

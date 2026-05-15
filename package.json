@@ -4,10 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "typecheck": "tsc --noEmit",
     "build": "next build",
     "pages:build": "npx @cloudflare/next-on-pages@1 && node scripts/patch-cloudflare-routes.mjs",
     "cloudflare:build": "npm run pages:build",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "audit:prod": "npm audit --omit=dev",
+    "smoke:live": "node scripts/smoke-live.mjs",
+    "verify": "npm run typecheck && npm run build",
     "start": "next start"
   },
   "dependencies": {
@@ -15,7 +19,8 @@
     "lucide-react": "1.14.0",
     "next": "14.2.35",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "1.14.10",

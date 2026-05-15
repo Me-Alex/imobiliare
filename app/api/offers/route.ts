@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { offerDraftSchema, parseJsonBody } from "@/lib/api-validation"
 import { buildOfferDraft } from "@/lib/complexity"
 import { rateLimit } from "@/lib/rate-limit"
 
@@ -9,15 +10,17 @@ export async function POST(request: Request) {
   if (limited) return limited
 
   try {
-    const body = await request.json().catch(() => ({}))
-    const propertyTitle = String(body.propertyTitle || "").trim().slice(0, 160) || "Proprietate HQS"
+    const parsed = await parseJsonBody(request, offerDraftSchema)
+    if ("error" in parsed) return parsed.error
+    const body = parsed.data
+
     const draft = buildOfferDraft({
-      propertyTitle,
-      listPrice: Number(body.listPrice || 250000),
-      clientBudget: Number(body.clientBudget || body.listPrice || 250000),
-      advancePercent: Number(body.advancePercent || 20),
-      closingDays: Number(body.closingDays || 30),
-      riskLevel: ["scazut", "mediu", "ridicat"].includes(body.riskLevel) ? body.riskLevel : "mediu",
+      propertyTitle: body.propertyTitle,
+      listPrice: body.listPrice,
+      clientBudget: body.clientBudget || body.listPrice,
+      advancePercent: body.advancePercent,
+      closingDays: body.closingDays,
+      riskLevel: body.riskLevel,
     })
 
     return NextResponse.json({ draft })

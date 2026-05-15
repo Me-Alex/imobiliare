@@ -3,12 +3,13 @@
 import { useState } from "react"
 import { Building2, CheckCircle2, Clock3, Mail, Phone, Send } from "lucide-react"
 import { readClientPreferenceSnapshot } from "@/lib/client-preferences"
+import { siteConfig } from "@/lib/site-config"
 
 const info = [
-  { icon: Building2, title: "Birou", val: "Bd. Unirii 45, Sector 3, Bucuresti" },
-  { icon: Phone, title: "Telefon", val: "+40 700 000 000" },
-  { icon: Mail, title: "Email", val: "contact@hqsimobiliare.ro" },
-  { icon: Clock3, title: "Program", val: "Luni - Vineri, 09:00 - 18:00" },
+  { icon: Building2, title: "Birou", val: siteConfig.contact.office },
+  { icon: Phone, title: "Telefon", val: siteConfig.contact.phoneLabel },
+  { icon: Mail, title: "Email", val: siteConfig.contact.email },
+  { icon: Clock3, title: "Program", val: siteConfig.contact.hours },
 ]
 
 const intentOptions = [

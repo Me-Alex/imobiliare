@@ -1,3 +1,4 @@
+import { clientDocumentSchema, parseJsonBody } from "@/lib/api-validation"
 import { requireClient } from "@/lib/client-api"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
@@ -33,8 +34,10 @@ export async function POST(request: Request) {
   const session = await requireClient(request)
   if ("error" in session) return session.error
 
-  const body = await request.json().catch(() => ({}))
-  const checklist = Array.isArray(body.checklist) ? body.checklist : [
+  const parsed = await parseJsonBody(request, clientDocumentSchema)
+  if ("error" in parsed) return parsed.error
+  const body = parsed.data
+  const checklist = body.checklist || [
     { label: "Fisier incarcat sau link document", done: Boolean(body.url) },
     { label: "Verificare identitate", done: false },
     { label: "Validare expirare", done: Boolean(body.expires_at) },
@@ -43,13 +46,13 @@ export async function POST(request: Request) {
     .from("client_documents")
     .insert({
       user_id: session.user.id,
-      title: String(body.title || "Document client"),
-      type: String(body.type || "act client"),
-      status: String(body.status || "PENDING"),
-      url: body.url ? String(body.url) : null,
+      title: body.title,
+      type: body.type,
+      status: body.status,
+      url: body.url,
       expires_at: body.expires_at || null,
       checklist,
-      notes: body.notes ? String(body.notes) : null,
+      notes: body.notes || null,
     })
     .select("*")
     .single()
@@ -59,7 +62,7 @@ export async function POST(request: Request) {
     user_id: session.user.id,
     type: "DOCUMENT_CREATED",
     title: "Document adaugat",
-    description: String(body.title || "Document client"),
+    description: body.title,
     metadata: { document_id: data.id, status: data.status },
   })
   return NextResponse.json({ document: data })

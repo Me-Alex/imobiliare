@@ -1,3 +1,4 @@
+import { favoriteRequestSchema, parseJsonBody } from "@/lib/api-validation"
 import { requireClient } from "@/lib/client-api"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
@@ -25,13 +26,13 @@ export async function POST(request: Request) {
   const session = await requireClient(request)
   if ("error" in session) return session.error
 
-  const body = await request.json().catch(() => ({}))
-  const propertyId = String(body.property_id || "")
-  if (!propertyId) return NextResponse.json({ error: "property_id lipseste" }, { status: 400 })
+  const parsed = await parseJsonBody(request, favoriteRequestSchema)
+  if ("error" in parsed) return parsed.error
+  const body = parsed.data
 
   const { data, error } = await session.supabase
     .from("client_favorites")
-    .upsert({ user_id: session.user.id, property_id: propertyId, source: "portal", notes: body.notes || null }, { onConflict: "user_id,property_id" })
+    .upsert({ user_id: session.user.id, property_id: body.property_id, source: "portal", notes: body.notes || null }, { onConflict: "user_id,property_id" })
     .select("*")
     .single()
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     type: "FAVORITE_SAVED",
     title: "Proprietate salvata",
     description: "Clientul a salvat o proprietate in lista scurta.",
-    metadata: { property_id: propertyId },
+    metadata: { property_id: body.property_id },
   })
   return NextResponse.json({ favorite: data })
 }
@@ -54,7 +55,7 @@ export async function DELETE(request: Request) {
   if ("error" in session) return session.error
 
   const url = new URL(request.url)
-  const propertyId = url.searchParams.get("property_id")
+  const propertyId = url.searchParams.get("property_id")?.trim()
   if (!propertyId) return NextResponse.json({ error: "property_id lipseste" }, { status: 400 })
 
   const { error } = await session.supabase

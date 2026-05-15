@@ -1,4 +1,5 @@
 import { getAdminClient, getAdminRpcSecret } from "@/lib/admin-api"
+import { clientAppointmentRequestSchema, parseJsonBody } from "@/lib/api-validation"
 import { requireClient } from "@/lib/client-api"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
@@ -31,7 +32,10 @@ export async function POST(request: Request) {
   if ("error" in session) return session.error
 
   try {
-    const body = await request.json().catch(() => ({}))
+    const parsed = await parseJsonBody(request, clientAppointmentRequestSchema)
+    if ("error" in parsed) return parsed.error
+    const body = parsed.data
+
     const profile = await session.supabase
       .from("client_profiles")
       .select("full_name, phone")
@@ -41,10 +45,10 @@ export async function POST(request: Request) {
     const payload = {
       property_id: body.property_id || null,
       slot_id: body.slot_id || null,
-      requested_at: body.requested_at || body.starts_at || new Date().toISOString(),
-      client_name: body.client_name || profile.data?.full_name || session.user.email || "Client HQS",
+      requested_at: body.requested_at || new Date().toISOString(),
+      client_name: profile.data?.full_name || session.user.email || "Client HQS",
       client_email: session.user.email,
-      client_phone: body.client_phone || profile.data?.phone || null,
+      client_phone: profile.data?.phone || null,
       notes: body.notes || "Programare trimisa din portalul clientului.",
     }
 

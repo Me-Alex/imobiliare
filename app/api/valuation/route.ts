@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { parseJsonBody, valuationSchema } from "@/lib/api-validation"
 import { calculateValuation } from "@/lib/complexity"
 import { rateLimit } from "@/lib/rate-limit"
 
@@ -9,14 +10,17 @@ export async function POST(request: Request) {
   if (limited) return limited
 
   try {
-    const body = await request.json().catch(() => ({}))
+    const parsed = await parseJsonBody(request, valuationSchema)
+    if ("error" in parsed) return parsed.error
+    const body = parsed.data
+
     const valuation = calculateValuation({
-      area: Number(body.area || 70),
-      rooms: Number(body.rooms || 2),
-      zone: String(body.zone || "Bucuresti Nord"),
-      condition: ["renovat", "bun", "de-renovat", "premium"].includes(body.condition) ? body.condition : "bun",
-      parking: Number(body.parking || 0),
-      floor: body.floor === undefined ? undefined : Number(body.floor),
+      area: body.area,
+      rooms: body.rooms,
+      zone: body.zone,
+      condition: body.condition,
+      parking: body.parking,
+      floor: body.floor,
     })
 
     return NextResponse.json({ valuation })

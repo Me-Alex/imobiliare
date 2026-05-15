@@ -1,9 +1,12 @@
+import { siteConfig } from "@/lib/site-config"
+
 export const runtime = 'edge'
 
 export default function robots() {
+  const base = siteConfig.url.replace(/\/$/, "")
   return {
     rules: [{ userAgent: '*', allow: '/' }],
-    sitemap: 'https://hqsimobiliare.ro/sitemap.xml',
-    host: 'https://hqsimobiliare.ro',
+    sitemap: `${base}/sitemap.xml`,
+    host: base,
   }
 }

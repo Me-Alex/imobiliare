@@ -7,6 +7,7 @@ import type { ReactNode } from "react"
 import { Heart, Menu, Phone, Scale, Search, UserRound, X } from "lucide-react"
 import ThemeToggle from "./ThemeToggle"
 import { COMPARE_KEY, FAVORITES_KEY, readStoredIds, subscribeClientPreferences } from "@/lib/client-preferences"
+import { siteConfig } from "@/lib/site-config"
 
 const links = [
   { href: "/", label: "Acasa" },
@@ -67,13 +68,13 @@ export default function Header() {
           <IconLink href="/comparare" label={`Comparare${compareCount > 0 ? ` (${compareCount})` : ""}`} icon={<Scale className="h-4 w-4" aria-hidden />} />
           <IconLink href="/favorite" label={`Favorite${favoriteCount > 0 ? ` (${favoriteCount})` : ""}`} icon={<Heart className="h-4 w-4" aria-hidden />} />
           <IconLink href="/login" label="Cont client" icon={<UserRound className="h-4 w-4" aria-hidden />} />
-          <a
-            href="tel:+40700000000"
+          <Link
+            href={siteConfig.contact.phoneHref}
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-black text-bg-primary transition hover:opacity-90"
           >
             <Phone className="h-4 w-4" aria-hidden />
-            Suna acum
-          </a>
+            Solicita apel
+          </Link>
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
@@ -114,10 +115,10 @@ export default function Header() {
               <UserRound className="h-4 w-4" aria-hidden />
               Cont client
             </Link>
-            <a href="tel:+40700000000" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-accent font-black text-bg-primary">
+            <Link href={siteConfig.contact.phoneHref} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-accent font-black text-bg-primary">
               <Phone className="h-4 w-4" aria-hidden />
-              Suna
-            </a>
+              Apel
+            </Link>
           </div>
         </div>
       )}

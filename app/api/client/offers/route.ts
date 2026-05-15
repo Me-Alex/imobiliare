@@ -1,3 +1,4 @@
+import { clientOfferSchema, parseJsonBody } from "@/lib/api-validation"
 import { requireClient } from "@/lib/client-api"
 import { buildOfferDraft } from "@/lib/complexity"
 import { rateLimit } from "@/lib/rate-limit"
@@ -29,14 +30,16 @@ export async function POST(request: Request) {
   const session = await requireClient(request)
   if ("error" in session) return session.error
 
-  const body = await request.json().catch(() => ({}))
+  const parsed = await parseJsonBody(request, clientOfferSchema)
+  if ("error" in parsed) return parsed.error
+  const body = parsed.data
   const draft = buildOfferDraft({
-    propertyTitle: String(body.property_title || "Proprietate HQS"),
-    listPrice: Number(body.list_price || 0),
-    clientBudget: Number(body.offer_price || body.client_budget || body.list_price || 0),
-    advancePercent: Number(body.advance_percent || 20),
-    closingDays: Number(body.closing_days || 30),
-    riskLevel: ["scazut", "mediu", "ridicat"].includes(body.risk_level) ? body.risk_level : "mediu",
+    propertyTitle: body.property_title,
+    listPrice: body.list_price,
+    clientBudget: body.offer_price || body.client_budget || body.list_price,
+    advancePercent: body.advance_percent,
+    closingDays: body.closing_days,
+    riskLevel: body.risk_level,
   })
 
   const { data, error } = await session.supabase
@@ -45,15 +48,15 @@ export async function POST(request: Request) {
       user_id: session.user.id,
       client_user_id: session.user.id,
       property_id: body.property_id || null,
-      property_title: String(body.property_title || draft.propertyTitle),
-      client_name: String(body.client_name || session.user.email || "Client HQS"),
+      property_title: body.property_title || draft.propertyTitle,
+      client_name: body.client_name || session.user.email || "Client HQS",
       client_email: session.user.email,
-      list_price: Number(body.list_price || draft.recommended),
-      offer_price: Number(body.offer_price || draft.recommended),
-      advance_percent: Number(body.advance_percent || 20),
-      closing_days: Number(body.closing_days || 30),
-      risk_level: String(body.risk_level || "mediu"),
-      notes: body.notes ? String(body.notes) : draft.clauses.join("; "),
+      list_price: body.list_price || draft.recommended,
+      offer_price: body.offer_price || draft.recommended,
+      advance_percent: body.advance_percent,
+      closing_days: body.closing_days,
+      risk_level: body.risk_level,
+      notes: body.notes || draft.clauses.join("; "),
     })
     .select("*")
     .single()
@@ -63,7 +66,7 @@ export async function POST(request: Request) {
     user_id: session.user.id,
     type: "OFFER_SUBMITTED",
     title: "Oferta trimisa",
-    description: String(body.property_title || draft.propertyTitle),
+    description: body.property_title || draft.propertyTitle,
     metadata: { offer_id: data.id, offer_price: data.offer_price, status: data.status },
   })
   return NextResponse.json({ offer: data, draft })

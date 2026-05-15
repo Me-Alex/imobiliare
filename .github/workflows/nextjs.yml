@@ -51,7 +51,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-
       - name: Install dependencies
-        run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production dependency audit
+        run: npm run audit:prod
+        continue-on-error: true
       - name: Build with Next.js
         run: ${{ steps.detect-package-manager.outputs.runner }} next build
       - name: Build Cloudflare Worker bundle

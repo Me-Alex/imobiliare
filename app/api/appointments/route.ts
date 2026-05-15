@@ -1,4 +1,5 @@
 import { getAdminClient, jsonError } from "@/lib/admin-api"
+import { appointmentRequestSchema, parseJsonBody } from "@/lib/api-validation"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
@@ -11,8 +12,10 @@ export async function POST(request: Request) {
   if (limited) return limited
 
   try {
-    const payload = await request.json()
-    const { data, error } = await getAdminClient().rpc("public_create_appointment", { payload })
+    const parsed = await parseJsonBody(request, appointmentRequestSchema)
+    if ("error" in parsed) return parsed.error
+
+    const { data, error } = await getAdminClient().rpc("public_create_appointment", { payload: parsed.data })
 
     if (error) return jsonError(error.message, 400)
     return NextResponse.json({ appointment: data }, { status: 201 })

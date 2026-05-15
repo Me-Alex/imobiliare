@@ -1,3 +1,4 @@
+import { clientActivitySchema, parseJsonBody } from "@/lib/api-validation"
 import { requireClient } from "@/lib/client-api"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
@@ -39,15 +40,17 @@ export async function POST(request: Request) {
   const session = await requireClient(request)
   if ("error" in session) return session.error
 
-  const body = await request.json().catch(() => ({}))
+  const parsed = await parseJsonBody(request, clientActivitySchema)
+  if ("error" in parsed) return parsed.error
+  const body = parsed.data
   const { data, error } = await session.supabase
     .from("client_activity")
     .insert({
       user_id: session.user.id,
-      type: String(body.type || "CLIENT_NOTE"),
-      title: String(body.title || "Nota client"),
-      description: body.description ? String(body.description) : null,
-      metadata: body.metadata || {},
+      type: body.type,
+      title: body.title,
+      description: body.description,
+      metadata: body.metadata,
     })
     .select("*")
     .single()
