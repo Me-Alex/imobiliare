@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "pages:build": "npm run cloudflare:build",
-    "cloudflare:build": "opennextjs-cloudflare build",
+    "pages:build": "npx @cloudflare/next-on-pages@1 && node scripts/patch-cloudflare-routes.mjs",
+    "cloudflare:build": "npm run pages:build",
+    "cloudflare:worker:build": "opennextjs-cloudflare build",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
