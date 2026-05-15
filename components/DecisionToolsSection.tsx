@@ -4,8 +4,7 @@ import { ArrowRight, BarChart3, CheckCircle2, ClipboardCheck, MapPinned, ShieldC
 import type { Property } from "@/lib/supabase"
 import { buildPortfolioAnalytics, localMarketMatrix } from "@/lib/complexity"
 import { scoreProperty, type BuyerProfile } from "@/lib/experience"
-
-const money = new Intl.NumberFormat("ro-RO")
+import { formatCurrency, formatInt } from "@/lib/format"
 
 const defaultProfile: BuyerProfile = {
   budget: 250000,
@@ -55,7 +54,7 @@ export default function DecisionToolsSection({ properties }: { properties: Prope
 
           <div className="grid gap-3 sm:grid-cols-3">
             <Metric label="Portofoliu live" value={String(analytics.published)} detail="proprietati publicate" />
-            <Metric label="Pret mediu/mp" value={`EUR ${money.format(analytics.avgSqm)}`} detail="stoc activ" />
+            <Metric label="Pret mediu/mp" value={formatCurrency(analytics.avgSqm)} detail="stoc activ" />
             <Metric label="Selectate HQS" value={String(analytics.premium)} detail="verificate de echipa" />
           </div>
         </div>
@@ -70,7 +69,7 @@ export default function DecisionToolsSection({ properties }: { properties: Prope
                 </h3>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-text-muted">
                   {recommended
-                    ? `${recommended.property.city || "Bucuresti"} - EUR ${money.format(recommended.property.price)} - ${recommended.property.rooms || "-"} camere`
+                    ? `${recommended.property.city || "Bucuresti"} - ${formatCurrency(recommended.property.price)} - ${recommended.property.rooms || "-"} camere`
                     : "Cand exista proprietati publicate, aici apare prima recomandare calculata."}
                 </p>
               </div>
@@ -137,7 +136,7 @@ export default function DecisionToolsSection({ properties }: { properties: Prope
                 <MapPinned className="h-5 w-5 text-accent" aria-hidden />
               </div>
               <div className="grid grid-cols-3 gap-3 border-t border-bg-surface pt-4">
-                <SmallMetric icon={<BarChart3 className="h-4 w-4" aria-hidden />} label="EUR/mp" value={money.format(zone.avgPrice)} />
+                <SmallMetric icon={<BarChart3 className="h-4 w-4" aria-hidden />} label="EUR/mp" value={formatInt(zone.avgPrice)} />
                 <SmallMetric icon={<ClipboardCheck className="h-4 w-4" aria-hidden />} label="Chirie" value={`${zone.rentYield}%`} />
                 <SmallMetric icon={<ShieldCheck className="h-4 w-4" aria-hidden />} label="Lichid." value={`${zone.liquidity}`} />
               </div>

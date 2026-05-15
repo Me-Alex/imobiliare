@@ -11,6 +11,7 @@ import {
   complexityPillars,
   getMarketSignal,
 } from "@/lib/complexity"
+import { formatCurrency } from "@/lib/format"
 
 type Tab = "client" | "piata" | "oferta" | "operatiuni"
 
@@ -82,7 +83,7 @@ export default function ExperienceCommandCenter({ properties }: { properties: Pr
           <aside className="rounded-lg border border-bg-surface bg-bg-card p-5">
             <label className="text-xs font-bold uppercase text-text-muted">Buget client</label>
             <input className="mt-3 w-full accent-accent" type="range" min={75000} max={1000000} step={25000} value={budget} onChange={(event) => setBudget(Number(event.target.value))} />
-            <p className="mt-2 text-3xl font-black text-accent">EUR {budget.toLocaleString("ro-RO")}</p>
+            <p className="mt-2 text-3xl font-black text-accent">{formatCurrency(budget)}</p>
             <div className="mt-5 grid gap-3">
               <Input label="Zona" value={zone} onChange={setZone} />
               <Input label="Suprafata evaluata" value={String(area)} onChange={(value) => setArea(Number(value || 0))} type="number" />
@@ -108,7 +109,7 @@ export default function ExperienceCommandCenter({ properties }: { properties: Pr
               <div>
                 <PanelTitle title="Plan client" subtitle="Cont, favorite, comparatii, dosar, recomandari si urmatorii pasi." />
                 <div className="grid gap-4 md:grid-cols-3">
-                  <BigMetric label="Rata estimata" value={`EUR ${Math.round((budget * 0.8) / 300).toLocaleString("ro-RO")}`} />
+                  <BigMetric label="Rata estimata" value={formatCurrency(Math.round((budget * 0.8) / 300))} />
                   <BigMetric label="Scor profil" value={`${Math.min(98, 54 + rooms * 7 + (budget > 250000 ? 14 : 4))}/100`} />
                   <BigMetric label="Documente" value="5 pasi" />
                 </div>
@@ -122,9 +123,9 @@ export default function ExperienceCommandCenter({ properties }: { properties: Pr
               <div>
                 <PanelTitle title="Evaluare si analiza piata" subtitle="Estimare dupa zona, suprafata, camere, stare si lichiditate." />
                 <div className="grid gap-4 md:grid-cols-3">
-                  <BigMetric label="Minim realist" value={`EUR ${valuation.low.toLocaleString("ro-RO")}`} />
-                  <BigMetric label="Valoare tinta" value={`EUR ${valuation.mid.toLocaleString("ro-RO")}`} />
-                  <BigMetric label="Maxim sustinut" value={`EUR ${valuation.high.toLocaleString("ro-RO")}`} />
+                  <BigMetric label="Minim realist" value={formatCurrency(valuation.low)} />
+                  <BigMetric label="Valoare tinta" value={formatCurrency(valuation.mid)} />
+                  <BigMetric label="Maxim sustinut" value={formatCurrency(valuation.high)} />
                 </div>
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   {valuation.notes.map((note) => <Mini key={note} title={note} meta="semnal piata" value={`${valuation.confidence}%`} />)}
@@ -136,9 +137,9 @@ export default function ExperienceCommandCenter({ properties }: { properties: Pr
               <div>
                 <PanelTitle title="Oferta si negociere" subtitle="Draft calculat dupa buget, risc, pret listat si termenul de inchidere." />
                 <div className="grid gap-4 md:grid-cols-3">
-                  <BigMetric label="Oferta recomandata" value={`EUR ${offer.recommended.toLocaleString("ro-RO")}`} />
-                  <BigMetric label="Avans" value={`EUR ${offer.advance.toLocaleString("ro-RO")}`} />
-                  <BigMetric label="Marja negociere" value={`EUR ${offer.negotiationRoom.toLocaleString("ro-RO")}`} />
+                  <BigMetric label="Oferta recomandata" value={formatCurrency(offer.recommended)} />
+                  <BigMetric label="Avans" value={formatCurrency(offer.advance)} />
+                  <BigMetric label="Marja negociere" value={formatCurrency(offer.negotiationRoom)} />
                 </div>
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   {offer.clauses.map((clause) => <Mini key={clause} title={clause} meta={offer.propertyTitle} value={`${offer.closingDays} zile`} />)}

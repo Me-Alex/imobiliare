@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import { Property, supabase } from "@/lib/supabase"
 import { COMPARE_KEY, FAVORITES_KEY, readStoredIds, subscribeClientPreferences, toggleStoredId } from "@/lib/client-preferences"
 import { getPropertyMedia } from "@/lib/property-media"
+import { formatCurrency } from "@/lib/format"
 import SmartPropertyImage from "./SmartPropertyImage"
 
 const TIP_LABEL: Record<string, string> = {
@@ -19,7 +20,7 @@ const TIP_LABEL: Record<string, string> = {
 
 export default function ProprietateCard({ proprietate: p, matchScore, matchReasons = [] }: { proprietate: Property; matchScore?: number; matchReasons?: string[] }) {
   const media = getPropertyMedia(p)
-  const pret = `EUR ${p.price.toLocaleString("ro-RO")}`
+  const pret = formatCurrency(p.price)
   const [favorite, setFavorite] = useState(false)
   const [compare, setCompare] = useState(false)
 
