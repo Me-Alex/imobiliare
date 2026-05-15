@@ -1,16 +1,14 @@
 "use client"
 
 import { type ReactNode } from "react"
-import { Loader2 } from "lucide-react"
 import { type Row } from "./admin-shared"
 
 export function LoadingState() {
-  return <Panel><div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-center"><Loader2 className="h-8 w-8 animate-spin text-accent" /><p className="text-lg font-black">Se incarca adminul</p><p className="max-w-md text-sm text-text-muted">Citire simultana din API-urile admin pentru CRM, portofoliu, module, platforma si rapoarte.</p></div></Panel>
+  return <Panel><div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-center"><span className="h-8 w-8 animate-spin rounded-full border-2 border-bg-surface border-t-accent" aria-hidden /><p className="text-lg font-black">Se incarca adminul</p><p className="max-w-md text-sm text-text-muted">Citire simultana din API-urile admin pentru CRM, portofoliu, module, platforma si rapoarte.</p></div></Panel>
 }
 
 export function NavButton({ item, active, onClick }: { item: any; active: boolean; onClick: () => void }) {
-  const Icon = item.icon
-  return <button onClick={onClick} className={`flex h-10 shrink-0 items-center gap-3 rounded-lg px-3 text-left text-sm font-bold transition md:w-full ${active ? "bg-accent text-bg-primary" : "text-text-muted hover:bg-bg-secondary hover:text-text-primary"}`}><Icon className="h-4 w-4" />{item.label}</button>
+  return <button onClick={onClick} className={`flex h-10 shrink-0 items-center gap-3 rounded-lg px-3 text-left text-sm font-bold transition md:w-full ${active ? "bg-accent text-bg-primary" : "text-text-muted hover:bg-bg-secondary hover:text-text-primary"}`}><span className="grid h-5 min-w-5 place-items-center rounded border border-current px-1 text-[10px] font-black">{item.mark}</span>{item.label}</button>
 }
 
 export function Panel({ children, tight = false, className = "" }: { children: ReactNode; tight?: boolean; className?: string }) {
@@ -22,7 +20,7 @@ export function Title({ title, subtitle, action, compact = false }: { title: str
 }
 
 export function Kpis({ cards }: { cards: Array<[ReactNode, ReactNode, ReactNode, any]> }) {
-  return <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cards.map(([label, value, meta, Icon]) => <Panel key={String(label)}><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-text-muted">{label}</p><p className="mt-2 text-2xl font-black">{value}</p><p className="mt-2 text-xs font-bold text-accent">{meta}</p></div><span className="grid h-10 w-10 place-items-center rounded-lg bg-accent/12 text-accent"><Icon className="h-5 w-5" /></span></div></Panel>)}</div>
+  return <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cards.map(([label, value, meta, marker]) => <Panel key={String(label)}><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-text-muted">{label}</p><p className="mt-2 text-2xl font-black">{value}</p><p className="mt-2 text-xs font-bold text-accent">{meta}</p></div><span className="grid h-10 w-10 place-items-center rounded-lg bg-accent/12 text-xs font-black text-accent">{marker}</span></div></Panel>)}</div>
 }
 
 export function Table({ heads, rows, render, empty }: { heads: string[]; rows: Row[]; render: (row: Row) => ReactNode; empty: string }) {

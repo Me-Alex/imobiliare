@@ -1,3 +1,5 @@
+import { Plus } from "lucide-react"
+
 const faqs = [
   {
     question: "Pot vedea proprietatile inainte sa iau o decizie?",
@@ -23,22 +25,22 @@ export default function FAQ({ entry }: { entry?: CmsEntry | null }) {
   const items = entry?.content?.items || faqs
 
   return (
-    <section className="px-4 py-20 bg-bg-primary">
-      <div className="max-w-5xl mx-auto">
-        <div className="max-w-2xl mb-10">
-          <span className="text-accent font-semibold text-xs uppercase tracking-widest">Intrebari frecvente</span>
-          <h2 className="text-3xl md:text-4xl font-bold text-text-primary mt-2">{entry?.content?.headline || "Detalii care merita lamurite din start."}</h2>
+    <section className="bg-bg-primary px-4 py-20">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-10 max-w-2xl">
+          <span className="text-xs font-semibold uppercase tracking-widest text-accent">Intrebari frecvente</span>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-text-primary md:text-5xl">{entry?.content?.headline || "Detalii care merita lamurite din start."}</h2>
         </div>
         <div className="grid gap-3">
           {items.map((item) => {
             const question = "question" in item ? item.question : item.q
             const answer = "answer" in item ? item.answer : item.a
-            return <details key={question} className="group border border-bg-surface bg-bg-card rounded-lg p-5">
-              <summary className="cursor-pointer list-none flex items-center justify-between gap-4 text-text-primary font-semibold">
+            return <details key={question} className="group rounded-2xl border border-bg-surface bg-bg-card p-5 shadow-card">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-text-primary">
                 {question}
-                <span className="text-accent group-open:rotate-45 transition-transform">+</span>
+                <Plus className="h-5 w-5 shrink-0 text-accent transition-transform group-open:rotate-45" aria-hidden />
               </summary>
-              <p className="text-text-muted text-sm leading-relaxed mt-3 pr-8">{answer}</p>
+              <p className="mt-3 pr-8 text-sm leading-6 text-text-muted">{answer}</p>
             </details>
           })}
         </div>

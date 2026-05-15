@@ -1,18 +1,3 @@
-import {
-  Activity,
-  BarChart3,
-  Building2,
-  CalendarClock,
-  ClipboardList,
-  FileText,
-  Gauge,
-  LayoutDashboard,
-  Settings,
-  ShieldCheck,
-  UserRoundCog,
-  Users,
-} from "lucide-react"
-
 export type Row = Record<string, any>
 export type View = "overview" | "crm" | "properties" | "appointments" | "operations" | "content" | "reports" | "users" | "tools" | "settings" | "audit"
 export type ModuleType = "payment_plans" | "projects" | "team_users" | "owners" | "documents" | "notifications" | "activities"
@@ -29,10 +14,10 @@ export const defaultModules = {
   settings: { agency: "HQS Imobiliare", commission: 3, target: 500000, vat: 19, theme: "system" } as Row,
 }
 
-export const nav: Array<{ group: string; items: Array<{ id: View; label: string; icon: any }> }> = [
-  { group: "Business", items: [{ id: "overview", label: "Command", icon: LayoutDashboard }, { id: "crm", label: "CRM", icon: Users }, { id: "properties", label: "Proprietati", icon: Building2 }, { id: "appointments", label: "Programari", icon: CalendarClock }] },
-  { group: "Platforma", items: [{ id: "operations", label: "Operatiuni", icon: ClipboardList }, { id: "content", label: "Continut", icon: FileText }, { id: "reports", label: "Rapoarte", icon: BarChart3 }] },
-  { group: "Control", items: [{ id: "users", label: "Echipa", icon: UserRoundCog }, { id: "tools", label: "Instrumente", icon: Gauge }, { id: "settings", label: "Setari", icon: Settings }, { id: "audit", label: "Audit", icon: ShieldCheck }] },
+export const nav: Array<{ group: string; items: Array<{ id: View; label: string; mark: string }> }> = [
+  { group: "Business", items: [{ id: "overview", label: "Command", mark: "C" }, { id: "crm", label: "CRM", mark: "CRM" }, { id: "properties", label: "Proprietati", mark: "P" }, { id: "appointments", label: "Programari", mark: "A" }] },
+  { group: "Platforma", items: [{ id: "operations", label: "Operatiuni", mark: "O" }, { id: "content", label: "Continut", mark: "CMS" }, { id: "reports", label: "Rapoarte", mark: "R" }] },
+  { group: "Control", items: [{ id: "users", label: "Echipa", mark: "U" }, { id: "tools", label: "Instrumente", mark: "T" }, { id: "settings", label: "Setari", mark: "S" }, { id: "audit", label: "Audit", mark: "AUD" }] },
 ]
 
 export const leadStatuses = ["NEW", "CONTACTED", "QUALIFIED", "CLOSED", "LOST"]
@@ -96,4 +81,4 @@ export function csv(rows: Array<Array<string | number | null | undefined>>) {
   return rows.map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n")
 }
 
-export const dashboardIcons = { Activity, BarChart3, Building2, FileText, Users }
+export const dashboardIcons = { Activity: "A", BarChart3: "B", Building2: "P", FileText: "D", Users: "U" }

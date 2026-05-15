@@ -5,7 +5,17 @@ import Link from "next/link"
 import type { Property } from "@/lib/supabase"
 import { documentChecklist, estimateMonthlyPayment } from "@/lib/experience"
 import { buildOfferDraft, buildPortfolioAnalytics, buildViewingSlots, calculateValuation } from "@/lib/complexity"
-import { readBuyerIntent, readRecentPropertyViews, writeBuyerIntent, type RecentPropertyView } from "@/lib/client-preferences"
+import {
+  clearStoredIds,
+  COMPARE_KEY,
+  FAVORITES_KEY,
+  readBuyerIntent,
+  readRecentPropertyViews,
+  readStoredIds,
+  subscribeClientPreferences,
+  writeBuyerIntent,
+  type RecentPropertyView,
+} from "@/lib/client-preferences"
 
 type Mode = "favorite" | "compare" | "portal"
 
@@ -18,23 +28,14 @@ export default function ClientPropertyWorkspace({ properties, mode }: { properti
 
   useEffect(() => {
     const sync = () => {
-      setFavoriteIds(readIds("hqs-favorites"))
-      setCompareIds(readIds("hqs-compare"))
+      setFavoriteIds(readStoredIds(FAVORITES_KEY))
+      setCompareIds(readStoredIds(COMPARE_KEY))
       setClientName(localStorage.getItem("hqs-client-name") || "Client HQS")
       setBudget(readBuyerIntent().budget)
       setRecentViews(readRecentPropertyViews())
     }
     sync()
-    window.addEventListener("storage", sync)
-    window.addEventListener("hqs-selection", sync)
-    window.addEventListener("hqs-buyer-intent", sync)
-    window.addEventListener("hqs-recent-views", sync)
-    return () => {
-      window.removeEventListener("storage", sync)
-      window.removeEventListener("hqs-selection", sync)
-      window.removeEventListener("hqs-buyer-intent", sync)
-      window.removeEventListener("hqs-recent-views", sync)
-    }
+    return subscribeClientPreferences(sync)
   }, [])
 
   const rows = useMemo(() => {
@@ -70,15 +71,12 @@ export default function ClientPropertyWorkspace({ properties, mode }: { properti
     writeBuyerIntent({ ...readBuyerIntent(), budget })
   }
 
-  const clear = (key: "hqs-favorites" | "hqs-compare") => {
-    localStorage.removeItem(key)
-    window.dispatchEvent(new Event("hqs-selection"))
-  }
+  const clear = (key: typeof FAVORITES_KEY | typeof COMPARE_KEY) => clearStoredIds(key)
 
   if (mode === "compare") {
     return (
       <section className="mx-auto max-w-7xl px-4 py-12">
-        <Toolbar title="Comparare proprietati" subtitle="Analiza laterala pentru pret, suprafata, rata estimata si potrivire." action={<button onClick={() => clear("hqs-compare")} className="rounded-lg border border-bg-surface px-4 py-2 text-sm font-bold text-text-muted">Goleste comparatia</button>} />
+        <Toolbar title="Comparare proprietati" subtitle="Analiza laterala pentru pret, suprafata, rata estimata si potrivire." action={<button onClick={() => clear(COMPARE_KEY)} className="rounded-lg border border-bg-surface px-4 py-2 text-sm font-bold text-text-muted">Goleste comparatia</button>} />
         {rows.length ? (
           <div className="overflow-x-auto rounded-lg border border-bg-surface bg-bg-card">
             <table className="w-full min-w-[900px] text-left text-sm">
@@ -182,8 +180,8 @@ export default function ClientPropertyWorkspace({ properties, mode }: { properti
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-12">
-      <Toolbar title="Favorite" subtitle="Proprietatile salvate raman aici pe dispozitivul tau." action={<button onClick={() => clear("hqs-favorites")} className="rounded-lg border border-bg-surface px-4 py-2 text-sm font-bold text-text-muted">Goleste favorite</button>} />
-      {rows.length ? <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{rows.map((p) => <MiniProperty key={p.id} property={p} budget={budget} />)}</div> : <EmptyState text="Apasa + pe o proprietate ca sa o salvezi aici." />}
+      <Toolbar title="Favorite" subtitle="Proprietatile salvate raman aici pe dispozitivul tau si se sincronizeaza in portal dupa autentificare." action={<button onClick={() => clear(FAVORITES_KEY)} className="rounded-lg border border-bg-surface px-4 py-2 text-sm font-bold text-text-muted">Goleste favorite</button>} />
+      {rows.length ? <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{rows.map((p) => <MiniProperty key={p.id} property={p} budget={budget} />)}</div> : <EmptyState text="Apasa inima de pe o proprietate ca sa o salvezi aici." />}
     </section>
   )
 }
@@ -203,13 +201,4 @@ function MiniProperty({ property, budget }: { property: Property; budget: number
 
 function EmptyState({ text }: { text: string }) {
   return <div className="rounded-lg border border-bg-surface bg-bg-card p-10 text-center"><h2 className="font-black text-text-primary">Nu exista selectii inca</h2><p className="mt-2 text-sm text-text-muted">{text}</p><Link href="/proprietati" className="mt-5 inline-flex rounded-lg bg-accent px-5 py-3 text-sm font-black text-bg-primary">Vezi portofoliul</Link></div>
-}
-
-function readIds(key: string) {
-  try {
-    const value = JSON.parse(localStorage.getItem(key) || "[]")
-    return Array.isArray(value) ? value.filter((id) => typeof id === "string") : []
-  } catch {
-    return []
-  }
 }

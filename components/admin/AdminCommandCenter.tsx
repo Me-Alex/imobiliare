@@ -1,8 +1,6 @@
 "use client"
 
-import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { Download, RefreshCw, Search } from "lucide-react"
 import ThemeToggle from "@/components/ThemeToggle"
 import { AppointmentsView, CrmView, Overview, PropertiesView } from "./admin-core-views"
 import { OperationsView } from "./admin-operations"
@@ -210,13 +208,13 @@ export default function AdminCommandCenter() {
             <div><p className="text-xs font-black uppercase tracking-wide text-text-muted">HQS Imobiliare</p><h1 className="text-2xl font-black">{title}</h1></div>
             <div className="flex flex-wrap items-center gap-2">
               <label className="relative min-w-0 flex-1 sm:min-w-[360px]">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-text-muted">S</span>
                 <input className="form-input h-10 w-full !pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cauta in admin..." />
               </label>
               <ThemeToggle />
-              <Button variant="ghost" onClick={() => load()} disabled={refreshing}><RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh</Button>
-              <Button onClick={exportLocalCsv}><Download className="h-4 w-4" /> CSV</Button>
-              <Link className="inline-flex h-10 items-center rounded-lg border border-bg-surface px-3 text-sm font-bold" href="/">Site</Link>
+              <Button variant="ghost" onClick={() => load()} disabled={refreshing}>{refreshing ? "Refresh..." : "Refresh"}</Button>
+              <Button onClick={exportLocalCsv}>CSV</Button>
+              <a className="inline-flex h-10 items-center rounded-lg border border-bg-surface px-3 text-sm font-bold" href="/">Site</a>
             </div>
           </div>
         </header>

@@ -3,24 +3,50 @@ import Header from "@/components/Header"
 import ProprietatiSection from "@/components/ProprietatiSection"
 import Link from "next/link"
 import { zoneProfiles } from "@/lib/experience"
+import { supabase, type Property } from "@/lib/supabase"
 
 export const metadata = {
   title: "Proprietati disponibile | HQS Imobiliare",
   description: "Apartamente, case, vile si terenuri verificate de HQS Imobiliare.",
 }
 
-export default function ProprietatiPage() {
+export const revalidate = 60
+
+type SearchParams = Record<string, string | string[] | undefined>
+
+function getSearchValue(searchParams: SearchParams | undefined, key: string) {
+  const value = searchParams?.[key]
+  return Array.isArray(value) ? value[0] : value
+}
+
+export default async function ProprietatiPage({ searchParams }: { searchParams?: SearchParams }) {
+  const { data } = await supabase
+    .from("properties")
+    .select("*")
+    .eq("status", "PUBLISHED")
+    .order("created_at", { ascending: false })
+  const properties = (data || []) as Property[]
+  const query = getSearchValue(searchParams, "q") || ""
+  const zone = getSearchValue(searchParams, "zone") || "Toate zonele"
+  const type = getSearchValue(searchParams, "tip") || "toate"
+  const budget = Number(getSearchValue(searchParams, "budget") || "")
+
   return (
     <main>
       <Header />
-      <section className="bg-bg-secondary px-4 py-16 border-b border-bg-surface">
+      <section className="border-b border-bg-surface bg-bg-secondary px-4 py-16">
         <div className="max-w-7xl mx-auto">
-          <span className="text-accent font-semibold text-xs uppercase tracking-widest">Portofoliu</span>
-          <h1 className="text-4xl md:text-5xl font-bold text-text-primary mt-3">Proprietati disponibile</h1>
-          <p className="text-text-muted mt-4 max-w-2xl leading-relaxed">O lista scurta si verificata este mai utila decat zeci de anunturi neclare. Aici gasesti ofertele pe care le putem prezenta rapid, cu informatiile importante la zi.</p>
+          <h1 className="text-4xl font-black tracking-normal text-text-primary md:text-6xl">Proprietati disponibile</h1>
+          <p className="mt-5 max-w-2xl leading-8 text-text-muted">O lista scurta si verificata este mai utila decat zeci de anunturi neclare. Aici gasesti ofertele pe care le putem prezenta rapid, cu informatiile importante la zi.</p>
         </div>
       </section>
-      <ProprietatiSection />
+      <ProprietatiSection
+        initialProperties={properties}
+        initialQuery={query}
+        initialZone={zone}
+        initialType={type}
+        initialBudget={Number.isFinite(budget) && budget > 0 ? budget : undefined}
+      />
       <section className="border-t border-bg-surface bg-bg-secondary px-4 py-14">
         <div className="mx-auto max-w-7xl">
           <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">

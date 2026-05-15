@@ -1,3 +1,5 @@
+import { CheckCircle2 } from "lucide-react"
+
 type CmsEntry = { content?: { headline?: string; body?: string; items?: { title: string; text: string }[] } }
 
 export default function Benefits({ entry }: { entry?: CmsEntry | null }) {
@@ -17,25 +19,23 @@ export default function Benefits({ entry }: { entry?: CmsEntry | null }) {
   ]
 
   return (
-    <section className="py-20 px-4 bg-bg-secondary border-t border-bg-surface">
-      <div className="max-w-7xl mx-auto">
+    <section className="border-t border-bg-surface bg-bg-secondary px-4 py-20">
+      <div className="mx-auto max-w-7xl">
         <div className="mb-10">
-          <span className="text-accent font-semibold text-xs uppercase tracking-widest">De ce conteaza</span>
-          <h2 className="text-3xl md:text-4xl font-bold text-text-primary mt-2">{entry?.content?.headline || "Claritate inainte de vizionare"}</h2>
-          <p className="text-text-muted mt-3 max-w-2xl leading-relaxed">
+          <span className="text-xs font-semibold uppercase tracking-widest text-accent">De ce conteaza</span>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-text-primary md:text-5xl">{entry?.content?.headline || "Claritate inainte de vizionare"}</h2>
+          <p className="mt-4 max-w-2xl leading-8 text-text-muted">
             {entry?.content?.body || "O proprietate buna se intelege din primele minute. De aceea punem accent pe date concrete, nu pe descrieri pompoase."}
           </p>
         </div>
-        <div className="grid md:grid-cols-3 gap-5">
+        <div className="grid gap-5 md:grid-cols-3">
           {cards.map((card) => (
-            <div key={card.title} className="bg-bg-card border border-bg-surface rounded-lg p-6 hover:border-accent/40 transition-colors">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-4">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m5 13 4 4L19 7" />
-                </svg>
+            <div key={card.title} className="rounded-2xl border border-bg-surface bg-bg-card p-6 shadow-card transition-colors hover:border-accent/40">
+              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent">
+                <CheckCircle2 className="h-5 w-5" aria-hidden />
               </div>
-              <h3 className="text-lg font-semibold text-text-primary mb-2">{card.title}</h3>
-              <p className="text-text-muted text-sm leading-relaxed">{card.text}</p>
+              <h3 className="mb-2 text-lg font-black text-text-primary">{card.title}</h3>
+              <p className="text-sm leading-6 text-text-muted">{card.text}</p>
             </div>
           ))}
         </div>

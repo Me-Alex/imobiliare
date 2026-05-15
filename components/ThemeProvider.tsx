@@ -10,12 +10,11 @@ const ThemeContext = createContext<{
 } | null>(null)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark")
+  const [theme, setTheme] = useState<Theme>("light")
 
   useEffect(() => {
     const saved = window.localStorage.getItem("hqs-theme") as Theme | null
-    const preferred = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"
-    setTheme(saved || preferred)
+    setTheme(saved || "light")
   }, [])
 
   useEffect(() => {

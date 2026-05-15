@@ -53,6 +53,6 @@ export async function POST(request: Request) {
     title: "Profil actualizat",
     description: "Clientul a actualizat bugetul, zonele sau datele de contact.",
     metadata: { budget: payload.budget, preferred_zones: payload.preferred_zones, rooms: payload.rooms, purpose: payload.purpose },
-  }).throwOnError()
+  })
   return NextResponse.json({ profile: data })
 }

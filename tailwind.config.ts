@@ -21,7 +21,10 @@ const config: Config = {
         accent: 'rgb(var(--color-accent) / <alpha-value>)',
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['var(--font-inter)', 'Inter', 'sans-serif'],
+      },
+      boxShadow: {
+        card: 'var(--shadow-card)',
       },
     },
   },

@@ -65,6 +65,6 @@ export async function POST(request: Request) {
     title: "Oferta trimisa",
     description: String(body.property_title || draft.propertyTitle),
     metadata: { offer_id: data.id, offer_price: data.offer_price, status: data.status },
-  }).throwOnError()
+  })
   return NextResponse.json({ offer: data, draft })
 }

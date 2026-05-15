@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { BarChart3, Building2, Download, FileText, Users } from "lucide-react"
 import { countBy, date, defaultModules, money, type Row } from "./admin-shared"
 import { ActionPanel, ModuleEditor } from "./admin-operations"
 import { Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Result, Table, Td, Title } from "./admin-ui"
@@ -23,8 +22,8 @@ export function ContentView({ filtered, saving, platformAction }: any) {
 export function ReportsView({ core, modules, platform, report, metrics, exportLocalCsv, exportServer, saving }: any) {
   return (
     <div className="space-y-6">
-      <Title title="Rapoarte" subtitle={`Ultima generare: ${date(report.generated_at, true)}`} action={<div className="flex gap-2"><Button variant="ghost" onClick={exportLocalCsv}><Download className="h-4 w-4" /> CSV local</Button><Button disabled={saving === "export-json"} onClick={() => exportServer("json")}><Download className="h-4 w-4" /> JSON</Button></div>} />
-      <Kpis cards={[["Leaduri", core.leads.length, `${metrics.activeLeads.length} active`, Users], ["Portofoliu", money(metrics.portfolio), `${metrics.published.length} publicate`, Building2], ["Oferte", (platform.property_offers || []).length, money(metrics.pipeline), BarChart3], ["Documente", modules.documents.length + (platform.client_documents || []).length, "intern + client", FileText]]} />
+      <Title title="Rapoarte" subtitle={`Ultima generare: ${date(report.generated_at, true)}`} action={<div className="flex gap-2"><Button variant="ghost" onClick={exportLocalCsv}>CSV local</Button><Button disabled={saving === "export-json"} onClick={() => exportServer("json")}>JSON</Button></div>} />
+      <Kpis cards={[["Leaduri", core.leads.length, `${metrics.activeLeads.length} active`, "L"], ["Portofoliu", money(metrics.portfolio), `${metrics.published.length} publicate`, "P"], ["Oferte", (platform.property_offers || []).length, money(metrics.pipeline), "O"], ["Documente", modules.documents.length + (platform.client_documents || []).length, "intern + client", "D"]]} />
       <div className="grid gap-5 xl:grid-cols-2">
         <Panel><BarList title="Funnel CRM" data={report.funnel || countBy(core.leads, "status")} /></Panel>
         <Panel><BarList title="Oferte" data={report.offerFlow || countBy(platform.property_offers || [], "status")} /></Panel>

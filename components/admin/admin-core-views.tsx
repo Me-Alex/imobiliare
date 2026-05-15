@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Activity, BarChart3, Building2, Download, Plus, Sparkles, Trash2, Users } from "lucide-react"
 import { appointmentStatuses, countBy, date, leadStatuses, money, propertyStatuses, propertyTypes, slugify, type Row } from "./admin-shared"
 import { Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Recent, Select, SelectField, Table, Td, Title } from "./admin-ui"
 
@@ -9,20 +8,20 @@ export function Overview({ core, modules, platform, report, metrics, setView, ex
   return (
     <div className="space-y-6">
       <Kpis cards={[
-        ["Portofoliu public", metrics.published.length, money(metrics.portfolio), Building2],
-        ["Leaduri active", metrics.activeLeads.length, `${core.leads.length} total CRM`, Users],
-        ["Pipeline oferte", money(metrics.pipeline), `${(platform.property_offers || []).length} oferte`, BarChart3],
-        ["Tasks deschise", modules.activities.length, `${modules.documents.length} documente`, Activity],
+        ["Portofoliu public", metrics.published.length, money(metrics.portfolio), "P"],
+        ["Leaduri active", metrics.activeLeads.length, `${core.leads.length} total CRM`, "L"],
+        ["Pipeline oferte", money(metrics.pipeline), `${(platform.property_offers || []).length} oferte`, "O"],
+        ["Tasks deschise", modules.activities.length, `${modules.documents.length} documente`, "T"],
       ]} />
       <Panel>
         <div className="max-w-3xl">
-          <p className="flex items-center gap-2 text-sm font-black text-accent"><Sparkles className="h-4 w-4" /> Control operational complet</p>
+          <p className="text-sm font-black text-accent">Control operational complet</p>
           <h2 className="mt-4 text-3xl font-black leading-tight md:text-4xl">Command center pentru vanzari, portofoliu si operatiuni.</h2>
           <p className="mt-4 max-w-2xl leading-7 text-text-muted">Toate modulele admin sunt intr-un singur flux: CRM, proprietati, programari, documente, notificari, continut, utilizatori, rapoarte si audit.</p>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Button onClick={() => setView("crm")}><Users className="h-4 w-4" /> Deschide CRM</Button>
-            <Button variant="ghost" onClick={() => setView("properties")}><Building2 className="h-4 w-4" /> Portofoliu</Button>
-            <Button variant="ghost" disabled={saving === "export-json"} onClick={() => exportServer("json")}><Download className="h-4 w-4" /> Export server</Button>
+            <Button onClick={() => setView("crm")}>Deschide CRM</Button>
+            <Button variant="ghost" onClick={() => setView("properties")}>Portofoliu</Button>
+            <Button variant="ghost" disabled={saving === "export-json"} onClick={() => exportServer("json")}>Export server</Button>
           </div>
         </div>
       </Panel>
@@ -59,7 +58,7 @@ export function CrmView({ filtered, saving, patchLead, followUp, platformAction 
         <Panel>
           <Title compact title="Profil client" subtitle="Creeaza sau actualizeaza profilul clientului." />
           <Grid columns={1}>{["full_name", "email", "phone", "budget", "purpose", "status"].map((key) => <Field key={key} label={key} value={String(client[key] || "")} onChange={(value) => setClient({ ...client, [key]: value })} />)}</Grid>
-          <Button className="mt-4 w-full" disabled={!client.full_name || saving === "client-profile"} onClick={() => platformAction("client-profile", { type: "client_profile", payload: { ...client, budget: Number(client.budget || 0) } }, "Profil client salvat.")}><Plus className="h-4 w-4" /> Salveaza profil</Button>
+        <Button className="mt-4 w-full" disabled={!client.full_name || saving === "client-profile"} onClick={() => platformAction("client-profile", { type: "client_profile", payload: { ...client, budget: Number(client.budget || 0) } }, "Profil client salvat.")}>Salveaza profil</Button>
         </Panel>
       </div>
       <Panel tight>
@@ -83,7 +82,7 @@ export function PropertiesView({ filtered, saving, patchProperty, deleteProperty
             <Td>{money(row.price, row.currency || "EUR")}</Td>
             <Td><Select value={row.status || "DRAFT"} onChange={(value) => patchProperty(row, { status: value })} disabled={saving === `property-${row.id}`}>{propertyStatuses.map((status) => <option key={status}>{status}</option>)}</Select></Td>
             <Td><Button size="sm" variant="ghost" onClick={() => patchProperty(row, { featured: !row.featured })}>{row.featured ? "Scoate" : "Featured"}</Button></Td>
-            <Td><Button size="sm" variant="danger" disabled={saving === `delete-${row.id}`} onClick={() => deleteProperty(row)}><Trash2 className="h-4 w-4" /> Sterge</Button></Td>
+            <Td><Button size="sm" variant="danger" disabled={saving === `delete-${row.id}`} onClick={() => deleteProperty(row)}>Sterge</Button></Td>
           </tr>
         )} />
       </Panel>
@@ -94,7 +93,7 @@ export function PropertiesView({ filtered, saving, patchProperty, deleteProperty
           <SelectField label="type" value={draft.type} onChange={(value) => setDraft({ ...draft, type: value })}>{propertyTypes.map((item) => <option key={item}>{item}</option>)}</SelectField>
           <SelectField label="status" value={draft.status} onChange={(value) => setDraft({ ...draft, status: value })}>{propertyStatuses.map((item) => <option key={item}>{item}</option>)}</SelectField>
         </Grid>
-        <Button className="mt-4" disabled={!draft.title || saving === "create-property"} onClick={() => createProperty({ ...draft, price: Number(draft.price || 0), area_sqm: Number(draft.area_sqm || 0), rooms: Number(draft.rooms || 0), slug: draft.slug || slugify(draft.title) })}><Plus className="h-4 w-4" /> Creeaza proprietate</Button>
+        <Button className="mt-4" disabled={!draft.title || saving === "create-property"} onClick={() => createProperty({ ...draft, price: Number(draft.price || 0), area_sqm: Number(draft.area_sqm || 0), rooms: Number(draft.rooms || 0), slug: draft.slug || slugify(draft.title) })}>Creeaza proprietate</Button>
       </Panel>
     </div>
   )
@@ -113,7 +112,7 @@ export function AppointmentsView({ filtered, saving, patchAppointment, platformA
       <Panel>
         <Title compact title="Slot nou" subtitle="Adauga ferestre de vizionare pentru agenti." />
         <Grid columns={4}>{["starts_at", "ends_at", "agent_email", "capacity", "status"].map((key) => <Field key={key} label={key} value={String(slot[key] || "")} onChange={(value) => setSlot({ ...slot, [key]: value })} />)}</Grid>
-        <Button className="mt-4" disabled={!slot.starts_at || saving === "slot"} onClick={() => platformAction("slot", { type: "appointment_slot", payload: { ...slot, capacity: Number(slot.capacity || 1) } }, "Slot salvat.")}><Plus className="h-4 w-4" /> Salveaza slot</Button>
+        <Button className="mt-4" disabled={!slot.starts_at || saving === "slot"} onClick={() => platformAction("slot", { type: "appointment_slot", payload: { ...slot, capacity: Number(slot.capacity || 1) } }, "Slot salvat.")}>Salveaza slot</Button>
       </Panel>
       <Panel tight>
         <Table heads={["Slot", "Agent", "Capacitate", "Status"]} rows={filtered.slots} empty="Nu exista sloturi." render={(row: Row) => <tr key={row.id || row.starts_at} className="border-t border-bg-surface"><Td>{date(row.starts_at, true)} - {date(row.ends_at, true)}</Td><Td>{row.agent_email || "-"}</Td><Td>{row.capacity || 1}</Td><Td><Badge>{row.status || "OPEN"}</Badge></Td></tr>} />

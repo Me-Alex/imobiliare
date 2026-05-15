@@ -80,8 +80,7 @@ export default function Contact() {
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-widest text-accent">Contact</span>
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-text-primary md:text-5xl">Spune-ne ce cauti, apoi iti raspundem concret.</h2>
+            <h2 className="text-3xl font-black leading-tight tracking-normal text-text-primary md:text-5xl">Spune-ne ce cauti, apoi iti raspundem concret.</h2>
             <p className="mt-4 leading-8 text-text-muted">
               Nu trimitem raspunsuri automate si nu impingem proprietati nepotrivite. Daca avem o varianta buna, iti explicam de ce. Daca nu, iti spunem direct.
             </p>
@@ -90,8 +89,8 @@ export default function Contact() {
               {info.map((item) => {
                 const Icon = item.icon
                 return (
-                <div key={item.title} className="flex items-start gap-4 rounded-2xl border border-bg-surface bg-bg-card p-4 shadow-card">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent">
+                <div key={item.title} className="flex items-start gap-4 border border-bg-surface bg-bg-card p-4 shadow-card">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md border border-accent/20 bg-accent/10 text-accent">
                     <Icon className="h-5 w-5" aria-hidden />
                   </div>
                   <div>
@@ -103,10 +102,10 @@ export default function Contact() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-bg-surface bg-bg-card p-6 shadow-card md:p-8">
+          <div className="border border-bg-surface bg-bg-card p-6 shadow-card md:p-8">
             {sent ? (
               <div className="text-center py-10">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-accent/30 bg-accent/10 text-accent">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-md border border-accent/30 bg-accent/10 text-accent">
                   <CheckCircle2 className="h-7 w-7" aria-hidden />
                 </div>
                 <h3 className="text-xl font-bold text-text-primary mb-2">Am primit mesajul.</h3>
@@ -147,7 +146,7 @@ export default function Contact() {
                 {error && <p className="text-sm text-red-500">{error}</p>}
 
                 <button type="submit" disabled={loading}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent py-3 font-bold text-bg-primary shadow-lg shadow-accent/20 transition-opacity hover:opacity-90 disabled:opacity-60">
+                  className="inline-flex items-center justify-center gap-2 rounded-md bg-accent py-3 font-bold text-bg-primary shadow-lg shadow-accent/20 transition-opacity hover:opacity-90 disabled:opacity-60">
                   <Send className="h-4 w-4" aria-hidden />
                   {loading ? "Se trimite..." : "Trimite cererea"}
                 </button>

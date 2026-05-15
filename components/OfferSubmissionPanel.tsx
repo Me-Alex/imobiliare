@@ -52,7 +52,7 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
   }
 
   return (
-    <div className="mt-4 rounded-lg border border-bg-surface bg-bg-card p-5">
+    <div className="rounded-3xl border border-bg-surface bg-bg-card p-5 shadow-[var(--shadow-card)]">
       <h3 className="font-black text-text-primary">Trimite oferta</h3>
       <label className="mt-4 block text-xs font-bold uppercase text-text-muted">Pret oferit</label>
       <input className="mt-3 w-full accent-accent" type="range" min={Math.round(listPrice * 0.8)} max={listPrice} step={1000} value={offerPrice} onChange={(event) => setOfferPrice(Number(event.target.value))} />
@@ -63,7 +63,7 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
         <option value={30}>30 zile</option>
         <option value={45}>45 zile</option>
       </select>
-      <button onClick={submitOffer} className="mt-4 w-full rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary">Trimite oferta</button>
+      <button onClick={submitOffer} className="mt-4 w-full rounded-xl bg-accent px-4 py-3 text-sm font-black text-bg-primary">Trimite oferta</button>
       {message && <p className="mt-3 text-sm text-text-muted">{message}</p>}
     </div>
   )

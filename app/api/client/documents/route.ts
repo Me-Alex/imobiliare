@@ -61,6 +61,6 @@ export async function POST(request: Request) {
     title: "Document adaugat",
     description: String(body.title || "Document client"),
     metadata: { document_id: data.id, status: data.status },
-  }).throwOnError()
+  })
   return NextResponse.json({ document: data })
 }

@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Plus, Trash2 } from "lucide-react"
 import { date, money, type ModuleType, type Row } from "./admin-shared"
 import { Area, Badge, Button, Empty, Field, Filter, Grid, Panel, Table, Td, Title } from "./admin-ui"
 
@@ -80,9 +79,9 @@ export function ModuleEditor({ type, title, fields, rows, defaults = {}, saving,
       <Grid columns={3}>{fields.filter((field) => !["notes", "body"].includes(field)).map((field) => <Field key={field} label={field} value={String(form[field] || "")} onChange={(value) => setForm({ ...form, [field]: value })} />)}</Grid>
       {fields.includes("notes") && <Area label="notes" value={String(form.notes || "")} onChange={(value) => setForm({ ...form, notes: value })} />}
       {fields.includes("body") && <Area label="body" value={String(form.body || "")} onChange={(value) => setForm({ ...form, body: value })} />}
-      <Button className="mt-4" disabled={saving === `${type}-save`} onClick={() => saveModule(type, form)}><Plus className="h-4 w-4" /> Salveaza</Button>
+      <Button className="mt-4" disabled={saving === `${type}-save`} onClick={() => saveModule(type, form)}>Salveaza</Button>
       <div className="mt-5 space-y-3">
-        {rows.map((row) => <div key={row.id || row.name || row.title} className="flex items-center justify-between gap-4 rounded-lg border border-bg-surface bg-bg-secondary p-3"><div><p className="font-black">{row.name || row.title || row.subject || row.email || row.id}</p><p className="text-sm text-text-muted">{row.status || row.stage || row.type || row.role || "-"}</p></div>{row.id && <Button size="sm" variant="danger" disabled={saving === `${type}-${row.id}`} onClick={() => deleteModule(type, row.id)}><Trash2 className="h-4 w-4" /> Sterge</Button>}</div>)}
+        {rows.map((row) => <div key={row.id || row.name || row.title} className="flex items-center justify-between gap-4 rounded-lg border border-bg-surface bg-bg-secondary p-3"><div><p className="font-black">{row.name || row.title || row.subject || row.email || row.id}</p><p className="text-sm text-text-muted">{row.status || row.stage || row.type || row.role || "-"}</p></div>{row.id && <Button size="sm" variant="danger" disabled={saving === `${type}-${row.id}`} onClick={() => deleteModule(type, row.id)}>Sterge</Button>}</div>)}
         {!rows.length && <Empty text="Nu exista intrari." />}
       </div>
     </Panel>
@@ -97,7 +96,7 @@ export function ActionPanel({ title, fields, defaults = {}, saving, onSubmit }: 
       <Grid columns={1}>{fields.filter((field) => !["body", "notes"].includes(field)).map((field) => <Field key={field} label={field} value={String(form[field] || "")} onChange={(value) => setForm({ ...form, [field]: value })} />)}</Grid>
       {fields.includes("body") && <Area label="body" value={String(form.body || "")} onChange={(value) => setForm({ ...form, body: value })} />}
       {fields.includes("notes") && <Area label="notes" value={String(form.notes || "")} onChange={(value) => setForm({ ...form, notes: value })} />}
-      <Button className="mt-4 w-full" disabled={saving} onClick={() => onSubmit(form)}><Plus className="h-4 w-4" /> Salveaza</Button>
+      <Button className="mt-4 w-full" disabled={saving} onClick={() => onSubmit(form)}>Salveaza</Button>
     </Panel>
   )
 }

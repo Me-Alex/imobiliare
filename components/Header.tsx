@@ -2,18 +2,18 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Menu, UserRound, X } from "lucide-react"
+import { usePathname } from "next/navigation"
+import type { ReactNode } from "react"
+import { Heart, Menu, Phone, Scale, Search, UserRound, X } from "lucide-react"
 import ThemeToggle from "./ThemeToggle"
 import { COMPARE_KEY, FAVORITES_KEY, readStoredIds, subscribeClientPreferences } from "@/lib/client-preferences"
 
 const links = [
   { href: "/", label: "Acasa" },
   { href: "/proprietati", label: "Proprietati" },
-  { href: "/despre", label: "Despre" },
   { href: "/zone", label: "Zone" },
+  { href: "/despre", label: "Despre" },
   { href: "/contact", label: "Contact" },
-  { href: "/comparare", label: "Comparare" },
-  { href: "/favorite", label: "Favorite" },
 ]
 
 function labelWithCount(href: string, label: string, favoriteCount: number, compareCount: number) {
@@ -23,6 +23,7 @@ function labelWithCount(href: string, label: string, favoriteCount: number, comp
 }
 
 export default function Header() {
+  const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [compareCount, setCompareCount] = useState(0)
@@ -37,69 +38,103 @@ export default function Header() {
   }, [])
 
   return (
-    <header className="sticky top-0 z-50 border-b border-bg-surface bg-bg-secondary/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-4">
-        <Link href="/" className="shrink-0 text-xl font-bold tracking-tight">
-          <span className="text-accent">HQS</span><span className="text-text-primary">imobiliare</span>
+    <header className="sticky top-0 z-50 border-b border-bg-surface/80 bg-bg-card/92 backdrop-blur-xl">
+      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-5 px-4 py-3">
+        <Link href="/" className="group shrink-0" aria-label="HQS Imobiliare acasa">
+          <span className="block text-2xl font-black leading-none tracking-normal text-accent">HQS</span>
+          <span className="block text-xs font-bold uppercase tracking-[0.24em] text-text-primary">Imobiliare</span>
         </Link>
 
-        <nav className="hidden flex-1 justify-center gap-6 text-sm font-medium text-text-muted lg:flex">
-          {links.map((link) => (
-            <Link key={link.href} href={link.href} prefetch={false} className="hover:text-accent transition-colors">
-              {labelWithCount(link.href, link.label, favoriteCount, compareCount)}
-            </Link>
-          ))}
+        <nav className="hidden flex-1 items-center justify-center gap-1 text-sm font-bold text-text-muted lg:flex">
+          {links.map((link) => {
+            const active = pathname === link.href
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                prefetch={false}
+                className={`rounded-md px-3 py-2 transition-colors ${active ? "bg-bg-secondary text-text-primary" : "hover:bg-bg-secondary hover:text-text-primary"}`}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
         </nav>
 
-        <div className="hidden shrink-0 items-center gap-3 lg:flex">
+        <div className="hidden shrink-0 items-center gap-2 lg:flex">
           <ThemeToggle />
-          <Link
-            href="/login"
-            prefetch={false}
-            aria-label="Cont client"
-            title="Cont client"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-bg-surface text-text-primary transition-all hover:border-accent hover:text-accent"
+          <IconLink href="/proprietati" label="Cauta proprietati" icon={<Search className="h-4 w-4" aria-hidden />} />
+          <IconLink href="/comparare" label={`Comparare${compareCount > 0 ? ` (${compareCount})` : ""}`} icon={<Scale className="h-4 w-4" aria-hidden />} />
+          <IconLink href="/favorite" label={`Favorite${favoriteCount > 0 ? ` (${favoriteCount})` : ""}`} icon={<Heart className="h-4 w-4" aria-hidden />} />
+          <IconLink href="/login" label="Cont client" icon={<UserRound className="h-4 w-4" aria-hidden />} />
+          <a
+            href="tel:+40700000000"
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-black text-bg-primary transition hover:opacity-90"
           >
-            <UserRound className="h-4 w-4" aria-hidden />
-          </Link>
-          <Link href="/proprietati" prefetch={false} className="rounded-xl border border-bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-all hover:border-accent hover:text-accent">
-            Vezi oferte
-          </Link>
-          <Link href="/comparare" prefetch={false} className="rounded-xl border border-bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-all hover:border-accent hover:text-accent">
-            Comparare {compareCount > 0 ? `(${compareCount})` : ""}
-          </Link>
-          <a href="tel:+40700000000" className="rounded-xl border border-accent px-4 py-2 text-sm font-medium text-accent transition-all hover:bg-accent hover:text-bg-primary">
+            <Phone className="h-4 w-4" aria-hidden />
             Suna acum
           </a>
-          <Link href="/favorite" prefetch={false} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg-primary transition-opacity hover:opacity-90">
-            Favorite {favoriteCount > 0 ? `(${favoriteCount})` : ""}
-          </Link>
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
           <ThemeToggle />
-          <button className="text-text-primary" onClick={() => setMenuOpen(!menuOpen)} aria-label="Deschide meniul">
-            {menuOpen ? <X className="h-6 w-6" aria-hidden /> : <Menu className="h-6 w-6" aria-hidden />}
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-bg-surface bg-bg-card text-text-primary"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label={menuOpen ? "Inchide meniul" : "Deschide meniul"}
+          >
+            {menuOpen ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
           </button>
         </div>
       </div>
 
       {menuOpen && (
-        <div className="flex flex-col gap-4 border-t border-bg-surface bg-bg-card px-4 py-4 text-sm lg:hidden">
-          {links.map((link) => (
-            <Link key={link.href} href={link.href} prefetch={false} className="text-text-muted hover:text-accent" onClick={() => setMenuOpen(false)}>
-              {labelWithCount(link.href, link.label, favoriteCount, compareCount)}
+        <div className="border-t border-bg-surface bg-bg-card px-4 py-4 text-sm lg:hidden">
+          <nav className="grid gap-2">
+            {[...links, { href: "/comparare", label: "Comparare" }, { href: "/favorite", label: "Favorite" }].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                prefetch={false}
+                className="rounded-md px-3 py-2 font-bold text-text-muted hover:bg-bg-secondary hover:text-text-primary"
+                onClick={() => setMenuOpen(false)}
+              >
+                {labelWithCount(link.href, link.label, favoriteCount, compareCount)}
+              </Link>
+            ))}
+          </nav>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Link
+              href="/login"
+              prefetch={false}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-bg-surface font-black text-text-primary"
+              onClick={() => setMenuOpen(false)}
+            >
+              <UserRound className="h-4 w-4" aria-hidden />
+              Cont client
             </Link>
-          ))}
-          <Link href="/contact" prefetch={false} className="rounded-xl bg-accent py-2 text-center font-semibold text-bg-primary" onClick={() => setMenuOpen(false)}>
-            Contact
-          </Link>
-          <Link href="/login" prefetch={false} className="inline-flex items-center justify-center gap-2 rounded-xl border border-bg-surface py-2 font-semibold text-text-primary" onClick={() => setMenuOpen(false)}>
-            <UserRound className="h-4 w-4" aria-hidden />
-            Cont client
-          </Link>
+            <a href="tel:+40700000000" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-accent font-black text-bg-primary">
+              <Phone className="h-4 w-4" aria-hidden />
+              Suna
+            </a>
+          </div>
         </div>
       )}
     </header>
+  )
+}
+
+function IconLink({ href, label, icon }: { href: string; label: string; icon: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      title={label}
+      aria-label={label}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-bg-surface bg-bg-card text-text-primary transition-colors hover:border-accent hover:text-accent"
+    >
+      {icon}
+    </Link>
   )
 }

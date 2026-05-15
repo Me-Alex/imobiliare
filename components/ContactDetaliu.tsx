@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { CheckCircle2 } from "lucide-react"
 
 export default function ContactDetaliu({ proprietate, propertyId }: { proprietate: string; propertyId?: string }) {
   const [sent, setSent] = useState(false)
@@ -38,11 +39,9 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
   }
 
   if (sent) return (
-    <div className="bg-bg-card border border-accent/30 rounded-lg p-6 text-center">
-      <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-3">
-        <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
+    <div className="rounded-3xl border border-accent/30 bg-bg-card p-6 text-center shadow-[var(--shadow-card)]">
+      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
+        <CheckCircle2 className="h-6 w-6 text-accent" aria-hidden />
       </div>
       <h3 className="text-text-primary font-bold mb-1">Am primit cererea.</h3>
       <p className="text-text-muted text-sm">Te contactam cu detalii concrete cat mai curand.</p>
@@ -50,7 +49,7 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
   )
 
   return (
-    <div className="bg-bg-card border border-bg-surface rounded-lg p-6">
+    <div className="rounded-3xl border border-bg-surface bg-bg-card p-6 shadow-[var(--shadow-card)]">
       <h3 className="text-text-primary font-bold mb-1">Programeaza o vizionare</h3>
       <p className="text-text-muted text-xs mb-4">Alege un interval, lasa datele si revenim cu confirmarea.</p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -78,7 +77,7 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
         <button type="submit" disabled={loading}
-          className="bg-accent text-bg-primary py-3 rounded-lg font-bold hover:opacity-90 transition-opacity disabled:opacity-60 mt-1 shadow-lg shadow-accent/20">
+          className="mt-1 rounded-xl bg-accent py-3 font-black text-bg-primary shadow-lg shadow-accent/20 transition-opacity hover:opacity-90 disabled:opacity-60">
           {loading ? "Se trimite..." : "Trimite cererea de vizionare"}
         </button>
       </form>
