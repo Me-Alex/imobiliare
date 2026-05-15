@@ -11,7 +11,28 @@ export const metadata = {
   description: "Cont client cu login Supabase, profil, favorite, documente, oferte, programari si securitate cont.",
 }
 
+async function getPortalProperties() {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 3000)
+
+  try {
+    const { data, error } = await supabase
+      .from("properties")
+      .select("*")
+      .eq("status", "PUBLISHED")
+      .order("created_at", { ascending: false })
+      .abortSignal(controller.signal)
+
+    if (error) return []
+    return data || []
+  } catch {
+    return []
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 export default async function PortalPage() {
-  const { data } = await supabase.from("properties").select("*").eq("status", "PUBLISHED").order("created_at", { ascending: false })
-  return <main><Header /><ScaledClientPortal /><PortalAppointmentsConsole properties={data || []} /><ClientPropertyWorkspace properties={data || []} mode="portal" /><Footer /></main>
+  const properties = await getPortalProperties()
+  return <main><Header /><ScaledClientPortal /><PortalAppointmentsConsole properties={properties} /><ClientPropertyWorkspace properties={properties} mode="portal" /><Footer /></main>
 }
