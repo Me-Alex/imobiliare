@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { buildViewingSlots } from "@/lib/complexity"
 import { supabase } from "@/lib/supabase"
 
-export const runtime = "edge"
 
 
 

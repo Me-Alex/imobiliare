@@ -1,38 +1,27 @@
-import Header from "@/components/Header"
-import Footer from "@/components/Footer"
-import ClientPropertyWorkspace from "@/components/ClientPropertyWorkspace"
-import PortalAppointmentsConsole from "@/components/PortalAppointmentsConsole"
-import ScaledClientPortal from "@/components/ScaledClientPortal"
-import { supabase } from "@/lib/supabase"
+import { PortalExperience, PropertyWorkspace, RecommendationPanel } from "@/components/fresh/Workflow"
+import { SiteFooter, SiteHeader } from "@/components/fresh/Public"
+import { getPublishedProperties } from "@/lib/fresh-server"
 
+export const revalidate = 60
 
 export const metadata = {
-  title: "Cont client | HQS Imobiliare",
-  description: "Cont client cu login Supabase, profil, favorite, documente, oferte, programari si securitate cont.",
-}
-
-async function getPortalProperties() {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 3000)
-
-  try {
-    const { data, error } = await supabase
-      .from("properties")
-      .select("*")
-      .eq("status", "PUBLISHED")
-      .order("created_at", { ascending: false })
-      .abortSignal(controller.signal)
-
-    if (error) return []
-    return data || []
-  } catch {
-    return []
-  } finally {
-    clearTimeout(timeout)
-  }
+  title: "Portal client | HQS Imobiliare",
+  description: "Portal client cu autentificare Supabase, profil, favorite si recomandari.",
 }
 
 export default async function PortalPage() {
-  const properties = await getPortalProperties()
-  return <main><Header /><ScaledClientPortal /><PortalAppointmentsConsole properties={properties} /><ClientPropertyWorkspace properties={properties} mode="portal" /><Footer /></main>
+  const properties = await getPublishedProperties()
+  return (
+    <main id="continut">
+      <SiteHeader />
+      <PortalExperience properties={properties} />
+      <PropertyWorkspace properties={properties} mode="portal" />
+      <section className="bg-slate-100 px-4 py-16 dark:bg-slate-900">
+        <div className="mx-auto max-w-7xl">
+          <RecommendationPanel properties={properties} />
+        </div>
+      </section>
+      <SiteFooter />
+    </main>
+  )
 }

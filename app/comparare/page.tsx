@@ -1,16 +1,21 @@
-import Header from "@/components/Header"
-import Footer from "@/components/Footer"
-import ClientPropertyWorkspace from "@/components/ClientPropertyWorkspace"
-import { supabase } from "@/lib/supabase"
+import { PropertyWorkspace } from "@/components/fresh/Workflow"
+import { SiteFooter, SiteHeader } from "@/components/fresh/Public"
+import { getPublishedProperties } from "@/lib/fresh-server"
 
-export const runtime = "edge"
+export const revalidate = 60
 
 export const metadata = {
   title: "Comparare proprietati | HQS Imobiliare",
-  description: "Compara proprietatile salvate dupa pret, suprafata, rata estimata si potrivire.",
+  description: "Compara proprietatile selectate dupa pret, zona, suprafata si pret pe metru patrat.",
 }
 
-export default async function CompararePage() {
-  const { data } = await supabase.from("properties").select("*").eq("status", "PUBLISHED")
-  return <main><Header /><ClientPropertyWorkspace properties={data || []} mode="compare" /><Footer /></main>
+export default async function ComparePage() {
+  const properties = await getPublishedProperties()
+  return (
+    <main id="continut">
+      <SiteHeader />
+      <PropertyWorkspace properties={properties} mode="compare" />
+      <SiteFooter />
+    </main>
+  )
 }

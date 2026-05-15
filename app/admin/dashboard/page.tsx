@@ -1,9 +1,6 @@
-import AdminCommandCenter from "@/components/admin/AdminCommandCenter"
+import { AdminWorkspace } from "@/components/fresh/Workflow"
 
-export const metadata = {
-  title: "Dashboard | HQS Admin",
-}
 
 export default function AdminDashboardPage() {
-  return <AdminCommandCenter />
+  return <AdminWorkspace view="dashboard" />
 }

@@ -1,35 +1,31 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { ThemeProvider } from '@/components/ThemeProvider'
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import { ThemeProvider } from "@/components/ThemeProvider"
+import "./globals.css"
 
 const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
 })
 
 export const metadata: Metadata = {
-  title: 'HQS Imobiliare | Proprietati premium in Bucuresti',
-  description: 'Proprietati atent selectionate in Bucuresti: apartamente, case si vile pentru vanzare sau inchiriere.',
-  keywords: ['imobiliare Bucuresti', 'apartamente Bucuresti', 'case Bucuresti', 'vile Bucuresti', 'proprietati premium'],
-  icons: {
-    icon: '/favicon.svg',
+  metadataBase: new URL("https://hqsimobiliare.ro"),
+  title: {
+    default: "HQS Imobiliare | Platforma imobiliara completa",
+    template: "%s | HQS Imobiliare",
   },
-  metadataBase: new URL('https://hqsimobiliare.ro'),
-  alternates: { canonical: '/' },
+  description: "Website imobiliar reconstruit complet pentru proprietati, cautare, comparare, lead-uri, programari, portal client si admin.",
+  keywords: ["HQS Imobiliare", "imobiliare Bucuresti", "proprietati Bucuresti", "portal client imobiliare"],
+  icons: { icon: "/favicon.svg" },
+  alternates: { canonical: "/" },
   openGraph: {
-    title: 'HQS Imobiliare',
-    description: 'Proprietati premium in Bucuresti',
-    url: 'https://hqsimobiliare.ro',
-    siteName: 'HQS Imobiliare',
-    locale: 'ro_RO',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'HQS Imobiliare',
-    description: 'Proprietati premium in Bucuresti',
+    title: "HQS Imobiliare",
+    description: "Proprietati verificate, portal client si CRM operational.",
+    url: "https://hqsimobiliare.ro",
+    siteName: "HQS Imobiliare",
+    locale: "ro_RO",
+    type: "website",
   },
 }
 

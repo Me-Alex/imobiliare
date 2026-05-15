@@ -1,18 +1,21 @@
-import Header from "@/components/Header"
-import Footer from "@/components/Footer"
-import PortalLoginEntry from "@/components/PortalLoginEntry"
+import { PortalExperience } from "@/components/fresh/Workflow"
+import { SiteFooter, SiteHeader } from "@/components/fresh/Public"
+import { getPublishedProperties } from "@/lib/fresh-server"
+
+export const revalidate = 60
 
 export const metadata = {
-  title: "Cont client | HQS Imobiliare",
-  description: "Autentificare client HQS Imobiliare cu email, parola si resetare parola.",
+  title: "Login client | HQS Imobiliare",
+  description: "Autentificare si creare cont client HQS Imobiliare.",
 }
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const properties = await getPublishedProperties()
   return (
     <main id="continut">
-      <Header />
-      <PortalLoginEntry />
-      <Footer />
+      <SiteHeader />
+      <PortalExperience properties={properties} />
+      <SiteFooter />
     </main>
   )
 }

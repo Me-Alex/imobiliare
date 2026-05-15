@@ -2,7 +2,6 @@ import { getAdminClient, getAdminRpcSecret, jsonError, requireAdminPermissionAsy
 import { estimateLeadScore } from "@/lib/experience"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 
 

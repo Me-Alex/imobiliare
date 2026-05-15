@@ -1,66 +1,49 @@
-import Footer from "@/components/Footer"
-import Header from "@/components/Header"
-import ProprietatiSection from "@/components/ProprietatiSection"
-import Link from "next/link"
-import { zoneProfiles } from "@/lib/experience"
-import { supabase, type Property } from "@/lib/supabase"
-
-export const runtime = "edge"
-
-export const metadata = {
-  title: "Proprietati disponibile | HQS Imobiliare",
-  description: "Apartamente, case, vile si terenuri verificate de HQS Imobiliare.",
-}
+import { PropertyExplorer, RecommendationPanel } from "@/components/fresh/Workflow"
+import { SiteFooter, SiteHeader } from "@/components/fresh/Public"
+import { getPublishedProperties } from "@/lib/fresh-server"
 
 export const revalidate = 60
 
+export const metadata = {
+  title: "Proprietati disponibile | HQS Imobiliare",
+  description: "Cauta, filtreaza, salveaza si compara proprietatile HQS Imobiliare.",
+}
+
 type SearchParams = Record<string, string | string[] | undefined>
 
-function getSearchValue(searchParams: SearchParams | undefined, key: string) {
+function valueOf(searchParams: SearchParams | undefined, key: string) {
   const value = searchParams?.[key]
   return Array.isArray(value) ? value[0] : value
 }
 
 export default async function ProprietatiPage({ searchParams }: { searchParams?: SearchParams }) {
-  const { data } = await supabase
-    .from("properties")
-    .select("*")
-    .eq("status", "PUBLISHED")
-    .order("created_at", { ascending: false })
-  const properties = (data || []) as Property[]
-  const query = getSearchValue(searchParams, "q") || ""
-  const zone = getSearchValue(searchParams, "zone") || "Toate zonele"
-  const type = getSearchValue(searchParams, "tip") || "toate"
-  const budget = Number(getSearchValue(searchParams, "budget") || "")
+  const properties = await getPublishedProperties()
+  const budget = Number(valueOf(searchParams, "budget") || "")
 
   return (
-    <main>
-      <Header />
-      <section className="border-b border-bg-surface bg-bg-secondary px-4 py-16">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-black tracking-normal text-text-primary md:text-6xl">Proprietati disponibile</h1>
-          <p className="mt-5 max-w-2xl leading-8 text-text-muted">O lista scurta si verificata este mai utila decat zeci de anunturi neclare. Aici gasesti ofertele pe care le putem prezenta rapid, cu informatiile importante la zi.</p>
+    <main id="continut">
+      <SiteHeader />
+      <section className="bg-slate-950 px-4 py-16 text-white">
+        <div className="mx-auto max-w-7xl">
+          <h1 className="text-5xl font-black tracking-normal md:text-7xl">Proprietati disponibile</h1>
+          <p className="mt-6 max-w-3xl text-lg leading-8 text-white/72">
+            Filtrare rapida, favorite locale, comparare, scoruri de potrivire si legatura directa cu portalul client.
+          </p>
         </div>
       </section>
-      <ProprietatiSection
-        initialProperties={properties}
-        initialQuery={query}
-        initialZone={zone}
-        initialType={type}
+      <PropertyExplorer
+        properties={properties}
+        initialQuery={valueOf(searchParams, "q") || ""}
+        initialZone={valueOf(searchParams, "zone") || "Toate zonele"}
+        initialType={valueOf(searchParams, "tip") || "toate"}
         initialBudget={Number.isFinite(budget) && budget > 0 ? budget : undefined}
       />
-      <section className="border-t border-bg-surface bg-bg-secondary px-4 py-14">
+      <section className="bg-slate-100 px-4 py-16 dark:bg-slate-900">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <div><span className="text-xs font-bold uppercase tracking-widest text-accent">Analiza locala</span><h2 className="mt-2 text-3xl font-black text-text-primary">Zone cu profil diferit</h2></div>
-            <Link href="/zone" className="text-sm font-bold text-accent">Vezi ghidurile</Link>
-          </div>
-          <div className="grid gap-4 md:grid-cols-4">
-            {zoneProfiles.map((zone) => <Link key={zone.slug} href={`/zone/${zone.slug}`} className="rounded-lg border border-bg-surface bg-bg-card p-4 hover:border-accent"><p className="font-black text-text-primary">{zone.name}</p><p className="mt-1 text-sm text-text-muted">EUR {zone.avgPrice}/mp - {zone.demand}</p></Link>)}
-          </div>
+          <RecommendationPanel properties={properties} />
         </div>
       </section>
-      <Footer />
+      <SiteFooter />
     </main>
   )
 }
