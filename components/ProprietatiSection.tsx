@@ -40,6 +40,8 @@ const SORT_LABELS = {
   areaDesc: "Suprafata mare",
 } as const
 
+const PRICE_CEILING = 1000000
+
 type SortKey = keyof typeof SORT_LABELS
 
 type Props = {
@@ -65,7 +67,7 @@ export default function ProprietatiSection({
   const [filtruTip, setFiltruTip] = useState(TIPURI[initialType] ? initialType : "toate")
   const [filtruZona, setFiltruZona] = useState(ZONE.includes(initialZone) ? initialZone : "Toate zonele")
   const [filtruCamere, setFiltruCamere] = useState(0)
-  const [pretMax, setPretMax] = useState(initialBudget || 1000000)
+  const [pretMax, setPretMax] = useState(initialBudget || 0)
   const [suprafataMin, setSuprafataMin] = useState(0)
   const [doarFeatured, setDoarFeatured] = useState(false)
   const [showFiltre, setShowFiltre] = useState(false)
@@ -107,7 +109,7 @@ export default function ProprietatiSection({
         if (filtruTip !== "toate" && p.type !== filtruTip) return false
         if (filtruZona !== "Toate zonele" && p.city !== filtruZona) return false
         if (filtruCamere > 0 && p.rooms < filtruCamere) return false
-        if (p.price > pretMax) return false
+        if (pretMax > 0 && p.price > pretMax) return false
         if (suprafataMin > 0 && p.area_sqm < suprafataMin) return false
         if (doarFeatured && !p.featured) return false
         if (text) {
@@ -132,7 +134,7 @@ export default function ProprietatiSection({
     filtruTip !== "toate" ||
     filtruZona !== "Toate zonele" ||
     filtruCamere > 0 ||
-    pretMax < 1000000 ||
+    pretMax > 0 ||
     suprafataMin > 0 ||
     doarFeatured
 
@@ -141,7 +143,7 @@ export default function ProprietatiSection({
     setFiltruTip("toate")
     setFiltruZona("Toate zonele")
     setFiltruCamere(0)
-    setPretMax(1000000)
+    setPretMax(0)
     setSuprafataMin(0)
     setDoarFeatured(false)
     setSort("newest")
@@ -159,7 +161,7 @@ export default function ProprietatiSection({
       query.trim() || TIPURI[filtruTip] || "Portofoliu",
       filtruZona !== "Toate zonele" ? filtruZona : null,
       filtruCamere > 0 ? `${filtruCamere}+ camere` : null,
-      pretMax < 1000000 ? `sub ${formatCurrency(pretMax)}` : null,
+      pretMax > 0 ? `sub ${formatCurrency(pretMax)}` : null,
     ].filter(Boolean)
     const next: SavedSearch = {
       id: String(Date.now()),
@@ -184,7 +186,7 @@ export default function ProprietatiSection({
     setFiltruTip(search.type)
     setFiltruZona(search.zone)
     setFiltruCamere(search.rooms)
-    setPretMax(search.maxPrice)
+    setPretMax(Number(search.maxPrice) || 0)
     setSuprafataMin(search.minArea)
     setDoarFeatured(search.featuredOnly)
   }
@@ -257,7 +259,16 @@ export default function ProprietatiSection({
           {showFiltre && (
             <div className="mt-5 grid gap-5 border-t border-bg-surface pt-5 md:grid-cols-3">
               <Range label="Camere" value={filtruCamere === 0 ? "orice" : `${filtruCamere}+`} minLabel="Orice" maxLabel="6+" min={0} max={6} step={1} valueNumber={filtruCamere} onChange={setFiltruCamere} />
-              <Range label="Buget maxim" value={formatCurrency(pretMax)} minLabel="EUR 50k" maxLabel="EUR 1M+" min={50000} max={1000000} step={10000} valueNumber={pretMax} onChange={setPretMax} />
+              <div>
+                <Range label="Buget maxim" value={pretMax === 0 ? "fara limita" : formatCurrency(pretMax)} minLabel="EUR 50k" maxLabel="EUR 1M+" min={50000} max={PRICE_CEILING} step={10000} valueNumber={pretMax || PRICE_CEILING} onChange={setPretMax} />
+                <button
+                  type="button"
+                  onClick={() => setPretMax(0)}
+                  className={`mt-3 rounded-md border px-3 py-2 text-xs font-black transition ${pretMax === 0 ? "border-accent bg-accent text-bg-primary" : "border-bg-surface text-text-muted hover:border-accent hover:text-accent"}`}
+                >
+                  Fara limita
+                </button>
+              </div>
               <Range label="Suprafata minima" value={suprafataMin === 0 ? "orice" : `${suprafataMin} mp`} minLabel="Orice" maxLabel="300 mp" min={0} max={300} step={10} valueNumber={suprafataMin} onChange={setSuprafataMin} />
             </div>
           )}
