@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { buildOfferDraft } from "@/lib/complexity"
 import { rateLimit } from "@/lib/rate-limit"
 
-
 export const runtime = "edge"
 
 export async function POST(request: Request) {

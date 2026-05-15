@@ -1,11 +1,10 @@
 import { getAdminClient, getAdminRpcSecret, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
-
-
-
-
 export const runtime = "edge"
+
+
+
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const auth = await requireAdminPermissionAsync(request, "appointments")

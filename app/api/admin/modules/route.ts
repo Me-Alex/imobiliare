@@ -1,11 +1,10 @@
 import { getAdminClient, getAdminRpcSecret, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
-
-
-
-
 export const runtime = "edge"
+
+
+
 
 const upsertRpc = {
   payment_plans: "admin_upsert_payment_plan",

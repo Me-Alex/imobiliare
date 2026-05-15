@@ -1,10 +1,18 @@
-import { ContactFresh } from "@/components/fresh/Public"
+import Contact from "@/components/Contact"
+import Footer from "@/components/Footer"
+import Header from "@/components/Header"
 
 export const metadata = {
   title: "Contact | HQS Imobiliare",
-  description: "Trimite o cerere catre HQS Imobiliare pentru cumparare, vanzare, investitie sau inchiriere.",
+  description: "Contacteaza echipa HQS Imobiliare pentru proprietati, vizionari si recomandari.",
 }
 
 export default function ContactPage() {
-  return <ContactFresh />
+  return (
+    <main>
+      <Header />
+      <Contact />
+      <Footer />
+    </main>
+  )
 }

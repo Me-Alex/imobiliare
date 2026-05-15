@@ -1,23 +1,16 @@
-import { PropertyWorkspace } from "@/components/fresh/Workflow"
-import { SiteFooter, SiteHeader } from "@/components/fresh/Public"
-import { getPublishedProperties } from "@/lib/fresh-server"
+import Header from "@/components/Header"
+import Footer from "@/components/Footer"
+import ClientPropertyWorkspace from "@/components/ClientPropertyWorkspace"
+import { supabase } from "@/lib/supabase"
 
 export const runtime = "edge"
 
-export const revalidate = 60
-
 export const metadata = {
   title: "Favorite | HQS Imobiliare",
-  description: "Lista locala de proprietati favorite.",
+  description: "Proprietatile salvate de tine intr-o lista scurta.",
 }
 
 export default async function FavoritePage() {
-  const properties = await getPublishedProperties()
-  return (
-    <main id="continut">
-      <SiteHeader />
-      <PropertyWorkspace properties={properties} mode="favorites" />
-      <SiteFooter />
-    </main>
-  )
+  const { data } = await supabase.from("properties").select("*").eq("status", "PUBLISHED")
+  return <main><Header /><ClientPropertyWorkspace properties={data || []} mode="favorite" /><Footer /></main>
 }

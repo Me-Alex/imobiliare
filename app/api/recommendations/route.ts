@@ -4,9 +4,8 @@ import { supabase } from "@/lib/supabase"
 import { getClientSupabase, getClientToken } from "@/lib/client-api"
 import { rateLimit } from "@/lib/rate-limit"
 
-
-
 export const runtime = "edge"
+
 
 function numericInput(value: unknown, fallback: number, min: number, max: number) {
   const numeric = Number(value)

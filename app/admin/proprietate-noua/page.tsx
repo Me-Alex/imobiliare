@@ -1,6 +1,1 @@
-import { AdminWorkspace } from "@/components/fresh/Workflow"
-
-
-export default function AdminNewPropertyPage() {
-  return <AdminWorkspace view="proprietate-noua" />
-}
+export default function AdminNewPropertyPage() { return <main className="p-6">Proprietate nouă</main> }

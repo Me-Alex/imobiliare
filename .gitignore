@@ -1,5 +1,4 @@
 .next
-.vercel
 .open-next
 node_modules
 .wrangler

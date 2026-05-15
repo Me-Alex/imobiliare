@@ -2,11 +2,10 @@ import { getAdminClient, getAdminRpcSecret, jsonError, requireAdminPermissionAsy
 import { estimateLeadScore } from "@/lib/experience"
 import { NextResponse } from "next/server"
 
-
-
-
-
 export const runtime = "edge"
+
+
+
 
 export async function POST(request: Request) {
   const auth = await requireAdminPermissionAsync(request, "leads")
