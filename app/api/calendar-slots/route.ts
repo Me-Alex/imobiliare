@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase"
 
 
 
+export const runtime = "edge"
+
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const urgency = url.searchParams.get("urgency") || "normal"

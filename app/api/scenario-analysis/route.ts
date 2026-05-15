@@ -3,6 +3,8 @@ import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
 
+export const runtime = "edge"
+
 const competitionLevels = ["scazut", "mediu", "ridicat"] as const
 
 export async function POST(request: Request) {

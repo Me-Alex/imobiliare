@@ -2,6 +2,8 @@ import { PropertyExplorer, RecommendationPanel } from "@/components/fresh/Workfl
 import { SiteFooter, SiteHeader } from "@/components/fresh/Public"
 import { getPublishedProperties } from "@/lib/fresh-server"
 
+export const runtime = "edge"
+
 export const revalidate = 60
 
 export const metadata = {

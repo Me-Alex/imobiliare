@@ -4,6 +4,8 @@ import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
 
+export const runtime = "edge"
+
 export async function GET(request: Request) {
   const limited = rateLimit(request, "admin-reports", 60, 60_000)
   if (limited) return limited

@@ -5,6 +5,8 @@ import { NextResponse } from "next/server"
 
 
 
+export const runtime = "edge"
+
 const upsertRpc = {
   payment_plans: "admin_upsert_payment_plan",
   projects: "admin_upsert_project",

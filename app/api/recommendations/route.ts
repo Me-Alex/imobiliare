@@ -6,6 +6,8 @@ import { rateLimit } from "@/lib/rate-limit"
 
 
 
+export const runtime = "edge"
+
 function numericInput(value: unknown, fallback: number, min: number, max: number) {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return fallback

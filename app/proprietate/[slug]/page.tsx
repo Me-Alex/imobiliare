@@ -3,6 +3,8 @@ import { notFound } from "next/navigation"
 import { PropertyDetailFresh } from "@/components/fresh/Public"
 import { getPropertyBySlug, getSimilarProperties } from "@/lib/fresh-server"
 
+export const runtime = "edge"
+
 export const revalidate = 60
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
