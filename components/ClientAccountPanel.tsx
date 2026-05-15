@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getAuthRedirectUrl } from "@/lib/auth-redirect"
+import PortalAuthGateway from "@/components/PortalAuthGateway"
 import { supabase } from "@/lib/supabase"
 
 type Profile = { full_name: string; phone: string | null; budget: number; preferred_zones: string[]; rooms: number; purpose: string; financing_status: string }
@@ -19,7 +19,6 @@ const emptyProfile: Profile = {
 }
 
 export default function ClientAccountPanel() {
-  const [email, setEmail] = useState("")
   const [message, setMessage] = useState("")
   const [token, setToken] = useState("")
   const [profile, setProfile] = useState<Profile>(emptyProfile)
@@ -42,15 +41,6 @@ export default function ClientAccountPanel() {
   }, [])
 
   const authHeaders = (accessToken = token) => ({ Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" })
-
-  async function login() {
-    setMessage("")
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: getAuthRedirectUrl("/portal") },
-    })
-    setMessage(error ? error.message : "Ti-am trimis link-ul de autentificare pe email.")
-  }
 
   async function load(accessToken = token) {
     if (!accessToken) return
@@ -84,27 +74,7 @@ export default function ClientAccountPanel() {
     load()
   }
 
-  if (!token) {
-    return (
-      <section className="border-y border-bg-surface bg-bg-secondary px-4 py-12">
-        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1fr_420px]">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-widest text-accent">Cont client real</span>
-            <h2 className="mt-2 text-3xl font-black text-text-primary">Autentificare prin Supabase</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted">
-              Profilul, bugetul, documentele, favoritele si ofertele pot fi legate de utilizatorul autentificat. Link-ul de login se trimite pe email.
-            </p>
-          </div>
-          <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
-            <label className="text-xs font-bold uppercase text-text-muted">Email client</label>
-            <input className="form-input mt-2" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="client@email.ro" />
-            <button onClick={login} disabled={!email.includes("@")} className="mt-4 w-full rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary disabled:opacity-50">Trimite link login</button>
-            {message && <p className="mt-3 text-sm text-text-muted">{message}</p>}
-          </div>
-        </div>
-      </section>
-    )
-  }
+  if (!token) return <PortalAuthGateway onAuthenticated={(accessToken) => { setToken(accessToken); load(accessToken) }} />
 
   return (
     <section className="border-y border-bg-surface bg-bg-secondary px-4 py-12">
