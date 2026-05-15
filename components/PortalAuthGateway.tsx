@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { KeyRound, Loader2, LockKeyhole, Mail, ShieldCheck, UserPlus } from "lucide-react"
+import { KeyRound, Loader2, LockKeyhole, ShieldCheck, UserPlus } from "lucide-react"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { supabase } from "@/lib/supabase"
 
-type AuthMode = "login" | "signup" | "reset" | "magic"
+type AuthMode = "login" | "signup" | "reset"
 
 type PortalAuthGatewayProps = {
   onAuthenticated?: (accessToken: string) => void
@@ -16,14 +16,12 @@ const modeLabels: Record<AuthMode, string> = {
   login: "Login",
   signup: "Cont nou",
   reset: "Resetare",
-  magic: "Link email",
 }
 
 const modeDescriptions: Record<AuthMode, string> = {
   login: "Intra in cont cu email si parola.",
   signup: "Creeaza cont client si salveaza profilul in Supabase.",
   reset: "Primeste email pentru resetarea parolei.",
-  magic: "Primeste un link temporar de autentificare.",
 }
 
 export default function PortalAuthGateway({ onAuthenticated, redirectTo }: PortalAuthGatewayProps) {
@@ -37,7 +35,7 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
   const [error, setError] = useState("")
 
   const callbackUrl = getAuthRedirectUrl(redirectTo || "/portal")
-  const canSubmit = email.includes("@") && (mode === "reset" || mode === "magic" || password.length >= 8)
+  const canSubmit = email.includes("@") && (mode === "reset" || password.length >= 8)
 
   async function submit() {
     if (!canSubmit || loading) return
@@ -80,18 +78,6 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
         setMessage("Ti-am trimis emailul pentru resetarea parolei.")
       }
 
-      if (mode === "magic") {
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: {
-            emailRedirectTo: callbackUrl,
-            shouldCreateUser: true,
-            data: { full_name: fullName || email.split("@")[0] || "Client HQS", phone },
-          },
-        })
-        if (error) throw error
-        setMessage("Ti-am trimis link-ul de autentificare pe email.")
-      }
     } catch (err: any) {
       setError(err?.message || "Autentificarea nu a reusit.")
     } finally {
@@ -115,7 +101,7 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
     }).catch(() => null)
   }
 
-  const Icon = mode === "signup" ? UserPlus : mode === "reset" ? KeyRound : mode === "magic" ? Mail : LockKeyhole
+  const Icon = mode === "signup" ? UserPlus : mode === "reset" ? KeyRound : LockKeyhole
 
   return (
     <section className="border-y border-bg-surface bg-bg-secondary px-4 py-12">
@@ -126,7 +112,7 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
             Cont client securizat, conectat la Supabase Auth.
           </h2>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-text-muted">
-            Clientii isi pot crea cont, intra cu parola, folosi link de email, reseta parola si accesa profilul, favoritele, documentele, ofertele si programarile salvate.
+            Clientii isi pot crea cont, intra cu parola, reseta parola si accesa profilul, favoritele, documentele, ofertele si programarile salvate.
           </p>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <AuthProof icon={ShieldCheck} label="Token verificat" text="API-urile client cer Bearer token valid." />
@@ -189,7 +175,6 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
             {mode === "login" && "Intra in cont"}
             {mode === "signup" && "Creeaza cont"}
             {mode === "reset" && "Trimite resetare"}
-            {mode === "magic" && "Trimite link login"}
           </button>
 
           {message && <p className="mt-4 rounded-lg border border-accent/20 bg-accent/10 p-3 text-sm font-bold text-accent">{message}</p>}
