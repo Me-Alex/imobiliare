@@ -33,13 +33,13 @@ export default function Footer() {
         </nav>
 
         <div className="grid gap-3 text-sm text-text-muted">
-          <a href="tel:+40700000000" className="inline-flex items-center gap-3 font-bold hover:text-accent">
+          <a href="tel:+40711993512" className="inline-flex items-center gap-3 font-bold hover:text-accent">
             <Phone className="h-4 w-4 text-accent" aria-hidden />
-            +40 700 000 000
+            +40711993512
           </a>
-          <a href="mailto:contact@hqsimobiliare.ro" className="inline-flex items-center gap-3 font-bold hover:text-accent">
+          <a href="mailto:hqs.imobiliare@gmail.com" className="inline-flex items-center gap-3 font-bold hover:text-accent">
             <Mail className="h-4 w-4 text-accent" aria-hidden />
-            contact@hqsimobiliare.ro
+            hqs.imobiliare@gmail.com
           </a>
           <p className="inline-flex items-center gap-3 font-bold">
             <MapPin className="h-4 w-4 text-accent" aria-hidden />
