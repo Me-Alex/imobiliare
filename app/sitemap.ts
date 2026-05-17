@@ -3,7 +3,6 @@ import { zoneProfiles } from "@/lib/experience"
 import { siteConfig } from "@/lib/site-config"
 import { supabase } from "@/lib/supabase"
 
-export const runtime = 'edge'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteConfig.url.replace(/\/$/, "")

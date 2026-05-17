@@ -2,7 +2,6 @@ import { getAdminClient, getAdminRpcSecret, hasAdminPermission, jsonError, requi
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 export async function GET(request: Request) {
   const auth = await requireAdminPermissionAsync(request, "leads")
@@ -95,9 +94,10 @@ export async function POST(request: Request) {
     }
 
     if (body.type === "admin_role") {
+      const rolePayload = normalizeRolePayload(body.payload || {}, actor)
       const { data, error } = await supabase.rpc("admin_upsert_role", {
         admin_secret,
-        payload: { ...(body.payload || {}), actor },
+        payload: rolePayload,
       })
       if (error) return jsonError(error.message, 400)
       return NextResponse.json({ role: data })
@@ -163,6 +163,22 @@ function permissionForAction(type: string) {
     audit_event: "audit",
   }
   return map[type] || "reports"
+}
+
+function normalizeRolePayload(payload: Record<string, any>, actor: string) {
+  const permissions = payload.permissions
+  const normalizedPermissions = Array.isArray(permissions)
+    ? permissions.map(String).map((item) => item.trim()).filter(Boolean)
+    : String(permissions || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+  return {
+    ...payload,
+    actor,
+    permissions: normalizedPermissions.length ? normalizedPermissions : ["leads", "appointments", "documents"],
+  }
 }
 
 function filterPlatformData(data: Record<string, any>, session: { role: string; actor: string; permissions: string[] }) {

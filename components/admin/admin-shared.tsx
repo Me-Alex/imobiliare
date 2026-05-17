@@ -1,5 +1,24 @@
 export type Row = Record<string, any>
-export type View = "overview" | "crm" | "properties" | "appointments" | "operations" | "content" | "reports" | "users" | "tools" | "settings" | "audit"
+export type View =
+  | "overview"
+  | "properties"
+  | "listings"
+  | "crm"
+  | "clients"
+  | "appointments"
+  | "agents"
+  | "transactions"
+  | "maintenance"
+  | "documents"
+  | "marketing"
+  | "operations"
+  | "content"
+  | "reports"
+  | "compliance"
+  | "users"
+  | "tools"
+  | "settings"
+  | "audit"
 export type ModuleType = "payment_plans" | "projects" | "team_users" | "owners" | "documents" | "notifications" | "activities"
 
 export const defaultCore = { leads: [] as Row[], properties: [] as Row[], appointments: [] as Row[], audit: [] as Row[] }
@@ -15,9 +34,40 @@ export const defaultModules = {
 }
 
 export const nav: Array<{ group: string; items: Array<{ id: View; label: string; mark: string }> }> = [
-  { group: "Business", items: [{ id: "overview", label: "Command", mark: "C" }, { id: "crm", label: "CRM", mark: "CRM" }, { id: "properties", label: "Proprietati", mark: "P" }, { id: "appointments", label: "Programari", mark: "A" }] },
-  { group: "Platforma", items: [{ id: "operations", label: "Operatiuni", mark: "O" }, { id: "content", label: "Continut", mark: "CMS" }, { id: "reports", label: "Rapoarte", mark: "R" }] },
-  { group: "Control", items: [{ id: "users", label: "Echipa", mark: "U" }, { id: "tools", label: "Instrumente", mark: "T" }, { id: "settings", label: "Setari", mark: "S" }, { id: "audit", label: "Audit", mark: "AUD" }] },
+  {
+    group: "Command",
+    items: [
+      { id: "overview", label: "Dashboard", mark: "D" },
+      { id: "properties", label: "Properties", mark: "P" },
+      { id: "listings", label: "Listings", mark: "L" },
+      { id: "crm", label: "Leads CRM", mark: "CRM" },
+      { id: "clients", label: "Clients", mark: "CL" },
+      { id: "appointments", label: "Tours", mark: "T" },
+    ],
+  },
+  {
+    group: "Operations",
+    items: [
+      { id: "agents", label: "Agents", mark: "AG" },
+      { id: "transactions", label: "Transactions", mark: "TR" },
+      { id: "maintenance", label: "Maintenance", mark: "M" },
+      { id: "documents", label: "Documents", mark: "DOC" },
+      { id: "marketing", label: "Marketing", mark: "MK" },
+      { id: "operations", label: "Back office", mark: "BO" },
+    ],
+  },
+  {
+    group: "Control",
+    items: [
+      { id: "reports", label: "Reports", mark: "R" },
+      { id: "compliance", label: "Compliance", mark: "CO" },
+      { id: "content", label: "Content", mark: "CMS" },
+      { id: "users", label: "Roles", mark: "RBAC" },
+      { id: "tools", label: "Tools", mark: "TL" },
+      { id: "settings", label: "Settings", mark: "S" },
+      { id: "audit", label: "Audit", mark: "AUD" },
+    ],
+  },
 ]
 
 export const leadStatuses = ["NEW", "CONTACTED", "QUALIFIED", "CLOSED", "LOST"]

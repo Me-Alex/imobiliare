@@ -3,7 +3,6 @@ import { appointmentRequestSchema, parseJsonBody } from "@/lib/api-validation"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 
 

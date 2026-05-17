@@ -10,7 +10,7 @@ export type AdminSession = {
 
 const rolePermissions: Record<AdminSession["role"], string[]> = {
   admin: ["all"],
-  manager: ["leads", "clients", "appointments", "slots", "offers", "documents", "properties", "reports", "exports", "cms", "zones", "notifications", "audit"],
+  manager: ["leads", "clients", "appointments", "slots", "offers", "documents", "properties", "listings", "transactions", "maintenance", "payments", "marketing", "reports", "exports", "cms", "zones", "notifications", "audit", "compliance"],
   agent: ["leads", "clients", "appointments", "offers", "documents"],
 }
 

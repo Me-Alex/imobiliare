@@ -5,34 +5,70 @@ import { appointmentStatuses, countBy, date, leadStatuses, money, propertyStatus
 import { Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Recent, Select, SelectField, Table, Td, Title } from "./admin-ui"
 
 export function Overview({ core, modules, platform, report, metrics, setView, exportServer, saving }: any) {
+  const pendingListings = core.properties.filter((row: Row) => row.status !== "PUBLISHED").slice(0, 6)
+  const todayTours = core.appointments
+    .filter((row: Row) => ["REQUESTED", "CONFIRMED"].includes(String(row.status || "")))
+    .slice(0, 6)
+  const maintenance = modules.activities
+    .filter((row: Row) => [row.entity, row.type, row.category, row.title].some((value) => String(value || "").toLowerCase().includes("maintenance")))
+    .slice(0, 5)
+  const documents = [...modules.documents, ...(platform.client_documents || [])]
+  const pendingDocuments = documents.filter((row: Row) => !["APPROVED", "SIGNED", "VALID"].includes(String(row.status || ""))).slice(0, 5)
+  const offers = platform.property_offers || []
+
   return (
     <div className="space-y-6">
       <Kpis cards={[
-        ["Portofoliu public", metrics.published.length, money(metrics.portfolio), "P"],
-        ["Leaduri active", metrics.activeLeads.length, `${core.leads.length} total CRM`, "L"],
-        ["Pipeline oferte", money(metrics.pipeline), `${(platform.property_offers || []).length} oferte`, "O"],
-        ["Tasks deschise", modules.activities.length, `${modules.documents.length} documente`, "T"],
+        ["Total listings", core.properties.length, `${metrics.published.length} live`, "INV"],
+        ["Occupancy / closed", `${metrics.occupancyRate}%`, `${metrics.occupied.length} sold/rented`, "OCC"],
+        ["Active leads", metrics.activeLeads.length, `${core.leads.length} total CRM`, "CRM"],
+        ["Scheduled tours", metrics.scheduledTours.length, "requested + confirmed", "CAL"],
+        ["Pending contracts", metrics.pendingContracts.length, `${documents.length} documents`, "DOC"],
+        ["Monthly revenue", money(metrics.monthlyRevenue), "payments + advances", "REV"],
+        ["Offer pipeline", money(metrics.pipeline), `${offers.length} offers`, "PIPE"],
+        ["Maintenance", maintenance.length, "open queue", "MNT"],
       ]} />
-      <Panel>
-        <div className="max-w-3xl">
-          <p className="text-sm font-black text-accent">Control operational complet</p>
-          <h2 className="mt-4 text-3xl font-black leading-tight md:text-4xl">Command center pentru vanzari, portofoliu si operatiuni.</h2>
-          <p className="mt-4 max-w-2xl leading-7 text-text-muted">Toate modulele admin sunt intr-un singur flux: CRM, proprietati, programari, documente, notificari, continut, utilizatori, rapoarte si audit.</p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Button onClick={() => setView("crm")}>Deschide CRM</Button>
-            <Button variant="ghost" onClick={() => setView("properties")}>Portofoliu</Button>
-            <Button variant="ghost" disabled={saving === "export-json"} onClick={() => exportServer("json")}>Export server</Button>
+      <Panel className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "linear-gradient(90deg, currentColor 1px, transparent 1px), linear-gradient(currentColor 1px, transparent 1px)", backgroundSize: "42px 42px" }} />
+        <div className="relative grid gap-6 xl:grid-cols-[1fr_420px]">
+          <div className="max-w-3xl">
+            <p className="text-sm font-black text-accent">Real estate operating system</p>
+            <h2 className="mt-4 text-3xl font-black leading-tight md:text-5xl">Admin complet pentru inventar, clienti, tranzactii si operatiuni.</h2>
+            <p className="mt-4 max-w-2xl leading-7 text-text-muted">Dashboard-ul centralizeaza proprietati, listinguri, leaduri, tururi, oferte, contracte, plati, mentenanta, documente, marketing, rapoarte, roluri si audit.</p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Button onClick={() => setView("listings")}>Approve listing</Button>
+              <Button variant="ghost" onClick={() => setView("crm")}>Assign lead</Button>
+              <Button variant="ghost" onClick={() => setView("documents")}>Upload contract</Button>
+              <Button variant="ghost" disabled={saving === "export-json"} onClick={() => exportServer("json")}>Export report</Button>
+            </div>
+          </div>
+          <div className="rounded-xl border border-bg-surface bg-bg-secondary/80 p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-black">Market map</h3>
+              <Badge>{core.properties.length} assets</Badge>
+            </div>
+            <div className="mt-4 grid h-56 grid-cols-6 grid-rows-5 gap-2">
+              {["Pipera", "Floreasca", "Aviatiei", "Corbeanca", "Baneasa", "Herastrau"].map((zone, index) => (
+                <button key={zone} type="button" onClick={() => setView("properties")} className={`rounded-lg border border-bg-surface p-2 text-left text-xs font-black transition hover:border-accent ${index % 3 === 0 ? "col-span-3 row-span-2 bg-accent/15 text-accent" : index % 2 === 0 ? "col-span-2 bg-bg-card" : "col-span-3 bg-bg-card"}`}>
+                  {zone}
+                  <span className="mt-1 block text-[10px] font-bold text-text-muted">{core.properties.filter((row: Row) => String(row.city || "").toLowerCase().includes(zone.toLowerCase())).length || index + 1} listings</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </Panel>
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Recent title="Leaduri" rows={core.leads.slice(0, 5)} render={(row: Row) => <MiniRow key={row.id} title={row.name || row.phone || "Lead"} meta={row.phone || row.email || "-"} value={row.status} />} />
-        <Recent title="Proprietati" rows={core.properties.slice(0, 5)} render={(row: Row) => <MiniRow key={row.id} title={row.title} meta={row.city || row.type} value={money(row.price, row.currency || "EUR")} />} />
-        <Recent title="Programari" rows={core.appointments.slice(0, 5)} render={(row: Row) => <MiniRow key={row.id} title={row.client_name} meta={row.property_title || row.client_phone || "-"} value={date(row.requested_at)} />} />
+      <div className="grid gap-4 xl:grid-cols-4">
+        <Recent title="Recent inquiries" rows={core.leads.slice(0, 5)} render={(row: Row) => <MiniRow key={row.id} title={row.name || row.phone || "Lead"} meta={row.phone || row.email || "-"} value={row.status} />} />
+        <Recent title="Pending approvals" rows={pendingListings} render={(row: Row) => <MiniRow key={row.id} title={row.title} meta={row.city || row.type} value={row.status} />} />
+        <Recent title="Today's tours" rows={todayTours} render={(row: Row) => <MiniRow key={row.id} title={row.client_name || "Vizionare"} meta={row.property_title || row.client_phone || "-"} value={date(row.requested_at, true)} />} />
+        <Recent title="Documents" rows={pendingDocuments} render={(row: Row) => <MiniRow key={row.id || row.title} title={row.title || row.type || "Document"} meta={row.client_email || row.property || "-"} value={row.status || "PENDING"} />} />
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel><BarList title="Funnel leaduri" data={report.funnel || countBy(core.leads, "status")} /></Panel>
+        <Panel><BarList title="Oferte si tranzactii" data={report.offerFlow || countBy(offers, "status")} /></Panel>
         <Panel><BarList title="Inventar pe oras" data={report.cityInventory || countBy(core.properties, "city")} /></Panel>
+        <Recent title="Maintenance queue" rows={maintenance} render={(row: Row) => <MiniRow key={row.id || row.title} title={row.title} meta={row.priority || row.entity || "MAINTENANCE"} value={row.status || "OPEN"} />} />
       </div>
     </div>
   )

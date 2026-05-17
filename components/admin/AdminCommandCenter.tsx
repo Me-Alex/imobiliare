@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import ThemeToggle from "@/components/ThemeToggle"
 import { AppointmentsView, CrmView, Overview, PropertiesView } from "./admin-core-views"
+import { AgentsView, ClientsView, ComplianceView, DocumentsCenterView, ListingsView, MaintenanceView, MarketingView, TransactionsView } from "./admin-real-estate-views"
 import { OperationsView } from "./admin-operations"
 import { AuditView, ContentView, ReportsView, SettingsView, ToolsView, UsersView } from "./admin-secondary-views"
 import { Banner, Button, LoadingState, MiniStat, NavButton } from "./admin-ui"
@@ -64,6 +65,7 @@ export default function AdminCommandCenter() {
     documents: modules.documents.filter((row) => matches(row, query)),
     notifications: modules.notifications.filter((row) => matches(row, query)),
     activities: modules.activities.filter((row) => matches(row, query)),
+    maintenance: modules.activities.filter((row) => matches(row, query) && [row.entity, row.type, row.category, row.title].some((value) => String(value || "").toLowerCase().includes("maintenance"))),
     clients: (platform.client_profiles || []).filter((row: Row) => matches(row, query)),
     offers: (platform.property_offers || []).filter((row: Row) => matches(row, query)),
     slots: (platform.appointment_slots || []).filter((row: Row) => matches(row, query)),
@@ -79,8 +81,17 @@ export default function AdminCommandCenter() {
     const activeLeads = core.leads.filter((row) => !["CLOSED", "LOST"].includes(row.status))
     const portfolio = published.reduce((sum, row) => sum + Number(row.price || 0), 0)
     const pipeline = (platform.property_offers || []).reduce((sum: number, row: Row) => sum + Number(row.counter_offer || row.offer_price || 0), 0)
-    return { published, activeLeads, portfolio, pipeline }
-  }, [core, platform])
+    const occupied = core.properties.filter((row) => ["SOLD", "RENTED"].includes(String(row.status || "")))
+    const scheduledTours = core.appointments.filter((row) => ["REQUESTED", "CONFIRMED"].includes(String(row.status || "")))
+    const allDocuments = [...modules.documents, ...((platform.client_documents || []) as Row[])]
+    const pendingContracts = allDocuments.filter((row) => {
+      const label = `${row.type || ""} ${row.title || ""}`.toLowerCase()
+      return label.includes("contract") && !["APPROVED", "SIGNED", "VALID"].includes(String(row.status || ""))
+    })
+    const monthlyRevenue = modules.payment_plans.reduce((sum, row) => sum + Number(row.advance || row.total || 0), 0)
+    const occupancyRate = core.properties.length ? Math.round((occupied.length / core.properties.length) * 100) : 0
+    return { published, activeLeads, portfolio, pipeline, occupied, occupancyRate, scheduledTours, pendingContracts, monthlyRevenue }
+  }, [core, modules, platform])
 
   const save = async (id: string, action: () => Promise<void>, success: string) => {
     setSaving(id)
@@ -167,12 +178,20 @@ export default function AdminCommandCenter() {
   const renderView = () => {
     if (loading) return <LoadingState />
     const props = { filtered, core, modules, platform, report, metrics, saving, setView, patchLead, followUp, patchAppointment, patchProperty, deleteProperty, createProperty, saveModule, deleteModule, platformAction, saveSettings, exportLocalCsv, exportServer }
-    if (view === "crm") return <CrmView {...props} />
     if (view === "properties") return <PropertiesView {...props} />
+    if (view === "listings") return <ListingsView {...props} />
+    if (view === "crm") return <CrmView {...props} />
+    if (view === "clients") return <ClientsView {...props} />
     if (view === "appointments") return <AppointmentsView {...props} />
+    if (view === "agents") return <AgentsView {...props} />
+    if (view === "transactions") return <TransactionsView {...props} />
+    if (view === "maintenance") return <MaintenanceView {...props} />
+    if (view === "documents") return <DocumentsCenterView {...props} />
+    if (view === "marketing") return <MarketingView {...props} />
     if (view === "operations") return <OperationsView {...props} />
     if (view === "content") return <ContentView {...props} />
     if (view === "reports") return <ReportsView {...props} />
+    if (view === "compliance") return <ComplianceView {...props} />
     if (view === "users") return <UsersView {...props} />
     if (view === "tools") return <ToolsView {...props} />
     if (view === "settings") return <SettingsView {...props} />

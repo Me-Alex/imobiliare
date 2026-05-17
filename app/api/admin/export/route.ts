@@ -3,7 +3,6 @@ import { buildExecutiveReport } from "@/lib/platform-reports"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, "admin-export", 20, 60_000)
