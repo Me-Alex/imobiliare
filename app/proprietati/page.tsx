@@ -5,6 +5,7 @@ import Link from "next/link"
 import { zoneProfiles } from "@/lib/experience"
 import { supabase, type Property } from "@/lib/supabase"
 
+export const runtime = "edge"
 
 export const metadata = {
   title: "Proprietati disponibile | HQS Imobiliare",

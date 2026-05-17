@@ -1,6 +1,7 @@
 import { getAdminClient, getAdminRpcSecret, hasAdminPermission, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
+export const runtime = "edge"
 
 
 

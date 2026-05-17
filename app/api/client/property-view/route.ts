@@ -3,6 +3,7 @@ import { requireClient } from "@/lib/client-api"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
+export const runtime = "edge"
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, "client-property-view", 60, 60_000)

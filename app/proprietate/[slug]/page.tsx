@@ -15,6 +15,7 @@ import { documentChecklist, estimateMonthlyPayment, zoneProfiles } from "@/lib/e
 import { buildOfferDraft, buildViewingSlots, calculateValuation } from "@/lib/complexity"
 import { getPropertyMedia } from "@/lib/property-media"
 
+export const runtime = "edge"
 
 const TIP_LABEL: Record<string, string> = {
   APARTMENT: "Apartament",

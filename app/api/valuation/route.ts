@@ -3,6 +3,7 @@ import { parseJsonBody, valuationSchema } from "@/lib/api-validation"
 import { calculateValuation } from "@/lib/complexity"
 import { rateLimit } from "@/lib/rate-limit"
 
+export const runtime = "edge"
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, "valuation", 30, 60_000)

@@ -3,6 +3,7 @@ import Footer from "@/components/Footer"
 import ClientPropertyWorkspace from "@/components/ClientPropertyWorkspace"
 import { supabase } from "@/lib/supabase"
 
+export const runtime = "edge"
 
 export const metadata = {
   title: "Comparare proprietati | HQS Imobiliare",
