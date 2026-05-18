@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 import { supabaseAnonKey, supabaseUrl } from "@/lib/supabase"
 
@@ -78,6 +78,26 @@ export function getAdminClient() {
 
 export const getAdminServiceClient = getAdminClient
 
+export function getAdminRequestClient(request: Request) {
+  const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY")
+  if (serviceRoleKey) return getAdminClient()
+  const token = parseBearerToken(request)
+  if (!token) throw new Error("Admin bearer token is missing")
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  })
+}
+
+function getAdminRoleClient(token: string) {
+  const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY")
+  if (serviceRoleKey) return getAdminClient()
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  })
+}
+
 export async function getAdminSession(request: Request): Promise<AdminSession | null> {
   const token = parseBearerToken(request)
   const user = await getUserFromToken(token)
@@ -89,8 +109,8 @@ export async function getAdminSession(request: Request): Promise<AdminSession | 
   const isBootstrap = bootstrapEmails.includes(email)
 
   try {
-    const supabase = getAdminClient()
-    if (isBootstrap) {
+    const supabase = getAdminRoleClient(token)
+    if (isBootstrap && getEnv("SUPABASE_SERVICE_ROLE_KEY")) {
       await supabase.from("admin_roles").upsert({
         user_id: userId,
         email,
@@ -147,7 +167,7 @@ export async function requireAdminPermissionAsync(request: Request, permission: 
       ) as Response,
     }
   }
-  return { session }
+  return { session, supabase: getAdminRequestClient(request) as SupabaseClient }
 }
 
 export function requireAdminPermission(request: Request, permission: string) {

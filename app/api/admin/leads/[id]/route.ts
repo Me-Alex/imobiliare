@@ -1,4 +1,4 @@
-import { getAdminClient, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
+import { jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
 export const runtime = "edge"
@@ -14,9 +14,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const status = String(body.status || "")
     if (!STATUSES.has(status)) return jsonError("Status invalid", 400)
 
-    const { data, error } = await getAdminClient().from("leads").update({ status, updated_at: new Date().toISOString() }).eq("id", params.id).select("*").single()
+    const { data, error } = await auth.supabase.from("leads").update({ status, updated_at: new Date().toISOString() }).eq("id", params.id).select("*").single()
     if (error) return jsonError(error.message, 400)
-    await getAdminClient().from("lead_history").insert({ lead_id: params.id, status, score: body.score || 50, assigned_to: body.assigned_to || auth.session.actor, note: body.note || "Status actualizat din admin", next_follow_up: body.next_follow_up || null })
+    await auth.supabase.from("lead_history").insert({ lead_id: params.id, status, score: body.score || 50, assigned_to: body.assigned_to || auth.session.actor, note: body.note || "Status actualizat din admin", next_follow_up: body.next_follow_up || null })
     return NextResponse.json({ lead: data })
   } catch (error: any) {
     return jsonError(error.message || "Lead update failed")

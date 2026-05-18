@@ -1,4 +1,4 @@
-import { getAdminClient, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
+import { jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
 export const runtime = "edge"
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
   try {
     const { listAdminModules } = await import("@/lib/admin-data")
-    return NextResponse.json(await listAdminModules())
+    return NextResponse.json(await listAdminModules(auth.supabase))
   } catch (error: any) {
     return jsonError(error.message || "Admin modules request failed")
   }
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json().catch(() => ({}))
-    const supabase = getAdminClient()
+    const supabase = auth.supabase
     const type = String(body.type || "")
     const payload = normalizePayload(body.payload || {})
 
@@ -80,7 +80,7 @@ export async function DELETE(request: Request) {
     const type = url.searchParams.get("type") || ""
     const id = url.searchParams.get("id") || ""
     if (!id || !moduleTypes.has(type)) return jsonError("Parametri invalidi", 400)
-    const { error } = await getAdminClient().from("admin_modules").delete().eq("type", type).eq("id", id)
+    const { error } = await auth.supabase.from("admin_modules").delete().eq("type", type).eq("id", id)
     if (error) return jsonError(error.message, 400)
     return NextResponse.json({ deleted: true, type, id })
   } catch (error: any) {

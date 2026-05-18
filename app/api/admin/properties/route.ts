@@ -1,4 +1,4 @@
-import { getAdminClient, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
+import { jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { normalizePropertyPayload } from "@/lib/admin-properties"
 import { NextResponse } from "next/server"
 
@@ -10,9 +10,9 @@ export async function POST(request: Request) {
 
   try {
     const payload = normalizePropertyPayload(await request.json().catch(() => ({})))
-    const { data, error } = await getAdminClient().from("properties").insert(payload).select("*").single()
+    const { data, error } = await auth.supabase.from("properties").insert(payload).select("*").single()
     if (error) return jsonError(error.message, 400)
-    await getAdminClient().from("admin_audit_log").insert({ actor: auth.session.actor, action: "PROPERTY_CREATED", entity: "properties", entity_id: data.id, details: data, metadata: data }).throwOnError()
+    await auth.supabase.from("admin_audit_log").insert({ actor: auth.session.actor, action: "PROPERTY_CREATED", entity: "properties", entity_id: data.id, details: data, metadata: data }).throwOnError()
     return NextResponse.json({ property: data }, { status: 201 })
   } catch (error: any) {
     return jsonError(error.message || "Property create failed")

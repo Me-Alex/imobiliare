@@ -1,6 +1,7 @@
 import { getAdminClient } from "@/lib/admin-api"
 
 type Row = Record<string, any>
+type AdminClient = ReturnType<typeof getAdminClient>
 
 function asRows(value: unknown): Row[] {
   return Array.isArray(value) ? value.filter((item): item is Row => Boolean(item) && typeof item === "object") : []
@@ -19,8 +20,7 @@ function normalizeProperty(row: Row): Row {
   }
 }
 
-async function safeRows(table: string, order = "created_at", ascending = false, limit = 500): Promise<Row[]> {
-  const supabase = getAdminClient()
+async function safeRows(supabase: AdminClient, table: string, order = "created_at", ascending = false, limit = 500): Promise<Row[]> {
   let query = supabase.from(table).select("*").limit(limit)
   if (order) query = query.order(order, { ascending })
   const { data, error } = await query
@@ -28,12 +28,12 @@ async function safeRows(table: string, order = "created_at", ascending = false, 
   return asRows(data)
 }
 
-export async function listAdminCore() {
+export async function listAdminCore(supabase = getAdminClient()) {
   const [leads, rawProperties, rawAppointments, audit] = await Promise.all([
-    safeRows("leads", "created_at", false, 500),
-    safeRows("properties", "updated_at", false, 500),
-    safeRows("appointments", "created_at", false, 500),
-    safeRows("admin_audit_log", "created_at", false, 500),
+    safeRows(supabase, "leads", "created_at", false, 500),
+    safeRows(supabase, "properties", "updated_at", false, 500),
+    safeRows(supabase, "appointments", "created_at", false, 500),
+    safeRows(supabase, "admin_audit_log", "created_at", false, 500),
   ])
   const properties = rawProperties.map(normalizeProperty)
   const propertyById = new Map(properties.map((property) => [String(property.id), property]))
@@ -48,8 +48,8 @@ export async function listAdminCore() {
   return { leads, properties, appointments, audit }
 }
 
-export async function listAdminModules() {
-  const rows = await safeRows("admin_modules", "updated_at", false, 1000)
+export async function listAdminModules(supabase = getAdminClient()) {
+  const rows = await safeRows(supabase, "admin_modules", "updated_at", false, 1000)
   const grouped: Record<string, Row[]> = {
     payment_plans: [],
     projects: [],
@@ -68,7 +68,7 @@ export async function listAdminModules() {
   return { ...grouped, settings }
 }
 
-export async function listAdminPlatform() {
+export async function listAdminPlatform(supabase = getAdminClient()) {
   const [
     client_profiles,
     client_favorites,
@@ -94,29 +94,29 @@ export async function listAdminPlatform() {
     analytics_attribution,
     admin_bulk_imports,
   ] = await Promise.all([
-    safeRows("client_profiles", "updated_at", false, 500),
-    safeRows("client_favorites", "created_at", false, 500),
-    safeRows("client_documents", "created_at", false, 500),
-    safeRows("property_offers", "created_at", false, 500),
-    safeRows("cms_entries", "updated_at", false, 500),
-    safeRows("zone_poi", "score", false, 500),
-    safeRows("admin_roles", "updated_at", false, 500),
-    safeRows("lead_history", "created_at", false, 500),
-    safeRows("client_activity", "created_at", false, 500),
-    safeRows("client_notifications", "created_at", false, 500),
-    safeRows("appointment_slots", "starts_at", true, 500),
-    safeRows("admin_audit_log", "created_at", false, 500),
-    safeRows("admin_notification_outbox", "created_at", false, 500),
-    safeRows("property_media", "sort_order", true, 1000),
-    safeRows("admin_provider_jobs", "created_at", false, 500),
-    safeRows("admin_invoices", "created_at", false, 500),
-    safeRows("admin_commissions", "created_at", false, 500),
-    safeRows("admin_document_templates", "updated_at", false, 500),
-    safeRows("admin_document_versions", "created_at", false, 500),
-    safeRows("owner_reports", "created_at", false, 500),
-    safeRows("calendar_sync_events", "created_at", false, 500),
-    safeRows("analytics_attribution", "created_at", false, 1000),
-    safeRows("admin_bulk_imports", "created_at", false, 200),
+    safeRows(supabase, "client_profiles", "updated_at", false, 500),
+    safeRows(supabase, "client_favorites", "created_at", false, 500),
+    safeRows(supabase, "client_documents", "created_at", false, 500),
+    safeRows(supabase, "property_offers", "created_at", false, 500),
+    safeRows(supabase, "cms_entries", "updated_at", false, 500),
+    safeRows(supabase, "zone_poi", "score", false, 500),
+    safeRows(supabase, "admin_roles", "updated_at", false, 500),
+    safeRows(supabase, "lead_history", "created_at", false, 500),
+    safeRows(supabase, "client_activity", "created_at", false, 500),
+    safeRows(supabase, "client_notifications", "created_at", false, 500),
+    safeRows(supabase, "appointment_slots", "starts_at", true, 500),
+    safeRows(supabase, "admin_audit_log", "created_at", false, 500),
+    safeRows(supabase, "admin_notification_outbox", "created_at", false, 500),
+    safeRows(supabase, "property_media", "sort_order", true, 1000),
+    safeRows(supabase, "admin_provider_jobs", "created_at", false, 500),
+    safeRows(supabase, "admin_invoices", "created_at", false, 500),
+    safeRows(supabase, "admin_commissions", "created_at", false, 500),
+    safeRows(supabase, "admin_document_templates", "updated_at", false, 500),
+    safeRows(supabase, "admin_document_versions", "created_at", false, 500),
+    safeRows(supabase, "owner_reports", "created_at", false, 500),
+    safeRows(supabase, "calendar_sync_events", "created_at", false, 500),
+    safeRows(supabase, "analytics_attribution", "created_at", false, 1000),
+    safeRows(supabase, "admin_bulk_imports", "created_at", false, 200),
   ])
 
   return {
@@ -146,7 +146,7 @@ export async function listAdminPlatform() {
   }
 }
 
-export async function listAdminSnapshot() {
-  const [core, modules, platform] = await Promise.all([listAdminCore(), listAdminModules(), listAdminPlatform()])
+export async function listAdminSnapshot(supabase = getAdminClient()) {
+  const [core, modules, platform] = await Promise.all([listAdminCore(supabase), listAdminModules(supabase), listAdminPlatform(supabase)])
   return { core, modules, platform }
 }

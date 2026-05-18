@@ -1,4 +1,4 @@
-import { getAdminClient, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
+import { jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { estimateLeadScore } from "@/lib/experience"
 import { NextResponse } from "next/server"
 
@@ -22,9 +22,9 @@ export async function POST(request: Request) {
       note: String(body.note || "Follow-up automat generat din CRM."),
       next_follow_up: body.next_follow_up || nextFollowUp.toISOString(),
     }
-    const { data, error } = await getAdminClient().from("lead_history").insert(payload).select("*").single()
+    const { data, error } = await auth.supabase.from("lead_history").insert(payload).select("*").single()
     if (error) return jsonError(error.message, 400)
-    if (body.lead_id) await getAdminClient().from("leads").update({ status: body.status || "CONTACTED", updated_at: new Date().toISOString() }).eq("id", body.lead_id)
+    if (body.lead_id) await auth.supabase.from("leads").update({ status: body.status || "CONTACTED", updated_at: new Date().toISOString() }).eq("id", body.lead_id)
     return NextResponse.json({ history: data })
   } catch (error: any) {
     return jsonError(error.message || "CRM request failed")

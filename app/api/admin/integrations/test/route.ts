@@ -1,4 +1,4 @@
-import { getAdminClient, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
+import { jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { createDocuSignEnvelope, createGoogleCalendarEvent, createStripeInvoice, providerStatus, sendResendEmail, sendTwilioSms } from "@/lib/admin-integrations"
 import { NextResponse } from "next/server"
 
@@ -25,16 +25,16 @@ export async function POST(request: Request) {
     else if (provider === "docusign") response = await createDocuSignEnvelope({ signerEmail: target, signerName: body.name || "Client HQS", subject: "HQS DocuSign test", documentHtml: "<h1>HQS test</h1><p>Document de test.</p>" })
     else if (provider === "stripe") response = await createStripeInvoice({ clientEmail: target, clientName: body.name || "Client HQS", description: "HQS Stripe test", amount: Number(body.amount || 1), currency: "eur" })
     else return jsonError("Provider invalid", 400)
-    await job(provider, "test", "SENT", target, { body }, response, auth.session.actor)
+    await job(provider, "test", "SENT", target, { body }, response, auth.session.actor, auth.supabase)
     return NextResponse.json({ provider, response })
   } catch (error: any) {
-    await job(provider || "unknown", "test", error?.name === "IntegrationConfigError" ? "FAILED_CONFIG" : "FAILED_PROVIDER", target, { body }, {}, auth.session.actor, error?.message)
+    await job(provider || "unknown", "test", error?.name === "IntegrationConfigError" ? "FAILED_CONFIG" : "FAILED_PROVIDER", target, { body }, {}, auth.session.actor, auth.supabase, error?.message)
     return jsonError(error.message || "Provider test failed", error?.name === "IntegrationConfigError" ? 400 : 502)
   }
 }
 
-async function job(provider: string, action: string, status: string, target: string, request: any, response: any, actor: string, error?: string) {
-  await getAdminClient().from("admin_provider_jobs").insert({ provider, action, status, target, request, response, error: error || null, provider_event_id: providerEventId(response), created_by: actor, attempts: 1, updated_at: new Date().toISOString() })
+async function job(provider: string, action: string, status: string, target: string, request: any, response: any, actor: string, supabase: any, error?: string) {
+  await supabase.from("admin_provider_jobs").insert({ provider, action, status, target, request, response, error: error || null, provider_event_id: providerEventId(response), created_by: actor, attempts: 1, updated_at: new Date().toISOString() })
 }
 
 function providerEventId(response: any) {

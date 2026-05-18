@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url)
     const format = url.searchParams.get("format") || "json"
-    const { core, modules, platform } = await listAdminSnapshot()
+    const { core, modules, platform } = await listAdminSnapshot(auth.supabase)
     const payload = { report: buildExecutiveReport({ ...platform, ...modules, ...core }), ...core, platform, modules, _admin: auth.session }
 
     if (format === "csv") {

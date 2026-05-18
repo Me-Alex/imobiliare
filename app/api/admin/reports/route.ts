@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   if ("error" in auth) return auth.error
 
   try {
-    const { core, modules, platform } = await listAdminSnapshot()
+    const { core, modules, platform } = await listAdminSnapshot(auth.supabase)
     const report = buildExecutiveReport({ ...platform, ...modules, ...core })
     return NextResponse.json({ report, _admin: auth.session })
   } catch (error: any) {

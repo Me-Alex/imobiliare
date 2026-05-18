@@ -1,4 +1,4 @@
-import { getAdminClient, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
+import { jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { createGoogleCalendarEvent } from "@/lib/admin-integrations"
 import { NextResponse } from "next/server"
 
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   try {
     let payload = body
     if (body.appointment_id) {
-      const { data, error } = await getAdminClient().from("appointments").select("*").eq("id", body.appointment_id).single()
+      const { data, error } = await auth.supabase.from("appointments").select("*").eq("id", body.appointment_id).single()
       if (error) return jsonError(error.message, 400)
       payload = data
     }
@@ -26,11 +26,11 @@ export async function POST(request: Request) {
       attendees: [payload.client_email, payload.agent_email].filter(Boolean),
       location: payload.address || payload.property_title || "HQS Imobiliare",
     })
-    await getAdminClient().from("calendar_sync_events").insert({ appointment_id: payload.id || body.appointment_id || null, provider: "google", provider_event_id: event.id, calendar_id: event.organizer?.email || null, status: "SENT", payload, response: event, created_by: auth.session.actor })
-    await getAdminClient().from("admin_provider_jobs").insert({ provider: "google", action: "calendar_sync", status: "SENT", entity: "appointments", entity_id: payload.id || body.appointment_id || null, request: payload, response: event, created_by: auth.session.actor, attempts: 1 })
+    await auth.supabase.from("calendar_sync_events").insert({ appointment_id: payload.id || body.appointment_id || null, provider: "google", provider_event_id: event.id, calendar_id: event.organizer?.email || null, status: "SENT", payload, response: event, created_by: auth.session.actor })
+    await auth.supabase.from("admin_provider_jobs").insert({ provider: "google", action: "calendar_sync", status: "SENT", entity: "appointments", entity_id: payload.id || body.appointment_id || null, request: payload, response: event, created_by: auth.session.actor, attempts: 1 })
     return NextResponse.json({ event })
   } catch (error: any) {
-    await getAdminClient().from("admin_provider_jobs").insert({ provider: "google", action: "calendar_sync", status: error?.name === "IntegrationConfigError" ? "FAILED_CONFIG" : "FAILED_PROVIDER", request: body, response: {}, error: error?.message, created_by: auth.session.actor, attempts: 1 })
+    await auth.supabase.from("admin_provider_jobs").insert({ provider: "google", action: "calendar_sync", status: error?.name === "IntegrationConfigError" ? "FAILED_CONFIG" : "FAILED_PROVIDER", request: body, response: {}, error: error?.message, created_by: auth.session.actor, attempts: 1 })
     return jsonError(error.message || "Calendar sync failed", error?.name === "IntegrationConfigError" ? 400 : 502)
   }
 }

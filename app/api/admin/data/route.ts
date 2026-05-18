@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   if ("error" in auth) return auth.error
 
   try {
-    const core = await listAdminCore()
+    const core = await listAdminCore(auth.supabase)
     return NextResponse.json({
       leads: hasAdminPermission(auth.session, "leads") ? core.leads : [],
       properties: hasAdminPermission(auth.session, "properties") || hasAdminPermission(auth.session, "reports") ? core.properties : [],

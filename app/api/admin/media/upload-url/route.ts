@@ -1,4 +1,4 @@
-import { getAdminClient, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
+import { jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
 export const runtime = "edge"
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const kind = cleanName(String(body.kind || "gallery"))
     if (!propertyId) return jsonError("property_id lipseste", 400)
     const path = `${propertyId}/${kind}/${Date.now()}-${fileName}`
-    const { data, error } = await getAdminClient().storage.from("property-media").createSignedUploadUrl(path)
+    const { data, error } = await auth.supabase.storage.from("property-media").createSignedUploadUrl(path)
     if (error) return jsonError(error.message, 400)
     return NextResponse.json({ ...data, path, bucket: "property-media" })
   } catch (error: any) {
