@@ -11,10 +11,10 @@
 - Legacy variables no longer used by admin runtime routes: `ADMIN_PASSWORD`, `ADMIN_RPC_SECRET`, `ADMIN_ALLOWED_USERS`.
 - Missing provider credentials do not block the dashboard; provider actions return safe admin errors and write failed provider jobs.
 - Provider webhooks require valid signatures before mutating database state. If `SUPABASE_SERVICE_ROLE_KEY` is missing, webhooks fail with a clear 503 instead of silently accepting events.
-- Provider jobs are processed through `POST /api/admin/provider-jobs/process`. Admin users can run it manually from Integrations. A scheduler can call it with `Authorization: Bearer <PROVIDER_CRON_SECRET>`.
+- Provider jobs are processed through `POST /api/admin/provider-jobs/process`. Admin users can run it manually from Integrations. A scheduler can call it with `Authorization: Bearer <PROVIDER_CRON_SECRET>` when `SUPABASE_SERVICE_ROLE_KEY` is configured, or the GitHub workflow can use the Supabase admin fallback secrets.
 - The processor queues due outbox messages, appointment reminders, releases stale `HELD` slots, retries transient provider failures with backoff, marks config failures as `FAILED_CONFIG`, and queues an ops email when `OPS_ALERT_EMAIL` is configured.
 - GitHub Actions runs typecheck, unit tests, public Playwright smoke tests, optional authenticated Playwright smoke tests, Next build, and Cloudflare Pages bundle build.
-- GitHub Actions also includes `Process provider jobs`, scheduled every 15 minutes. Configure repository secret `PROVIDER_CRON_SECRET`; optionally set repository variable `PROVIDER_JOBS_URL` for non-production targets.
+- GitHub Actions also includes `Process provider jobs`, scheduled every 15 minutes. Configure repository secret `PROVIDER_CRON_SECRET` plus Cloudflare `SUPABASE_SERVICE_ROLE_KEY`, or configure fallback secrets `PROVIDER_CRON_ADMIN_EMAIL` and `PROVIDER_CRON_ADMIN_PASSWORD` with variables `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and optional `PROVIDER_JOBS_URL`.
 - Optional E2E secrets: `PLAYWRIGHT_ADMIN_USER`, `PLAYWRIGHT_ADMIN_PASSWORD`, `PLAYWRIGHT_CLIENT_EMAIL`, `PLAYWRIGHT_CLIENT_PASSWORD`, `PLAYWRIGHT_OWNER_EMAIL`, `PLAYWRIGHT_OWNER_PASSWORD`.
 - Worker-only OpenNext commands are kept under `worker:*` for a future Workers migration, but Pages production should use `cloudflare:build`.
 - Not used: Vercel hosting.

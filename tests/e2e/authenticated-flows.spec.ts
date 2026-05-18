@@ -9,8 +9,8 @@ const ownerPassword = process.env.PLAYWRIGHT_OWNER_PASSWORD || clientPassword
 test("admin can open the command center", async ({ page }) => {
   test.skip(!adminPassword, "Set PLAYWRIGHT_ADMIN_PASSWORD to run admin E2E.")
   await page.goto("/admin/login")
-  await page.getByPlaceholder("admin").fill(process.env.PLAYWRIGHT_ADMIN_USER || "admin")
-  await page.getByPlaceholder("parola admin").fill(adminPassword!)
+  await page.getByLabel("Email sau username admin").fill(process.env.PLAYWRIGHT_ADMIN_USER || "admin")
+  await page.getByLabel("Parola").fill(adminPassword!)
   await page.getByRole("button", { name: "Intra in admin" }).click()
   await expect(page).toHaveURL(/\/admin\/dashboard/)
   await expect(page.getByRole("heading", { name: /Dashboard|HQS/i })).toBeVisible()

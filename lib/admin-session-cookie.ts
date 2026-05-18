@@ -11,7 +11,10 @@ type CookiePayload = {
 
 function getSigningSecret() {
   const env = typeof process !== "undefined" ? process.env as Record<string, string | undefined> : {}
-  return env.ADMIN_SESSION_SIGNING_SECRET || env.RATE_LIMIT_SALT || "hqs-admin-session-dev"
+  const contextKey = Symbol.for("__cloudflare-request-context__")
+  const context = (globalThis as typeof globalThis & Record<symbol, { env?: Record<string, string | undefined> } | undefined>)[contextKey]
+  const runtimeEnv = { ...env, ...(context?.env || {}) }
+  return runtimeEnv.ADMIN_SESSION_SIGNING_SECRET || runtimeEnv.RATE_LIMIT_SALT || "hqs-admin-session-dev"
 }
 
 function base64UrlEncode(value: string | ArrayBuffer) {

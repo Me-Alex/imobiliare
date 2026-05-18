@@ -18,17 +18,51 @@ jobs:
       - name: Trigger provider job processor
         env:
           PROVIDER_CRON_SECRET: ${{ secrets.PROVIDER_CRON_SECRET }}
+          PROVIDER_CRON_ADMIN_EMAIL: ${{ secrets.PROVIDER_CRON_ADMIN_EMAIL }}
+          PROVIDER_CRON_ADMIN_PASSWORD: ${{ secrets.PROVIDER_CRON_ADMIN_PASSWORD }}
           PROVIDER_JOBS_URL: ${{ vars.PROVIDER_JOBS_URL }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
         run: |
-          if [ -z "$PROVIDER_CRON_SECRET" ]; then
-            echo "::warning::PROVIDER_CRON_SECRET is not configured; skipping provider job processing."
+          url="${PROVIDER_JOBS_URL:-https://hqsimobiliare.ro/api/admin/provider-jobs/process}"
+          payload='{"limit":25,"max_attempts":5}'
+
+          if [ -n "$PROVIDER_CRON_SECRET" ]; then
+            if curl --fail-with-body \
+              --request POST \
+              --header "Authorization: Bearer ${PROVIDER_CRON_SECRET}" \
+              --header "Content-Type: application/json" \
+              --data "$payload" \
+              "$url"; then
+              exit 0
+            fi
+            echo "::warning::Provider cron secret path failed; trying Supabase admin login fallback."
+          fi
+
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ] || [ -z "$PROVIDER_CRON_ADMIN_EMAIL" ] || [ -z "$PROVIDER_CRON_ADMIN_PASSWORD" ]; then
+            echo "::warning::Provider job processing is not configured. Set PROVIDER_CRON_SECRET or Supabase admin fallback secrets."
             exit 0
           fi
 
-          url="${PROVIDER_JOBS_URL:-https://hqsimobiliare.ro/api/admin/provider-jobs/process}"
+          token="$(node -e '
+            const [url, key, email, password] = process.argv.slice(1);
+            fetch(`${url.replace(/\\/$/, "")}/auth/v1/token?grant_type=password`, {
+              method: "POST",
+              headers: { apikey: key, "Content-Type": "application/json" },
+              body: JSON.stringify({ email, password }),
+            }).then(async (res) => {
+              const body = await res.json().catch(() => ({}));
+              if (!res.ok || !body.access_token) throw new Error(body.error_description || body.error || "Supabase login failed");
+              console.log(body.access_token);
+            }).catch((error) => {
+              console.error(error.message);
+              process.exit(1);
+            });
+          ' "$SUPABASE_URL" "$SUPABASE_ANON_KEY" "$PROVIDER_CRON_ADMIN_EMAIL" "$PROVIDER_CRON_ADMIN_PASSWORD")"
+
           curl --fail-with-body \
             --request POST \
-            --header "Authorization: Bearer ${PROVIDER_CRON_SECRET}" \
+            --header "Authorization: Bearer ${token}" \
             --header "Content-Type: application/json" \
-            --data '{"limit":25,"max_attempts":5}' \
+            --data "$payload" \
             "$url"
