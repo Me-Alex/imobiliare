@@ -40,12 +40,20 @@ export default function AdminLogin() {
     return body
   }
 
+  async function auditFailedLogin(identifier: string, reason: string) {
+    await fetch("/api/admin/session", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier, reason }),
+    }).catch(() => undefined)
+  }
+
   const submit = async () => {
     setBusy(true)
     setError("")
     setMessage("")
+    const loginEmail = resolveLoginIdentifier(email)
     try {
-      const loginEmail = resolveLoginIdentifier(email)
       if (mode === "reset") {
         const { error } = await supabase.auth.resetPasswordForEmail(loginEmail, { redirectTo: `${window.location.origin}/admin/login` })
         if (error) throw error
@@ -59,6 +67,7 @@ export default function AdminLogin() {
       await establishAdminCookie(token)
       window.location.href = "/admin/dashboard"
     } catch (err: any) {
+      if (mode === "login") void auditFailedLogin(loginEmail, err.message || "Autentificare esuata.")
       setError(err.message || "Autentificare esuata.")
     } finally {
       setBusy(false)

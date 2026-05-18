@@ -93,10 +93,12 @@ export default function AdminCommandCenter() {
     outbox: (platform.admin_notification_outbox || []).filter((row: Row) => matches(row, query)),
     media: (platform.property_media || []).filter((row: Row) => matches(row, query)),
     providerJobs: (platform.admin_provider_jobs || []).filter((row: Row) => matches(row, query)),
+    providerEvents: (platform.admin_provider_events || []).filter((row: Row) => matches(row, query)),
     invoices: (platform.admin_invoices || []).filter((row: Row) => matches(row, query)),
     commissions: (platform.admin_commissions || []).filter((row: Row) => matches(row, query)),
     ownerReports: (platform.owner_reports || []).filter((row: Row) => matches(row, query)),
     attribution: (platform.analytics_attribution || []).filter((row: Row) => matches(row, query)),
+    rateLimits: (platform.rate_limits || []).filter((row: Row) => matches(row, query)),
   }), [core, modules, platform, query])
 
   const metrics = useMemo(() => {
@@ -210,7 +212,7 @@ export default function AdminCommandCenter() {
 
   const renderView = () => {
     if (loading) return <LoadingState />
-    const props = { filtered, core, modules, platform, report, metrics, saving, setView, patchLead, followUp, patchAppointment, patchProperty, deleteProperty, createProperty, saveModule, deleteModule, platformAction, saveSettings, exportLocalCsv, exportServer }
+    const props = { filtered, core, modules, platform, report, metrics, saving, setView, reload: load, patchLead, followUp, patchAppointment, patchProperty, deleteProperty, createProperty, saveModule, deleteModule, platformAction, saveSettings, exportLocalCsv, exportServer }
     if (view === "properties") return <PropertiesView {...props} />
     if (view === "listings") return <ListingsView {...props} />
     if (view === "media") return <MediaView {...props} />

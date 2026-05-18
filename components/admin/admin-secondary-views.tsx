@@ -14,7 +14,7 @@ export function ContentView({ filtered, saving, platformAction }: any) {
         <ActionPanel title="Punct de interes" fields={["zone_slug", "name", "category", "lat", "lng", "score", "notes"]} defaults={{ category: "school", score: 5 }} saving={saving === "zone"} onSubmit={(payload) => platformAction("zone", { type: "zone_poi", payload }, "Punct zona salvat.")} />
       </div>
       <Panel tight><Table heads={["Continut", "Tip", "Status", "Creat"]} rows={filtered.cms} empty="Nu exista continut CMS." render={(row: Row) => <tr key={row.id || row.slug} className="border-t border-bg-surface"><Td>{row.title || row.slug}</Td><Td>{row.type || "page"}</Td><Td><Badge>{row.status || "DRAFT"}</Badge></Td><Td>{date(row.created_at)}</Td></tr>} /></Panel>
-      <Panel tight><Table heads={["Zona", "POI", "Categorie", "Scor"]} rows={filtered.zones} empty="Nu exista puncte de interes." render={(row: Row) => <tr key={row.id || row.name} className="border-t border-bg-surface"><Td>{row.zone_slug}</Td><Td>{row.name}</Td><Td>{row.category}</Td><Td>{row.score || "-"}</Td></tr>} /></Panel>
+      <Panel tight><Table heads={["Zona", "POI", "Categorie", "Scor"]} rows={filtered.zones} empty="Nu exista puncte de interes." render={(row: Row) => <tr key={row.id || row.name} className="border-t border-bg-surface"><Td>{row.zone || row.zone_slug}</Td><Td>{row.name}</Td><Td>{row.category}</Td><Td>{row.score || "-"}</Td></tr>} /></Panel>
     </div>
   )
 }

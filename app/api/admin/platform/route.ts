@@ -215,6 +215,11 @@ function filterPlatformData(data: Record<string, any>, session: any) {
     next.analytics_attribution = []
     next.market_data = []
     next.client_saved_searches = []
+    next.rate_limits = []
+  }
+  if (!hasAdminPermission(session, "integrations")) {
+    next.admin_provider_events = []
+    next.admin_provider_jobs = []
   }
   return next
 }

@@ -10,6 +10,12 @@ type OwnerData = {
   properties: Row[]
   reports: Row[]
   documents: Row[]
+  leads: Row[]
+  appointments: Row[]
+  offers: Row[]
+  attribution: Row[]
+  property_metrics: Row[]
+  totals: Row
 }
 
 export default function OwnerPortal() {
@@ -59,31 +65,60 @@ export default function OwnerPortal() {
 
         {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm font-bold text-red-500">{error}</div>}
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Metric label="Proprietati" value={data?.properties.length || 0} />
+        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+          <Metric label="Proprietati" value={data?.totals?.properties || data?.properties.length || 0} />
+          <Metric label="Lead-uri" value={data?.totals?.leads || 0} />
+          <Metric label="Vizionari" value={data?.totals?.appointments || 0} />
+          <Metric label="Oferte" value={data?.totals?.offers || 0} />
+          <Metric label="Pipeline" value={money(data?.totals?.offer_pipeline || 0)} />
           <Metric label="Rapoarte" value={data?.reports.length || 0} />
-          <Metric label="Documente" value={data?.documents.length || 0} />
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
           <Panel title="Proprietati administrate">
-            {(data?.properties || []).length ? data?.properties.map((property) => <div key={property.id} className="border-t border-bg-surface py-4 first:border-t-0 first:pt-0"><p className="font-black text-text-primary">{property.title}</p><p className="mt-1 text-sm text-text-muted">{property.city || property.zone || "-"} · {money(property.price || 0, property.currency || "EUR")} · {property.status || "DRAFT"}</p></div>) : <Empty text="Nu exista proprietati asociate acestui email." />}
+            {(data?.properties || []).length ? data?.properties.map((property) => {
+              const metrics = data?.property_metrics?.find((item) => item.property_id === property.id)
+              return (
+                <div key={property.id} className="border-t border-bg-surface py-4 first:border-t-0 first:pt-0">
+                  <p className="font-black text-text-primary">{property.title}</p>
+                  <p className="mt-1 text-sm text-text-muted">{property.city || property.zone || "-"} - {money(property.price || 0, property.currency || "EUR")} - {property.status || "DRAFT"}</p>
+                  <div className="mt-3 grid grid-cols-4 gap-2 text-xs font-black text-text-muted">
+                    <span>{metrics?.leads || 0} lead-uri</span>
+                    <span>{metrics?.tours || 0} vizionari</span>
+                    <span>{metrics?.offers || 0} oferte</span>
+                    <span>{money(metrics?.offer_pipeline || 0)}</span>
+                  </div>
+                </div>
+              )
+            }) : <Empty text="Nu exista proprietati asociate acestui email." />}
           </Panel>
           <Panel title="Rapoarte proprietar">
-            {(data?.reports || []).length ? data?.reports.map((report) => <div key={report.id} className="border-t border-bg-surface py-4 first:border-t-0 first:pt-0"><p className="font-black text-text-primary">{report.title}</p><p className="mt-1 text-sm text-text-muted">{report.summary || "Fara sumar."}</p><p className="mt-2 text-xs font-black uppercase text-accent">{report.status} · {date(report.created_at)}</p></div>) : <Empty text="Nu exista rapoarte publicate." />}
+            {(data?.reports || []).length ? data?.reports.map((report) => <div key={report.id} className="border-t border-bg-surface py-4 first:border-t-0 first:pt-0"><p className="font-black text-text-primary">{report.title}</p><p className="mt-1 text-sm text-text-muted">{report.summary || "Fara sumar."}</p><p className="mt-2 text-xs font-black uppercase text-accent">{report.status} - {date(report.created_at)}</p></div>) : <Empty text="Nu exista rapoarte publicate." />}
+          </Panel>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-3">
+          <Panel title="Lead-uri fara date personale">
+            {(data?.leads || []).length ? data?.leads.slice(0, 8).map((lead) => <div key={lead.id} className="border-t border-bg-surface py-4 first:border-t-0 first:pt-0"><p className="font-black text-text-primary">{lead.status || "NEW"} - scor {lead.score || 0}</p><p className="mt-1 text-sm text-text-muted">{lead.source || "site"} - {date(lead.created_at)}</p></div>) : <Empty text="Nu exista lead-uri pentru proprietatile tale." />}
+          </Panel>
+          <Panel title="Vizionari">
+            {(data?.appointments || []).length ? data?.appointments.slice(0, 8).map((appointment) => <div key={appointment.id} className="border-t border-bg-surface py-4 first:border-t-0 first:pt-0"><p className="font-black text-text-primary">{appointment.status || "REQUESTED"}</p><p className="mt-1 text-sm text-text-muted">{date(appointment.start_at || appointment.requested_at, true)} - {appointment.agent_email || "agent HQS"}</p></div>) : <Empty text="Nu exista vizionari programate." />}
+          </Panel>
+          <Panel title="Promovare si surse">
+            {(data?.property_metrics || []).length ? data?.property_metrics.map((metric) => <div key={metric.property_id} className="border-t border-bg-surface py-4 first:border-t-0 first:pt-0"><p className="font-black text-text-primary">{metric.title}</p><p className="mt-1 text-sm text-text-muted">{metric.attribution_events || 0} evenimente - {(metric.sources || []).join(", ") || "surse in lucru"}</p></div>) : <Empty text="Nu exista date de promovare inca." />}
           </Panel>
         </div>
 
         <Panel title="Documente si mandate">
-          {(data?.documents || []).length ? data?.documents.map((doc) => <div key={doc.id} className="border-t border-bg-surface py-4 first:border-t-0 first:pt-0"><p className="font-black text-text-primary">{doc.title}</p><p className="mt-1 text-sm text-text-muted">{doc.status || "DRAFT"} · {doc.docusign_envelope_id || doc.file_url || "document privat"}</p></div>) : <Empty text="Nu exista documente asociate." />}
+          {(data?.documents || []).length ? data?.documents.map((doc) => <div key={doc.id} className="border-t border-bg-surface py-4 first:border-t-0 first:pt-0"><p className="font-black text-text-primary">{doc.title}</p><p className="mt-1 text-sm text-text-muted">{doc.status || "DRAFT"} - {doc.docusign_envelope_id || doc.file_url || "document privat"}</p></div>) : <Empty text="Nu exista documente asociate." />}
         </Panel>
       </div>
     </section>
   )
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
-  return <div className="rounded-lg border border-bg-surface bg-bg-card p-5 shadow-card"><p className="text-xs font-black uppercase text-text-muted">{label}</p><p className="mt-2 text-3xl font-black text-text-primary">{value}</p></div>
+function Metric({ label, value }: { label: string; value: number | string }) {
+  return <div className="rounded-lg border border-bg-surface bg-bg-card p-5 shadow-card"><p className="text-xs font-black uppercase text-text-muted">{label}</p><p className="mt-2 text-2xl font-black text-text-primary">{value}</p></div>
 }
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
@@ -93,4 +128,3 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 function Empty({ text }: { text: string }) {
   return <p className="rounded-lg border border-dashed border-bg-surface bg-bg-secondary p-4 text-sm text-text-muted">{text}</p>
 }
-
