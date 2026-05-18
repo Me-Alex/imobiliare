@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 
 const loginAliases: Record<string, string> = {
-  admin: "admin@hqsimobiliare.ro",
+  admin: "1@2.com",
 }
 
 function resolveLoginIdentifier(value: string) {
