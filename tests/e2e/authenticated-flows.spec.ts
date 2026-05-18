@@ -5,6 +5,8 @@ const clientEmail = process.env.PLAYWRIGHT_CLIENT_EMAIL
 const clientPassword = process.env.PLAYWRIGHT_CLIENT_PASSWORD
 const ownerEmail = process.env.PLAYWRIGHT_OWNER_EMAIL || clientEmail
 const ownerPassword = process.env.PLAYWRIGHT_OWNER_PASSWORD || clientPassword
+const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "https://hqsimobiliare.ro"
+const runsAgainstLocalApp = ["localhost", "127.0.0.1"].includes(new URL(baseUrl).hostname)
 
 test("admin can open the command center", async ({ page }) => {
   test.skip(!adminPassword, "Set PLAYWRIGHT_ADMIN_PASSWORD to run admin E2E.")
@@ -14,6 +16,7 @@ test("admin can open the command center", async ({ page }) => {
   await page.getByRole("button", { name: "Intra in admin" }).click()
   await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 15_000 })
   await expect(page.getByRole("heading", { name: /Dashboard|HQS/i })).toBeVisible()
+  if (!runsAgainstLocalApp) return
   await page.getByRole("button", { name: /Ctrl K/i }).first().click()
   const palette = page.getByRole("dialog", { name: "Command palette" })
   await palette.getByPlaceholder(/Cauta sectiuni/i).fill("integrations")
