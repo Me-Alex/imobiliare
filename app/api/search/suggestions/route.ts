@@ -4,7 +4,6 @@ import { rateLimit } from "@/lib/rate-limit"
 import { supabase } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 export async function GET(request: Request) {
   const limited = await rateLimit(request, "search-suggestions", 120, 60_000)

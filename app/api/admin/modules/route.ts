@@ -1,7 +1,6 @@
 import { jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 const moduleTypes = new Set(["payment_plans", "projects", "team_users", "owners", "documents", "notifications", "activities"])
 

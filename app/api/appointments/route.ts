@@ -5,7 +5,6 @@ import { rateLimit } from "@/lib/rate-limit"
 import { supabase as publicSupabase } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 export async function POST(request: Request) {
   const limited = await rateLimit(request, "appointments", 8, 60_000)

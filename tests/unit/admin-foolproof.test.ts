@@ -39,7 +39,13 @@ describe("admin foolproof helpers", () => {
   it("reports readiness checks for access, media, providers, documents and inventory", () => {
     const checks = buildReadinessChecks(
       { properties: [{ id: "p1", cover_image_url: "https://example.com/cover.jpg" }] },
-      { admin_roles: [{ email: "admin@example.com", status: "ACTIVE" }], admin_provider_jobs: [{ status: "SENT" }], property_media: [{ property_id: "p1", kind: "cover" }], client_documents: [{ id: "doc1" }] },
+      {
+        admin_roles: [{ email: "admin@example.com", status: "ACTIVE" }],
+        admin_provider_jobs: [{ status: "SENT" }],
+        property_media: [{ property_id: "p1", kind: "cover" }],
+        client_documents: [{ id: "doc1" }],
+        runtime_health: { summary: { missingRequired: 0, configuredRequired: 3, required: 3, readyProviders: 5, totalProviders: 5 } },
+      },
     )
 
     expect(checks.every((check) => check.ok)).toBe(true)

@@ -1,6 +1,5 @@
 import { siteConfig } from "@/lib/site-config"
 
-export const runtime = "edge"
 
 export default function robots() {
   const base = siteConfig.url.replace(/\/$/, "")

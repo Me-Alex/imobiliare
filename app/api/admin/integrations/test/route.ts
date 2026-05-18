@@ -2,7 +2,6 @@ import { jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { createDocuSignEnvelope, createGoogleCalendarEvent, createStripeInvoice, providerStatus, sendResendEmail, sendTwilioSms } from "@/lib/admin-integrations"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 export async function GET(request: Request) {
   const auth = await requireAdminPermissionAsync(request, "integrations")

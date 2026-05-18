@@ -13,18 +13,22 @@ export function generateStaticParams() {
   return zoneProfiles.map((zone) => ({ slug: zone.slug }))
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const zone = zoneProfiles.find((item) => item.slug === params.slug)
+type ZonePageProps = { params: Promise<{ slug: string }> }
+
+export async function generateMetadata({ params }: ZonePageProps) {
+  const { slug } = await params
+  const zone = zoneProfiles.find((item) => item.slug === slug)
   if (!zone) return { title: "Zona negasita" }
-  const { data: cms } = await supabase.from("cms_entries").select("*").eq("key", `zone.${params.slug}`).eq("status", "PUBLISHED").maybeSingle()
+  const { data: cms } = await supabase.from("cms_entries").select("*").eq("key", `zone.${slug}`).eq("status", "PUBLISHED").maybeSingle()
   return {
     title: cms?.seo?.title || `${zone.name} | Ghid imobiliar HQS`,
     description: cms?.seo?.description || cms?.content?.body || zone.description,
   }
 }
 
-export default async function ZoneDetailPage({ params }: { params: { slug: string } }) {
-  const zone = zoneProfiles.find((item) => item.slug === params.slug)
+export default async function ZoneDetailPage({ params }: ZonePageProps) {
+  const { slug } = await params
+  const zone = zoneProfiles.find((item) => item.slug === slug)
   if (!zone) notFound()
 
   const { data } = await supabase
@@ -34,7 +38,7 @@ export default async function ZoneDetailPage({ params }: { params: { slug: strin
     .ilike("city", `%${zone.name.split(" ")[0]}%`)
     .limit(6)
   const { data: pois } = await supabase.from("zone_poi").select("*").ilike("zone", `%${zone.name.split(" ")[0]}%`).order("score", { ascending: false })
-  const { data: cms } = await supabase.from("cms_entries").select("*").eq("key", `zone.${params.slug}`).eq("status", "PUBLISHED").maybeSingle()
+  const { data: cms } = await supabase.from("cms_entries").select("*").eq("key", `zone.${slug}`).eq("status", "PUBLISHED").maybeSingle()
   const headline = cms?.content?.headline || zone.headline
   const description = cms?.content?.body || zone.description
 

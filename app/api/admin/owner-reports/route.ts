@@ -2,7 +2,6 @@ import { jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { optionalUuid } from "@/lib/admin-properties"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 function normalizeReport(payload: Record<string, any>, actor: string) {
   return {

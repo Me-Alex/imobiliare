@@ -17,7 +17,6 @@ import { documentChecklist, estimateMonthlyPayment, zoneProfiles } from "@/lib/e
 import { buildOfferDraft, buildViewingSlots, calculateValuation } from "@/lib/complexity"
 import { getPropertyMedia } from "@/lib/property-media"
 
-export const runtime = "edge"
 
 const TIP_LABEL: Record<string, string> = {
   APARTMENT: "Apartament",
@@ -27,8 +26,11 @@ const TIP_LABEL: Record<string, string> = {
   COMMERCIAL: "Comercial",
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const { data } = await supabase.from("properties").select("title,description,city").eq("slug", params.slug).single()
+type PropertyPageProps = { params: Promise<{ slug: string }> }
+
+export async function generateMetadata({ params }: PropertyPageProps): Promise<Metadata> {
+  const { slug } = await params
+  const { data } = await supabase.from("properties").select("title,description,city").eq("slug", slug).single()
   if (!data) return { title: "Proprietate negasita" }
   return {
     title: `${data.title} | HQS Imobiliare`,
@@ -36,8 +38,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 }
 
-export default async function PaginaProprietate({ params }: { params: { slug: string } }) {
-  const { data } = await supabase.from("properties").select("*").eq("slug", params.slug).single()
+export default async function PaginaProprietate({ params }: PropertyPageProps) {
+  const { slug } = await params
+  const { data } = await supabase.from("properties").select("*").eq("slug", slug).single()
   if (!data) notFound()
 
   const p = data as Property

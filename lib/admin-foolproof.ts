@@ -158,6 +158,7 @@ export function buildAdminTasks(core: AdminRow, modules: AdminRow, platform: Adm
   const providerJobs = rows(platform.admin_provider_jobs)
   const invoices = rows(platform.admin_invoices)
   const media = rows(platform.property_media)
+  const runtimeHealth = platform.runtime_health || {}
 
   const failedJobs = providerJobs.filter((row) => String(row.status || "").includes("FAILED"))
   const staleLeads = rows(metrics.activeLeads).filter((row) => ageHours(row) >= 24)
@@ -167,12 +168,16 @@ export function buildAdminTasks(core: AdminRow, modules: AdminRow, platform: Adm
   const needsAlt = media.filter((row) => String(row.review_status || "").toUpperCase() === "NEEDS_ALT" || !row.alt)
   const pendingDocs = documents.filter((row) => !["APPROVED", "SIGNED", "VALID"].includes(String(row.status || "").toUpperCase()))
   const openInvoices = invoices.filter(isOpenStatus)
+  const missingRequired = Number(runtimeHealth.summary?.missingRequired || 0)
+  const missingOptional = Number(runtimeHealth.summary?.missingOptional || 0)
   const nextTours = appointments.filter((row) => {
     const start = new Date(row.start_at || row.requested_at || 0).getTime()
     return start && start >= Date.now() && start <= Date.now() + 7 * 24 * 60 * 60 * 1000
   })
 
   const tasks: AdminTask[] = [
+    missingRequired ? { id: "missing-required-env", title: `${missingRequired} required secret(s) missing`, meta: "Admin/service features are running degraded until Cloudflare runtime secrets are configured.", view: "integrations", query: "missing", tone: "danger", cta: "Open readiness" } : null,
+    !missingRequired && missingOptional ? { id: "missing-provider-env", title: `${missingOptional} provider variable(s) missing`, meta: "Provider actions fail safely, but email/SMS/signature/invoice automation is incomplete.", view: "integrations", query: "missing", tone: "warn", cta: "Check providers" } : null,
     failedJobs.length ? { id: "failed-jobs", title: `${failedJobs.length} provider job(s) failed`, meta: "Retry or cancel before customers notice missing email/SMS/calendar events.", view: "integrations", query: "FAILED", tone: "danger", cta: "Fix integrations" } : null,
     staleLeads.length ? { id: "stale-leads", title: `${staleLeads.length} stale lead(s) need follow-up`, meta: "Older than 24h and still active.", view: "crm", query: "NEW", tone: "warn", cta: "Open CRM queue" } : null,
     newLeads.length ? { id: "new-leads", title: `${newLeads.length} new lead(s) waiting`, meta: "Start with phone-ready and high-score leads.", view: "crm", query: "NEW", tone: "warn", cta: "Call leads" } : null,
@@ -193,11 +198,15 @@ export function buildReadinessChecks(core: AdminRow, platform: AdminRow): Readin
   const providerJobs = rows(platform.admin_provider_jobs)
   const media = rows(platform.property_media)
   const documents = rows(platform.client_documents)
+  const runtimeHealth = platform.runtime_health || {}
+  const healthSummary = runtimeHealth.summary || {}
 
   return [
+    { id: "runtime", label: "Runtime secrets ready", ok: Number(healthSummary.missingRequired || 0) === 0, detail: `${healthSummary.configuredRequired || 0}/${healthSummary.required || 0} required`, view: "integrations" },
+    { id: "providers", label: "Providers configured", ok: Number(healthSummary.readyProviders || 0) >= Number(healthSummary.totalProviders || 1), detail: `${healthSummary.readyProviders || 0}/${healthSummary.totalProviders || 0} providers`, view: "integrations" },
     { id: "rbac", label: "RBAC configured", ok: roles.some((row) => String(row.status || "").toUpperCase() === "ACTIVE"), detail: `${roles.length} role(s)`, view: "users" },
     { id: "media", label: "Media ready", ok: properties.every((row) => row.cover_image_url || row.cover_image || ["SOLD", "RENTED"].includes(String(row.status || "").toUpperCase())), detail: `${media.length} media item(s)`, view: "media" },
-    { id: "providers", label: "Provider queue clean", ok: !providerJobs.some((row) => String(row.status || "").includes("FAILED")), detail: `${providerJobs.length} job(s)`, view: "integrations" },
+    { id: "provider-jobs", label: "Provider queue clean", ok: !providerJobs.some((row) => String(row.status || "").includes("FAILED")), detail: `${providerJobs.length} job(s)`, view: "integrations" },
     { id: "documents", label: "Documents tracked", ok: documents.length > 0, detail: `${documents.length} client doc(s)`, view: "documents" },
     { id: "inventory", label: "Inventory active", ok: properties.length > 0, detail: `${properties.length} listing(s)`, view: "properties" },
   ]

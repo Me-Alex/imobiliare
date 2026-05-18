@@ -3,6 +3,7 @@ const baseUrl = (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || "ht
 const checks = [
   { path: "/", expected: "HQS Imobiliare" },
   { path: "/proprietati", expected: "Proprietati disponibile" },
+  { path: "/api/health", expected: "\"ok\":true" },
   { path: "/sitemap.xml", expected: "<urlset" },
 ]
 

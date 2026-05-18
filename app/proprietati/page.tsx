@@ -5,7 +5,6 @@ import Link from "next/link"
 import { zoneProfiles } from "@/lib/experience"
 import { listPropertyFacets, propertyFiltersFromSearchParams, searchPublishedProperties } from "@/lib/property-search"
 
-export const runtime = "edge"
 
 export const revalidate = 60
 

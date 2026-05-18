@@ -8,3 +8,5 @@ cloudflare-env.d.ts
 tsconfig.tsbuildinfo
 *.log
 .tmp-*
+test-results/
+playwright-report/

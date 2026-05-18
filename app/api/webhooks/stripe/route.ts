@@ -2,7 +2,6 @@ import { getAdminClient, jsonError } from "@/lib/admin-api"
 import { verifyStripeSignature } from "@/lib/admin-integrations"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 export async function POST(request: Request) {
   const payload = await request.text()

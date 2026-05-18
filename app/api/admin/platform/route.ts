@@ -1,11 +1,11 @@
 import { hasAdminPermission, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { normalizeAppointmentPayload } from "@/lib/admin-appointments"
 import { listAdminPlatform } from "@/lib/admin-data"
+import { buildAdminRuntimeHealth } from "@/lib/admin-health"
 import { optionalUuid } from "@/lib/admin-properties"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 type Row = Record<string, any>
 
@@ -15,6 +15,7 @@ export async function GET(request: Request) {
 
   try {
     const payload = filterPlatformData(await listAdminPlatform(auth.supabase), auth.session)
+    payload.runtime_health = buildAdminRuntimeHealth()
     return NextResponse.json({ ...payload, _admin: auth.session })
   } catch (error: any) {
     return jsonError(error.message || "Admin platform request failed")

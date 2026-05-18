@@ -2,7 +2,6 @@ import { getAdminClient, jsonError } from "@/lib/admin-api"
 import { supabaseAnonKey, supabaseUrl } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 async function getUser(request: Request) {
   const auth = request.headers.get("authorization") || ""

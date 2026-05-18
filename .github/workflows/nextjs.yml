@@ -57,10 +57,11 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
+      - name: Unit tests
+        run: npm run test
       - name: Production dependency audit
         run: npm run audit:prod
-        continue-on-error: true
       - name: Build with Next.js
         run: ${{ steps.detect-package-manager.outputs.runner }} next build
       - name: Build Cloudflare Worker bundle
-        run: npm run cloudflare:build
+        run: npm run worker:build

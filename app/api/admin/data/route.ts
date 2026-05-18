@@ -2,7 +2,6 @@ import { hasAdminPermission, jsonError, requireAdminPermissionAsync } from "@/li
 import { listAdminCore } from "@/lib/admin-data"
 import { NextResponse } from "next/server"
 
-export const runtime = "edge"
 
 export async function GET(request: Request) {
   const auth = await requireAdminPermissionAsync(request, "leads")
