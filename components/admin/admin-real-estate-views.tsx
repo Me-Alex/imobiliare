@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { ActionPanel, ModuleEditor } from "./admin-operations"
-import { countBy, date, money, slugify, type ModuleType, type Row } from "./admin-shared"
+import { apiJson, countBy, date, money, slugify, type ModuleType, type Row } from "./admin-shared"
 import { Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Table, Td, Title } from "./admin-ui"
 
 function asRows(value: unknown): Row[] {
@@ -216,6 +216,7 @@ export function MaintenanceView({ filtered, saving, saveModule, deleteModule }: 
 export function DocumentsCenterView({ filtered, saving, saveModule, deleteModule, platformAction }: any) {
   const docs = asRows(filtered.documents)
   const clientDocs = asRows(filtered.clientDocuments)
+  const versions = asRows(filtered.documentVersions)
   const [review, setReview] = useState<Row>({ id: "", status: "APPROVED", notes: "" })
   return (
     <div className="space-y-6">
@@ -233,7 +234,9 @@ export function DocumentsCenterView({ filtered, saving, saveModule, deleteModule
           <Grid columns={1}>{["id", "status", "notes"].map((key) => <Field key={key} label={key} value={String(review[key] || "")} onChange={(value) => setReview({ ...review, [key]: value })} />)}</Grid>
           <Button className="mt-4 w-full" disabled={!review.id || saving === "client-doc"} onClick={() => platformAction("client-doc", { type: "document_status", payload: review }, "Document client salvat.")}>Save review</Button>
         </Panel>
+        <ActionPanel title="DocuSign envelope" fields={["signer_email", "signer_name", "title", "subject", "property_id", "return_url"]} defaults={{ subject: "Contract HQS Imobiliare" }} saving={saving === "docusign"} onSubmit={(payload) => apiJson("/api/admin/docusign/envelopes", { method: "POST", body: JSON.stringify(payload) }).then(() => window.location.reload())} />
       </div>
+      <Panel tight><Table heads={["Envelope", "Signer", "Status", "Created"]} rows={versions} empty="Nu exista versiuni DocuSign." render={(row: Row) => <tr key={row.id || row.docusign_envelope_id} className="border-t border-bg-surface"><Td>{row.docusign_envelope_id || row.title}</Td><Td>{row.signer_email || "-"}</Td><Td><StatusBadge status={row.status || "DRAFT"} /></Td><Td>{date(row.created_at)}</Td></tr>} /></Panel>
       <Panel tight><Table heads={["Client document", "Status", "Expira", "Detalii"]} rows={clientDocs} empty="Nu exista documente client." render={(row: Row) => <tr key={row.id || row.title} className="border-t border-bg-surface"><Td>{row.title || row.type}</Td><Td><StatusBadge status={row.status || "REQUESTED"} /></Td><Td>{date(row.expires_at)}</Td><Td>{row.client_email || row.property_title || row.id}</Td></tr>} /></Panel>
     </div>
   )

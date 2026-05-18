@@ -1,4 +1,5 @@
-import { getAdminClient, getAdminRpcSecret } from "@/lib/admin-api"
+import { getAdminClient } from "@/lib/admin-api"
+import { normalizeAppointmentPayload } from "@/lib/admin-appointments"
 import { clientAppointmentRequestSchema, parseJsonBody } from "@/lib/api-validation"
 import { requireClient } from "@/lib/client-api"
 import { rateLimit } from "@/lib/rate-limit"
@@ -11,14 +12,15 @@ export async function GET(request: Request) {
   if ("error" in session) return session.error
 
   try {
-    const { data, error } = await getAdminClient().rpc("admin_list_appointments", {
-      admin_secret: getAdminRpcSecret(),
-    })
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-
     const email = String(session.user.email || "").toLowerCase()
-    const appointments = (Array.isArray(data) ? data : []).filter((item: any) => String(item.client_email || "").toLowerCase() === email)
-    return NextResponse.json({ appointments })
+    const { data, error } = await getAdminClient()
+      .from("appointments")
+      .select("*")
+      .eq("client_email", email)
+      .order("created_at", { ascending: false })
+      .limit(100)
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ appointments: Array.isArray(data) ? data : [] })
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Client appointments request failed" }, { status: 500 })
   }
@@ -42,19 +44,19 @@ export async function POST(request: Request) {
       .eq("user_id", session.user.id)
       .maybeSingle()
 
-    const payload = {
-      property_id: body.property_id || null,
-      slot_id: body.slot_id || null,
-      requested_at: body.requested_at || new Date().toISOString(),
+    const payload = normalizeAppointmentPayload({
+      ...body,
       client_name: profile.data?.full_name || session.user.email || "Client HQS",
       client_email: session.user.email,
       client_phone: profile.data?.phone || null,
       notes: body.notes || "Programare trimisa din portalul clientului.",
-    }
+    })
 
-    const { data, error } = await getAdminClient().rpc("public_create_appointment", { payload })
+    const supabase = getAdminClient()
+    const { data, error } = await supabase.from("appointments").insert(payload).select("*").single()
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
+    if (data.slot_id) await supabase.from("appointment_slots").update({ status: "BOOKED", updated_at: new Date().toISOString() }).eq("id", data.slot_id)
     await session.supabase.from("client_activity").insert({
       user_id: session.user.id,
       type: "APPOINTMENT_REQUESTED",

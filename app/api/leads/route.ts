@@ -1,4 +1,5 @@
-import { getAdminClient, getAdminRpcSecret, jsonError } from "@/lib/admin-api"
+import { getAdminClient, jsonError } from "@/lib/admin-api"
+import { optionalUuid } from "@/lib/admin-properties"
 import { leadRequestSchema, parseJsonBody } from "@/lib/api-validation"
 import { estimateLeadScore } from "@/lib/experience"
 import { rateLimit } from "@/lib/rate-limit"
@@ -28,23 +29,27 @@ export async function POST(request: Request) {
       Object.keys(body.context).length ? `Context website: ${JSON.stringify(body.context).slice(0, 1200)}` : "",
     ].filter(Boolean).join("\n")
 
-    const { data, error } = await getAdminClient().rpc("admin_mutate_lead", {
-      admin_secret: getAdminRpcSecret(),
-      actor_name: "website",
-      payload: {
-        name: body.name,
-        phone: body.phone,
-        email: body.email || null,
-        message: details,
-        status: "NEW",
-        source: body.source,
-        property_id: body.property_id || "",
-        score,
-        note: "Lead creat din website si sincronizat in CRM.",
-      },
-    })
+    const supabase = getAdminClient()
+    const { data, error } = await supabase.from("leads").insert({
+      name: body.name,
+      phone: body.phone || body.email || "contact-necompletat",
+      email: body.email || null,
+      message: details || null,
+      status: "NEW",
+      source: body.source,
+      property_id: optionalUuid(body.property_id),
+      score,
+      updated_at: new Date().toISOString(),
+    }).select("*").single()
 
     if (error) return jsonError(error.message, 400)
+
+    await Promise.allSettled([
+      supabase.from("lead_history").insert({ lead_id: data.id, status: "NEW", score, assigned_to: "website", note: "Lead creat din website si sincronizat in CRM." }),
+      supabase.from("analytics_attribution").insert({ source: body.source, entity: "leads", entity_id: data.id, lead_id: data.id, value: body.budget || 0, metadata: body.context || {} }),
+      supabase.from("admin_audit_log").insert({ actor: "website", action: "LEAD_CREATED", entity: "leads", entity_id: data.id, details: data, metadata: data }),
+    ])
+
     return NextResponse.json({ lead: data }, { status: 201 })
   } catch (error: any) {
     return jsonError(error.message || "Lead request failed", 400)

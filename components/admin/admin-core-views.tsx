@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { appointmentStatuses, countBy, date, leadStatuses, money, propertyStatuses, propertyTypes, slugify, type Row } from "./admin-shared"
-import { Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Recent, Select, SelectField, Table, Td, Title } from "./admin-ui"
+import { Area, Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Recent, Select, SelectField, Table, Td, Title } from "./admin-ui"
 
 export function Overview({ core, modules, platform, report, metrics, setView, exportServer, saving }: any) {
   const pendingListings = core.properties.filter((row: Row) => row.status !== "PUBLISHED").slice(0, 6)
@@ -107,10 +107,35 @@ export function CrmView({ filtered, saving, patchLead, followUp, platformAction 
 }
 
 export function PropertiesView({ filtered, saving, patchProperty, deleteProperty, createProperty }: any) {
-  const [draft, setDraft] = useState<Row>({ title: "", type: "APARTMENT", status: "DRAFT", price: 150000, currency: "EUR", city: "Bucuresti", area_sqm: 70, rooms: 3, featured: false })
+  const blank: Row = { title: "", slug: "", description: "", type: "APARTMENT", transaction_type: "sale", status: "DRAFT", price: 150000, currency: "EUR", city: "Bucuresti", county: "Bucuresti", address: "", area_sqm: 70, rooms: 3, bathrooms: 1, parking_spots: 0, floor: "", year_built: "", amenities: "", cover_image_url: "", gallery_urls: "", floorplan_urls: "", meta_title: "", meta_description: "", owner_email: "", agent_email: "", featured: false }
+  const [draft, setDraft] = useState<Row>(blank)
+  const savePayload = {
+    ...draft,
+    price: Number(draft.price || 0),
+    area_sqm: Number(draft.area_sqm || 0),
+    rooms: Number(draft.rooms || 0),
+    bathrooms: Number(draft.bathrooms || 0),
+    parking_spots: Number(draft.parking_spots || 0),
+    floor: draft.floor === "" ? null : Number(draft.floor || 0),
+    year_built: draft.year_built === "" ? null : Number(draft.year_built || 0),
+    slug: draft.slug || slugify(draft.title),
+    amenities: String(draft.amenities || "").split(",").map((item) => item.trim()).filter(Boolean),
+    gallery_urls: String(draft.gallery_urls || "").split(/[,\n]/).map((item) => item.trim()).filter(Boolean),
+    floorplan_urls: String(draft.floorplan_urls || "").split(/[,\n]/).map((item) => item.trim()).filter(Boolean),
+  }
+  const edit = (row: Row) => setDraft({
+    ...blank,
+    ...row,
+    amenities: Array.isArray(row.amenities) ? row.amenities.join(", ") : row.amenities || "",
+    gallery_urls: Array.isArray(row.gallery_urls) ? row.gallery_urls.join("\n") : row.gallery_urls || "",
+    floorplan_urls: Array.isArray(row.floorplan_urls) ? row.floorplan_urls.join("\n") : row.floorplan_urls || "",
+    transaction_type: row.transaction_type || row.transaction || "sale",
+    area_sqm: row.area_sqm || row.surface || "",
+    bathrooms: row.bathrooms || row.baths || "",
+  })
   return (
     <div className="space-y-6">
-      <Title title="Proprietati" subtitle="Portofoliu, publicare, featured si creare proprietati." />
+      <Title title="Proprietati" subtitle="Editor complet pentru listing, media URLs, SEO, proprietar, agent si publicare." />
       <Panel tight>
         <Table heads={["Proprietate", "Pret", "Status", "Featured", "Actiuni"]} rows={filtered.properties} empty="Nu exista proprietati." render={(row: Row) => (
           <tr key={row.id} className="border-t border-bg-surface">
@@ -118,18 +143,26 @@ export function PropertiesView({ filtered, saving, patchProperty, deleteProperty
             <Td>{money(row.price, row.currency || "EUR")}</Td>
             <Td><Select value={row.status || "DRAFT"} onChange={(value) => patchProperty(row, { status: value })} disabled={saving === `property-${row.id}`}>{propertyStatuses.map((status) => <option key={status}>{status}</option>)}</Select></Td>
             <Td><Button size="sm" variant="ghost" onClick={() => patchProperty(row, { featured: !row.featured })}>{row.featured ? "Scoate" : "Featured"}</Button></Td>
-            <Td><Button size="sm" variant="danger" disabled={saving === `delete-${row.id}`} onClick={() => deleteProperty(row)}>Sterge</Button></Td>
+            <Td><div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" onClick={() => edit(row)}>Edit</Button><Button size="sm" variant="danger" disabled={saving === `delete-${row.id}`} onClick={() => deleteProperty(row)}>Sterge</Button></div></Td>
           </tr>
         )} />
       </Panel>
       <Panel>
-        <Title compact title="Proprietate noua" subtitle="Creare rapida cu toate campurile principale." />
+        <Title compact title={draft.id ? "Editare proprietate" : "Proprietate noua"} subtitle="Campurile media pot fi completate manual sau generate prin upload in sectiunea Media." />
         <Grid columns={4}>
-          {["title", "price", "currency", "city", "area_sqm", "rooms", "address", "slug"].map((key) => <Field key={key} label={key} value={String(draft[key] || "")} onChange={(value) => setDraft({ ...draft, [key]: value })} />)}
+          {["title", "slug", "price", "currency", "transaction_type", "city", "county", "address", "area_sqm", "rooms", "bathrooms", "parking_spots", "floor", "year_built", "owner_email", "agent_email", "cover_image_url", "meta_title"].map((key) => <Field key={key} label={key} value={String(draft[key] || "")} onChange={(value) => setDraft({ ...draft, [key]: value })} />)}
           <SelectField label="type" value={draft.type} onChange={(value) => setDraft({ ...draft, type: value })}>{propertyTypes.map((item) => <option key={item}>{item}</option>)}</SelectField>
           <SelectField label="status" value={draft.status} onChange={(value) => setDraft({ ...draft, status: value })}>{propertyStatuses.map((item) => <option key={item}>{item}</option>)}</SelectField>
         </Grid>
-        <Button className="mt-4" disabled={!draft.title || saving === "create-property"} onClick={() => createProperty({ ...draft, price: Number(draft.price || 0), area_sqm: Number(draft.area_sqm || 0), rooms: Number(draft.rooms || 0), slug: draft.slug || slugify(draft.title) })}>Creeaza proprietate</Button>
+        <Area label="description" value={String(draft.description || "")} onChange={(value) => setDraft({ ...draft, description: value })} />
+        <Area label="amenities CSV" value={String(draft.amenities || "")} onChange={(value) => setDraft({ ...draft, amenities: value })} />
+        <Area label="gallery_urls (one per line)" value={String(draft.gallery_urls || "")} onChange={(value) => setDraft({ ...draft, gallery_urls: value })} />
+        <Area label="floorplan_urls (one per line)" value={String(draft.floorplan_urls || "")} onChange={(value) => setDraft({ ...draft, floorplan_urls: value })} />
+        <Area label="meta_description" value={String(draft.meta_description || "")} onChange={(value) => setDraft({ ...draft, meta_description: value })} />
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button disabled={!draft.title || saving === "create-property"} onClick={() => draft.id ? patchProperty(draft, savePayload) : createProperty(savePayload)}>{draft.id ? "Salveaza modificarile" : "Creeaza proprietate"}</Button>
+          <Button variant="ghost" onClick={() => setDraft(blank)}>Reset form</Button>
+        </div>
       </Panel>
     </div>
   )

@@ -4,157 +4,164 @@ import { supabaseAnonKey, supabaseUrl } from "@/lib/supabase"
 
 export type AdminSession = {
   actor: string
+  userId: string
+  email: string
   role: "admin" | "manager" | "agent"
   permissions: string[]
+  bootstrap?: boolean
 }
 
 const rolePermissions: Record<AdminSession["role"], string[]> = {
   admin: ["all"],
-  manager: ["leads", "clients", "appointments", "slots", "offers", "documents", "properties", "listings", "transactions", "maintenance", "payments", "marketing", "reports", "exports", "cms", "zones", "notifications", "audit", "compliance"],
-  agent: ["leads", "clients", "appointments", "offers", "documents"],
+  manager: ["leads", "clients", "appointments", "slots", "offers", "documents", "properties", "listings", "transactions", "maintenance", "payments", "marketing", "reports", "exports", "cms", "zones", "notifications", "audit", "compliance", "media", "calendar", "accounting", "bulk", "integrations", "owners", "analytics"],
+  agent: ["leads", "clients", "appointments", "offers", "documents", "properties", "media", "calendar"],
 }
 
-function parseBasicAuth(request: Request) {
+export function getRuntimeEnv() {
+  const contextKey = Symbol.for("__cloudflare-request-context__")
+  const context = (globalThis as typeof globalThis & Record<symbol, { env?: Record<string, string | undefined> } | undefined>)[contextKey]
+  const nodeEnv = typeof process !== "undefined" ? (process.env as Record<string, string | undefined>) : {}
+  return { ...nodeEnv, ...(context?.env || {}) }
+}
+
+export function getEnv(name: string) {
+  return getRuntimeEnv()[name]
+}
+
+function parseBearerToken(request: Request) {
   const auth = request.headers.get("authorization") || ""
-  if (!auth.startsWith("Basic ")) return null
-
-  try {
-    const decoded = atob(auth.slice("Basic ".length))
-    const separator = decoded.indexOf(":")
-    if (separator === -1) return null
-    return {
-      username: decoded.slice(0, separator).trim().toLowerCase(),
-      password: decoded.slice(separator + 1),
-    }
-  } catch {
-    return null
-  }
-}
-
-export function isAdminRequest(request: Request) {
-  const adminPassword = process.env.ADMIN_PASSWORD
-  const parsed = parseBasicAuth(request)
-  const allowedUsers = parseAllowedUsers(process.env.ADMIN_ALLOWED_USERS)
-  const userAllowed = !allowedUsers.length || Boolean(parsed?.username && allowedUsers.includes(parsed.username))
-
-  if (!adminPassword || !parsed?.username) return false
-  return parsed.password === adminPassword && userAllowed
-}
-
-export function getAdminSession(request: Request): AdminSession | null {
-  if (!isAdminRequest(request)) return null
-
-  const parsed = parseBasicAuth(request)
-  const actor = request.headers.get("x-admin-email")?.trim().toLowerCase() || parsed?.username || "admin"
-  const role: AdminSession["role"] = actor.includes("manager") ? "manager" : actor.includes("agent") ? "agent" : "admin"
-
-  return {
-    actor,
-    role,
-    permissions: rolePermissions[role],
-  }
-}
-
-export function hasAdminPermission(session: AdminSession, permission: string) {
-  if (session.permissions.includes("all") || session.permissions.includes(permission)) return true
-  if (permission === "exports" && session.permissions.includes("reports")) return true
-  if (permission === "properties" && session.permissions.includes("reports")) return true
-  return false
-}
-
-export function requireAdminPermission(request: Request, permission: string) {
-  const session = getAdminSession(request)
-  if (!session) return { error: unauthorized() as Response }
-  if (!hasAdminPermission(session, permission)) {
-    return {
-      error: NextResponse.json(
-        { error: `Rolul ${session.role} nu are permisiunea ${permission}` },
-        { status: 403 },
-      ) as Response,
-    }
-  }
-  return { session }
-}
-
-export async function getAdminSessionWithRoleSnapshot(request: Request): Promise<AdminSession | null> {
-  const session = getAdminSession(request)
-  if (!session) return null
-
-  try {
-    const { data, error } = await getAdminClient().rpc("admin_permission_snapshot", {
-      admin_secret: getAdminRpcSecret(),
-      actor_name: session.actor,
-    })
-    if (error || !data || typeof data !== "object") return session
-
-    const row = data as Record<string, unknown>
-    const role = row.role === "admin" || row.role === "manager" || row.role === "agent" ? row.role : session.role
-    const permissions = normalizePermissions(row.permissions)
-    return {
-      actor: String(row.email || session.actor),
-      role,
-      permissions: permissions.length ? permissions : session.permissions,
-    }
-  } catch {
-    return session
-  }
-}
-
-export async function requireAdminPermissionAsync(request: Request, permission: string) {
-  const session = await getAdminSessionWithRoleSnapshot(request)
-  if (!session) return { error: unauthorized() as Response }
-  if (!hasAdminPermission(session, permission)) {
-    return {
-      error: NextResponse.json(
-        { error: `Rolul ${session.role} nu are permisiunea ${permission}` },
-        { status: 403 },
-      ) as Response,
-    }
-  }
-  return { session }
-}
-
-function normalizePermissions(value: unknown) {
-  if (Array.isArray(value)) return value.map(String).filter(Boolean)
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value)
-      return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : value.split(",").map((item) => item.trim()).filter(Boolean)
-    } catch {
-      return value.split(",").map((item) => item.trim()).filter(Boolean)
-    }
-  }
-  return []
+  return auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : ""
 }
 
 function parseAllowedUsers(value: string | undefined) {
   return (value || "").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean)
 }
 
-export function unauthorized() {
-  return new NextResponse("Autentificare necesara", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="HQS Admin"' },
+function normalizeRole(value: unknown): AdminSession["role"] {
+  return value === "admin" || value === "manager" || value === "agent" ? value : "agent"
+}
+
+function normalizePermissions(value: unknown) {
+  if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean)
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value)
+      if (Array.isArray(parsed)) return parsed.map(String).map((item) => item.trim()).filter(Boolean)
+    } catch {
+      // Fall through to CSV parsing.
+    }
+    return value.split(",").map((item) => item.trim()).filter(Boolean)
+  }
+  return []
+}
+
+async function getUserFromToken(token: string) {
+  if (!token) return null
+  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${token}`,
+    },
   })
+  if (!response.ok) return null
+  const user = await response.json().catch(() => null)
+  return user && typeof user === "object" ? user as Record<string, any> : null
 }
 
 export function getAdminClient() {
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY")
+  if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is missing")
+  return createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 }
 
-export function getAdminRpcSecret() {
-  const contextKey = Symbol.for("__cloudflare-request-context__")
-  const context = (globalThis as typeof globalThis & Record<symbol, { env?: Record<string, string | undefined> } | undefined>)[
-    contextKey
-  ]
-  const env = context?.env as Record<string, string | undefined> | undefined
-  const secret = env?.ADMIN_RPC_SECRET || process.env.ADMIN_RPC_SECRET
-  if (!secret) throw new Error("ADMIN_RPC_SECRET is missing")
-  return secret
+export const getAdminServiceClient = getAdminClient
+
+export async function getAdminSession(request: Request): Promise<AdminSession | null> {
+  const token = parseBearerToken(request)
+  const user = await getUserFromToken(token)
+  const email = String(user?.email || "").trim().toLowerCase()
+  const userId = String(user?.id || "")
+  if (!email || !userId) return null
+
+  const bootstrapEmails = parseAllowedUsers(getEnv("ADMIN_BOOTSTRAP_EMAILS"))
+  const isBootstrap = bootstrapEmails.includes(email)
+
+  try {
+    const supabase = getAdminClient()
+    if (isBootstrap) {
+      await supabase.from("admin_roles").upsert({
+        user_id: userId,
+        email,
+        role: "admin",
+        permissions: ["all"],
+        status: "ACTIVE",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "email" })
+    }
+
+    const { data } = await supabase
+      .from("admin_roles")
+      .select("email, role, permissions, status")
+      .eq("email", email)
+      .eq("status", "ACTIVE")
+      .maybeSingle()
+
+    if (!data && !isBootstrap) return null
+
+    const role = normalizeRole(data?.role || (isBootstrap ? "admin" : "agent"))
+    const permissions = normalizePermissions(data?.permissions)
+    return {
+      actor: email,
+      userId,
+      email,
+      role,
+      permissions: permissions.length ? permissions : rolePermissions[role],
+      bootstrap: isBootstrap,
+    }
+  } catch {
+    if (!isBootstrap) return null
+    return { actor: email, userId, email, role: "admin", permissions: ["all"], bootstrap: true }
+  }
+}
+
+export function hasAdminPermission(session: AdminSession, permission: string) {
+  if (session.permissions.includes("all") || session.permissions.includes(permission)) return true
+  if (permission === "exports" && session.permissions.includes("reports")) return true
+  if (permission === "properties" && (session.permissions.includes("reports") || session.permissions.includes("listings"))) return true
+  if (permission === "media" && session.permissions.includes("properties")) return true
+  if (permission === "calendar" && session.permissions.includes("appointments")) return true
+  if (permission === "accounting" && (session.permissions.includes("payments") || session.permissions.includes("transactions"))) return true
+  return false
+}
+
+export async function requireAdminPermissionAsync(request: Request, permission: string) {
+  const session = await getAdminSession(request)
+  if (!session) return { error: unauthorized() as Response }
+  if (!hasAdminPermission(session, permission)) {
+    return {
+      error: NextResponse.json(
+        { error: `Rolul ${session.role} nu are permisiunea ${permission}` },
+        { status: 403 },
+      ) as Response,
+    }
+  }
+  return { session }
+}
+
+export function requireAdminPermission(request: Request, permission: string) {
+  return { error: NextResponse.json({ error: `Admin auth for ${permission} must be checked asynchronously.` }, { status: 500 }) as Response }
+}
+
+export function unauthorized() {
+  return NextResponse.json({ error: "Autentificare admin Supabase necesara" }, { status: 401 })
 }
 
 export function jsonError(message: string, status = 500) {
   return NextResponse.json({ error: message }, { status })
+}
+
+export function isAdminRequest(_request: Request) {
+  return false
 }

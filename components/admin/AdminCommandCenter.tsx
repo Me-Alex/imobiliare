@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react"
 import ThemeToggle from "@/components/ThemeToggle"
+import { supabase } from "@/lib/supabase"
 import { AppointmentsView, CrmView, Overview, PropertiesView } from "./admin-core-views"
 import { AgentsView, ClientsView, ComplianceView, DocumentsCenterView, ListingsView, MaintenanceView, MarketingView, TransactionsView } from "./admin-real-estate-views"
 import { OperationsView } from "./admin-operations"
 import { AuditView, ContentView, ReportsView, SettingsView, ToolsView, UsersView } from "./admin-secondary-views"
+import { AccountingView, AnalyticsOpsView, BulkOpsView, CalendarOpsView, IntegrationsView, MediaView, OwnerPortalAdminView } from "./admin-upgrade-views"
 import { Banner, Button, LoadingState, MiniStat, NavButton } from "./admin-ui"
-import { apiJson, appUrl, csv, defaultCore, defaultModules, matches, nav, slugify, type ModuleType, type Row, type View } from "./admin-shared"
+import { apiJson, csv, defaultCore, defaultModules, matches, nav, slugify, type ModuleType, type Row, type View } from "./admin-shared"
 
 export default function AdminCommandCenter() {
   const [view, setView] = useState<View>("overview")
@@ -21,6 +23,7 @@ export default function AdminCommandCenter() {
   const [saving, setSaving] = useState("")
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
+  const [adminEmail, setAdminEmail] = useState("")
 
   const load = async (mode: "initial" | "refresh" = "refresh") => {
     mode === "initial" ? setLoading(true) : setRefreshing(true)
@@ -50,7 +53,20 @@ export default function AdminCommandCenter() {
   }
 
   useEffect(() => {
-    load("initial")
+    supabase.auth.getSession().then(({ data }) => {
+      const session = data.session
+      if (!session?.access_token) {
+        window.location.href = "/admin/login"
+        return
+      }
+      setAdminEmail(session.user.email || "")
+      load("initial")
+    })
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.access_token) window.location.href = "/admin/login"
+      else setAdminEmail(session.user.email || "")
+    })
+    return () => listener.subscription.unsubscribe()
   }, [])
 
   const filtered = useMemo(() => ({
@@ -70,10 +86,17 @@ export default function AdminCommandCenter() {
     offers: (platform.property_offers || []).filter((row: Row) => matches(row, query)),
     slots: (platform.appointment_slots || []).filter((row: Row) => matches(row, query)),
     clientDocuments: (platform.client_documents || []).filter((row: Row) => matches(row, query)),
+    documentVersions: (platform.admin_document_versions || []).filter((row: Row) => matches(row, query)),
     cms: (platform.cms_entries || []).filter((row: Row) => matches(row, query)),
     zones: (platform.zone_poi || []).filter((row: Row) => matches(row, query)),
     roles: (platform.admin_roles || []).filter((row: Row) => matches(row, query)),
     outbox: (platform.admin_notification_outbox || []).filter((row: Row) => matches(row, query)),
+    media: (platform.property_media || []).filter((row: Row) => matches(row, query)),
+    providerJobs: (platform.admin_provider_jobs || []).filter((row: Row) => matches(row, query)),
+    invoices: (platform.admin_invoices || []).filter((row: Row) => matches(row, query)),
+    commissions: (platform.admin_commissions || []).filter((row: Row) => matches(row, query)),
+    ownerReports: (platform.owner_reports || []).filter((row: Row) => matches(row, query)),
+    attribution: (platform.analytics_attribution || []).filter((row: Row) => matches(row, query)),
   }), [core, modules, platform, query])
 
   const metrics = useMemo(() => {
@@ -172,7 +195,17 @@ export default function AdminCommandCenter() {
     URL.revokeObjectURL(url)
   }
 
-  const exportServer = (format: "csv" | "json") => window.open(appUrl(`/api/admin/export?format=${format}`), "_blank", "noopener,noreferrer")
+  const exportServer = (format: "csv" | "json") => save(`export-${format}`, async () => {
+    const body = await apiJson<any>(`/api/admin/export?format=${format}`)
+    const content = typeof body === "string" ? body : JSON.stringify(body, null, 2)
+    const blob = new Blob([content], { type: format === "csv" ? "text/csv;charset=utf-8" : "application/json;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `hqs-export.${format}`
+    link.click()
+    URL.revokeObjectURL(url)
+  }, "Export generat.")
   const title = nav.flatMap((group) => group.items).find((item) => item.id === view)?.label || "Admin"
 
   const renderView = () => {
@@ -180,17 +213,24 @@ export default function AdminCommandCenter() {
     const props = { filtered, core, modules, platform, report, metrics, saving, setView, patchLead, followUp, patchAppointment, patchProperty, deleteProperty, createProperty, saveModule, deleteModule, platformAction, saveSettings, exportLocalCsv, exportServer }
     if (view === "properties") return <PropertiesView {...props} />
     if (view === "listings") return <ListingsView {...props} />
+    if (view === "media") return <MediaView {...props} />
     if (view === "crm") return <CrmView {...props} />
     if (view === "clients") return <ClientsView {...props} />
     if (view === "appointments") return <AppointmentsView {...props} />
+    if (view === "calendar") return <CalendarOpsView {...props} />
     if (view === "agents") return <AgentsView {...props} />
     if (view === "transactions") return <TransactionsView {...props} />
+    if (view === "accounting") return <AccountingView {...props} />
     if (view === "maintenance") return <MaintenanceView {...props} />
     if (view === "documents") return <DocumentsCenterView {...props} />
     if (view === "marketing") return <MarketingView {...props} />
     if (view === "operations") return <OperationsView {...props} />
+    if (view === "bulk") return <BulkOpsView {...props} />
+    if (view === "integrations") return <IntegrationsView {...props} />
     if (view === "content") return <ContentView {...props} />
     if (view === "reports") return <ReportsView {...props} />
+    if (view === "analytics") return <AnalyticsOpsView {...props} />
+    if (view === "ownerPortal") return <OwnerPortalAdminView {...props} />
     if (view === "compliance") return <ComplianceView {...props} />
     if (view === "users") return <UsersView {...props} />
     if (view === "tools") return <ToolsView {...props} />
@@ -233,6 +273,8 @@ export default function AdminCommandCenter() {
               <ThemeToggle />
               <Button variant="ghost" onClick={() => load()} disabled={refreshing}>{refreshing ? "Refresh..." : "Refresh"}</Button>
               <Button onClick={exportLocalCsv}>CSV</Button>
+              {adminEmail && <span className="rounded-lg border border-bg-surface px-3 py-2 text-xs font-black text-text-muted">{adminEmail}</span>}
+              <Button variant="ghost" onClick={() => supabase.auth.signOut().then(() => { window.location.href = "/admin/login" })}>Logout</Button>
               <a className="inline-flex h-10 items-center rounded-lg border border-bg-surface px-3 text-sm font-bold" href="/">Site</a>
             </div>
           </div>

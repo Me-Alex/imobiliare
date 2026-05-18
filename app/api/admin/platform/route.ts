@@ -1,21 +1,21 @@
-import { getAdminClient, getAdminRpcSecret, hasAdminPermission, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
+import { getAdminClient, hasAdminPermission, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
+import { normalizeAppointmentPayload } from "@/lib/admin-appointments"
+import { listAdminPlatform } from "@/lib/admin-data"
+import { optionalUuid } from "@/lib/admin-properties"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
 export const runtime = "edge"
+
+type Row = Record<string, any>
 
 export async function GET(request: Request) {
   const auth = await requireAdminPermissionAsync(request, "leads")
   if ("error" in auth) return auth.error
 
   try {
-    const { data, error } = await getAdminClient().rpc("admin_list_platform", {
-      admin_secret: getAdminRpcSecret(),
-    })
-
-    if (error) return jsonError(error.message, 400)
-    const payload = filterPlatformData(data || {}, auth.session)
-    return NextResponse.json(payload)
+    const payload = filterPlatformData(await listAdminPlatform(), auth.session)
+    return NextResponse.json({ ...payload, _admin: auth.session })
   } catch (error: any) {
     return jsonError(error.message || "Admin platform request failed")
   }
@@ -32,121 +32,153 @@ export async function POST(request: Request) {
     if ("error" in auth) return auth.error
 
     const supabase = getAdminClient()
-    const admin_secret = getAdminRpcSecret()
     const actor = auth.session.actor
+    const payload = body.payload || body
 
     if (body.type === "lead") {
-      const { data, error } = await supabase.rpc("admin_mutate_lead", {
-        admin_secret,
-        actor_name: actor,
-        payload: body.payload || {},
-      })
+      const id = payload.id || body.id
+      const next = { name: payload.name || "Client HQS", email: payload.email || null, phone: payload.phone || payload.email || "contact-necompletat", message: payload.message || null, status: payload.status || "NEW", source: payload.source || "admin", property_id: optionalUuid(payload.property_id), updated_at: new Date().toISOString() }
+      const query = id ? supabase.from("leads").update(next).eq("id", id).select("*").single() : supabase.from("leads").insert(next).select("*").single()
+      const { data, error } = await query
       if (error) return jsonError(error.message, 400)
+      await logAudit(actor, "LEAD_MUTATED", "leads", data.id, data)
       return NextResponse.json({ lead: data })
     }
 
     if (body.type === "client_profile") {
-      const { data, error } = await supabase.rpc("admin_mutate_client_profile", {
-        admin_secret,
-        actor_name: actor,
-        payload: body.payload || {},
-      })
+      const id = payload.id || body.id
+      const next = { full_name: payload.full_name || payload.name || payload.email || "Client HQS", email: payload.email || null, phone: payload.phone || null, budget: number(payload.budget), purpose: payload.purpose || null, financing_status: payload.financing_status || null, status: payload.status || "ACTIVE", updated_at: new Date().toISOString() }
+      const query = id ? supabase.from("client_profiles").update(next).eq("id", id).select("*").single() : supabase.from("client_profiles").insert(next).select("*").single()
+      const { data, error } = await query
       if (error) return jsonError(error.message, 400)
+      await logAudit(actor, "CLIENT_PROFILE_MUTATED", "client_profiles", data.id, data)
       return NextResponse.json({ client: data })
     }
 
     if (body.type === "appointment") {
-      const { data, error } = await supabase.rpc("admin_mutate_appointment", {
-        admin_secret,
-        actor_name: actor,
-        payload: body.payload || {},
-      })
-      if (error) return jsonError(error.message, 400)
-      return NextResponse.json({ appointment: data })
+      const result = await upsertAppointment(payload, actor)
+      return NextResponse.json({ appointment: result })
     }
 
     if (body.type === "appointment_slot") {
-      const { data, error } = await supabase.rpc("admin_mutate_appointment_slot", {
-        admin_secret,
-        actor_name: actor,
-        payload: body.payload || {},
-      })
+      const id = payload.id || body.id
+      if (payload.action === "delete" && id) {
+        const { data, error } = await supabase.from("appointment_slots").delete().eq("id", id).select("*").maybeSingle()
+        if (error) return jsonError(error.message, 400)
+        await logAudit(actor, "APPOINTMENT_SLOT_DELETED", "appointment_slots", id, data || { id })
+        return NextResponse.json({ slot: data || { id, deleted: true } })
+      }
+      const next = { agent_email: payload.agent_email || null, property_id: optionalUuid(payload.property_id), starts_at: payload.starts_at || new Date(Date.now() + 86400000).toISOString(), ends_at: payload.ends_at || new Date(Date.now() + 90000000).toISOString(), status: payload.status || "AVAILABLE", capacity: number(payload.capacity) || 1, notes: payload.notes || null, updated_at: new Date().toISOString() }
+      const query = id ? supabase.from("appointment_slots").update(next).eq("id", id).select("*").single() : supabase.from("appointment_slots").insert(next).select("*").single()
+      const { data, error } = await query
       if (error) return jsonError(error.message, 400)
+      await logAudit(actor, "APPOINTMENT_SLOT_MUTATED", "appointment_slots", data.id, data)
       return NextResponse.json({ slot: data })
     }
 
     if (body.type === "offer_status") {
-      const { data, error } = await supabase.rpc("admin_mutate_offer", {
-        admin_secret,
-        actor_name: actor,
-        payload: { ...(body.payload || {}), id: body.id, status: body.status, counter_offer: body.counter_offer },
-      })
+      const id = payload.id || body.id
+      if (!id) return jsonError("Offer id lipseste", 400)
+      const next = { status: payload.status || body.status || "NEGOTIATING", counter_offer: number(payload.counter_offer ?? body.counter_offer), notes: payload.notes || null, updated_at: new Date().toISOString() }
+      const { data, error } = await supabase.from("property_offers").update(next).eq("id", id).select("*").single()
       if (error) return jsonError(error.message, 400)
+      await queueOutbox({ target: data.client_email, subject: "Actualizare oferta HQS", body: `Status oferta: ${data.status}`, entity: "property_offers", entity_id: data.id }, actor)
+      await logAudit(actor, "OFFER_MUTATED", "property_offers", data.id, data)
       return NextResponse.json({ offer: data })
     }
 
     if (body.type === "cms") {
-      const { data, error } = await supabase.rpc("admin_upsert_cms_entry", {
-        admin_secret,
-        payload: { ...(body.payload || {}), updated_by: actor },
-      })
+      const key = payload.key || payload.slug
+      if (!key) return jsonError("CMS key lipseste", 400)
+      const content = typeof payload.body === "string" ? { body: payload.body } : payload.content || {}
+      const row = { key, title: payload.title || key, section: payload.section || payload.type || "page", status: payload.status || "DRAFT", content, seo: payload.seo || { title: payload.meta_title, description: payload.meta_description }, updated_by: actor, updated_at: new Date().toISOString() }
+      const existing = await supabase.from("cms_entries").select("id").eq("key", key).maybeSingle()
+      const query = existing.data?.id ? supabase.from("cms_entries").update(row).eq("id", existing.data.id).select("*").single() : supabase.from("cms_entries").insert(row).select("*").single()
+      const { data, error } = await query
       if (error) return jsonError(error.message, 400)
+      await logAudit(actor, "CMS_ENTRY_UPSERTED", "cms_entries", data.id, data)
       return NextResponse.json({ entry: data })
     }
 
     if (body.type === "admin_role") {
-      const rolePayload = normalizeRolePayload(body.payload || {}, actor)
-      const { data, error } = await supabase.rpc("admin_upsert_role", {
-        admin_secret,
-        payload: rolePayload,
-      })
+      const permissions = Array.isArray(payload.permissions) ? payload.permissions : String(payload.permissions || "").split(",").map((item) => item.trim()).filter(Boolean)
+      const { data, error } = await supabase.from("admin_roles").upsert({ email: String(payload.email || "").toLowerCase(), role: payload.role || "agent", permissions, status: payload.status || "ACTIVE", updated_at: new Date().toISOString() }, { onConflict: "email" }).select("*").single()
       if (error) return jsonError(error.message, 400)
+      await logAudit(actor, "ADMIN_ROLE_UPSERTED", "admin_roles", data.id, data)
       return NextResponse.json({ role: data })
     }
 
     if (body.type === "zone_poi") {
-      const { data, error } = await supabase.rpc("admin_mutate_zone_poi", {
-        admin_secret,
-        actor_name: actor,
-        payload: body.payload || {},
-      })
+      const id = payload.id || body.id
+      if (payload.action === "delete" && id) {
+        const { data, error } = await supabase.from("zone_poi").delete().eq("id", id).select("*").maybeSingle()
+        if (error) return jsonError(error.message, 400)
+        await logAudit(actor, "ZONE_POI_DELETED", "zone_poi", id, data || { id })
+        return NextResponse.json({ poi: data || { id, deleted: true } })
+      }
+      const row = { zone: payload.zone || payload.zone_slug || "Bucuresti Nord", name: payload.name || "Punct de interes", category: payload.category || "general", minutes: number(payload.minutes) || 5, score: number(payload.score) || 80, lat: number(payload.lat), lng: number(payload.lng), latitude: number(payload.lat), longitude: number(payload.lng), notes: payload.notes || null, updated_at: new Date().toISOString() }
+      const query = id ? supabase.from("zone_poi").update(row).eq("id", id).select("*").single() : supabase.from("zone_poi").insert(row).select("*").single()
+      const { data, error } = await query
       if (error) return jsonError(error.message, 400)
+      await logAudit(actor, "ZONE_POI_MUTATED", "zone_poi", data.id, data)
       return NextResponse.json({ poi: data })
     }
 
     if (body.type === "document_status") {
-      const { data, error } = await supabase.rpc("admin_review_client_document", {
-        admin_secret,
-        actor_name: actor,
-        payload: { ...(body.payload || {}), id: body.id, status: body.status || body.payload?.status || "REVIEW" },
-      })
+      const id = payload.id || body.id
+      if (!id) return jsonError("Document id lipseste", 400)
+      const { data, error } = await supabase.from("client_documents").update({ status: payload.status || body.status || "REVIEW", notes: payload.notes || null, reviewed_by: actor, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", id).select("*").single()
       if (error) return jsonError(error.message, 400)
+      await logAudit(actor, "CLIENT_DOCUMENT_REVIEWED", "client_documents", data.id, data)
       return NextResponse.json({ document: data })
     }
 
     if (body.type === "client_notification") {
-      const { data, error } = await supabase.rpc("admin_queue_notification", {
-        admin_secret,
-        actor_name: actor,
-        payload: body.payload || {},
-      })
-      if (error) return jsonError(error.message, 400)
-      return NextResponse.json({ notification: data })
+      const notification = await queueOutbox(payload, actor)
+      return NextResponse.json({ notification })
     }
 
     if (body.type === "audit_event") {
-      const { data, error } = await supabase.rpc("admin_log_audit_event", {
-        admin_secret,
-        payload: { ...(body.payload || {}), actor },
-      })
-      if (error) return jsonError(error.message, 400)
-      return NextResponse.json({ audit: data })
+      const audit = await logAudit(actor, payload.action || "manual_check", payload.entity || "admin", payload.entity_id || null, payload.details || payload)
+      return NextResponse.json({ audit })
     }
 
     return jsonError("Tip actiune invalid", 400)
   } catch (error: any) {
     return jsonError(error.message || "Admin platform save failed")
   }
+}
+
+async function upsertAppointment(payload: Row, actor: string) {
+  const supabase = getAdminClient()
+  const id = payload.id
+  const next = normalizeAppointmentPayload(payload)
+  const query = id ? supabase.from("appointments").update(next).eq("id", id).select("*").single() : supabase.from("appointments").insert(next).select("*").single()
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  if (data.slot_id) await supabase.from("appointment_slots").update({ status: ["CANCELLED", "REJECTED"].includes(data.status) ? "AVAILABLE" : "BOOKED", updated_at: new Date().toISOString() }).eq("id", data.slot_id)
+  await queueOutbox({ target: data.client_email, subject: "Actualizare vizionare HQS", body: `Status vizionare: ${data.status}`, entity: "appointments", entity_id: data.id }, actor)
+  await logAudit(actor, "APPOINTMENT_MUTATED", "appointments", data.id, data)
+  return data
+}
+
+async function queueOutbox(payload: Row, actor: string) {
+  const row = { channel: payload.channel || "EMAIL", target: payload.target || payload.client_email || null, subject: payload.subject || payload.title || "Reminder HQS", body: payload.body || "", status: payload.status || "QUEUED", due_at: payload.due_at || null, entity: payload.entity || null, entity_id: payload.entity_id || null, metadata: payload.metadata || {}, created_by: actor }
+  const { data, error } = await getAdminClient().from("admin_notification_outbox").insert(row).select("*").single()
+  if (error) throw new Error(error.message)
+  await logAudit(actor, "NOTIFICATION_QUEUED", "admin_notification_outbox", data.id, data)
+  return data
+}
+
+async function logAudit(actor: string, action: string, entity: string, entityId: string | null, details: Row) {
+  const { data } = await getAdminClient().from("admin_audit_log").insert({ actor, action, entity, entity_id: entityId, details, metadata: details }).select("*").maybeSingle()
+  return data
+}
+
+function number(value: unknown) {
+  if (value === "" || value === null || value === undefined) return null
+  const next = Number(value)
+  return Number.isFinite(next) ? next : null
 }
 
 function permissionForAction(type: string) {
@@ -166,32 +198,16 @@ function permissionForAction(type: string) {
   return map[type] || "reports"
 }
 
-function normalizeRolePayload(payload: Record<string, any>, actor: string) {
-  const permissions = payload.permissions
-  const normalizedPermissions = Array.isArray(permissions)
-    ? permissions.map(String).map((item) => item.trim()).filter(Boolean)
-    : String(permissions || "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-
-  return {
-    ...payload,
-    actor,
-    permissions: normalizedPermissions.length ? normalizedPermissions : ["leads", "appointments", "documents"],
-  }
-}
-
-function filterPlatformData(data: Record<string, any>, session: { role: string; actor: string; permissions: string[] }) {
-  const next: Record<string, any> = { ...data, _admin: session }
-  if (!hasAdminPermission(session as any, "clients")) next.client_profiles = []
-  if (!hasAdminPermission(session as any, "documents")) next.client_documents = []
-  if (!hasAdminPermission(session as any, "offers")) next.property_offers = []
-  if (!hasAdminPermission(session as any, "cms")) next.cms_entries = []
-  if (!hasAdminPermission(session as any, "zones")) next.zone_poi = []
-  if (!hasAdminPermission(session as any, "roles")) next.admin_roles = []
-  if (!hasAdminPermission(session as any, "audit")) next.admin_audit_log = []
-  if (!hasAdminPermission(session as any, "notifications")) {
+function filterPlatformData(data: Record<string, any>, session: any) {
+  const next: Record<string, any> = { ...data }
+  if (!hasAdminPermission(session, "clients")) next.client_profiles = []
+  if (!hasAdminPermission(session, "documents")) next.client_documents = []
+  if (!hasAdminPermission(session, "offers")) next.property_offers = []
+  if (!hasAdminPermission(session, "cms")) next.cms_entries = []
+  if (!hasAdminPermission(session, "zones")) next.zone_poi = []
+  if (!hasAdminPermission(session, "roles")) next.admin_roles = []
+  if (!hasAdminPermission(session, "audit")) next.admin_audit_log = []
+  if (!hasAdminPermission(session, "notifications")) {
     next.client_notifications = []
     next.admin_notification_outbox = []
   }

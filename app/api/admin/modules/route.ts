@@ -1,35 +1,12 @@
-import { getAdminClient, getAdminRpcSecret, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
+import { getAdminClient, jsonError, requireAdminPermissionAsync } from "@/lib/admin-api"
 import { NextResponse } from "next/server"
 
 export const runtime = "edge"
 
+const moduleTypes = new Set(["payment_plans", "projects", "team_users", "owners", "documents", "notifications", "activities"])
 
-
-
-const upsertRpc = {
-  payment_plans: "admin_upsert_payment_plan",
-  projects: "admin_upsert_project",
-  team_users: "admin_upsert_team_user",
-  owners: "admin_upsert_owner",
-  documents: "admin_upsert_document",
-  notifications: "admin_upsert_notification",
-  activities: "admin_upsert_activity",
-} as const
-
-const deleteRpc = {
-  payment_plans: { fn: "admin_delete_payment_plan", idKey: "plan_id" },
-  projects: { fn: "admin_delete_project", idKey: "project_id" },
-  team_users: { fn: "admin_delete_team_user", idKey: "user_id" },
-  owners: { fn: "admin_delete_owner", idKey: "owner_id" },
-  documents: { fn: "admin_delete_document", idKey: "document_id" },
-  notifications: { fn: "admin_delete_notification", idKey: "notification_id" },
-  activities: { fn: "admin_delete_activity", idKey: "activity_id" },
-} as const
-
-type ModuleType = keyof typeof upsertRpc
-
-function isModuleType(type: string): type is ModuleType {
-  return type in upsertRpc
+function normalizePayload(payload: Record<string, any>) {
+  return Object.fromEntries(Object.entries(payload || {}).filter(([, value]) => value !== undefined))
 }
 
 export async function GET(request: Request) {
@@ -37,12 +14,8 @@ export async function GET(request: Request) {
   if ("error" in auth) return auth.error
 
   try {
-    const { data, error } = await getAdminClient().rpc("admin_list_modules", {
-      admin_secret: getAdminRpcSecret(),
-    })
-
-    if (error) return jsonError(error.message, 400)
-    return NextResponse.json(data || {})
+    const { listAdminModules } = await import("@/lib/admin-data")
+    return NextResponse.json(await listAdminModules())
   } catch (error: any) {
     return jsonError(error.message || "Admin modules request failed")
   }
@@ -53,28 +26,46 @@ export async function POST(request: Request) {
   if ("error" in auth) return auth.error
 
   try {
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
+    const supabase = getAdminClient()
+    const type = String(body.type || "")
+    const payload = normalizePayload(body.payload || {})
 
-    if (body.type === "settings") {
-      const { data, error } = await getAdminClient().rpc("admin_update_settings", {
-        admin_secret: getAdminRpcSecret(),
-        payload: body.payload || {},
-      })
-
+    if (type === "settings") {
+      const existing = await supabase.from("admin_modules").select("id").eq("type", "settings").eq("key", "settings").maybeSingle()
+      const item = {
+        type: "settings",
+        key: "settings",
+        payload,
+        status: "ACTIVE",
+        created_by: auth.session.actor,
+        updated_at: new Date().toISOString(),
+      }
+      const query = existing.data?.id
+        ? supabase.from("admin_modules").update(item).eq("id", existing.data.id).select("*").single()
+        : supabase.from("admin_modules").insert(item).select("*").single()
+      const { data, error } = await query
       if (error) return jsonError(error.message, 400)
-      return NextResponse.json({ settings: data })
+      return NextResponse.json({ settings: data?.payload || payload })
     }
 
-    const type = String(body.type || "")
-    if (!isModuleType(type)) return jsonError("Tip de modul invalid", 400)
+    if (!moduleTypes.has(type)) return jsonError("Tip de modul invalid", 400)
 
-    const { data, error } = await getAdminClient().rpc(upsertRpc[type], {
-      admin_secret: getAdminRpcSecret(),
-      payload: body.payload || {},
-    })
-
+    const id = payload.id || body.id
+    const { id: _payloadId, ...storedPayload } = payload
+    const item = {
+      type,
+      payload: storedPayload,
+      status: payload.status || payload.stage || null,
+      created_by: auth.session.actor,
+      updated_at: new Date().toISOString(),
+    }
+    const query = id
+      ? supabase.from("admin_modules").update(item).eq("id", id).select("*").single()
+      : supabase.from("admin_modules").insert(item).select("*").single()
+    const { data, error } = await query
     if (error) return jsonError(error.message, 400)
-    return NextResponse.json({ type, item: data })
+    return NextResponse.json({ type, item: { id: data.id, ...(data.payload || {}), status: data.status, created_at: data.created_at, updated_at: data.updated_at } })
   } catch (error: any) {
     return jsonError(error.message || "Admin module save failed")
   }
@@ -88,17 +79,10 @@ export async function DELETE(request: Request) {
     const url = new URL(request.url)
     const type = url.searchParams.get("type") || ""
     const id = url.searchParams.get("id") || ""
-
-    if (!id || !(type in deleteRpc)) return jsonError("Parametri invalidi", 400)
-
-    const config = deleteRpc[type as keyof typeof deleteRpc]
-    const { data, error } = await getAdminClient().rpc(config.fn, {
-      admin_secret: getAdminRpcSecret(),
-      [config.idKey]: id,
-    })
-
+    if (!id || !moduleTypes.has(type)) return jsonError("Parametri invalidi", 400)
+    const { error } = await getAdminClient().from("admin_modules").delete().eq("type", type).eq("id", id)
     if (error) return jsonError(error.message, 400)
-    return NextResponse.json({ deleted: Boolean(data), type, id })
+    return NextResponse.json({ deleted: true, type, id })
   } catch (error: any) {
     return jsonError(error.message || "Admin module delete failed")
   }
