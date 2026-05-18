@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { appointmentStatuses, countBy, date, leadStatuses, money, propertyStatuses, propertyTypes, slugify, type Row } from "./admin-shared"
+import { buildPropertyPublishChecklist } from "@/lib/admin-workflows"
+import { appointmentStatuses, confirmRisk, countBy, date, leadStatuses, money, propertyStatuses, propertyTypes, slugify, type Row } from "./admin-shared"
 import { Area, Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Recent, Select, SelectField, Table, Td, Title } from "./admin-ui"
 
 export function Overview({ core, modules, platform, report, metrics, setView, exportServer, saving }: any) {
@@ -109,6 +110,7 @@ export function CrmView({ filtered, saving, patchLead, followUp, platformAction 
 export function PropertiesView({ filtered, saving, patchProperty, deleteProperty, createProperty }: any) {
   const blank: Row = { title: "", slug: "", description: "", type: "APARTMENT", transaction_type: "sale", status: "DRAFT", price: 150000, currency: "EUR", city: "Bucuresti", county: "Bucuresti", address: "", area_sqm: 70, rooms: 3, bathrooms: 1, parking_spots: 0, floor: "", year_built: "", amenities: "", cover_image_url: "", gallery_urls: "", floorplan_urls: "", meta_title: "", meta_description: "", owner_email: "", agent_email: "", featured: false }
   const [draft, setDraft] = useState<Row>(blank)
+  const publishChecklist = buildPropertyPublishChecklist(draft, filtered.media || [])
   const savePayload = {
     ...draft,
     price: Number(draft.price || 0),
@@ -122,6 +124,15 @@ export function PropertiesView({ filtered, saving, patchProperty, deleteProperty
     amenities: String(draft.amenities || "").split(",").map((item) => item.trim()).filter(Boolean),
     gallery_urls: String(draft.gallery_urls || "").split(/[,\n]/).map((item) => item.trim()).filter(Boolean),
     floorplan_urls: String(draft.floorplan_urls || "").split(/[,\n]/).map((item) => item.trim()).filter(Boolean),
+  }
+  const propertySaving = draft.id ? saving === `property-${draft.id}` : saving === "create-property"
+  const saveCurrent = (payload: Row) => draft.id ? patchProperty(draft, payload) : createProperty(payload)
+  const publishStatus = (property: Row, status: string) => {
+    if (status === "PUBLISHED") {
+      const checklist = buildPropertyPublishChecklist(property, filtered.media || [])
+      if (!checklist.ready && !confirmRisk(`Publici "${property.title || property.slug || property.id}" cu checklist incomplet (${checklist.passed}/${checklist.total})? Recomandat este sa repari criteriile lipsa inainte.`)) return
+    }
+    patchProperty(property, { status })
   }
   const edit = (row: Row) => setDraft({
     ...blank,
@@ -141,7 +152,7 @@ export function PropertiesView({ filtered, saving, patchProperty, deleteProperty
           <tr key={row.id} className="border-t border-bg-surface">
             <Td><p className="font-black">{row.title}</p><p className="text-xs text-text-muted">{row.city} / {row.type} / {row.area_sqm} mp</p></Td>
             <Td>{money(row.price, row.currency || "EUR")}</Td>
-            <Td><Select value={row.status || "DRAFT"} onChange={(value) => patchProperty(row, { status: value })} disabled={saving === `property-${row.id}`}>{propertyStatuses.map((status) => <option key={status}>{status}</option>)}</Select></Td>
+            <Td><Select value={row.status || "DRAFT"} onChange={(value) => publishStatus(row, value)} disabled={saving === `property-${row.id}`}>{propertyStatuses.map((status) => <option key={status}>{status}</option>)}</Select></Td>
             <Td><Button size="sm" variant="ghost" onClick={() => patchProperty(row, { featured: !row.featured })}>{row.featured ? "Scoate" : "Featured"}</Button></Td>
             <Td><div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" onClick={() => edit(row)}>Edit</Button><Button size="sm" variant="danger" disabled={saving === `delete-${row.id}`} onClick={() => deleteProperty(row)}>Sterge</Button></div></Td>
           </tr>
@@ -149,6 +160,16 @@ export function PropertiesView({ filtered, saving, patchProperty, deleteProperty
       </Panel>
       <Panel>
         <Title compact title={draft.id ? "Editare proprietate" : "Proprietate noua"} subtitle="Campurile media pot fi completate manual sau generate prin upload in sectiunea Media." />
+        <div className="mb-5 rounded-lg border border-bg-surface bg-bg-secondary p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div><p className="font-black">Publish checklist</p><p className="text-sm text-text-muted">{publishChecklist.passed}/{publishChecklist.total} criterii completate. Scor {publishChecklist.score}%.</p></div>
+            <Badge>{publishChecklist.ready ? "READY" : "NEEDS WORK"}</Badge>
+          </div>
+          <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+            {publishChecklist.checks.map((item) => <div key={item.id} className={`rounded-lg border p-3 text-xs ${item.ok ? "border-emerald-500/30 bg-emerald-500/10" : "border-amber-500/30 bg-amber-500/10"}`}><p className="font-black">{item.ok ? "OK" : "Fix"}: {item.label}</p>{!item.ok && <p className="mt-1 text-text-muted">{item.fix}</p>}</div>)}
+          </div>
+          {draft.status === "PUBLISHED" && !publishChecklist.ready && <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm font-bold text-amber-600">Publishing is blocked until the checklist is ready. Save as draft or complete the missing items first.</p>}
+        </div>
         <Grid columns={4}>
           {["title", "slug", "price", "currency", "transaction_type", "city", "county", "address", "area_sqm", "rooms", "bathrooms", "parking_spots", "floor", "year_built", "owner_email", "agent_email", "cover_image_url", "meta_title"].map((key) => <Field key={key} label={key} value={String(draft[key] || "")} onChange={(value) => setDraft({ ...draft, [key]: value })} />)}
           <SelectField label="type" value={draft.type} onChange={(value) => setDraft({ ...draft, type: value })}>{propertyTypes.map((item) => <option key={item}>{item}</option>)}</SelectField>
@@ -160,7 +181,9 @@ export function PropertiesView({ filtered, saving, patchProperty, deleteProperty
         <Area label="floorplan_urls (one per line)" value={String(draft.floorplan_urls || "")} onChange={(value) => setDraft({ ...draft, floorplan_urls: value })} />
         <Area label="meta_description" value={String(draft.meta_description || "")} onChange={(value) => setDraft({ ...draft, meta_description: value })} />
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button disabled={!draft.title || saving === "create-property"} onClick={() => draft.id ? patchProperty(draft, savePayload) : createProperty(savePayload)}>{draft.id ? "Salveaza modificarile" : "Creeaza proprietate"}</Button>
+          <Button disabled={!draft.title || propertySaving || (draft.status === "PUBLISHED" && !publishChecklist.ready)} onClick={() => saveCurrent(savePayload)}>{draft.id ? "Save current form" : "Create property"}</Button>
+          <Button variant="ghost" disabled={!draft.title || propertySaving} onClick={() => saveCurrent({ ...savePayload, status: "DRAFT" })}>Save draft</Button>
+          <Button disabled={!draft.title || !publishChecklist.ready || propertySaving} onClick={() => saveCurrent({ ...savePayload, status: "PUBLISHED" })}>Publish when ready</Button>
           <Button variant="ghost" onClick={() => setDraft(blank)}>Reset form</Button>
         </div>
       </Panel>

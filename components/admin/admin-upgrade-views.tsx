@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ChangeEvent } from "react"
 import { supabase } from "@/lib/supabase"
-import { apiJson, countBy, date, money, type Row } from "./admin-shared"
+import { apiJson, confirmRisk, countBy, date, money, type Row } from "./admin-shared"
 import { ActionPanel, ModuleEditor } from "./admin-operations"
 import { Badge, BarList, Button, Field, Grid, Kpis, MiniRow, Panel, Table, Td, Title } from "./admin-ui"
 
@@ -24,7 +24,7 @@ export function MediaView({ filtered, platform, saving }: any) {
   }
 
   const deleteMedia = async (row: Row) => {
-    if (!row.id) return
+    if (!row.id || !confirmRisk(`Stergi media "${row.alt || row.path || row.id}"? Daca este cover, proprietatea poate ramane nepublicabila.`)) return
     await apiJson(`/api/admin/media?id=${row.id}`, { method: "DELETE" })
     window.location.reload()
   }

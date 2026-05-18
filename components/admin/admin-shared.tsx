@@ -116,6 +116,10 @@ export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
   }
 }
 
+export function confirmRisk(message: string) {
+  return typeof window === "undefined" || window.confirm(message)
+}
+
 export function appUrl(path: string) {
   if (typeof window === "undefined") return path
   return new URL(path, window.location.origin).toString()

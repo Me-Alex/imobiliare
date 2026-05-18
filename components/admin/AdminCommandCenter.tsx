@@ -8,8 +8,16 @@ import { AgentsView, ClientsView, ComplianceView, DocumentsCenterView, ListingsV
 import { OperationsView } from "./admin-operations"
 import { AuditView, ContentView, ReportsView, SettingsView, ToolsView, UsersView } from "./admin-secondary-views"
 import { AccountingView, AnalyticsOpsView, BulkOpsView, CalendarOpsView, IntegrationsView, MediaView, OwnerPortalAdminView } from "./admin-upgrade-views"
+import { AdminFoolproofLayer } from "./admin-foolproof"
 import { Banner, Button, LoadingState, MiniStat, NavButton } from "./admin-ui"
-import { apiJson, csv, defaultCore, defaultModules, matches, nav, slugify, type ModuleType, type Row, type View } from "./admin-shared"
+import { apiJson, confirmRisk, csv, defaultCore, defaultModules, matches, nav, slugify, type ModuleType, type Row, type View } from "./admin-shared"
+
+const allNavItems = nav.flatMap((group) => group.items.map((item) => ({ ...item, group: group.group })))
+const viewIds = new Set(allNavItems.map((item) => item.id))
+
+function isView(value: string | null): value is View {
+  return Boolean(value && viewIds.has(value as View))
+}
 
 export default function AdminCommandCenter() {
   const [view, setView] = useState<View>("overview")
@@ -20,10 +28,12 @@ export default function AdminCommandCenter() {
   const [report, setReport] = useState<Row>({})
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [lastLoadedAt, setLastLoadedAt] = useState("")
   const [saving, setSaving] = useState("")
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
   const [adminEmail, setAdminEmail] = useState("")
+  const [guidedMode, setGuidedMode] = useState(true)
 
   const load = async (mode: "initial" | "refresh" = "refresh") => {
     mode === "initial" ? setLoading(true) : setRefreshing(true)
@@ -48,11 +58,17 @@ export default function AdminCommandCenter() {
       const offline = unique.every((item) => item.toLowerCase().includes("fetch failed") || item.toLowerCase().includes("nu a raspuns la timp"))
       setError(offline ? "API-urile admin locale nu au raspuns. Interfata ramane disponibila; datele live se incarca dupa ce mediul are acces la Supabase." : unique.join(" "))
     }
+    setLastLoadedAt(new Date().toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" }))
     setLoading(false)
     setRefreshing(false)
   }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const requestedView = params.get("view") || window.localStorage.getItem("hqs-admin-view")
+    if (isView(requestedView)) setView(requestedView)
+    setGuidedMode(window.localStorage.getItem("hqs-admin-guided") !== "off")
+
     supabase.auth.getSession().then(({ data }) => {
       const session = data.session
       if (!session?.access_token) {
@@ -68,6 +84,23 @@ export default function AdminCommandCenter() {
     })
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  const navigateView = (nextView: View, nextQuery?: string) => {
+    setView(nextView)
+    if (nextQuery !== undefined) setQuery(nextQuery)
+    window.localStorage.setItem("hqs-admin-view", nextView)
+    const url = new URL(window.location.href)
+    url.searchParams.set("view", nextView)
+    window.history.replaceState(null, "", url.toString())
+  }
+
+  const toggleGuidedMode = () => {
+    setGuidedMode((enabled) => {
+      const next = !enabled
+      window.localStorage.setItem("hqs-admin-guided", next ? "on" : "off")
+      return next
+    })
+  }
 
   const filtered = useMemo(() => ({
     leads: core.leads.filter((row) => matches(row, query)),
@@ -150,10 +183,13 @@ export default function AdminCommandCenter() {
     setCore((prev) => ({ ...prev, properties: prev.properties.map((row) => row.id === property.id ? data.property : row) }))
   }, "Proprietate actualizata.")
 
-  const deleteProperty = (property: Row) => save(`delete-${property.id}`, async () => {
-    await apiJson(`/api/admin/properties/${property.id}`, { method: "DELETE" })
-    setCore((prev) => ({ ...prev, properties: prev.properties.filter((row) => row.id !== property.id) }))
-  }, "Proprietate stearsa.")
+  const deleteProperty = (property: Row) => {
+    if (!confirmRisk(`Stergi definitiv proprietatea "${property.title || property.slug || property.id}"? Actiunea nu poate fi anulata din admin.`)) return
+    return save(`delete-${property.id}`, async () => {
+      await apiJson(`/api/admin/properties/${property.id}`, { method: "DELETE" })
+      setCore((prev) => ({ ...prev, properties: prev.properties.filter((row) => row.id !== property.id) }))
+    }, "Proprietate stearsa.")
+  }
 
   const createProperty = (payload: Row) => save("create-property", async () => {
     await apiJson("/api/admin/properties", { method: "POST", body: JSON.stringify({ ...payload, slug: payload.slug || slugify(payload.title || "proprietate") }) })
@@ -165,15 +201,22 @@ export default function AdminCommandCenter() {
     await load()
   }, "Modul salvat.")
 
-  const deleteModule = (type: ModuleType, id: string) => save(`${type}-${id}`, async () => {
-    await apiJson(`/api/admin/modules?type=${type}&id=${id}`, { method: "DELETE" })
-    await load()
-  }, "Intrare stearsa.")
+  const deleteModule = (type: ModuleType, id: string) => {
+    if (!confirmRisk(`Stergi intrarea din ${type}? Verifica inainte ca filtrul si randul sunt corecte.`)) return
+    return save(`${type}-${id}`, async () => {
+      await apiJson(`/api/admin/modules?type=${type}&id=${id}`, { method: "DELETE" })
+      await load()
+    }, "Intrare stearsa.")
+  }
 
-  const platformAction = (id: string, body: Row, success: string) => save(id, async () => {
-    await apiJson("/api/admin/platform", { method: "POST", body: JSON.stringify(body) })
-    await load()
-  }, success)
+  const platformAction = (id: string, body: Row, success: string) => {
+    const prompt = riskPromptForPlatformAction(body)
+    if (prompt && !confirmRisk(prompt)) return
+    return save(id, async () => {
+      await apiJson("/api/admin/platform", { method: "POST", body: JSON.stringify(body) })
+      await load()
+    }, success)
+  }
 
   const saveSettings = (payload: Row) => save("settings", async () => {
     await apiJson("/api/admin/modules", { method: "POST", body: JSON.stringify({ type: "settings", payload }) })
@@ -206,11 +249,11 @@ export default function AdminCommandCenter() {
     link.click()
     URL.revokeObjectURL(url)
   }, "Export generat.")
-  const title = nav.flatMap((group) => group.items).find((item) => item.id === view)?.label || "Admin"
+  const title = allNavItems.find((item) => item.id === view)?.label || "Admin"
 
   const renderView = () => {
     if (loading) return <LoadingState />
-    const props = { filtered, core, modules, platform, report, metrics, saving, setView, patchLead, followUp, patchAppointment, patchProperty, deleteProperty, createProperty, saveModule, deleteModule, platformAction, saveSettings, exportLocalCsv, exportServer }
+    const props = { filtered, core, modules, platform, report, metrics, saving, setView: navigateView, reload: load, patchLead, followUp, patchAppointment, patchProperty, deleteProperty, createProperty, saveModule, deleteModule, platformAction, saveSettings, exportLocalCsv, exportServer }
     if (view === "properties") return <PropertiesView {...props} />
     if (view === "listings") return <ListingsView {...props} />
     if (view === "media") return <MediaView {...props} />
@@ -246,6 +289,12 @@ export default function AdminCommandCenter() {
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-accent font-black text-bg-primary">H</span>
           <div><p className="font-black">HQS Admin</p><p className="text-xs text-text-muted">control panel</p></div>
         </div>
+        <div className="border-t border-bg-surface px-4 pb-4">
+          <button type="button" onClick={() => navigateView("overview", "")} className="flex h-10 w-full items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 text-left text-sm font-black text-emerald-600 transition hover:border-emerald-500">
+            <span>Start here</span>
+            <span>Guide</span>
+          </button>
+        </div>
         <div className="grid grid-cols-3 gap-2 border-y border-bg-surface p-4">
           <MiniStat label="leaduri" value={core.leads.length} />
           <MiniStat label="active" value={metrics.activeLeads.length} />
@@ -255,7 +304,7 @@ export default function AdminCommandCenter() {
           {nav.map((group) => (
             <div key={group.group} className="flex shrink-0 gap-2 md:block md:space-y-2">
               <p className="hidden px-3 text-xs font-black uppercase text-text-muted md:block">{group.group}</p>
-              {group.items.map((item) => <NavButton key={item.id} item={item} active={view === item.id} onClick={() => setView(item.id)} />)}
+              {group.items.map((item) => <NavButton key={item.id} item={item} active={view === item.id} onClick={() => navigateView(item.id)} />)}
             </div>
           ))}
         </nav>
@@ -270,11 +319,12 @@ export default function AdminCommandCenter() {
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-text-muted">S</span>
                 <input className="form-input h-10 w-full !pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cauta in admin..." />
               </label>
+              <Button variant="ghost" onClick={toggleGuidedMode}>{guidedMode ? "Guided on" : "Guided off"}</Button>
               <ThemeToggle />
               <Button variant="ghost" onClick={() => load()} disabled={refreshing}>{refreshing ? "Refresh..." : "Refresh"}</Button>
               <Button onClick={exportLocalCsv}>CSV</Button>
               {adminEmail && <span className="rounded-lg border border-bg-surface px-3 py-2 text-xs font-black text-text-muted">{adminEmail}</span>}
-              <Button variant="ghost" onClick={() => supabase.auth.signOut().then(() => { window.location.href = "/admin/login" })}>Logout</Button>
+              <Button variant="ghost" onClick={() => fetch("/api/admin/session", { method: "DELETE" }).finally(() => supabase.auth.signOut().then(() => { window.location.href = "/admin/login" }))}>Logout</Button>
               <a className="inline-flex h-10 items-center rounded-lg border border-bg-surface px-3 text-sm font-bold" href="/">Site</a>
             </div>
           </div>
@@ -282,9 +332,18 @@ export default function AdminCommandCenter() {
         <div className="space-y-6 px-4 py-6 xl:px-6">
           {error && <Banner tone="error">{error}</Banner>}
           {notice && <Banner tone="success">{notice}</Banner>}
+          {!loading && <AdminFoolproofLayer enabled={guidedMode} view={view} core={core} modules={modules} platform={platform} metrics={metrics} lastLoadedAt={lastLoadedAt} navigateView={navigateView} toggle={toggleGuidedMode} />}
           {renderView()}
         </div>
       </main>
     </div>
   )
+}
+
+function riskPromptForPlatformAction(body: Row) {
+  const payload = body.payload || {}
+  if (body.type === "appointment_slot" && payload.action === "delete") return "Stergi slotul de vizionare? Verifica sa nu fie un slot rezervat sau sincronizat in calendar."
+  if (body.type === "appointment_slot" && String(payload.status || "").toUpperCase() === "CANCELLED") return "Anulezi slotul de vizionare? Clientii pot ramane fara disponibilitate daca slotul era activ."
+  if (body.type === "admin_role" && String(payload.status || "").toUpperCase() === "INACTIVE") return "Dezactivezi rolul admin? Utilizatorul poate pierde accesul imediat."
+  return ""
 }
