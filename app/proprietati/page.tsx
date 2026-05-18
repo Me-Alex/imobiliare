@@ -9,6 +9,7 @@ import { listPropertyFacets, propertyFiltersFromSearchParams, searchPublishedPro
 export const revalidate = 60
 
 type SearchParams = Record<string, string | string[] | undefined>
+type SearchParamsProp = Promise<SearchParams>
 
 const TIP_LABEL: Record<string, string> = {
   APARTMENT: "Apartamente",
@@ -18,8 +19,8 @@ const TIP_LABEL: Record<string, string> = {
   COMMERCIAL: "Spatii comerciale",
 }
 
-export async function generateMetadata({ searchParams }: { searchParams?: SearchParams }) {
-  const sp = searchParams || {}
+export async function generateMetadata({ searchParams }: { searchParams?: SearchParamsProp }) {
+  const sp = await searchParams || {}
   const tip = String(sp.type || "").toUpperCase()
   const zone = String(sp.zone || "").trim()
   const rooms = Number(sp.rooms || 0)
@@ -46,8 +47,8 @@ export async function generateMetadata({ searchParams }: { searchParams?: Search
   }
 }
 
-export default async function ProprietatiPage({ searchParams }: { searchParams?: SearchParams }) {
-  const filters = propertyFiltersFromSearchParams(searchParams)
+export default async function ProprietatiPage({ searchParams }: { searchParams?: SearchParamsProp }) {
+  const filters = propertyFiltersFromSearchParams(await searchParams)
   const [search, facets] = await Promise.all([
     searchPublishedProperties(filters),
     listPropertyFacets(),

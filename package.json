@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "typecheck": "tsc --noEmit",
-    "build": "next build",
+    "build": "next build --webpack",
     "pages:build": "node scripts/cloudflare-pages-build.mjs",
     "cloudflare:build": "npm run pages:build",
     "worker:build": "opennextjs-cloudflare build",

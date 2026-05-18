@@ -8,6 +8,12 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "routes": [
+    {
+      "pattern": "hqsimobiliare.ro/*",
+      "zone_name": "hqsimobiliare.ro"
+    }
+  ],
   "observability": {
     "enabled": true
   },

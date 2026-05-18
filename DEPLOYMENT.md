@@ -5,6 +5,7 @@
 - Worker deploy: `npm run worker:deploy`.
 - Cloudflare config: `wrangler.jsonc` uses `main: .open-next/worker.js` and `assets.directory: .open-next/assets`.
 - Legacy Pages build compatibility: `npm run cloudflare:build` / `npm run pages:build` builds OpenNext and prepares fallback static assets for the existing Pages project while production traffic is intended to run through the Worker.
+- Production builds use `next build --webpack`; this avoids Next 16 Turbopack server chunk loading failures in the Worker runtime.
 - Data/auth: Supabase. Admin access uses Supabase Auth Bearer tokens and `admin_roles` RBAC, not Basic Auth.
 - Required public variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_AUTH_REDIRECT_ORIGIN`.
 - Required admin variables: `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_BOOTSTRAP_EMAILS`, `RATE_LIMIT_SALT`.
