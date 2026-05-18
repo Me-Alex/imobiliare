@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import ThemeToggle from "@/components/ThemeToggle"
 import { supabase } from "@/lib/supabase"
 import { AppointmentsView, CrmView, Overview, PropertiesView } from "./admin-core-views"
@@ -11,19 +11,30 @@ import { AccountingView, AnalyticsOpsView, BulkOpsView, CalendarOpsView, Integra
 import { Banner, Button, LoadingState, MiniStat, NavButton } from "./admin-ui"
 import { apiJson, csv, defaultCore, defaultModules, matches, nav, slugify, type ModuleType, type Row, type View } from "./admin-shared"
 
+const allNavItems = nav.flatMap((group) => group.items.map((item) => ({ ...item, group: group.group })))
+const viewIds = new Set(allNavItems.map((item) => item.id))
+
+function isView(value: string | null): value is View {
+  return Boolean(value && viewIds.has(value as View))
+}
+
 export default function AdminCommandCenter() {
   const [view, setView] = useState<View>("overview")
   const [query, setQuery] = useState("")
+  const [commandQuery, setCommandQuery] = useState("")
+  const [commandOpen, setCommandOpen] = useState(false)
   const [core, setCore] = useState(defaultCore)
   const [modules, setModules] = useState(defaultModules)
   const [platform, setPlatform] = useState<Row>({})
   const [report, setReport] = useState<Row>({})
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [lastLoadedAt, setLastLoadedAt] = useState("")
   const [saving, setSaving] = useState("")
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
   const [adminEmail, setAdminEmail] = useState("")
+  const searchRef = useRef<HTMLInputElement>(null)
 
   const load = async (mode: "initial" | "refresh" = "refresh") => {
     mode === "initial" ? setLoading(true) : setRefreshing(true)
@@ -48,11 +59,16 @@ export default function AdminCommandCenter() {
       const offline = unique.every((item) => item.toLowerCase().includes("fetch failed") || item.toLowerCase().includes("nu a raspuns la timp"))
       setError(offline ? "API-urile admin locale nu au raspuns. Interfata ramane disponibila; datele live se incarca dupa ce mediul are acces la Supabase." : unique.join(" "))
     }
+    setLastLoadedAt(new Date().toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" }))
     setLoading(false)
     setRefreshing(false)
   }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const requestedView = params.get("view") || window.localStorage.getItem("hqs-admin-view")
+    if (isView(requestedView)) setView(requestedView)
+
     supabase.auth.getSession().then(({ data }) => {
       const session = data.session
       if (!session?.access_token) {
@@ -68,6 +84,34 @@ export default function AdminCommandCenter() {
     })
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(target?.tagName || "")
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault()
+        setCommandOpen((open) => !open)
+      } else if (event.key === "/" && !isTyping) {
+        event.preventDefault()
+        searchRef.current?.focus()
+      } else if (event.key === "Escape") {
+        setCommandOpen(false)
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [])
+
+  const navigateView = (nextView: View, nextQuery?: string) => {
+    setView(nextView)
+    if (nextQuery !== undefined) setQuery(nextQuery)
+    window.localStorage.setItem("hqs-admin-view", nextView)
+    const url = new URL(window.location.href)
+    url.searchParams.set("view", nextView)
+    window.history.replaceState(null, "", url.toString())
+    setCommandOpen(false)
+  }
 
   const filtered = useMemo(() => ({
     leads: core.leads.filter((row) => matches(row, query)),
@@ -118,6 +162,27 @@ export default function AdminCommandCenter() {
     const occupancyRate = core.properties.length ? Math.round((occupied.length / core.properties.length) * 100) : 0
     return { published, activeLeads, portfolio, pipeline, occupied, occupancyRate, scheduledTours, pendingContracts, monthlyRevenue }
   }, [core, modules, platform])
+
+  const attention = useMemo(() => {
+    const failedJobs = (platform.admin_provider_jobs || []).filter((row: Row) => String(row.status || "").includes("FAILED"))
+    const draftProperties = core.properties.filter((row) => String(row.status || "") === "DRAFT")
+    const missingCover = core.properties.filter((row) => !row.cover_image_url && !row.cover_image && String(row.status || "") !== "SOLD")
+    const staleLeads = metrics.activeLeads.filter((row) => {
+      const created = new Date(row.updated_at || row.created_at || 0).getTime()
+      return created && Date.now() - created > 24 * 60 * 60 * 1000
+    })
+    const upcomingTours = metrics.scheduledTours.filter((row) => {
+      const startsAt = new Date(row.start_at || row.requested_at || 0).getTime()
+      return startsAt && startsAt >= Date.now() && startsAt <= Date.now() + 7 * 24 * 60 * 60 * 1000
+    })
+    return [
+      { label: "Provider failures", value: failedJobs.length, view: "integrations" as View, query: "FAILED", tone: "danger" },
+      { label: "Leaduri de sunat", value: staleLeads.length, view: "crm" as View, query: "NEW", tone: "warn" },
+      { label: "Drafturi", value: draftProperties.length, view: "properties" as View, query: "DRAFT", tone: "neutral" },
+      { label: "Fara cover", value: missingCover.length, view: "media" as View, query: "cover", tone: "warn" },
+      { label: "Vizionari 7 zile", value: upcomingTours.length, view: "appointments" as View, query: "", tone: "neutral" },
+    ].filter((item) => item.value > 0)
+  }, [core.properties, metrics.activeLeads, metrics.scheduledTours, platform.admin_provider_jobs])
 
   const save = async (id: string, action: () => Promise<void>, success: string) => {
     setSaving(id)
@@ -209,11 +274,34 @@ export default function AdminCommandCenter() {
     link.click()
     URL.revokeObjectURL(url)
   }, "Export generat.")
-  const title = nav.flatMap((group) => group.items).find((item) => item.id === view)?.label || "Admin"
+
+  const commands = useMemo(() => {
+    const navCommands = allNavItems.map((item) => ({
+      id: `view-${item.id}`,
+      title: item.label,
+      meta: `${item.group} / deschide sectiunea`,
+      mark: item.mark,
+      run: () => navigateView(item.id),
+    }))
+    const actionCommands = [
+      { id: "refresh", title: "Refresh data", meta: "Reincarca toate API-urile admin", mark: "R", run: () => void load() },
+      { id: "new-property", title: "Creeaza proprietate", meta: "Mergi la editorul de proprietati", mark: "P", run: () => navigateView("properties", "") },
+      { id: "lead-followup", title: "Leaduri de sunat", meta: "Filtreaza CRM pe leaduri noi", mark: "CRM", run: () => navigateView("crm", "NEW") },
+      { id: "drafts", title: "Proprietati draft", meta: "Filtreaza proprietatile nepublicate", mark: "D", run: () => navigateView("properties", "DRAFT") },
+      { id: "provider-errors", title: "Erori integrari", meta: "Arata joburile provider esuate", mark: "ERR", run: () => navigateView("integrations", "FAILED") },
+      { id: "bulk-import", title: "Import CSV proprietati", meta: "Deschide bulk operations", mark: "CSV", run: () => navigateView("bulk") },
+      { id: "market-data", title: "Actualizeaza Market Data", meta: "Pret/mp, randament, risc zona", mark: "MD", run: () => navigateView("marketData") },
+      { id: "export", title: "Export CSV local", meta: "Descarca snapshot leaduri/proprietati/programari", mark: "EX", run: exportLocalCsv },
+    ]
+    const q = commandQuery.trim().toLowerCase()
+    return [...actionCommands, ...navCommands].filter((command) => !q || `${command.title} ${command.meta} ${command.mark}`.toLowerCase().includes(q)).slice(0, 14)
+  }, [commandQuery, core.leads, core.properties, core.appointments, platform])
+
+  const title = allNavItems.find((item) => item.id === view)?.label || "Admin"
 
   const renderView = () => {
     if (loading) return <LoadingState />
-    const props = { filtered, core, modules, platform, report, metrics, saving, setView, reload: load, patchLead, followUp, patchAppointment, patchProperty, deleteProperty, createProperty, saveModule, deleteModule, platformAction, saveSettings, exportLocalCsv, exportServer }
+    const props = { filtered, core, modules, platform, report, metrics, saving, setView: navigateView, reload: load, patchLead, followUp, patchAppointment, patchProperty, deleteProperty, createProperty, saveModule, deleteModule, platformAction, saveSettings, exportLocalCsv, exportServer }
     if (view === "properties") return <PropertiesView {...props} />
     if (view === "listings") return <ListingsView {...props} />
     if (view === "media") return <MediaView {...props} />
@@ -250,6 +338,12 @@ export default function AdminCommandCenter() {
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-accent font-black text-bg-primary">H</span>
           <div><p className="font-black">HQS Admin</p><p className="text-xs text-text-muted">control panel</p></div>
         </div>
+        <div className="border-t border-bg-surface px-4 pb-4">
+          <button type="button" onClick={() => setCommandOpen(true)} className="flex h-11 w-full items-center justify-between rounded-lg border border-bg-surface bg-bg-secondary px-3 text-left text-sm font-bold text-text-muted transition hover:border-accent hover:text-accent">
+            <span>Comenzi rapide</span>
+            <kbd className="rounded border border-bg-surface bg-bg-card px-2 py-1 text-[10px] font-black">Ctrl K</kbd>
+          </button>
+        </div>
         <div className="grid grid-cols-3 gap-2 border-y border-bg-surface p-4">
           <MiniStat label="leaduri" value={core.leads.length} />
           <MiniStat label="active" value={metrics.activeLeads.length} />
@@ -259,7 +353,7 @@ export default function AdminCommandCenter() {
           {nav.map((group) => (
             <div key={group.group} className="flex shrink-0 gap-2 md:block md:space-y-2">
               <p className="hidden px-3 text-xs font-black uppercase text-text-muted md:block">{group.group}</p>
-              {group.items.map((item) => <NavButton key={item.id} item={item} active={view === item.id} onClick={() => setView(item.id)} />)}
+              {group.items.map((item) => <NavButton key={item.id} item={item} active={view === item.id} onClick={() => navigateView(item.id)} />)}
             </div>
           ))}
         </nav>
@@ -272,8 +366,9 @@ export default function AdminCommandCenter() {
             <div className="flex flex-wrap items-center gap-2">
               <label className="relative min-w-0 flex-1 sm:min-w-[360px]">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-text-muted">S</span>
-                <input className="form-input h-10 w-full !pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cauta in admin..." />
+                <input ref={searchRef} className="form-input h-10 w-full !pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cauta in admin... apasa /" />
               </label>
+              <Button variant="ghost" onClick={() => setCommandOpen(true)}>Ctrl K</Button>
               <ThemeToggle />
               <Button variant="ghost" onClick={() => load()} disabled={refreshing}>{refreshing ? "Refresh..." : "Refresh"}</Button>
               <Button onClick={exportLocalCsv}>CSV</Button>
@@ -286,9 +381,76 @@ export default function AdminCommandCenter() {
         <div className="space-y-6 px-4 py-6 xl:px-6">
           {error && <Banner tone="error">{error}</Banner>}
           {notice && <Banner tone="success">{notice}</Banner>}
+          <AdminWorkbar attention={attention} lastLoadedAt={lastLoadedAt} refreshing={refreshing} navigateView={navigateView} clearSearch={() => setQuery("")} query={query} />
           {renderView()}
         </div>
       </main>
+      {commandOpen && <CommandPalette commands={commands} query={commandQuery} setQuery={setCommandQuery} close={() => setCommandOpen(false)} />}
+    </div>
+  )
+}
+
+function AdminWorkbar({ attention, lastLoadedAt, refreshing, navigateView, clearSearch, query }: { attention: Array<{ label: string; value: number; view: View; query: string; tone: string }>; lastLoadedAt: string; refreshing: boolean; navigateView: (view: View, query?: string) => void; clearSearch: () => void; query: string }) {
+  const toneClass: Record<string, string> = {
+    danger: "border-rose-500/30 bg-rose-500/10 text-rose-500",
+    warn: "border-amber-500/30 bg-amber-500/10 text-amber-600",
+    neutral: "border-bg-surface bg-bg-secondary text-text-primary",
+  }
+
+  return (
+    <div className="rounded-lg border border-bg-surface bg-bg-card p-3 shadow-card">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-lg bg-accent/12 px-3 py-2 text-xs font-black uppercase text-accent">Focus</span>
+          {attention.length ? attention.map((item) => (
+            <button key={item.label} type="button" onClick={() => navigateView(item.view, item.query)} className={`rounded-lg border px-3 py-2 text-sm font-black ${toneClass[item.tone] || toneClass.neutral}`}>
+              {item.label}: {item.value}
+            </button>
+          )) : <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-black text-emerald-600">Nu exista alerte active</span>}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-text-muted">
+          {query && <button type="button" onClick={clearSearch} className="rounded-lg border border-bg-surface px-3 py-2 text-text-primary hover:border-accent hover:text-accent">Clear search: {query}</button>}
+          <span className="rounded-lg border border-bg-surface px-3 py-2">{refreshing ? "Refreshing..." : lastLoadedAt ? `Actualizat ${lastLoadedAt}` : "In curs de incarcare"}</span>
+          <span className="rounded-lg border border-bg-surface px-3 py-2">/: cautare</span>
+          <span className="rounded-lg border border-bg-surface px-3 py-2">Ctrl+K: comenzi</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CommandPalette({ commands, query, setQuery, close }: { commands: Array<{ id: string; title: string; meta: string; mark: string; run: () => void }>; query: string; setQuery: (value: string) => void; close: () => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-50 bg-bg-primary/70 px-4 py-10 backdrop-blur-sm" onMouseDown={close}>
+      <div role="dialog" aria-modal="true" aria-label="Command palette" className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-bg-surface bg-bg-card shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="border-b border-bg-surface p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-accent">Command palette</p>
+              <h2 className="text-xl font-black">Unde vrei sa mergi?</h2>
+            </div>
+            <button type="button" onClick={close} className="rounded-lg border border-bg-surface px-3 py-2 text-sm font-black text-text-muted hover:text-text-primary">Esc</button>
+          </div>
+          <input ref={inputRef} className="form-input mt-4 h-12" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cauta sectiuni sau actiuni: leaduri, media, import, erori..." />
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto p-2">
+          {commands.length ? commands.map((command) => (
+            <button key={command.id} type="button" onClick={command.run} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-bg-secondary">
+              <span className="grid h-9 min-w-9 place-items-center rounded-lg border border-bg-surface bg-bg-secondary px-2 text-[11px] font-black text-accent">{command.mark}</span>
+              <span>
+                <span className="block font-black text-text-primary">{command.title}</span>
+                <span className="text-sm text-text-muted">{command.meta}</span>
+              </span>
+            </button>
+          )) : <div className="p-8 text-center text-sm text-text-muted">Nu exista comenzi pentru cautarea curenta.</div>}
+        </div>
+      </div>
     </div>
   )
 }

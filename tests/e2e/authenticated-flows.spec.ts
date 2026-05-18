@@ -12,8 +12,14 @@ test("admin can open the command center", async ({ page }) => {
   await page.getByLabel("Email sau username admin").fill(process.env.PLAYWRIGHT_ADMIN_USER || "admin")
   await page.getByLabel("Parola").fill(adminPassword!)
   await page.getByRole("button", { name: "Intra in admin" }).click()
-  await expect(page).toHaveURL(/\/admin\/dashboard/)
+  await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 15_000 })
   await expect(page.getByRole("heading", { name: /Dashboard|HQS/i })).toBeVisible()
+  await page.getByRole("button", { name: /Ctrl K/i }).first().click()
+  const palette = page.getByRole("dialog", { name: "Command palette" })
+  await palette.getByPlaceholder(/Cauta sectiuni/i).fill("integrations")
+  await palette.getByRole("button", { name: /Integrations/i }).click()
+  await expect(page).toHaveURL(/view=integrations/)
+  await expect(page.getByRole("heading", { name: /Live integrations/i })).toBeVisible()
 })
 
 test("client portal loads authenticated workspace", async ({ page }) => {
