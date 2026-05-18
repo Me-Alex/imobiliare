@@ -6,7 +6,7 @@
     "dev": "next dev",
     "typecheck": "tsc --noEmit",
     "build": "next build",
-    "pages:build": "npx @cloudflare/next-on-pages@1 && node scripts/patch-cloudflare-routes.mjs",
+    "pages:build": "node scripts/cloudflare-pages-build.mjs",
     "cloudflare:build": "npm run pages:build",
     "worker:build": "opennextjs-cloudflare build",
     "worker:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
