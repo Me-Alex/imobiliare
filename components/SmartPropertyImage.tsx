@@ -5,14 +5,14 @@ import { useEffect, useState } from "react"
 
 type SmartPropertyImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "onError"> & {
   src: string
-  fallbackSrc: string
+  fallbackSrc?: string  // optional — default la string gol (nu mai face loop de erori)
   fill?: boolean
   priority?: boolean
 }
 
 export default function SmartPropertyImage({
   src,
-  fallbackSrc,
+  fallbackSrc = "",
   fill,
   priority,
   className,
