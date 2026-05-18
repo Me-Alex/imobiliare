@@ -49,6 +49,8 @@ alter table public.properties add column if not exists county text;
 alter table public.properties add column if not exists area_sqm numeric;
 alter table public.properties add column if not exists bathrooms integer;
 alter table public.properties add column if not exists parking_spots integer not null default 0;
+alter table public.properties add column if not exists floor integer;
+alter table public.properties add column if not exists year_built integer;
 alter table public.properties add column if not exists amenities text[] not null default '{}';
 alter table public.properties add column if not exists cover_image_url text;
 alter table public.properties add column if not exists gallery_urls text[] not null default '{}';
@@ -57,15 +59,28 @@ alter table public.properties add column if not exists transaction_type text;
 alter table public.properties add column if not exists owner_email text;
 alter table public.properties add column if not exists owner_id uuid;
 alter table public.properties add column if not exists agent_email text;
+alter table public.properties add column if not exists meta_title text;
+alter table public.properties add column if not exists meta_description text;
 alter table public.properties add column if not exists published_at timestamptz;
 
-update public.properties
-set
-  area_sqm = coalesce(area_sqm, surface),
-  bathrooms = coalesce(bathrooms, baths),
-  transaction_type = coalesce(transaction_type, transaction),
-  city = coalesce(city, zone, 'Bucuresti')
-where area_sqm is null or bathrooms is null or transaction_type is null or city is null;
+do $$
+begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'properties' and column_name = 'surface') then
+    execute 'update public.properties set area_sqm = coalesce(area_sqm, surface) where area_sqm is null';
+  end if;
+
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'properties' and column_name = 'baths') then
+    execute 'update public.properties set bathrooms = coalesce(bathrooms, baths) where bathrooms is null';
+  end if;
+
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'properties' and column_name = 'transaction') then
+    execute 'update public.properties set transaction_type = coalesce(transaction_type, transaction) where transaction_type is null';
+  end if;
+
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'properties' and column_name = 'zone') then
+    execute 'update public.properties set city = coalesce(city, zone, ''Bucuresti'') where city is null';
+  end if;
+end $$;
 
 create table if not exists public.property_media (
   id uuid primary key default gen_random_uuid(),
