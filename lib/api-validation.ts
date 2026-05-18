@@ -127,6 +127,23 @@ export const clientActivitySchema = z.object({
   metadata: metadataSchema,
 })
 
+export const clientNotificationUpdateSchema = z.object({
+  id: optionalText(80),
+  ids: z.array(z.string().trim().min(1).max(80)).max(100).optional().default([]),
+  action: z.enum(["read", "unread", "read_all"]).default("read"),
+}).refine((value) => value.action === "read_all" || Boolean(value.id) || value.ids.length > 0, {
+  message: "id sau ids sunt obligatorii.",
+  path: ["id"],
+})
+
+export const adminMediaUploadSchema = z.object({
+  property_id: requiredText(1, 80),
+  file_name: requiredText(1, 180),
+  content_type: optionalText(120).default("application/octet-stream"),
+  kind: z.enum(["cover", "gallery", "floorplan"]).default("gallery"),
+  size: safeNumber(0, 0, 50_000_000),
+})
+
 export const propertyViewSchema = z.object({
   property_id: requiredText(1, 80),
   property_slug: optionalText(160).nullable().default(null),

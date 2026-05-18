@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { leadRequestSchema, valuationSchema } from "@/lib/api-validation"
+import { adminMediaUploadSchema, clientNotificationUpdateSchema, leadRequestSchema, valuationSchema } from "@/lib/api-validation"
 
 describe("api validation", () => {
   it("requires either phone or email for leads", () => {
@@ -18,5 +18,17 @@ describe("api validation", () => {
     expect(parsed.area).toBe(70)
     expect(parsed.rooms).toBe(2)
     expect(parsed.condition).toBe("bun")
+  })
+
+  it("validates notification updates require a target unless marking all", () => {
+    expect(clientNotificationUpdateSchema.safeParse({ action: "read" }).success).toBe(false)
+    expect(clientNotificationUpdateSchema.parse({ action: "read_all" }).action).toBe("read_all")
+  })
+
+  it("normalizes admin media upload defaults", () => {
+    const parsed = adminMediaUploadSchema.parse({ property_id: "prop-1", file_name: "cover.jpg" })
+    expect(parsed.kind).toBe("gallery")
+    expect(parsed.content_type).toBe("application/octet-stream")
+    expect(parsed.size).toBe(0)
   })
 })

@@ -4,12 +4,19 @@ import { NextResponse } from "next/server"
 
 export const runtime = "edge"
 
+function isPublished(status: unknown) {
+  return String(status || "").toUpperCase() === "PUBLISHED"
+}
+
 export async function POST(request: Request) {
   const auth = await requireAdminPermissionAsync(request, "properties")
   if ("error" in auth) return auth.error
 
   try {
     const payload = normalizePropertyPayload(await request.json().catch(() => ({})))
+    if (isPublished(payload.status) && !payload.cover_image_url) {
+      return jsonError("Adauga o imagine cover inainte de publicare.", 400)
+    }
     const { data, error } = await auth.supabase.from("properties").insert(payload).select("*").single()
     if (error) return jsonError(error.message, 400)
     await Promise.allSettled([

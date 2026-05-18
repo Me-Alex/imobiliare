@@ -3,6 +3,13 @@ import { NextResponse } from "next/server"
 
 export const runtime = "edge"
 
+const mediaKinds = new Set(["cover", "gallery", "floorplan"])
+
+function normalizeKind(value: unknown) {
+  const kind = String(value || "gallery").toLowerCase()
+  return mediaKinds.has(kind) ? kind : ""
+}
+
 export async function POST(request: Request) {
   const auth = await requireAdminPermissionAsync(request, "media")
   if ("error" in auth) return auth.error
@@ -11,17 +18,19 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}))
     const propertyId = String(body.property_id || "")
     const path = String(body.path || "")
+    const kind = normalizeKind(body.kind)
     if (!propertyId || !path) return jsonError("property_id si path sunt obligatorii", 400)
+    if (!kind) return jsonError("kind trebuie sa fie cover, gallery sau floorplan", 400)
     const { data: publicData } = auth.supabase.storage.from("property-media").getPublicUrl(path)
     const row = {
       property_id: propertyId,
       bucket: "property-media",
       path,
       public_url: body.public_url || publicData.publicUrl,
-      kind: body.kind || "gallery",
+      kind,
       alt: body.alt || null,
       sort_order: Number(body.sort_order || 0),
-      metadata: body.metadata || {},
+      metadata: { ...(body.metadata || {}), source: "admin_signed_upload" },
       created_by: auth.session.actor,
       updated_at: new Date().toISOString(),
     }
@@ -42,7 +51,16 @@ export async function PATCH(request: Request) {
     const body = await request.json().catch(() => ({}))
     const id = String(body.id || "")
     if (!id) return jsonError("id lipseste", 400)
-    const { data, error } = await auth.supabase.from("property_media").update({ kind: body.kind, alt: body.alt, sort_order: body.sort_order, metadata: body.metadata || {}, updated_at: new Date().toISOString() }).eq("id", id).select("*").single()
+    const patch: Record<string, any> = { updated_at: new Date().toISOString() }
+    if (body.kind !== undefined) {
+      const kind = normalizeKind(body.kind)
+      if (!kind) return jsonError("kind trebuie sa fie cover, gallery sau floorplan", 400)
+      patch.kind = kind
+    }
+    if (body.alt !== undefined) patch.alt = body.alt || null
+    if (body.sort_order !== undefined) patch.sort_order = Number(body.sort_order || 0)
+    if (body.metadata !== undefined) patch.metadata = body.metadata || {}
+    const { data, error } = await auth.supabase.from("property_media").update(patch).eq("id", id).select("*").single()
     if (error) return jsonError(error.message, 400)
     await syncPropertyMedia(data.property_id, auth.supabase)
     return NextResponse.json({ media: data })

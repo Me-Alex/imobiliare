@@ -1,11 +1,11 @@
 import type { Property, PropertyType } from '@/lib/supabase'
 
 const PHOTO_MEDIA: Record<PropertyType, string> = {
-  VILLA: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=80',
-  HOUSE: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
-  APARTMENT: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80',
-  LAND: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80',
-  COMMERCIAL: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80',
+  VILLA: '/images/property-villa.png',
+  HOUSE: '/images/property-house.png',
+  APARTMENT: '/images/property-apartment.png',
+  LAND: '/images/property-land.png',
+  COMMERCIAL: '/images/property-commercial.png',
 }
 
 const INLINE_FALLBACK_MEDIA: Record<PropertyType, string> = {
@@ -59,7 +59,7 @@ function normalizeGallery(value: Property['gallery_urls']) {
 }
 
 function isPublicImageUrl(value: unknown): value is string {
-  return typeof value === 'string' && /^https?:\/\//.test(value.trim())
+  return typeof value === 'string' && (/^https?:\/\//.test(value.trim()) || value.trim().startsWith('/'))
 }
 
 function makeInlineVisual(title: string, accent: string, lineOne: string, lineTwo: string) {

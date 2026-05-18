@@ -1,19 +1,46 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { CheckCircle2 } from "lucide-react"
+
+type Slot = {
+  id: string
+  label?: string
+  starts_at?: string
+  value?: string
+  agent_email?: string | null
+}
 
 export default function ContactDetaliu({ proprietate, propertyId }: { proprietate: string; propertyId?: string }) {
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [slots, setSlots] = useState<Slot[]>([])
+  const [selectedSlot, setSelectedSlot] = useState("")
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
   const [form, setForm] = useState({ name: "", phone: "", email: "", requested_at: tomorrow, notes: "" })
+
+  useEffect(() => {
+    const query = propertyId ? `?property_id=${propertyId}` : ""
+    fetch(`/api/calendar-slots${query}`)
+      .then((response) => response.json())
+      .then((body) => {
+        const nextSlots = Array.isArray(body.slots) ? body.slots : []
+        setSlots(nextSlots)
+        setSelectedSlot(nextSlots[0]?.id || "")
+      })
+      .catch(() => {
+        setSlots([])
+        setSelectedSlot("")
+      })
+  }, [propertyId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
+    const slot = slots.find((item) => item.id === selectedSlot)
+    const requestedAt = slot?.starts_at || slot?.value || form.requested_at
 
     const response = await fetch("/api/appointments", {
       method: "POST",
@@ -22,7 +49,8 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
         name: form.name,
         phone: form.phone,
         email: form.email,
-        requested_at: form.requested_at,
+        requested_at: requestedAt,
+        slot_id: slot?.id || "",
         notes: [`Proprietate: ${proprietate}`, form.notes].filter(Boolean).join("\n"),
         property_id: propertyId || "",
       }),
@@ -65,11 +93,22 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
               placeholder={f.placeholder} />
           </div>
         ))}
-        <div>
-          <label className="text-xs font-medium text-text-muted mb-1 block uppercase tracking-wider">Data preferata *</label>
-          <input type="datetime-local" required value={form.requested_at} onChange={(e) => setForm({ ...form, requested_at: e.target.value })}
-            className="form-input" />
-        </div>
+        {slots.length > 0 ? (
+          <div>
+            <label className="text-xs font-medium text-text-muted mb-1 block uppercase tracking-wider">Slot disponibil *</label>
+            <select required value={selectedSlot} onChange={(e) => setSelectedSlot(e.target.value)} className="form-input">
+              {slots.map((slot) => (
+                <option key={slot.id} value={slot.id}>{slot.label || new Date(slot.starts_at || slot.value || "").toLocaleString("ro-RO")}{slot.agent_email ? ` - ${slot.agent_email}` : ""}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div>
+            <label className="text-xs font-medium text-text-muted mb-1 block uppercase tracking-wider">Data preferata *</label>
+            <input type="datetime-local" required value={form.requested_at} onChange={(e) => setForm({ ...form, requested_at: e.target.value })}
+              className="form-input" />
+          </div>
+        )}
         <div>
           <label className="text-xs font-medium text-text-muted mb-1 block uppercase tracking-wider">Observatii</label>
           <textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}

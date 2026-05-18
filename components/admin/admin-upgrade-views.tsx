@@ -33,10 +33,10 @@ export function MediaView({ filtered, platform, saving }: any) {
     if (!file || !propertyId) return
     setBusy(true)
     try {
-      const signed = await apiJson<Row>("/api/admin/media/upload-url", { method: "POST", body: JSON.stringify({ property_id: propertyId, file_name: file.name, content_type: file.type, kind }) })
+      const signed = await apiJson<Row>("/api/admin/media/upload-url", { method: "POST", body: JSON.stringify({ property_id: propertyId, file_name: file.name, content_type: file.type, size: file.size, kind }) })
       const { error } = await supabase.storage.from(signed.bucket || "property-media").uploadToSignedUrl(signed.path, signed.token, file)
       if (error) throw error
-      await apiJson("/api/admin/media", { method: "POST", body: JSON.stringify({ property_id: propertyId, path: signed.path, kind, alt }) })
+      await apiJson("/api/admin/media", { method: "POST", body: JSON.stringify({ property_id: propertyId, path: signed.path, kind, alt, metadata: { content_type: signed.content_type, size: file.size } }) })
       window.location.reload()
     } finally {
       setBusy(false)

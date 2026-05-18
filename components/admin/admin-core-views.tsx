@@ -169,7 +169,7 @@ export function PropertiesView({ filtered, saving, patchProperty, deleteProperty
 }
 
 export function AppointmentsView({ filtered, saving, patchAppointment, platformAction }: any) {
-  const [slot, setSlot] = useState<Row>({ starts_at: "", ends_at: "", agent_email: "", capacity: 1, status: "OPEN" })
+  const [slot, setSlot] = useState<Row>({ starts_at: "", ends_at: "", agent_email: "", capacity: 1, status: "AVAILABLE" })
   return (
     <div className="space-y-6">
       <Title title="Programari" subtitle="Cereri de vizionare, statusuri si sloturi disponibile." />
@@ -184,7 +184,7 @@ export function AppointmentsView({ filtered, saving, patchAppointment, platformA
         <Button className="mt-4" disabled={!slot.starts_at || saving === "slot"} onClick={() => platformAction("slot", { type: "appointment_slot", payload: { ...slot, capacity: Number(slot.capacity || 1) } }, "Slot salvat.")}>Salveaza slot</Button>
       </Panel>
       <Panel tight>
-        <Table heads={["Slot", "Agent", "Capacitate", "Status"]} rows={filtered.slots} empty="Nu exista sloturi." render={(row: Row) => <tr key={row.id || row.starts_at} className="border-t border-bg-surface"><Td>{date(row.starts_at, true)} - {date(row.ends_at, true)}</Td><Td>{row.agent_email || "-"}</Td><Td>{row.capacity || 1}</Td><Td><Badge>{row.status || "OPEN"}</Badge></Td></tr>} />
+        <Table heads={["Slot", "Agent", "Capacitate", "Status"]} rows={filtered.slots} empty="Nu exista sloturi." render={(row: Row) => <tr key={row.id || row.starts_at} className="border-t border-bg-surface"><Td>{date(row.starts_at, true)} - {date(row.ends_at, true)}</Td><Td>{row.agent_email || "-"}</Td><Td>{row.capacity || 1}</Td><Td><Badge>{row.status || "AVAILABLE"}</Badge></Td></tr>} />
       </Panel>
     </div>
   )
