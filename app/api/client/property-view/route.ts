@@ -6,7 +6,7 @@ import { NextResponse } from "next/server"
 export const runtime = "edge"
 
 export async function POST(request: Request) {
-  const limited = rateLimit(request, "client-property-view", 60, 60_000)
+  const limited = await rateLimit(request, "client-property-view", 60, 60_000)
   if (limited) return limited
 
   const session = await requireClient(request)

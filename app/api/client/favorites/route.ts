@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const limited = rateLimit(request, "client-favorites", 40, 60_000)
+  const limited = await rateLimit(request, "client-favorites", 40, 60_000)
   if (limited) return limited
 
   const session = await requireClient(request)
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const limited = rateLimit(request, "client-favorites-delete", 40, 60_000)
+  const limited = await rateLimit(request, "client-favorites-delete", 40, 60_000)
   if (limited) return limited
 
   const session = await requireClient(request)

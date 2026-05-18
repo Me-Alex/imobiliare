@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const limited = rateLimit(request, "client-account", 20, 60_000)
+  const limited = await rateLimit(request, "client-account", 20, 60_000)
   if (limited) return limited
 
   const session = await requireClient(request)

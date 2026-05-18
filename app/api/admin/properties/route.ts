@@ -12,7 +12,9 @@ export async function POST(request: Request) {
     const payload = normalizePropertyPayload(await request.json().catch(() => ({})))
     const { data, error } = await auth.supabase.from("properties").insert(payload).select("*").single()
     if (error) return jsonError(error.message, 400)
-    await auth.supabase.from("admin_audit_log").insert({ actor: auth.session.actor, action: "PROPERTY_CREATED", entity: "properties", entity_id: data.id, details: data, metadata: data }).throwOnError()
+    await Promise.allSettled([
+      auth.supabase.from("admin_audit_log").insert({ actor: auth.session.actor, action: "PROPERTY_CREATED", entity: "properties", entity_id: data.id, details: data, metadata: data }),
+    ])
     return NextResponse.json({ property: data }, { status: 201 })
   } catch (error: any) {
     return jsonError(error.message || "Property create failed")

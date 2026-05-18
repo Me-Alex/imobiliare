@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import type { ReactNode } from "react"
 import { BookmarkPlus, Heart, RotateCcw, Search, SlidersHorizontal, Target } from "lucide-react"
-import { Property, supabase } from "@/lib/supabase"
+import type { Property } from "@/lib/supabase"
 import ProprietateCard from "./ProprietateCard"
 import { scoreProperty } from "@/lib/experience"
 import {
@@ -22,7 +22,7 @@ import {
 } from "@/lib/client-preferences"
 import { formatCurrency } from "@/lib/format"
 
-const ZONE = ["Toate zonele", "Bucuresti", "Floreasca", "Baneasa", "Pipera", "Dorobanti", "Aviatorilor", "Corbeanca"]
+const DEFAULT_ZONES = ["Bucuresti", "Floreasca", "Baneasa", "Pipera", "Dorobanti", "Aviatorilor", "Corbeanca"]
 const TIPURI: Record<string, string> = {
   toate: "Toate",
   APARTMENT: "Apartamente",
@@ -46,49 +46,68 @@ type SortKey = keyof typeof SORT_LABELS
 
 type Props = {
   initialProperties?: Property[]
+  initialTotal?: number
+  initialHasMore?: boolean
+  initialPageSize?: number
   initialQuery?: string
   initialZone?: string
   initialType?: string
   initialBudget?: number
+  initialRooms?: number
+  initialMinArea?: number
+  initialFeaturedOnly?: boolean
+  initialSort?: SortKey
+  initialZones?: string[]
 }
 
 export default function ProprietatiSection({
   initialProperties = [],
+  initialTotal = initialProperties.length,
+  initialHasMore = false,
+  initialPageSize = 12,
   initialQuery = "",
   initialZone = "Toate zonele",
   initialType = "toate",
   initialBudget,
+  initialRooms = 0,
+  initialMinArea = 0,
+  initialFeaturedOnly = false,
+  initialSort = "newest",
+  initialZones = [],
 }: Props) {
   const [proprietati, setProprietati] = useState<Property[]>(initialProperties)
   const [loading, setLoading] = useState(initialProperties.length === 0)
   const [error, setError] = useState("")
+  const [total, setTotal] = useState(initialTotal)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(initialHasMore)
   const [query, setQuery] = useState(initialQuery)
-  const [sort, setSort] = useState<SortKey>("newest")
+  const [sort, setSort] = useState<SortKey>(initialSort)
   const [filtruTip, setFiltruTip] = useState(TIPURI[initialType] ? initialType : "toate")
-  const [filtruZona, setFiltruZona] = useState(ZONE.includes(initialZone) ? initialZone : "Toate zonele")
-  const [filtruCamere, setFiltruCamere] = useState(0)
+  const [zones, setZones] = useState(["Toate zonele", ...Array.from(new Set([initialZone, ...(initialZones || []), ...DEFAULT_ZONES])).filter((zone) => zone && zone !== "Toate zonele")])
+  const [filtruZona, setFiltruZona] = useState(initialZone || "Toate zonele")
+  const [filtruCamere, setFiltruCamere] = useState(initialRooms)
   const [pretMax, setPretMax] = useState(initialBudget || 0)
-  const [suprafataMin, setSuprafataMin] = useState(0)
-  const [doarFeatured, setDoarFeatured] = useState(false)
+  const [suprafataMin, setSuprafataMin] = useState(initialMinArea)
+  const [doarFeatured, setDoarFeatured] = useState(initialFeaturedOnly)
   const [showFiltre, setShowFiltre] = useState(false)
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [buyerIntent, setBuyerIntent] = useState<BuyerIntent>(DEFAULT_BUYER_INTENT)
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([])
+  const didHydrate = useRef(false)
 
   useEffect(() => {
-    if (initialProperties.length) return
-    supabase
-      .from("properties")
-      .select("*")
-      .eq("status", "PUBLISHED")
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) setError("Nu am putut incarca proprietatile. Incercam din nou in cateva momente.")
-        setProprietati((data || []) as Property[])
-        setLoading(false)
+    fetch("/api/search/suggestions")
+      .then((res) => res.ok ? res.json() : null)
+      .then((body) => {
+        const next = Array.isArray(body?.suggestions)
+          ? body.suggestions.filter((item: any) => item.type === "zone").map((item: any) => String(item.value)).filter(Boolean)
+          : []
+        if (next.length) setZones(["Toate zonele", ...Array.from(new Set([...next, ...DEFAULT_ZONES]))])
       })
-  }, [initialProperties.length])
+      .catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     const syncSelection = () => {
@@ -101,23 +120,38 @@ export default function ProprietatiSection({
     return subscribeClientPreferences(syncSelection)
   }, [])
 
-  const filtered = useMemo(() => {
-    const text = query.trim().toLowerCase()
+  useEffect(() => {
+    if (!didHydrate.current) {
+      didHydrate.current = true
+      setLoading(false)
+      return
+    }
 
-    return proprietati
-      .filter((p) => {
-        if (filtruTip !== "toate" && p.type !== filtruTip) return false
-        if (filtruZona !== "Toate zonele" && p.city !== filtruZona) return false
-        if (filtruCamere > 0 && p.rooms < filtruCamere) return false
-        if (pretMax > 0 && p.price > pretMax) return false
-        if (suprafataMin > 0 && p.area_sqm < suprafataMin) return false
-        if (doarFeatured && !p.featured) return false
-        if (text) {
-          const searchable = [p.title, p.city, p.county, p.address, p.description].filter(Boolean).join(" ").toLowerCase()
-          if (!searchable.includes(text)) return false
-        }
-        return true
-      })
+    const controller = new AbortController()
+    const timeout = window.setTimeout(async () => {
+      setLoading(true)
+      setError("")
+      setPage(1)
+      try {
+        const data = await fetchProperties(1, controller.signal)
+        setProprietati(data.properties || [])
+        setTotal(Number(data.total || 0))
+        setHasMore(Boolean(data.hasMore))
+      } catch (err: any) {
+        if (err?.name !== "AbortError") setError(err?.message || "Nu am putut incarca proprietatile. Incercam din nou in cateva momente.")
+      } finally {
+        setLoading(false)
+      }
+    }, 250)
+
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
+    }
+  }, [query, sort, filtruTip, filtruZona, filtruCamere, pretMax, suprafataMin, doarFeatured])
+
+  const filtered = useMemo(() => {
+    return [...proprietati]
       .sort((a, b) => {
         if (sort === "match") return scoreProperty(b, buyerIntent).score - scoreProperty(a, buyerIntent).score
         if (sort === "priceAsc") return a.price - b.price
@@ -125,7 +159,7 @@ export default function ProprietatiSection({
         if (sort === "areaDesc") return b.area_sqm - a.area_sqm
         return new Date(b.created_at || b.published_at).getTime() - new Date(a.created_at || a.published_at).getTime()
       })
-  }, [proprietati, filtruTip, filtruZona, filtruCamere, pretMax, suprafataMin, doarFeatured, query, sort, buyerIntent])
+  }, [proprietati, sort, buyerIntent])
 
   const scoredFiltered = useMemo(() => filtered.map((property) => ({ property, ...scoreProperty(property, buyerIntent) })), [filtered, buyerIntent])
   const featuredCount = proprietati.filter((p) => p.featured).length
@@ -147,6 +181,42 @@ export default function ProprietatiSection({
     setSuprafataMin(0)
     setDoarFeatured(false)
     setSort("newest")
+  }
+
+  const fetchProperties = async (nextPage: number, signal?: AbortSignal) => {
+    const params = new URLSearchParams({
+      q: query,
+      sort,
+      tip: filtruTip,
+      zone: filtruZona,
+      rooms: String(filtruCamere),
+      maxPrice: String(pretMax),
+      minArea: String(suprafataMin),
+      featured: doarFeatured ? "1" : "0",
+      page: String(nextPage),
+      pageSize: String(initialPageSize),
+    })
+    const res = await fetch(`/api/properties/search?${params.toString()}`, { signal })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(body?.error || "Cautarea proprietatilor a esuat.")
+    return body as { properties: Property[]; total: number; hasMore: boolean }
+  }
+
+  const loadMore = async () => {
+    const nextPage = page + 1
+    setLoading(true)
+    setError("")
+    try {
+      const data = await fetchProperties(nextPage)
+      setProprietati((prev) => [...prev, ...(data.properties || [])])
+      setTotal(Number(data.total || total))
+      setHasMore(Boolean(data.hasMore))
+      setPage(nextPage)
+    } catch (err: any) {
+      setError(err?.message || "Nu am putut incarca urmatoarea pagina.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const applyBuyerIntent = () => {
@@ -173,7 +243,7 @@ export default function ProprietatiSection({
       maxPrice: pretMax,
       minArea: suprafataMin,
       featuredOnly: doarFeatured,
-      results: filtered.length,
+      results: total,
       createdAt: new Date().toISOString(),
     }
     const updated = [next, ...savedSearches.filter((item) => item.label !== next.label)].slice(0, 6)
@@ -227,7 +297,7 @@ export default function ProprietatiSection({
               {Object.entries(SORT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
             <select value={filtruZona} onChange={(e) => setFiltruZona(e.target.value)} className="h-12 border border-bg-surface bg-bg-primary px-3 text-sm font-semibold text-text-primary focus:border-accent focus:outline-none">
-              {ZONE.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+              {zones.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
             </select>
             <button
               onClick={() => setShowFiltre(!showFiltre)}
@@ -316,7 +386,7 @@ export default function ProprietatiSection({
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-semibold text-text-muted">
-            {loading ? "Se incarca proprietatile..." : `${filtered.length} ${filtered.length === 1 ? "rezultat gasit" : "rezultate gasite"}`}
+            {loading && !proprietati.length ? "Se incarca proprietatile..." : `${total} ${total === 1 ? "rezultat gasit" : "rezultate gasite"}`}
           </p>
           {activeFilters && (
             <button onClick={resetFiltre} className="inline-flex items-center gap-2 text-sm font-black text-accent hover:text-text-primary">
@@ -328,14 +398,23 @@ export default function ProprietatiSection({
 
         {error && <div className="mt-5 border border-red-500/30 bg-red-500/10 p-4 text-sm text-text-primary">{error}</div>}
 
-        {loading ? (
+        {loading && !proprietati.length ? (
           <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((item) => <div key={item} className="h-96 animate-pulse border border-bg-surface bg-bg-card" />)}
           </div>
         ) : scoredFiltered.length > 0 ? (
-          <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {scoredFiltered.map(({ property, score, reasons }) => <ProprietateCard key={property.id} proprietate={property} matchScore={score} matchReasons={reasons} />)}
-          </div>
+          <>
+            <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {scoredFiltered.map(({ property, score, reasons }) => <ProprietateCard key={property.id} proprietate={property} matchScore={score} matchReasons={reasons} />)}
+            </div>
+            {hasMore && (
+              <div className="mt-8 text-center">
+                <button onClick={loadMore} disabled={loading} className="rounded-md border border-accent px-6 py-3 text-sm font-black text-accent transition hover:bg-accent hover:text-bg-primary disabled:cursor-wait disabled:opacity-60">
+                  {loading ? "Se incarca..." : "Incarca mai multe"}
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="mt-6 border border-bg-surface bg-bg-card px-6 py-16 text-center shadow-card">
             <h3 className="text-xl font-black text-text-primary">Nu am gasit o potrivire exacta.</h3>

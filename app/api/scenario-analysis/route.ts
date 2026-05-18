@@ -7,7 +7,7 @@ export const runtime = "edge"
 const competitionLevels = ["scazut", "mediu", "ridicat"] as const
 
 export async function POST(request: Request) {
-  const limited = rateLimit(request, "scenario-analysis", 20, 60_000)
+  const limited = await rateLimit(request, "scenario-analysis", 20, 60_000)
   if (limited) return limited
 
   try {

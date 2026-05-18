@@ -7,7 +7,7 @@ import { NextResponse } from "next/server"
 export const runtime = "edge"
 
 export async function GET(request: Request) {
-  const limited = rateLimit(request, "admin-reports", 60, 60_000)
+  const limited = await rateLimit(request, "admin-reports", 60, 60_000)
   if (limited) return limited
 
   const auth = await requireAdminPermissionAsync(request, "reports")

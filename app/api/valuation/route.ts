@@ -6,7 +6,7 @@ import { rateLimit } from "@/lib/rate-limit"
 export const runtime = "edge"
 
 export async function POST(request: Request) {
-  const limited = rateLimit(request, "valuation", 30, 60_000)
+  const limited = await rateLimit(request, "valuation", 30, 60_000)
   if (limited) return limited
 
   try {

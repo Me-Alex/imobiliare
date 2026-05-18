@@ -3,7 +3,7 @@ import Header from "@/components/Header"
 import ProprietatiSection from "@/components/ProprietatiSection"
 import Link from "next/link"
 import { zoneProfiles } from "@/lib/experience"
-import { supabase, type Property } from "@/lib/supabase"
+import { listPropertyFacets, propertyFiltersFromSearchParams, searchPublishedProperties } from "@/lib/property-search"
 
 export const runtime = "edge"
 
@@ -16,22 +16,12 @@ export const revalidate = 60
 
 type SearchParams = Record<string, string | string[] | undefined>
 
-function getSearchValue(searchParams: SearchParams | undefined, key: string) {
-  const value = searchParams?.[key]
-  return Array.isArray(value) ? value[0] : value
-}
-
 export default async function ProprietatiPage({ searchParams }: { searchParams?: SearchParams }) {
-  const { data } = await supabase
-    .from("properties")
-    .select("*")
-    .eq("status", "PUBLISHED")
-    .order("created_at", { ascending: false })
-  const properties = (data || []) as Property[]
-  const query = getSearchValue(searchParams, "q") || ""
-  const zone = getSearchValue(searchParams, "zone") || "Toate zonele"
-  const type = getSearchValue(searchParams, "tip") || "toate"
-  const budget = Number(getSearchValue(searchParams, "budget") || "")
+  const filters = propertyFiltersFromSearchParams(searchParams)
+  const [search, facets] = await Promise.all([
+    searchPublishedProperties(filters),
+    listPropertyFacets(),
+  ])
 
   return (
     <main>
@@ -43,11 +33,19 @@ export default async function ProprietatiPage({ searchParams }: { searchParams?:
         </div>
       </section>
       <ProprietatiSection
-        initialProperties={properties}
-        initialQuery={query}
-        initialZone={zone}
-        initialType={type}
-        initialBudget={Number.isFinite(budget) && budget > 0 ? budget : undefined}
+        initialProperties={search.properties}
+        initialTotal={search.total}
+        initialHasMore={search.hasMore}
+        initialPageSize={search.pageSize}
+        initialQuery={filters.q}
+        initialZone={filters.zone}
+        initialType={filters.type}
+        initialBudget={filters.maxPrice || undefined}
+        initialRooms={filters.rooms}
+        initialMinArea={filters.minArea}
+        initialFeaturedOnly={filters.featuredOnly}
+        initialSort={filters.sort}
+        initialZones={facets.zones}
       />
       <section className="border-t border-bg-surface bg-bg-secondary px-4 py-14">
         <div className="mx-auto max-w-7xl">
