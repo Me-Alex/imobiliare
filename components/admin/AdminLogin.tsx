@@ -3,6 +3,15 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 
+const loginAliases: Record<string, string> = {
+  admin: "admin@hqsimobiliare.ro",
+}
+
+function resolveLoginIdentifier(value: string) {
+  const identifier = value.trim().toLowerCase()
+  return loginAliases[identifier] || identifier
+}
+
 export default function AdminLogin() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -22,13 +31,14 @@ export default function AdminLogin() {
     setError("")
     setMessage("")
     try {
+      const loginEmail = resolveLoginIdentifier(email)
       if (mode === "reset") {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/admin/login` })
+        const { error } = await supabase.auth.resetPasswordForEmail(loginEmail, { redirectTo: `${window.location.origin}/admin/login` })
         if (error) throw error
         setMessage("Emailul de resetare a fost trimis.")
         return
       }
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password })
       if (error) throw error
       const token = data.session?.access_token
       if (!token) throw new Error("Sesiunea Supabase nu a fost creata.")
@@ -59,9 +69,9 @@ export default function AdminLogin() {
             <button onClick={() => setMode("login")} className={`rounded-lg px-4 py-2 text-sm font-black ${mode === "login" ? "bg-accent text-bg-primary" : "bg-bg-secondary text-text-muted"}`}>Login</button>
             <button onClick={() => setMode("reset")} className={`rounded-lg px-4 py-2 text-sm font-black ${mode === "reset" ? "bg-accent text-bg-primary" : "bg-bg-secondary text-text-muted"}`}>Reset</button>
           </div>
-          <label className="block"><span className="mb-2 block text-xs font-black uppercase text-text-muted">Email admin</span><input className="form-input" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin@hqsimobiliare.ro" /></label>
-          {mode === "login" && <label className="mt-4 block"><span className="mb-2 block text-xs font-black uppercase text-text-muted">Parola</span><input className="form-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="minim 8 caractere" /></label>}
-          <button disabled={busy || !email || (mode === "login" && password.length < 8)} onClick={submit} className="mt-6 h-12 w-full rounded-lg bg-accent px-4 text-sm font-black text-bg-primary disabled:opacity-50">{busy ? "Se proceseaza..." : mode === "login" ? "Intra in admin" : "Trimite resetare"}</button>
+          <label className="block"><span className="mb-2 block text-xs font-black uppercase text-text-muted">Email sau username admin</span><input className="form-input" type="text" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin" /></label>
+          {mode === "login" && <label className="mt-4 block"><span className="mb-2 block text-xs font-black uppercase text-text-muted">Parola</span><input className="form-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="parola admin" /></label>}
+          <button disabled={busy || !email.trim() || (mode === "login" && password.length < 1)} onClick={submit} className="mt-6 h-12 w-full rounded-lg bg-accent px-4 text-sm font-black text-bg-primary disabled:opacity-50">{busy ? "Se proceseaza..." : mode === "login" ? "Intra in admin" : "Trimite resetare"}</button>
           {error && <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm font-bold text-rose-500">{error}</p>}
           {message && <p className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm font-bold text-emerald-500">{message}</p>}
         </section>
