@@ -6,6 +6,7 @@ import {
   sendResendEmail,
   sendTwilioSms,
 } from "@/lib/admin-integrations"
+import { getEnv } from "@/lib/admin-api"
 
 type SupabaseLike = any
 type Row = Record<string, any>
@@ -184,10 +185,11 @@ async function executeProviderJob(job: Row) {
 
   if (job.action === "calendar_sync") {
     return createGoogleCalendarEvent({
+      appointmentId: request.appointment_id || request.id || job.entity_id,
       summary: request.summary || "Vizionare HQS",
       description: request.description || request.notes,
-      start: request.start || request.starts_at || request.requested_at,
-      end: request.end || request.ends_at || request.end_at,
+      start: request.start || request.start_at || request.starts_at || request.requested_at,
+      end: request.end || request.end_at || request.ends_at,
       attendees: request.attendees || [request.client_email, request.agent_email].filter(Boolean),
       location: request.location || request.address || request.property_title,
     })
@@ -223,6 +225,47 @@ async function markLinkedOutbox(supabase: SupabaseLike, job: Row, status: string
     .from("admin_notification_outbox")
     .update({ status, ...patch, updated_at: nowIso() })
     .eq("id", job.entity_id)
+}
+
+async function queueOperationalAlert(supabase: SupabaseLike, actor: string, failures: Row[]) {
+  const target = getEnv("OPS_ALERT_EMAIL")
+  if (!target || !failures.length) return false
+
+  const recentWindow = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const existing = await supabase
+    .from("admin_notification_outbox")
+    .select("id")
+    .eq("entity", "ops_alert")
+    .gte("created_at", recentWindow)
+    .in("status", ["QUEUED", "PENDING", "RETRYING", "SENT"])
+    .limit(1)
+    .maybeSingle()
+
+  if (existing.data) return false
+
+  const summary = failures
+    .slice(0, 8)
+    .map((job) => `${job.provider || "provider"}:${job.action || "job"} -> ${job.error || job.status || "failed"}`)
+    .join("\n")
+
+  const inserted = await supabase
+    .from("admin_notification_outbox")
+    .insert({
+      channel: "EMAIL",
+      target,
+      subject: `HQS provider job failures: ${failures.length}`,
+      body: `Provider job processing detected ${failures.length} failed job(s).\n\n${summary}`,
+      entity: "ops_alert",
+      entity_id: failures[0]?.id || null,
+      status: "QUEUED",
+      due_at: nowIso(),
+      created_by: actor,
+      updated_at: nowIso(),
+    })
+    .select("id")
+    .maybeSingle()
+
+  return Boolean(inserted.data)
 }
 
 export async function processProviderJobs(options: { supabase: SupabaseLike; actor?: string; limit?: number; maxAttempts?: number }) {
@@ -295,10 +338,13 @@ export async function processProviderJobs(options: { supabase: SupabaseLike; act
     }
   }
 
+  const alertsQueued = await queueOperationalAlert(supabase, actor, failed)
+
   return {
     expiredHeldSlots,
     queuedOutbox: queuedOutbox.length,
     queuedReminders: queuedReminders.length,
+    alertsQueued,
     processed: processed.length,
     failed: failed.length,
     skipped: skipped.length,

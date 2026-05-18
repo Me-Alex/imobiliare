@@ -10,6 +10,7 @@ type OwnerData = {
   properties: Row[]
   reports: Row[]
   documents: Row[]
+  feedback: Row[]
   leads: Row[]
   appointments: Row[]
   offers: Row[]
@@ -23,6 +24,9 @@ export default function OwnerPortal() {
   const [data, setData] = useState<OwnerData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [feedbackBusy, setFeedbackBusy] = useState(false)
+  const [feedbackNotice, setFeedbackNotice] = useState("")
+  const [feedbackForm, setFeedbackForm] = useState<Row>({ property_id: "", rating: 5, category: "GENERAL", message: "" })
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -48,6 +52,30 @@ export default function OwnerPortal() {
     }
   }
 
+  async function submitFeedback() {
+    const propertyId = feedbackForm.property_id || data?.properties?.[0]?.id || ""
+    if (!propertyId || !feedbackForm.message) return
+    setFeedbackBusy(true)
+    setError("")
+    setFeedbackNotice("")
+    try {
+      const res = await fetch("/api/owner/feedback", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...feedbackForm, property_id: propertyId }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || "Feedback-ul nu a fost salvat.")
+      setFeedbackNotice("Feedback trimis catre echipa HQS.")
+      setFeedbackForm({ property_id: propertyId, rating: 5, category: "GENERAL", message: "" })
+      await load(token)
+    } catch (err: any) {
+      setError(err?.message || "Feedback-ul nu a fost salvat.")
+    } finally {
+      setFeedbackBusy(false)
+    }
+  }
+
   if (!token) return <PortalAuthGateway redirectTo="/owner" onAuthenticated={(accessToken) => { setToken(accessToken); void load(accessToken) }} />
   if (loading) return <section className="px-4 py-16"><div className="mx-auto max-w-7xl rounded-lg border border-bg-surface bg-bg-card p-8 font-black">Se incarca portalul proprietar...</div></section>
 
@@ -64,6 +92,7 @@ export default function OwnerPortal() {
         </div>
 
         {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm font-bold text-red-500">{error}</div>}
+        {feedbackNotice && <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm font-bold text-emerald-600">{feedbackNotice}</div>}
 
         <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
           <Metric label="Proprietati" value={data?.totals?.properties || data?.properties.length || 0} />
@@ -112,6 +141,21 @@ export default function OwnerPortal() {
         <Panel title="Documente si mandate">
           {(data?.documents || []).length ? data?.documents.map((doc) => <div key={doc.id} className="border-t border-bg-surface py-4 first:border-t-0 first:pt-0"><p className="font-black text-text-primary">{doc.title}</p><p className="mt-1 text-sm text-text-muted">{doc.status || "DRAFT"} - {doc.docusign_envelope_id || doc.file_url || "document privat"}</p></div>) : <Empty text="Nu exista documente asociate." />}
         </Panel>
+
+        <div className="grid gap-6 xl:grid-cols-[.8fr_1.2fr]">
+          <Panel title="Feedback catre HQS">
+            <div className="space-y-3">
+              <label className="block text-xs font-black uppercase text-text-muted">Proprietate<select className="mt-2 w-full rounded-lg border border-bg-surface bg-bg-secondary px-3 py-3 text-sm text-text-primary" value={feedbackForm.property_id || data?.properties?.[0]?.id || ""} onChange={(event) => setFeedbackForm({ ...feedbackForm, property_id: event.target.value })}>{(data?.properties || []).map((property) => <option key={property.id} value={property.id}>{property.title}</option>)}</select></label>
+              <label className="block text-xs font-black uppercase text-text-muted">Rating<select className="mt-2 w-full rounded-lg border border-bg-surface bg-bg-secondary px-3 py-3 text-sm text-text-primary" value={feedbackForm.rating || 5} onChange={(event) => setFeedbackForm({ ...feedbackForm, rating: Number(event.target.value) })}>{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating}/5</option>)}</select></label>
+              <label className="block text-xs font-black uppercase text-text-muted">Categorie<input className="mt-2 w-full rounded-lg border border-bg-surface bg-bg-secondary px-3 py-3 text-sm text-text-primary" value={feedbackForm.category || ""} onChange={(event) => setFeedbackForm({ ...feedbackForm, category: event.target.value })} /></label>
+              <label className="block text-xs font-black uppercase text-text-muted">Mesaj<textarea className="mt-2 min-h-32 w-full rounded-lg border border-bg-surface bg-bg-secondary px-3 py-3 text-sm text-text-primary" value={feedbackForm.message || ""} onChange={(event) => setFeedbackForm({ ...feedbackForm, message: event.target.value })} /></label>
+              <button className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary disabled:opacity-50" type="button" disabled={feedbackBusy || !feedbackForm.message || !(data?.properties || []).length} onClick={submitFeedback}>{feedbackBusy ? "Se trimite..." : "Trimite feedback"}</button>
+            </div>
+          </Panel>
+          <Panel title="Feedback trimis">
+            {(data?.feedback || []).length ? data?.feedback.map((item) => <div key={item.id} className="border-t border-bg-surface py-4 first:border-t-0 first:pt-0"><p className="font-black text-text-primary">{item.category || "GENERAL"} - {item.rating || 5}/5</p><p className="mt-1 text-sm text-text-muted">{item.message}</p><p className="mt-2 text-xs font-black uppercase text-accent">{item.status || "NEW"} - {date(item.created_at)}</p></div>) : <Empty text="Nu exista feedback trimis." />}
+          </Panel>
+        </div>
       </div>
     </section>
   )

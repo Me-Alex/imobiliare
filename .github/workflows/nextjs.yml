@@ -12,6 +12,9 @@ concurrency:
   group: "cloudflare-build"
   cancel-in-progress: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -38,7 +41,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: ${{ steps.detect-package-manager.outputs.manager }}
       - name: Restore cache
         uses: actions/cache@v4
@@ -65,5 +68,14 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Public E2E smoke
         run: npm run test:e2e:public
+      - name: Authenticated E2E smoke
+        env:
+          PLAYWRIGHT_ADMIN_USER: ${{ secrets.PLAYWRIGHT_ADMIN_USER }}
+          PLAYWRIGHT_ADMIN_PASSWORD: ${{ secrets.PLAYWRIGHT_ADMIN_PASSWORD }}
+          PLAYWRIGHT_CLIENT_EMAIL: ${{ secrets.PLAYWRIGHT_CLIENT_EMAIL }}
+          PLAYWRIGHT_CLIENT_PASSWORD: ${{ secrets.PLAYWRIGHT_CLIENT_PASSWORD }}
+          PLAYWRIGHT_OWNER_EMAIL: ${{ secrets.PLAYWRIGHT_OWNER_EMAIL }}
+          PLAYWRIGHT_OWNER_PASSWORD: ${{ secrets.PLAYWRIGHT_OWNER_PASSWORD }}
+        run: npm run test:e2e:auth
       - name: Build Cloudflare Worker bundle
         run: npm run cloudflare:build

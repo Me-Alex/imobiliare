@@ -10,12 +10,13 @@ export async function GET(request: Request) {
     if ("error" in session) return NextResponse.json({ error: "Autentificare proprietar necesara" }, { status: 401 })
     const email = String(session.user.email || "").toLowerCase()
     const supabase = session.supabase
-    const [properties, reports, docs] = await Promise.all([
+    const [properties, reports, docs, feedback] = await Promise.all([
       supabase.from("properties").select("id,title,slug,status,price,currency,city,updated_at,published_at,featured,cover_image_url").eq("owner_email", email).order("updated_at", { ascending: false }),
       supabase.from("owner_reports").select("*").eq("owner_email", email).order("created_at", { ascending: false }),
       supabase.from("admin_document_versions").select("*").eq("signer_email", email).order("created_at", { ascending: false }),
+      supabase.from("owner_feedback").select("*").eq("owner_email", email).order("created_at", { ascending: false }),
     ])
-    const firstError = [properties.error, reports.error, docs.error].find(Boolean)
+    const firstError = [properties.error, reports.error, docs.error, feedback.error].find(Boolean)
     if (firstError) return jsonError(firstError.message, 400)
 
     const propertyRows = Array.isArray(properties.data) ? properties.data : []
@@ -58,6 +59,7 @@ export async function GET(request: Request) {
       properties: propertyRows,
       reports: reports.data || [],
       documents: docs.data || [],
+      feedback: feedback.data || [],
       leads: leadRows,
       appointments: appointmentRows,
       offers: offerRows,

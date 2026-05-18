@@ -97,6 +97,7 @@ export default function AdminCommandCenter() {
     invoices: (platform.admin_invoices || []).filter((row: Row) => matches(row, query)),
     commissions: (platform.admin_commissions || []).filter((row: Row) => matches(row, query)),
     ownerReports: (platform.owner_reports || []).filter((row: Row) => matches(row, query)),
+    ownerFeedback: (platform.owner_feedback || []).filter((row: Row) => matches(row, query)),
     attribution: (platform.analytics_attribution || []).filter((row: Row) => matches(row, query)),
     rateLimits: (platform.rate_limits || []).filter((row: Row) => matches(row, query)),
   }), [core, modules, platform, query])

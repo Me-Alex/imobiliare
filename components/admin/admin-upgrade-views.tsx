@@ -69,7 +69,11 @@ export function CalendarOpsView({ filtered, reload }: any) {
     setBusy(true)
     try { await apiJson("/api/admin/calendar/sync", { method: "POST", body: JSON.stringify(form) }); await reload() } finally { setBusy(false) }
   }
-  return <div className="space-y-6"><Title title="Calendar sync" subtitle="Google Calendar event creation for tours and agent availability." /><div className="grid gap-5 xl:grid-cols-[380px_1fr]"><Panel><Title compact title="Sync event" /><Grid columns={1}><label className="block text-xs font-bold uppercase text-text-muted">appointment<select className="form-input mt-2" value={form.appointment_id} onChange={(event) => setForm({ ...form, appointment_id: event.target.value })}><option value="">Manual event</option>{filtered.appointments.map((appointment: Row) => <option key={appointment.id} value={appointment.id}>{appointment.client_name || appointment.client_email || appointment.id} - {date(appointment.requested_at || appointment.start_at, true)}</option>)}</select></label>{["summary", "start", "end", "client_email", "agent_email"].map((key) => <Field key={key} label={key} value={String(form[key] || "")} onChange={(value) => setForm({ ...form, [key]: value })} />)}</Grid><Button className="mt-4 w-full" disabled={busy || (!form.appointment_id && !form.start)} onClick={sync}>{busy ? "Sync..." : "Create Google event"}</Button></Panel><Panel tight><Table heads={["Client", "Data", "Status", "Agent"]} rows={filtered.appointments} empty="Nu exista programari." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td><p className="font-black">{row.client_name || row.client_email}</p><p className="text-xs text-text-muted">{row.property_title || row.id}</p></Td><Td>{date(row.requested_at || row.start_at || row.starts_at, true)}</Td><Td><Badge>{row.status || "REQUESTED"}</Badge></Td><Td>{row.agent_email || "-"}</Td></tr>} /></Panel></div></div>
+  const importEvents = async () => {
+    setBusy(true)
+    try { await apiJson("/api/admin/calendar/import", { method: "POST", body: JSON.stringify({}) }); await reload() } finally { setBusy(false) }
+  }
+  return <div className="space-y-6"><Title title="Calendar sync" subtitle="Google Calendar event creation, import/backfill and appointment reconciliation." action={<Button disabled={busy} onClick={importEvents}>{busy ? "Working..." : "Import Google events"}</Button>} /><div className="grid gap-5 xl:grid-cols-[380px_1fr]"><Panel><Title compact title="Sync event" /><Grid columns={1}><label className="block text-xs font-bold uppercase text-text-muted">appointment<select className="form-input mt-2" value={form.appointment_id} onChange={(event) => setForm({ ...form, appointment_id: event.target.value })}><option value="">Manual event</option>{filtered.appointments.map((appointment: Row) => <option key={appointment.id} value={appointment.id}>{appointment.client_name || appointment.client_email || appointment.id} - {date(appointment.requested_at || appointment.start_at, true)}</option>)}</select></label>{["summary", "start", "end", "client_email", "agent_email"].map((key) => <Field key={key} label={key} value={String(form[key] || "")} onChange={(value) => setForm({ ...form, [key]: value })} />)}</Grid><Button className="mt-4 w-full" disabled={busy || (!form.appointment_id && !form.start)} onClick={sync}>{busy ? "Sync..." : "Create Google event"}</Button></Panel><Panel tight><Table heads={["Client", "Data", "Status", "Agent"]} rows={filtered.appointments} empty="Nu exista programari." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td><p className="font-black">{row.client_name || row.client_email}</p><p className="text-xs text-text-muted">{row.property_title || row.id}</p></Td><Td>{date(row.requested_at || row.start_at || row.starts_at, true)}</Td><Td><Badge>{row.status || "REQUESTED"}</Badge></Td><Td>{row.agent_email || "-"}</Td></tr>} /></Panel></div></div>
 }
 
 export function AccountingView({ filtered, platform, reload }: any) {
@@ -150,7 +154,8 @@ function parseCsvLine(line: string) {
 
 export function OwnerPortalAdminView({ filtered, platform, saving, saveModule, deleteModule, reload }: any) {
   const reports = rows(platform.owner_reports)
-  return <div className="space-y-6"><Title title="Owner portal" subtitle="Seller/owner records, owner-facing property reports and mandate status." /><div className="grid gap-5 xl:grid-cols-2"><ModuleEditor type="owners" title="Owners" fields={["name", "phone", "email", "type", "status", "notes"]} rows={filtered.owners} defaults={{ type: "PRIVATE", status: "ACTIVE" }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} /><ActionPanel title="Owner report" fields={["owner_email", "property_id", "title", "summary", "status", "period_start", "period_end"]} defaults={{ status: "PUBLISHED" }} saving={saving === "owner-report"} onSubmit={(payload) => apiJson("/api/admin/owner-reports", { method: "POST", body: JSON.stringify(payload) }).then(() => reload())} /></div><Panel tight><Table heads={["Owner", "Report", "Status", "Created"]} rows={reports} empty="Nu exista rapoarte proprietar." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td>{row.owner_email}</Td><Td>{row.title}</Td><Td><Badge>{row.status}</Badge></Td><Td>{date(row.created_at)}</Td></tr>} /></Panel></div>
+  const feedback = rows(platform.owner_feedback)
+  return <div className="space-y-6"><Title title="Owner portal" subtitle="Seller/owner records, owner-facing property reports, feedback and mandate status." /><div className="grid gap-5 xl:grid-cols-2"><ModuleEditor type="owners" title="Owners" fields={["name", "phone", "email", "type", "status", "notes"]} rows={filtered.owners} defaults={{ type: "PRIVATE", status: "ACTIVE" }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} /><ActionPanel title="Owner report" fields={["owner_email", "property_id", "title", "summary", "status", "period_start", "period_end"]} defaults={{ status: "PUBLISHED" }} saving={saving === "owner-report"} onSubmit={(payload) => apiJson("/api/admin/owner-reports", { method: "POST", body: JSON.stringify(payload) }).then(() => reload())} /></div><div className="grid gap-5 xl:grid-cols-2"><Panel tight><Table heads={["Owner", "Report", "Status", "Created"]} rows={reports} empty="Nu exista rapoarte proprietar." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td>{row.owner_email}</Td><Td>{row.title}</Td><Td><Badge>{row.status}</Badge></Td><Td>{date(row.created_at)}</Td></tr>} /></Panel><Panel tight><Table heads={["Owner", "Rating", "Status", "Message"]} rows={feedback} empty="Nu exista feedback de la proprietari." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td><p className="font-black">{row.owner_email}</p><p className="text-xs text-text-muted">{row.property_id}</p></Td><Td>{row.rating || 5}/5</Td><Td><Badge>{row.status || "NEW"}</Badge></Td><Td><p className="max-w-md truncate">{row.message || "-"}</p></Td></tr>} /></Panel></div></div>
 }
 
 export function AnalyticsOpsView({ core, platform }: any) {
@@ -167,11 +172,22 @@ export function AnalyticsOpsView({ core, platform }: any) {
 export function MarketDataView({ platform, reload }: any) {
   const rowsData = rows(platform.market_data)
   const [draft, setDraft] = useState<Row>({ zone: "Pipera", avg_price: 2190, rent_yield: 5.6, liquidity: 82, growth: 8.4, risk: "mediu", poi: "scoli private, birouri", source: "admin", status: "ACTIVE" })
+  const [csvText, setCsvText] = useState("zone,avg_price,rent_yield,liquidity,growth,risk,poi,source,status\nPipera,2190,5.6,82,8.4,mediu,\"scoli private, birouri\",admin,ACTIVE")
   const [busy, setBusy] = useState(false)
   const save = async () => {
     setBusy(true)
     try {
       await apiJson("/api/admin/market-data", { method: "POST", body: JSON.stringify(draft) })
+      await reload()
+    } finally {
+      setBusy(false)
+    }
+  }
+  const importCsv = async () => {
+    const data = parseCsvRows(csvText)
+    setBusy(true)
+    try {
+      await apiJson("/api/admin/market-data", { method: "POST", body: JSON.stringify({ rows: data }) })
       await reload()
     } finally {
       setBusy(false)
@@ -202,6 +218,11 @@ export function MarketDataView({ platform, reload }: any) {
           )} />
         </Panel>
       </div>
+      <Panel>
+        <Title compact title="Import CSV market data" subtitle="Header: zone, avg_price, rent_yield, liquidity, growth, risk, poi, source, status." />
+        <textarea className="form-input mt-4 min-h-44 font-mono text-xs" value={csvText} onChange={(event) => setCsvText(event.target.value)} />
+        <Button className="mt-4" disabled={busy || !csvText.includes("\n")} onClick={importCsv}>{busy ? "Importing..." : "Import / update zones"}</Button>
+      </Panel>
     </div>
   )
 }

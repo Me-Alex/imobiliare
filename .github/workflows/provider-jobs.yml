@@ -1,0 +1,34 @@
+name: Process provider jobs
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger provider job processor
+        env:
+          PROVIDER_CRON_SECRET: ${{ secrets.PROVIDER_CRON_SECRET }}
+          PROVIDER_JOBS_URL: ${{ vars.PROVIDER_JOBS_URL }}
+        run: |
+          if [ -z "$PROVIDER_CRON_SECRET" ]; then
+            echo "::warning::PROVIDER_CRON_SECRET is not configured; skipping provider job processing."
+            exit 0
+          fi
+
+          url="${PROVIDER_JOBS_URL:-https://hqsimobiliare.ro/api/admin/provider-jobs/process}"
+          curl --fail-with-body \
+            --request POST \
+            --header "Authorization: Bearer ${PROVIDER_CRON_SECRET}" \
+            --header "Content-Type: application/json" \
+            --data '{"limit":25,"max_attempts":5}' \
+            "$url"

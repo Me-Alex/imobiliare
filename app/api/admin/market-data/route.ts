@@ -28,6 +28,31 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json().catch(() => ({}))
+    if (Array.isArray(body.rows)) {
+      const normalized = body.rows
+        .map((item: Record<string, any>) => normalizeMarketDataPayload(item || {}))
+        .filter((item: Record<string, any>) => item.zone)
+      if (!normalized.length) return jsonError("Nu exista randuri valide pentru import.", 400)
+
+      const { data, error } = await auth.supabase
+        .from("market_data")
+        .upsert(normalized.map((row: Record<string, any>) => ({ ...row, created_by: auth.session.actor })), { onConflict: "zone" })
+        .select("*")
+
+      if (error) return jsonError(error.message, 400)
+      await Promise.allSettled([
+        auth.supabase.from("admin_audit_log").insert({
+          actor: auth.session.actor,
+          action: "MARKET_DATA_BULK_UPSERTED",
+          entity: "market_data",
+          entity_id: null,
+          details: { count: data?.length || 0 },
+          metadata: { count: data?.length || 0 },
+        }),
+      ])
+      return NextResponse.json({ market_data: data || [], imported: data?.length || 0 })
+    }
+
     const row = normalizeMarketDataPayload(body)
     if (!row.zone) return jsonError("Zona este obligatorie.", 400)
     const { data, error } = await auth.supabase

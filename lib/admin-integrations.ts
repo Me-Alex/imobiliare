@@ -233,7 +233,17 @@ async function getGoogleAccessToken() {
   return String(body.access_token || "")
 }
 
-export async function createGoogleCalendarEvent(input: { summary: string; description?: string; start: string; end: string; attendees?: string[]; location?: string }) {
+type GoogleCalendarEventInput = {
+  appointmentId?: string | null
+  summary: string
+  description?: string
+  start: string
+  end: string
+  attendees?: string[]
+  location?: string
+}
+
+export async function createGoogleCalendarEvent(input: GoogleCalendarEventInput) {
   requireEnv(["GOOGLE_CALENDAR_ID", "GOOGLE_SERVICE_ACCOUNT_EMAIL", "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"])
   const token = await getGoogleAccessToken()
   const calendarId = encodeURIComponent(getEnv("GOOGLE_CALENDAR_ID")!)
@@ -247,7 +257,29 @@ export async function createGoogleCalendarEvent(input: { summary: string; descri
       start: { dateTime: input.start },
       end: { dateTime: input.end },
       attendees: (input.attendees || []).filter(Boolean).map((email) => ({ email })),
+      extendedProperties: input.appointmentId ? { private: { appointment_id: input.appointmentId } } : undefined,
     }),
+  })
+  return parseJsonResponse(response)
+}
+
+export async function listGoogleCalendarEvents(input: { timeMin?: string; timeMax?: string; maxResults?: number; syncToken?: string }) {
+  requireEnv(["GOOGLE_CALENDAR_ID", "GOOGLE_SERVICE_ACCOUNT_EMAIL", "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"])
+  const token = await getGoogleAccessToken()
+  const calendarId = encodeURIComponent(getEnv("GOOGLE_CALENDAR_ID")!)
+  const params = new URLSearchParams()
+  params.set("maxResults", String(Math.min(250, Math.max(1, input.maxResults || 100))))
+  if (input.syncToken) {
+    params.set("syncToken", input.syncToken)
+  } else {
+    params.set("singleEvents", "true")
+    params.set("orderBy", "startTime")
+    if (input.timeMin) params.set("timeMin", input.timeMin)
+    if (input.timeMax) params.set("timeMax", input.timeMax)
+  }
+
+  const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
   })
   return parseJsonResponse(response)
 }

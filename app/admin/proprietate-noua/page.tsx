@@ -1,1 +1,5 @@
-export default function AdminNewPropertyPage() { return <main className="p-6">Proprietate nouă</main> }
+﻿import { redirect } from "next/navigation"
+
+export default function AdminLegacyPage() {
+  redirect("/admin/dashboard")
+}

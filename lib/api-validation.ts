@@ -145,6 +145,13 @@ export const clientNotificationUpdateSchema = z.object({
   path: ["id"],
 })
 
+export const ownerFeedbackSchema = z.object({
+  property_id: requiredText(1, 80),
+  rating: safeInteger(5, 1, 5),
+  category: optionalText(80).default("GENERAL"),
+  message: requiredText(3, 2000),
+})
+
 export const adminMediaUploadSchema = z.object({
   property_id: requiredText(1, 80),
   file_name: requiredText(1, 180),
