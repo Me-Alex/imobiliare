@@ -46,7 +46,8 @@ jobs:
 
           token="$(node -e '
             const [url, key, email, password] = process.argv.slice(1);
-            fetch(`${url.replace(/\\/$/, "")}/auth/v1/token?grant_type=password`, {
+            const baseUrl = url.endsWith("/") ? url.slice(0, -1) : url;
+            fetch(`${baseUrl}/auth/v1/token?grant_type=password`, {
               method: "POST",
               headers: { apikey: key, "Content-Type": "application/json" },
               body: JSON.stringify({ email, password }),
