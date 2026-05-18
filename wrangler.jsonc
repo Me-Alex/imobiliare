@@ -4,7 +4,6 @@
   "pages_build_output_dir": ".vercel/output/static",
   "compatibility_date": "2026-05-17",
   "compatibility_flags": ["nodejs_compat"],
-  "keep_vars": true,
   "vars": {
     "NODE_VERSION": "20",
     "NEXT_TELEMETRY_DISABLED": "1",
