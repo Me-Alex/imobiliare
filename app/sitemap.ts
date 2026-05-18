@@ -7,7 +7,8 @@ export const runtime = "edge"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteConfig.url.replace(/\/$/, "")
-  const routes = ['/', '/proprietati', '/zone', '/despre', '/contact', '/comparare', '/favorite', '/portal']
+  // /comparare si /favorite sunt pagini de stare locala (localStorage) — nu au continut indexabil
+  const routes = ['/', '/proprietati', '/zone', '/despre', '/contact', '/portal']
   const now = new Date()
 
   const { data: properties } = await supabase

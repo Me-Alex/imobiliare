@@ -11,6 +11,7 @@ import OfferSubmissionPanel from "@/components/OfferSubmissionPanel"
 import PropertyDecisionPanel from "@/components/PropertyDecisionPanel"
 import ProprietateCard from "@/components/ProprietateCard"
 import SmartPropertyImage from "@/components/SmartPropertyImage"
+import PropertyGallery from "@/components/PropertyGallery"
 import { supabase, type Property } from "@/lib/supabase"
 import { documentChecklist, estimateMonthlyPayment, zoneProfiles } from "@/lib/experience"
 import { buildOfferDraft, buildViewingSlots, calculateValuation } from "@/lib/complexity"
@@ -125,19 +126,13 @@ export default async function PaginaProprietate({ params }: { params: { slug: st
       <div className="mx-auto max-w-7xl px-4 py-8 md:py-12">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_390px]">
           <div>
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px]">
-              <div className="relative aspect-[16/10] overflow-hidden rounded-3xl border border-bg-surface bg-bg-card shadow-[var(--shadow-card)]">
-                <SmartPropertyImage src={media.cover} fallbackSrc={media.fallbackCover} alt={p.title} fill sizes="(min-width: 1024px) 760px, 100vw" className="object-cover" />
-                <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 to-transparent" />
-              </div>
-              <div className="grid grid-cols-3 gap-3 lg:grid-cols-1">
-                {galerie.slice(0, 3).map((img, i) => (
-                  <div key={img} className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-bg-surface bg-bg-card">
-                    <SmartPropertyImage src={img} fallbackSrc={media.fallbackCover} alt={i === 0 ? p.title : ""} fill sizes="180px" className="object-cover transition-transform duration-500 hover:scale-105" />
-                  </div>
-                ))}
-              </div>
-            </div>
+            <PropertyGallery
+              cover={media.cover}
+              fallbackCover={media.fallbackCover}
+              gallery={galerie}
+              title={p.title}
+              totalCount={galerie.length + 1}
+            />
 
             <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
               <Fact icon={<Ruler className="h-5 w-5" />} label="Suprafata" value={`${p.area_sqm} mp`} />

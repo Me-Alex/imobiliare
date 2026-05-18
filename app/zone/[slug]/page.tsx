@@ -5,6 +5,7 @@ import Footer from "@/components/Footer"
 import ProprietateCard from "@/components/ProprietateCard"
 import ZoneIntelligenceMap from "@/components/ZoneIntelligenceMap"
 import { zoneProfiles } from "@/lib/experience"
+import { siteConfig } from "@/lib/site-config"
 import { supabase } from "@/lib/supabase"
 
 
@@ -37,12 +38,30 @@ export default async function ZoneDetailPage({ params }: { params: { slug: strin
   const headline = cms?.content?.headline || zone.headline
   const description = cms?.content?.body || zone.description
 
+  const siteBase = siteConfig.url.replace(/\/$/, "")
+  const jsonLdBreadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "HQS Imobiliare", item: siteBase },
+      { "@type": "ListItem", position: 2, name: "Zone", item: `${siteBase}/zone` },
+      { "@type": "ListItem", position: 3, name: zone.name, item: `${siteBase}/zone/${zone.slug}` },
+    ],
+  }
+
   return (
     <main>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumb) }} />
       <Header />
       <section className="border-b border-bg-surface bg-bg-secondary px-4 py-16">
         <div className="mx-auto max-w-7xl">
-          <Link href="/zone" className="text-sm font-bold text-accent">Inapoi la zone</Link>
+          <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-1.5 text-xs text-text-muted">
+            <Link href="/" className="hover:text-accent transition-colors">Acasa</Link>
+            <span aria-hidden>/</span>
+            <Link href="/zone" className="hover:text-accent transition-colors">Zone</Link>
+            <span aria-hidden>/</span>
+            <span className="font-semibold text-text-primary">{zone.name}</span>
+          </nav>
           <h1 className="mt-4 text-4xl font-black text-text-primary">{zone.name}</h1>
           <p className="mt-4 max-w-3xl text-text-muted">{description}</p>
           <div className="mt-8 grid gap-4 md:grid-cols-4">
