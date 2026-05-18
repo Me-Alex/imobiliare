@@ -1,8 +1,9 @@
-import { getAdminClient, jsonError } from "@/lib/admin-api"
+import { getAdminClient, getEnv, jsonError } from "@/lib/admin-api"
 import { optionalUuid } from "@/lib/admin-properties"
 import { leadRequestSchema, parseJsonBody } from "@/lib/api-validation"
 import { estimateLeadScore } from "@/lib/experience"
 import { rateLimit } from "@/lib/rate-limit"
+import { supabase as publicSupabase } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
 export const runtime = "edge"
@@ -29,8 +30,7 @@ export async function POST(request: Request) {
       Object.keys(body.context).length ? `Context website: ${JSON.stringify(body.context).slice(0, 1200)}` : "",
     ].filter(Boolean).join("\n")
 
-    const supabase = getAdminClient()
-    const { data, error } = await supabase.from("leads").insert({
+    const row = {
       name: body.name,
       phone: body.phone || body.email || "contact-necompletat",
       email: body.email || null,
@@ -40,7 +40,16 @@ export async function POST(request: Request) {
       property_id: optionalUuid(body.property_id),
       score,
       updated_at: new Date().toISOString(),
-    }).select("*").single()
+    }
+
+    if (!getEnv("SUPABASE_SERVICE_ROLE_KEY")) {
+      const { error } = await publicSupabase.from("leads").insert(row)
+      if (error) return jsonError(error.message, 400)
+      return NextResponse.json({ lead: { status: "created" } }, { status: 201 })
+    }
+
+    const supabase = getAdminClient()
+    const { data, error } = await supabase.from("leads").insert(row).select("*").single()
 
     if (error) return jsonError(error.message, 400)
 

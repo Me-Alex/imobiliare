@@ -1,8 +1,10 @@
 import { spawn } from "node:child_process"
 
 const fallbackPublicEnv = {
-  NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: "cloudflare-pages-build-placeholder",
+  NEXT_PUBLIC_SUPABASE_URL: "https://spmapzhlcwhzfrxuvgxd.supabase.co",
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_24oJXCI0JLY1VyLq_Ls-AA_-tYFf729",
+  NEXT_PUBLIC_SITE_URL: "https://hqsimobiliare.ro",
+  NEXT_PUBLIC_AUTH_REDIRECT_ORIGIN: "https://hqsimobiliare.ro",
 }
 
 const childEnv = { ...process.env }
@@ -21,8 +23,7 @@ childEnv.VERCEL_TELEMETRY_DISABLED ??= "1"
 if (injected.length) {
   console.warn(
     `[HQS] Cloudflare Pages build is missing ${injected.join(", ")}. ` +
-      "Using public build placeholders so static prerender can complete. " +
-      "Configure the real values in Cloudflare Pages for live Supabase features.",
+      "Using committed public production values so static prerender and client bundles stay functional.",
   )
 }
 

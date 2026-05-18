@@ -1,7 +1,8 @@
-import { getAdminClient, jsonError } from "@/lib/admin-api"
+import { getAdminClient, getEnv, jsonError } from "@/lib/admin-api"
 import { normalizeAppointmentPayload } from "@/lib/admin-appointments"
 import { appointmentRequestSchema, parseJsonBody } from "@/lib/api-validation"
 import { rateLimit } from "@/lib/rate-limit"
+import { supabase as publicSupabase } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
 export const runtime = "edge"
@@ -15,6 +16,13 @@ export async function POST(request: Request) {
     if ("error" in parsed) return parsed.error
 
     const payload = normalizeAppointmentPayload(parsed.data)
+
+    if (!getEnv("SUPABASE_SERVICE_ROLE_KEY")) {
+      const { error } = await publicSupabase.from("appointments").insert(payload)
+      if (error) return jsonError(error.message, 400)
+      return NextResponse.json({ appointment: { status: payload.status, requested_at: payload.requested_at } }, { status: 201 })
+    }
+
     const supabase = getAdminClient()
     const { data, error } = await supabase.from("appointments").insert(payload).select("*").single()
     if (error) return jsonError(error.message, 400)

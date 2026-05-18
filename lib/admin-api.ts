@@ -38,7 +38,8 @@ function parseAllowedUsers(value: string | undefined) {
 }
 
 function normalizeRole(value: unknown): AdminSession["role"] {
-  return value === "admin" || value === "manager" || value === "agent" ? value : "agent"
+  const role = String(value || "").toLowerCase()
+  return role === "admin" || role === "manager" || role === "agent" ? role : "agent"
 }
 
 function normalizePermissions(value: unknown) {

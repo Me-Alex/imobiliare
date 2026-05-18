@@ -3,5 +3,14 @@
   "name": "imobiliare2",
   "pages_build_output_dir": ".vercel/output/static",
   "compatibility_date": "2026-05-17",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
+  "keep_vars": true,
+  "vars": {
+    "NODE_VERSION": "20",
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "NEXT_PUBLIC_SITE_URL": "https://hqsimobiliare.ro",
+    "NEXT_PUBLIC_AUTH_REDIRECT_ORIGIN": "https://hqsimobiliare.ro",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://spmapzhlcwhzfrxuvgxd.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_24oJXCI0JLY1VyLq_Ls-AA_-tYFf729"
+  }
 }

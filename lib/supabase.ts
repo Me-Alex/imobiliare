@@ -1,16 +1,30 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-// Env vars citite lazy (la runtime/request), nu la module load time.
-// Cloudflare Pages evalueaza modulele la build fara env vars disponibile.
-// Factory function in loc de Proxy — pastreaza tipurile SupabaseClient intacte.
+// Public Supabase values use static property reads so Next can inline them into
+// client bundles. Dynamic process.env[key] reads stay undefined in the browser.
+const fallbackSupabaseUrl = 'https://spmapzhlcwhzfrxuvgxd.supabase.co'
+const fallbackSupabaseAnonKey = 'sb_publishable_24oJXCI0JLY1VyLq_Ls-AA_-tYFf729'
+
+export const supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL || fallbackSupabaseUrl
+export const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || fallbackSupabaseAnonKey
+
+function cloudflareEnv(key: string) {
+  const contextKey = Symbol.for('__cloudflare-request-context__')
+  const context = (globalThis as typeof globalThis & Record<symbol, { env?: Record<string, string | undefined> } | undefined>)[contextKey]
+  return context?.env?.[key]
+}
 
 function getEnv(key: string): string {
-  const val = (typeof process !== 'undefined' ? process.env[key] : undefined)
+  if (key === 'NEXT_PUBLIC_SUPABASE_URL') return supabaseUrl
+  if (key === 'NEXT_PUBLIC_SUPABASE_ANON_KEY') return supabaseAnonKey
+
+  const val = cloudflareEnv(key)
+    || (typeof process !== 'undefined' ? process.env[key] : undefined)
     || (typeof globalThis !== 'undefined' ? (globalThis as Record<string, unknown>)[key] as string : undefined)
   if (!val) {
     throw new Error(
       `[HQS] Variabila de mediu ${key} este obligatorie.\n` +
-      'Seteaz-o in Cloudflare Pages → Settings → Environment Variables.'
+      'Seteaz-o in Cloudflare Pages -> Settings -> Environment Variables.'
     )
   }
   return val
@@ -24,11 +38,6 @@ export function getSupabaseAnonKey(): string {
   return getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 }
 
-// Compatibilitate backward pentru cod care importa { supabaseUrl, supabaseAnonKey }
-export const supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-export const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
-
-// Lazy singleton — creat la primul apel, nu la module evaluation
 let _client: SupabaseClient | undefined
 
 export function getSupabaseClient(): SupabaseClient {
@@ -38,9 +47,8 @@ export function getSupabaseClient(): SupabaseClient {
   return _client
 }
 
-// `supabase` export — functie lazy cu tipuri corecte, compatibil cu tot codul existent
-// Folosit ca: supabase.from(...).select(...) etc.
-// Implementat ca getter pe un obiect pentru a evita breaking changes la import.
+// Lazy proxy keeps the existing `supabase.from(...)` call sites working while
+// avoiding client creation during module evaluation.
 export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
   get(_t, prop: string | symbol) {
     const client = getSupabaseClient()
