@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { buildPropertyPublishChecklist } from "@/lib/admin-workflows"
-import { appointmentStatuses, confirmRisk, countBy, date, leadStatuses, money, propertyStatuses, propertyTypes, slugify, type Row } from "./admin-shared"
+import { appointmentStatuses, confirmRisk, countBy, date, leadStatuses, money, propertyStatuses, propertyTypeLabel, propertyTypes, slugify, statusLabel, type Row } from "./admin-shared"
 import { Area, Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Recent, Select, SelectField, Table, Td, Title } from "./admin-ui"
 
 export function Overview({ core, modules, platform, report, metrics, setView, exportServer, saving }: any) {
@@ -20,39 +20,39 @@ export function Overview({ core, modules, platform, report, metrics, setView, ex
   return (
     <div className="space-y-6">
       <Kpis cards={[
-        ["Total listings", core.properties.length, `${metrics.published.length} live`, "INV"],
-        ["Occupancy / closed", `${metrics.occupancyRate}%`, `${metrics.occupied.length} sold/rented`, "OCC"],
-        ["Active leads", metrics.activeLeads.length, `${core.leads.length} total CRM`, "CRM"],
-        ["Scheduled tours", metrics.scheduledTours.length, "requested + confirmed", "CAL"],
-        ["Pending contracts", metrics.pendingContracts.length, `${documents.length} documents`, "DOC"],
-        ["Monthly revenue", money(metrics.monthlyRevenue), "payments + advances", "REV"],
-        ["Offer pipeline", money(metrics.pipeline), `${offers.length} offers`, "PIPE"],
-        ["Maintenance", maintenance.length, "open queue", "MNT"],
+        ["Total anunturi", core.properties.length, `${metrics.published.length} live`, "INV"],
+        ["Ocupare / inchise", `${metrics.occupancyRate}%`, `${metrics.occupied.length} vandute/inchiriate`, "OCC"],
+        ["Leaduri active", metrics.activeLeads.length, `${core.leads.length} total CRM`, "CRM"],
+        ["Vizionari programate", metrics.scheduledTours.length, "solicitate + confirmate", "CAL"],
+        ["Contracte in asteptare", metrics.pendingContracts.length, `${documents.length} documente`, "DOC"],
+        ["Venit lunar", money(metrics.monthlyRevenue), "plati + avansuri", "REV"],
+        ["Pipeline oferte", money(metrics.pipeline), `${offers.length} oferte`, "PIPE"],
+        ["Mentenanta", maintenance.length, "coada deschisa", "MNT"],
       ]} />
       <Panel className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ backgroundImage: "linear-gradient(90deg, currentColor 1px, transparent 1px), linear-gradient(currentColor 1px, transparent 1px)", backgroundSize: "42px 42px" }} />
         <div className="relative grid gap-6 xl:grid-cols-[1fr_420px]">
           <div className="max-w-3xl">
-            <p className="text-sm font-black text-accent">Real estate operating system</p>
+            <p className="text-sm font-black text-accent">Sistem operational imobiliar</p>
             <h2 className="mt-4 text-3xl font-black leading-tight md:text-5xl">Admin complet pentru inventar, clienti, tranzactii si operatiuni.</h2>
             <p className="mt-4 max-w-2xl leading-7 text-text-muted">Dashboard-ul centralizeaza proprietati, listinguri, leaduri, tururi, oferte, contracte, plati, mentenanta, documente, marketing, rapoarte, roluri si audit.</p>
             <div className="mt-6 flex flex-wrap gap-2">
-              <Button onClick={() => setView("listings")}>Approve listing</Button>
-              <Button variant="ghost" onClick={() => setView("crm")}>Assign lead</Button>
-              <Button variant="ghost" onClick={() => setView("documents")}>Upload contract</Button>
-              <Button variant="ghost" disabled={saving === "export-json"} onClick={() => exportServer("json")}>Export report</Button>
+              <Button onClick={() => setView("listings")}>Aproba anunt</Button>
+              <Button variant="ghost" onClick={() => setView("crm")}>Aloca lead</Button>
+              <Button variant="ghost" onClick={() => setView("documents")}>Incarca contract</Button>
+              <Button variant="ghost" disabled={saving === "export-json"} onClick={() => exportServer("json")}>Exporta raport</Button>
             </div>
           </div>
           <div className="rounded-xl border border-bg-surface bg-bg-secondary/80 p-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-black">Market map</h3>
-              <Badge>{core.properties.length} assets</Badge>
+              <h3 className="font-black">Harta pietei</h3>
+              <Badge>{core.properties.length} active</Badge>
             </div>
             <div className="mt-4 grid h-56 grid-cols-6 grid-rows-5 gap-2">
               {["Pipera", "Floreasca", "Aviatiei", "Corbeanca", "Baneasa", "Herastrau"].map((zone, index) => (
                 <button key={zone} type="button" onClick={() => setView("properties")} className={`rounded-lg border border-bg-surface p-2 text-left text-xs font-black transition hover:border-accent ${index % 3 === 0 ? "col-span-3 row-span-2 bg-accent/15 text-accent" : index % 2 === 0 ? "col-span-2 bg-bg-card" : "col-span-3 bg-bg-card"}`}>
                   {zone}
-                  <span className="mt-1 block text-[10px] font-bold text-text-muted">{core.properties.filter((row: Row) => String(row.city || "").toLowerCase().includes(zone.toLowerCase())).length || index + 1} listings</span>
+                  <span className="mt-1 block text-[10px] font-bold text-text-muted">{core.properties.filter((row: Row) => String(row.city || "").toLowerCase().includes(zone.toLowerCase())).length || index + 1} anunturi</span>
                 </button>
               ))}
             </div>
@@ -60,16 +60,16 @@ export function Overview({ core, modules, platform, report, metrics, setView, ex
         </div>
       </Panel>
       <div className="grid gap-4 xl:grid-cols-4">
-        <Recent title="Recent inquiries" rows={core.leads.slice(0, 5)} render={(row: Row) => <MiniRow key={row.id} title={row.name || row.phone || "Lead"} meta={row.phone || row.email || "-"} value={row.status} />} />
-        <Recent title="Pending approvals" rows={pendingListings} render={(row: Row) => <MiniRow key={row.id} title={row.title} meta={row.city || row.type} value={row.status} />} />
-        <Recent title="Today's tours" rows={todayTours} render={(row: Row) => <MiniRow key={row.id} title={row.client_name || "Vizionare"} meta={row.property_title || row.client_phone || "-"} value={date(row.requested_at, true)} />} />
-        <Recent title="Documents" rows={pendingDocuments} render={(row: Row) => <MiniRow key={row.id || row.title} title={row.title || row.type || "Document"} meta={row.client_email || row.property || "-"} value={row.status || "PENDING"} />} />
+        <Recent title="Cereri recente" rows={core.leads.slice(0, 5)} render={(row: Row) => <MiniRow key={row.id} title={row.name || row.phone || "Lead"} meta={row.phone || row.email || "-"} value={statusLabel(row.status)} />} />
+        <Recent title="Aprobari in asteptare" rows={pendingListings} render={(row: Row) => <MiniRow key={row.id} title={row.title} meta={row.city || propertyTypeLabel(row.type)} value={statusLabel(row.status)} />} />
+        <Recent title="Vizionarile de azi" rows={todayTours} render={(row: Row) => <MiniRow key={row.id} title={row.client_name || "Vizionare"} meta={row.property_title || row.client_phone || "-"} value={date(row.requested_at, true)} />} />
+        <Recent title="Documente" rows={pendingDocuments} render={(row: Row) => <MiniRow key={row.id || row.title} title={row.title || row.type || "Document"} meta={row.client_email || row.property || "-"} value={statusLabel(row.status || "PENDING")} />} />
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel><BarList title="Funnel leaduri" data={report.funnel || countBy(core.leads, "status")} /></Panel>
         <Panel><BarList title="Oferte si tranzactii" data={report.offerFlow || countBy(offers, "status")} /></Panel>
         <Panel><BarList title="Inventar pe oras" data={report.cityInventory || countBy(core.properties, "city")} /></Panel>
-        <Recent title="Maintenance queue" rows={maintenance} render={(row: Row) => <MiniRow key={row.id || row.title} title={row.title} meta={row.priority || row.entity || "MAINTENANCE"} value={row.status || "OPEN"} />} />
+        <Recent title="Coada mentenanta" rows={maintenance} render={(row: Row) => <MiniRow key={row.id || row.title} title={row.title} meta={statusLabel(row.priority || row.entity || "MAINTENANCE")} value={statusLabel(row.status || "OPEN")} />} />
       </div>
     </div>
   )
@@ -85,10 +85,10 @@ export function CrmView({ filtered, saving, patchLead, followUp, platformAction 
           <Table heads={["Client", "Status", "Scor", "Urmatorul pas", "Actiuni"]} rows={filtered.leads} empty="Nu exista leaduri." render={(lead: Row) => (
             <tr key={lead.id} className="border-t border-bg-surface">
               <Td><p className="font-black">{lead.name || "Lead fara nume"}</p><p className="text-xs text-text-muted">{lead.phone || lead.email || "-"}</p></Td>
-              <Td><Select value={lead.status || "NEW"} onChange={(value) => patchLead(lead, value)} disabled={saving === `lead-${lead.id}`}>{leadStatuses.map((status) => <option key={status}>{status}</option>)}</Select></Td>
+              <Td><Select value={lead.status || "NEW"} onChange={(value) => patchLead(lead, value)} disabled={saving === `lead-${lead.id}`}>{leadStatuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</Select></Td>
               <Td><Badge>{lead.score ?? 0}</Badge></Td>
               <Td>{lead.next_follow_up ? date(lead.next_follow_up, true) : lead.message || "-"}</Td>
-              <Td><Button size="sm" variant="ghost" disabled={saving === `follow-${lead.id}`} onClick={() => followUp(lead)}>Follow-up</Button></Td>
+              <Td><Button size="sm" variant="ghost" disabled={saving === `follow-${lead.id}`} onClick={() => followUp(lead)}>Urmareste</Button></Td>
             </tr>
           )} />
         </Panel>
@@ -100,7 +100,7 @@ export function CrmView({ filtered, saving, patchLead, followUp, platformAction 
       </div>
       <Panel tight>
         <Table heads={["Profil", "Preferinte", "Status", "Creat"]} rows={filtered.clients} empty="Nu exista profiluri client." render={(row: Row) => (
-          <tr key={row.id || row.email} className="border-t border-bg-surface"><Td><p className="font-black">{row.full_name || row.name || "Client"}</p><p className="text-xs text-text-muted">{row.email || row.phone || "-"}</p></Td><Td>{money(row.budget || row.max_budget || 0)} / {row.purpose || "-"}</Td><Td><Badge>{row.status || "ACTIVE"}</Badge></Td><Td>{date(row.created_at)}</Td></tr>
+          <tr key={row.id || row.email} className="border-t border-bg-surface"><Td><p className="font-black">{row.full_name || row.name || "Client"}</p><p className="text-xs text-text-muted">{row.email || row.phone || "-"}</p></Td><Td>{money(row.budget || row.max_budget || 0)} / {row.purpose || "-"}</Td><Td><Badge>{statusLabel(row.status || "ACTIVE")}</Badge></Td><Td>{date(row.created_at)}</Td></tr>
         )} />
       </Panel>
     </div>
@@ -146,45 +146,45 @@ export function PropertiesView({ filtered, saving, patchProperty, deleteProperty
   })
   return (
     <div className="space-y-6">
-      <Title title="Proprietati" subtitle="Editor complet pentru listing, media URLs, SEO, proprietar, agent si publicare." />
+      <Title title="Proprietati" subtitle="Editor complet pentru anunt, URL-uri media, SEO, proprietar, agent si publicare." />
       <Panel tight>
-        <Table heads={["Proprietate", "Pret", "Status", "Featured", "Actiuni"]} rows={filtered.properties} empty="Nu exista proprietati." render={(row: Row) => (
+        <Table heads={["Proprietate", "Pret", "Status", "Promovat", "Actiuni"]} rows={filtered.properties} empty="Nu exista proprietati." render={(row: Row) => (
           <tr key={row.id} className="border-t border-bg-surface">
-            <Td><p className="font-black">{row.title}</p><p className="text-xs text-text-muted">{row.city} / {row.type} / {row.area_sqm} mp</p></Td>
+            <Td><p className="font-black">{row.title}</p><p className="text-xs text-text-muted">{row.city} / {propertyTypeLabel(row.type)} / {row.area_sqm} mp</p></Td>
             <Td>{money(row.price, row.currency || "EUR")}</Td>
-            <Td><Select value={row.status || "DRAFT"} onChange={(value) => publishStatus(row, value)} disabled={saving === `property-${row.id}`}>{propertyStatuses.map((status) => <option key={status}>{status}</option>)}</Select></Td>
-            <Td><Button size="sm" variant="ghost" onClick={() => patchProperty(row, { featured: !row.featured })}>{row.featured ? "Scoate" : "Featured"}</Button></Td>
-            <Td><div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" onClick={() => edit(row)}>Edit</Button><Button size="sm" variant="danger" disabled={saving === `delete-${row.id}`} onClick={() => deleteProperty(row)}>Sterge</Button></div></Td>
+            <Td><Select value={row.status || "DRAFT"} onChange={(value) => publishStatus(row, value)} disabled={saving === `property-${row.id}`}>{propertyStatuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</Select></Td>
+            <Td><Button size="sm" variant="ghost" onClick={() => patchProperty(row, { featured: !row.featured })}>{row.featured ? "Scoate" : "Promoveaza"}</Button></Td>
+            <Td><div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" onClick={() => edit(row)}>Editeaza</Button><Button size="sm" variant="danger" disabled={saving === `delete-${row.id}`} onClick={() => deleteProperty(row)}>Sterge</Button></div></Td>
           </tr>
         )} />
       </Panel>
       <Panel>
-        <Title compact title={draft.id ? "Editare proprietate" : "Proprietate noua"} subtitle="Campurile media pot fi completate manual sau generate prin upload in sectiunea Media." />
+        <Title compact title={draft.id ? "Editare proprietate" : "Proprietate noua"} subtitle="Campurile media pot fi completate manual sau generate prin incarcare in sectiunea Media." />
         <div className="mb-5 rounded-lg border border-bg-surface bg-bg-secondary p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div><p className="font-black">Publish checklist</p><p className="text-sm text-text-muted">{publishChecklist.passed}/{publishChecklist.total} criterii completate. Scor {publishChecklist.score}%.</p></div>
-            <Badge>{publishChecklist.ready ? "READY" : "NEEDS WORK"}</Badge>
+            <div><p className="font-black">Checklist publicare</p><p className="text-sm text-text-muted">{publishChecklist.passed}/{publishChecklist.total} criterii completate. Scor {publishChecklist.score}%.</p></div>
+            <Badge>{publishChecklist.ready ? "GATA" : "INCOMPLET"}</Badge>
           </div>
           <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
             {publishChecklist.checks.map((item) => <div key={item.id} className={`rounded-lg border p-3 text-xs ${item.ok ? "border-emerald-500/30 bg-emerald-500/10" : "border-amber-500/30 bg-amber-500/10"}`}><p className="font-black">{item.ok ? "OK" : "Fix"}: {item.label}</p>{!item.ok && <p className="mt-1 text-text-muted">{item.fix}</p>}</div>)}
           </div>
-          {draft.status === "PUBLISHED" && !publishChecklist.ready && <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm font-bold text-amber-600">Publishing is blocked until the checklist is ready. Save as draft or complete the missing items first.</p>}
+          {draft.status === "PUBLISHED" && !publishChecklist.ready && <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm font-bold text-amber-600">Publicarea este blocata pana cand checklistul este gata. Salveaza ca draft sau completeaza intai elementele lipsa.</p>}
         </div>
         <Grid columns={4}>
           {["title", "slug", "price", "currency", "transaction_type", "city", "county", "address", "area_sqm", "rooms", "bathrooms", "parking_spots", "floor", "year_built", "owner_email", "agent_email", "cover_image_url", "meta_title"].map((key) => <Field key={key} label={key} value={String(draft[key] || "")} onChange={(value) => setDraft({ ...draft, [key]: value })} />)}
-          <SelectField label="type" value={draft.type} onChange={(value) => setDraft({ ...draft, type: value })}>{propertyTypes.map((item) => <option key={item}>{item}</option>)}</SelectField>
-          <SelectField label="status" value={draft.status} onChange={(value) => setDraft({ ...draft, status: value })}>{propertyStatuses.map((item) => <option key={item}>{item}</option>)}</SelectField>
+          <SelectField label="type" value={draft.type} onChange={(value) => setDraft({ ...draft, type: value })}>{propertyTypes.map((item) => <option key={item} value={item}>{propertyTypeLabel(item)}</option>)}</SelectField>
+          <SelectField label="status" value={draft.status} onChange={(value) => setDraft({ ...draft, status: value })}>{propertyStatuses.map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}</SelectField>
         </Grid>
         <Area label="description" value={String(draft.description || "")} onChange={(value) => setDraft({ ...draft, description: value })} />
-        <Area label="amenities CSV" value={String(draft.amenities || "")} onChange={(value) => setDraft({ ...draft, amenities: value })} />
-        <Area label="gallery_urls (one per line)" value={String(draft.gallery_urls || "")} onChange={(value) => setDraft({ ...draft, gallery_urls: value })} />
-        <Area label="floorplan_urls (one per line)" value={String(draft.floorplan_urls || "")} onChange={(value) => setDraft({ ...draft, floorplan_urls: value })} />
+        <Area label="facilitati CSV" value={String(draft.amenities || "")} onChange={(value) => setDraft({ ...draft, amenities: value })} />
+        <Area label="gallery_urls" value={String(draft.gallery_urls || "")} onChange={(value) => setDraft({ ...draft, gallery_urls: value })} />
+        <Area label="floorplan_urls" value={String(draft.floorplan_urls || "")} onChange={(value) => setDraft({ ...draft, floorplan_urls: value })} />
         <Area label="meta_description" value={String(draft.meta_description || "")} onChange={(value) => setDraft({ ...draft, meta_description: value })} />
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button disabled={!draft.title || propertySaving || (draft.status === "PUBLISHED" && !publishChecklist.ready)} onClick={() => saveCurrent(savePayload)}>{draft.id ? "Save current form" : "Create property"}</Button>
-          <Button variant="ghost" disabled={!draft.title || propertySaving} onClick={() => saveCurrent({ ...savePayload, status: "DRAFT" })}>Save draft</Button>
-          <Button disabled={!draft.title || !publishChecklist.ready || propertySaving} onClick={() => saveCurrent({ ...savePayload, status: "PUBLISHED" })}>Publish when ready</Button>
-          <Button variant="ghost" onClick={() => setDraft(blank)}>Reset form</Button>
+          <Button disabled={!draft.title || propertySaving || (draft.status === "PUBLISHED" && !publishChecklist.ready)} onClick={() => saveCurrent(savePayload)}>{draft.id ? "Salveaza formularul" : "Creeaza proprietate"}</Button>
+          <Button variant="ghost" disabled={!draft.title || propertySaving} onClick={() => saveCurrent({ ...savePayload, status: "DRAFT" })}>Salveaza draft</Button>
+          <Button disabled={!draft.title || !publishChecklist.ready || propertySaving} onClick={() => saveCurrent({ ...savePayload, status: "PUBLISHED" })}>Publica atunci cand este gata</Button>
+          <Button variant="ghost" onClick={() => setDraft(blank)}>Reseteaza formularul</Button>
         </div>
       </Panel>
     </div>
@@ -198,7 +198,7 @@ export function AppointmentsView({ filtered, saving, patchAppointment, platformA
       <Title title="Programari" subtitle="Cereri de vizionare, statusuri si sloturi disponibile." />
       <Panel tight>
         <Table heads={["Client", "Proprietate", "Data", "Status", "Actiuni"]} rows={filtered.appointments} empty="Nu exista programari." render={(row: Row) => (
-          <tr key={row.id} className="border-t border-bg-surface"><Td><p className="font-black">{row.client_name}</p><p className="text-xs text-text-muted">{row.client_phone || row.client_email || "-"}</p></Td><Td>{row.property_title || "-"}</Td><Td>{date(row.requested_at, true)}</Td><Td><Badge>{row.status || "REQUESTED"}</Badge></Td><Td><Select value={row.status || "REQUESTED"} onChange={(value) => patchAppointment(row, value)} disabled={saving === `appointment-${row.id}`}>{appointmentStatuses.map((item) => <option key={item}>{item}</option>)}</Select></Td></tr>
+          <tr key={row.id} className="border-t border-bg-surface"><Td><p className="font-black">{row.client_name}</p><p className="text-xs text-text-muted">{row.client_phone || row.client_email || "-"}</p></Td><Td>{row.property_title || "-"}</Td><Td>{date(row.requested_at, true)}</Td><Td><Badge>{statusLabel(row.status || "REQUESTED")}</Badge></Td><Td><Select value={row.status || "REQUESTED"} onChange={(value) => patchAppointment(row, value)} disabled={saving === `appointment-${row.id}`}>{appointmentStatuses.map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}</Select></Td></tr>
         )} />
       </Panel>
       <Panel>
@@ -207,7 +207,7 @@ export function AppointmentsView({ filtered, saving, patchAppointment, platformA
         <Button className="mt-4" disabled={!slot.starts_at || saving === "slot"} onClick={() => platformAction("slot", { type: "appointment_slot", payload: { ...slot, capacity: Number(slot.capacity || 1) } }, "Slot salvat.")}>Salveaza slot</Button>
       </Panel>
       <Panel tight>
-        <Table heads={["Slot", "Agent", "Capacitate", "Status"]} rows={filtered.slots} empty="Nu exista sloturi." render={(row: Row) => <tr key={row.id || row.starts_at} className="border-t border-bg-surface"><Td>{date(row.starts_at, true)} - {date(row.ends_at, true)}</Td><Td>{row.agent_email || "-"}</Td><Td>{row.capacity || 1}</Td><Td><Badge>{row.status || "OPEN"}</Badge></Td></tr>} />
+        <Table heads={["Slot", "Agent", "Capacitate", "Status"]} rows={filtered.slots} empty="Nu exista sloturi." render={(row: Row) => <tr key={row.id || row.starts_at} className="border-t border-bg-surface"><Td>{date(row.starts_at, true)} - {date(row.ends_at, true)}</Td><Td>{row.agent_email || "-"}</Td><Td>{row.capacity || 1}</Td><Td><Badge>{statusLabel(row.status || "OPEN")}</Badge></Td></tr>} />
       </Panel>
     </div>
   )

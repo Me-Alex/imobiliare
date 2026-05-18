@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { date, money, type ModuleType, type Row } from "./admin-shared"
+import { date, money, statusLabel, type ModuleType, type Row } from "./admin-shared"
 import { Area, Badge, Button, Empty, Field, Filter, Grid, Panel, Table, Td, Title } from "./admin-ui"
 
 export function OperationsView({ filtered, saving, saveModule, deleteModule, platformAction }: any) {
@@ -30,7 +30,7 @@ function Documents({ rows, clientRows, saving, saveModule, deleteModule, platfor
       <ModuleEditor type="documents" title="Documente interne" fields={["title", "owner_name", "property", "type", "status", "expires_at", "url", "notes"]} rows={rows} defaults={{ status: "VALID", type: "CONTRACT" }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} />
       <ActionPanel title="Document client" fields={["title", "client_email", "property_title", "status", "expires_at", "notes"]} defaults={{ status: "REQUESTED" }} saving={saving === "client-doc"} onSubmit={(payload) => platformAction("client-doc", { type: "document_status", payload }, "Document client salvat.")} />
       <Panel tight className="xl:col-span-2">
-        <Table heads={["Document", "Status", "Expira", "Detalii"]} rows={clientRows} empty="Nu exista documente client." render={(row: Row) => <tr key={row.id || row.title} className="border-t border-bg-surface"><Td>{row.title || row.type}</Td><Td><Badge>{row.status || "REQUESTED"}</Badge></Td><Td>{date(row.expires_at)}</Td><Td>{row.client_email || row.property_title || "-"}</Td></tr>} />
+        <Table heads={["Document", "Status", "Expira", "Detalii"]} rows={clientRows} empty="Nu exista documente client." render={(row: Row) => <tr key={row.id || row.title} className="border-t border-bg-surface"><Td>{row.title || row.type}</Td><Td><Badge>{statusLabel(row.status || "REQUESTED")}</Badge></Td><Td>{date(row.expires_at)}</Td><Td>{row.client_email || row.property_title || "-"}</Td></tr>} />
       </Panel>
     </div>
   )
@@ -41,7 +41,7 @@ function Offers({ rows, saving, platformAction }: any) {
   return (
     <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
       <Panel tight>
-        <Table heads={["Oferta", "Client", "Valoare", "Status"]} rows={rows} empty="Nu exista oferte." render={(row: Row) => <tr key={row.id} className="border-t border-bg-surface"><Td>{row.property_title || row.property_slug || "-"}</Td><Td>{row.client_name || row.client_email || "-"}</Td><Td>{money(row.offer_price || row.counter_offer || 0)}</Td><Td><Badge>{row.status || "NEW"}</Badge></Td></tr>} />
+        <Table heads={["Oferta", "Client", "Valoare", "Status"]} rows={rows} empty="Nu exista oferte." render={(row: Row) => <tr key={row.id} className="border-t border-bg-surface"><Td>{row.property_title || row.property_slug || "-"}</Td><Td>{row.client_name || row.client_email || "-"}</Td><Td>{money(row.offer_price || row.counter_offer || 0)}</Td><Td><Badge>{statusLabel(row.status || "NEW")}</Badge></Td></tr>} />
       </Panel>
       <Panel>
         <Title compact title="Actualizare oferta" />
@@ -60,10 +60,10 @@ function Notifications({ rows, outbox, saving, saveModule, deleteModule, platfor
       <Panel>
         <Title compact title="Trimite in outbox" />
         <Grid columns={1}>{["target", "subject", "body", "channel", "status"].map((key) => <Field key={key} label={key} value={String(queue[key] || "")} onChange={(value) => setQueue({ ...queue, [key]: value })} />)}</Grid>
-        <Button className="mt-4 w-full" disabled={!queue.target || !queue.subject || saving === "queue"} onClick={() => platformAction("queue", { type: "client_notification", payload: queue }, "Notificare adaugata.")}>Queue notificare</Button>
+        <Button className="mt-4 w-full" disabled={!queue.target || !queue.subject || saving === "queue"} onClick={() => platformAction("queue", { type: "client_notification", payload: queue }, "Notificare adaugata.")}>Adauga notificare in coada</Button>
       </Panel>
       <Panel tight className="xl:col-span-2">
-        <Table heads={["Outbox", "Canal", "Status", "Target"]} rows={outbox} empty="Nu exista notificari in outbox." render={(row: Row) => <tr key={row.id || row.subject} className="border-t border-bg-surface"><Td>{row.subject || row.title}</Td><Td>{row.channel || "email"}</Td><Td><Badge>{row.status || "QUEUED"}</Badge></Td><Td>{row.target || row.client_email || "-"}</Td></tr>} />
+        <Table heads={["Outbox", "Canal", "Status", "Tinta"]} rows={outbox} empty="Nu exista notificari in outbox." render={(row: Row) => <tr key={row.id || row.subject} className="border-t border-bg-surface"><Td>{row.subject || row.title}</Td><Td>{row.channel || "email"}</Td><Td><Badge>{statusLabel(row.status || "QUEUED")}</Badge></Td><Td>{row.target || row.client_email || "-"}</Td></tr>} />
       </Panel>
     </div>
   )
@@ -81,7 +81,7 @@ export function ModuleEditor({ type, title, fields, rows, defaults = {}, saving,
       {fields.includes("body") && <Area label="body" value={String(form.body || "")} onChange={(value) => setForm({ ...form, body: value })} />}
       <Button className="mt-4" disabled={saving === `${type}-save`} onClick={() => saveModule(type, form)}>Salveaza</Button>
       <div className="mt-5 space-y-3">
-        {rows.map((row) => <div key={row.id || row.name || row.title} className="flex items-center justify-between gap-4 rounded-lg border border-bg-surface bg-bg-secondary p-3"><div><p className="font-black">{row.name || row.title || row.subject || row.email || row.id}</p><p className="text-sm text-text-muted">{row.status || row.stage || row.type || row.role || "-"}</p></div>{row.id && <Button size="sm" variant="danger" disabled={saving === `${type}-${row.id}`} onClick={() => deleteModule(type, row.id)}>Sterge</Button>}</div>)}
+        {rows.map((row) => <div key={row.id || row.name || row.title} className="flex items-center justify-between gap-4 rounded-lg border border-bg-surface bg-bg-secondary p-3"><div><p className="font-black">{row.name || row.title || row.subject || row.email || row.id}</p><p className="text-sm text-text-muted">{statusLabel(row.status || row.stage || row.type || row.role || "-")}</p></div>{row.id && <Button size="sm" variant="danger" disabled={saving === `${type}-${row.id}`} onClick={() => deleteModule(type, row.id)}>Sterge</Button>}</div>)}
         {!rows.length && <Empty text="Nu exista intrari." />}
       </div>
     </Panel>

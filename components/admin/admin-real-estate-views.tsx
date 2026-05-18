@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { ActionPanel, ModuleEditor } from "./admin-operations"
-import { apiJson, countBy, date, money, slugify, type ModuleType, type Row } from "./admin-shared"
+import { apiJson, countBy, date, money, slugify, statusLabel, type ModuleType, type Row } from "./admin-shared"
 import { Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Table, Td, Title } from "./admin-ui"
 
 function asRows(value: unknown): Row[] {
@@ -28,7 +28,7 @@ function StatusBadge({ status }: { status?: string }) {
           ? "border-rose-500/30 bg-rose-500/10 text-rose-600"
           : "border-bg-surface bg-bg-secondary"
 
-  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${className}`}>{status || "UNKNOWN"}</span>
+  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${className}`}>{statusLabel(status || "UNKNOWN")}</span>
 }
 
 export function ListingsView({ filtered, saving, patchProperty, createProperty, setView }: any) {
@@ -50,15 +50,15 @@ export function ListingsView({ filtered, saving, patchProperty, createProperty, 
   return (
     <div className="space-y-6">
       <Title
-        title="Listings command"
-        subtitle="Publicare, aprobare, featured inventory si verificari de calitate inainte de promovare."
+        title="Comanda anunturi"
+        subtitle="Publicare, aprobare, inventar promovat si verificari de calitate inainte de promovare."
         action={<Button onClick={() => setView("marketing")}>Marketing</Button>}
       />
       <Kpis cards={[
         ["Publicate", published.length, `${rows.length} total`, "LIVE"],
-        ["In aprobare", pending.length, "draft / sold / rented", "QA"],
-        ["Featured", featured.length, "homepage + campanii", "TOP"],
-        ["Valoare listata", money(published.reduce((sum: number, row: Row) => sum + Number(row.price || 0), 0)), "portfolio live", "EUR"],
+        ["In aprobare", pending.length, "draft / vandut / inchiriat", "QA"],
+        ["Promovate", featured.length, "homepage + campanii", "TOP"],
+        ["Valoare listata", money(published.reduce((sum: number, row: Row) => sum + Number(row.price || 0), 0)), "portofoliu live", "EUR"],
       ]} />
       <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
         <Panel tight>
@@ -80,7 +80,7 @@ export function ListingsView({ filtered, saving, patchProperty, createProperty, 
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" disabled={saving === `property-${row.id}`} onClick={() => patchProperty(row, { status: "PUBLISHED", published_at: new Date().toISOString() })}>Aproba</Button>
                     <Button size="sm" variant="ghost" disabled={saving === `property-${row.id}`} onClick={() => patchProperty(row, { status: "DRAFT" })}>Draft</Button>
-                    <Button size="sm" variant="ghost" disabled={saving === `property-${row.id}`} onClick={() => patchProperty(row, { featured: !row.featured })}>{row.featured ? "Unfeature" : "Feature"}</Button>
+                    <Button size="sm" variant="ghost" disabled={saving === `property-${row.id}`} onClick={() => patchProperty(row, { featured: !row.featured })}>{row.featured ? "Scoate din promovate" : "Promoveaza"}</Button>
                   </div>
                 </Td>
               </tr>
@@ -92,9 +92,9 @@ export function ListingsView({ filtered, saving, patchProperty, createProperty, 
           <Grid columns={1}>
             {["title", "price", "currency", "city", "area_sqm", "rooms"].map((key) => <Field key={key} label={key} value={String(draft[key] || "")} onChange={(value) => setDraft({ ...draft, [key]: value })} />)}
           </Grid>
-          <Button className="mt-4 w-full" disabled={!draft.title || saving === "create-property"} onClick={() => createProperty({ ...draft, slug: slugify(draft.title), price: Number(draft.price || 0), area_sqm: Number(draft.area_sqm || 0), rooms: Number(draft.rooms || 0) })}>Add property draft</Button>
+          <Button className="mt-4 w-full" disabled={!draft.title || saving === "create-property"} onClick={() => createProperty({ ...draft, slug: slugify(draft.title), price: Number(draft.price || 0), area_sqm: Number(draft.area_sqm || 0), rooms: Number(draft.rooms || 0) })}>Adauga proprietate draft</Button>
           <div className="mt-5 space-y-3">
-            {["Fair-housing copy review", "Photo and floor-plan check", "Price and commission check", "Owner mandate attached"].map((item) => <MiniRow key={item} title={item} meta="quality gate" value="required" />)}
+            {["Verificare text anunt echitabil", "Verificare foto si plan", "Verificare pret si comision", "Mandat proprietar atasat"].map((item) => <MiniRow key={item} title={item} meta="filtru calitate" value="obligatoriu" />)}
           </div>
         </Panel>
       </div>
@@ -109,12 +109,12 @@ export function ClientsView({ filtered, saving, platformAction }: any) {
   const offers = asRows(filtered.offers)
   return (
     <div className="space-y-6">
-      <Title title="Clients" subtitle="Cumparatori, chiriasi, proprietari si istoric comercial intr-un singur profil." />
+      <Title title="Clienti" subtitle="Cumparatori, chiriasi, proprietari si istoric comercial intr-un singur profil." />
       <Kpis cards={[
-        ["Profiluri", clients.length, "client portal + CRM", "CL"],
-        ["Leaduri corelate", leads.length, "inquiries", "IN"],
+        ["Profiluri", clients.length, "portal client + CRM", "CL"],
+        ["Leaduri corelate", leads.length, "cereri", "IN"],
         ["Oferte active", offers.filter((row) => !["CLOSED", "REJECTED"].includes(String(row.status || ""))).length, "negocieri", "OF"],
-        ["Buget mediu", money(clients.length ? clients.reduce((sum: number, row: Row) => sum + Number(row.budget || row.max_budget || 0), 0) / clients.length : 0), "client profiles", "EUR"],
+        ["Buget mediu", money(clients.length ? clients.reduce((sum: number, row: Row) => sum + Number(row.budget || row.max_budget || 0), 0) / clients.length : 0), "profiluri client", "EUR"],
       ]} />
       <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
         <Panel tight>
@@ -130,7 +130,7 @@ export function ClientsView({ filtered, saving, platformAction }: any) {
         <Panel>
           <Title compact title="Profil client" subtitle="Creeaza sau actualizeaza datele comerciale." />
           <Grid columns={1}>{["full_name", "email", "phone", "budget", "purpose", "financing_status", "status"].map((key) => <Field key={key} label={key} value={String(client[key] || "")} onChange={(value) => setClient({ ...client, [key]: value })} />)}</Grid>
-          <Button className="mt-4 w-full" disabled={!client.full_name || saving === "client-profile"} onClick={() => platformAction("client-profile", { type: "client_profile", payload: { ...client, budget: Number(client.budget || 0) } }, "Profil client salvat.")}>Save client</Button>
+          <Button className="mt-4 w-full" disabled={!client.full_name || saving === "client-profile"} onClick={() => platformAction("client-profile", { type: "client_profile", payload: { ...client, budget: Number(client.budget || 0) } }, "Profil client salvat.")}>Salveaza client</Button>
         </Panel>
       </div>
     </div>
@@ -143,12 +143,12 @@ export function AgentsView({ filtered, saving, saveModule, deleteModule, platfor
   const slots = asRows(filtered.slots)
   return (
     <div className="space-y-6">
-      <Title title="Agents and teams" subtitle="Agent workload, roles, permissions, schedule capacity and ownership." />
+      <Title title="Agenti si echipe" subtitle="Incarcare agenti, roluri, permisiuni, capacitate programari si ownership." />
       <Kpis cards={[
-        ["Agenti", agents.length, "team users", "AG"],
+        ["Agenti", agents.length, "utilizatori echipa", "AG"],
         ["Roluri admin", roles.length, "RBAC", "RBAC"],
-        ["Sloturi vizionare", slots.length, "capacity", "CAL"],
-        ["Sloturi libere", slots.filter((row) => ["OPEN", "AVAILABLE"].includes(String(row.status || ""))).length, "available", "OK"],
+        ["Sloturi vizionare", slots.length, "capacitate", "CAL"],
+        ["Sloturi libere", slots.filter((row) => ["OPEN", "AVAILABLE"].includes(String(row.status || ""))).length, "disponibile", "OK"],
       ]} />
       <div className="grid gap-5 xl:grid-cols-2">
         <ModuleEditor type="team_users" title="Membri echipa" fields={["name", "email", "role", "status", "notes"]} rows={agents} defaults={{ role: "agent", status: "ACTIVE" }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} />
@@ -167,12 +167,12 @@ export function TransactionsView({ filtered, saving, saveModule, deleteModule, p
   const pipeline = offers.reduce((sum: number, row: Row) => sum + Number(row.counter_offer || row.offer_price || 0), 0)
   return (
     <div className="space-y-6">
-      <Title title="Transactions, offers and payments" subtitle="Pipeline de oferte, contracte, planuri de plata, comisioane si export financiar." action={<Button onClick={() => exportServer("json")}>Export</Button>} />
+      <Title title="Tranzactii, oferte si plati" subtitle="Pipeline de oferte, contracte, planuri de plata, comisioane si export financiar." action={<Button onClick={() => exportServer("json")}>Export</Button>} />
       <Kpis cards={[
         ["Oferte", offers.length, money(pipeline), "OF"],
         ["Contracte", contracts.length, "intern + client", "CT"],
-        ["Planuri plata", plans.length, "deposit / schedule", "PAY"],
-        ["Acceptate", offers.filter((row) => ["ACCEPTED", "CLOSED"].includes(String(row.status || ""))).length, "won", "WIN"],
+        ["Planuri plata", plans.length, "avans / grafic", "PAY"],
+        ["Acceptate", offers.filter((row) => ["ACCEPTED", "CLOSED"].includes(String(row.status || ""))).length, "castigate", "WIN"],
       ]} />
       <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
         <Panel tight>
@@ -182,17 +182,17 @@ export function TransactionsView({ filtered, saving, saveModule, deleteModule, p
               <Td>{row.client_name || row.client_email || row.client_phone || "-"}</Td>
               <Td>{money(row.counter_offer || row.offer_price || 0)}</Td>
               <Td><StatusBadge status={row.status || "SUBMITTED"} /></Td>
-              <Td><Button size="sm" variant="ghost" onClick={() => setOffer({ id: row.id, status: row.status || "NEGOTIATING", counter_offer: row.counter_offer || row.offer_price || "" })}>Edit</Button></Td>
+              <Td><Button size="sm" variant="ghost" onClick={() => setOffer({ id: row.id, status: row.status || "NEGOTIATING", counter_offer: row.counter_offer || row.offer_price || "" })}>Editeaza</Button></Td>
             </tr>
           )} />
         </Panel>
         <Panel>
-          <Title compact title="Update deal" subtitle="Counteroffer, close, reject or move negotiation forward." />
+          <Title compact title="Actualizeaza deal" subtitle="Contraoferta, inchidere, respingere sau mutarea negocierii mai departe." />
           <Grid columns={1}>{["id", "status", "counter_offer"].map((key) => <Field key={key} label={key} value={String(offer[key] || "")} onChange={(value) => setOffer({ ...offer, [key]: value })} />)}</Grid>
-          <Button className="mt-4 w-full" disabled={!offer.id || saving === "offer"} onClick={() => platformAction("offer", { type: "offer_status", payload: offer }, "Oferta actualizata.")}>Save deal</Button>
+          <Button className="mt-4 w-full" disabled={!offer.id || saving === "offer"} onClick={() => platformAction("offer", { type: "offer_status", payload: offer }, "Oferta actualizata.")}>Salveaza deal</Button>
         </Panel>
       </div>
-      <ModuleEditor type="payment_plans" title="Payments and commissions" fields={["name", "property", "total", "advance", "months", "status", "notes"]} rows={plans} defaults={{ status: "DRAFT", months: 12 }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} />
+      <ModuleEditor type="payment_plans" title="Plati si comisioane" fields={["name", "property", "total", "advance", "months", "status", "notes"]} rows={plans} defaults={{ status: "DRAFT", months: 12 }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} />
     </div>
   )
 }
@@ -201,14 +201,14 @@ export function MaintenanceView({ filtered, saving, saveModule, deleteModule }: 
   const tickets = asRows(filtered.maintenance)
   return (
     <div className="space-y-6">
-      <Title title="Maintenance" subtitle="Tichete pentru proprietati, furnizori, prioritati, costuri si SLA." />
+      <Title title="Mentenanta" subtitle="Tichete pentru proprietati, furnizori, prioritati, costuri si SLA." />
       <Kpis cards={[
-        ["Tichete", tickets.length, "maintenance queue", "MT"],
-        ["High priority", tickets.filter((row) => String(row.priority || "").toUpperCase() === "HIGH").length, "urgent", "HI"],
-        ["Deschise", tickets.filter((row) => !["DONE", "CLOSED"].includes(String(row.status || ""))).length, "open", "OP"],
-        ["Scadente", tickets.filter((row) => row.due_at && new Date(row.due_at).getTime() < Date.now()).length, "past due", "DUE"],
+        ["Tichete", tickets.length, "coada mentenanta", "MT"],
+        ["Prioritate ridicata", tickets.filter((row) => String(row.priority || "").toUpperCase() === "HIGH").length, "urgent", "HI"],
+        ["Deschise", tickets.filter((row) => !["DONE", "CLOSED"].includes(String(row.status || ""))).length, "deschise", "OP"],
+        ["Scadente", tickets.filter((row) => row.due_at && new Date(row.due_at).getTime() < Date.now()).length, "depasite", "DUE"],
       ]} />
-      <ModuleEditor type="activities" title="Maintenance ticket" fields={["title", "entity", "status", "priority", "due_at", "notes"]} rows={tickets} defaults={{ entity: "MAINTENANCE", status: "OPEN", priority: "MEDIUM" }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} />
+      <ModuleEditor type="activities" title="Tichet mentenanta" fields={["title", "entity", "status", "priority", "due_at", "notes"]} rows={tickets} defaults={{ entity: "MAINTENANCE", status: "OPEN", priority: "MEDIUM" }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} />
     </div>
   )
 }
@@ -220,24 +220,24 @@ export function DocumentsCenterView({ filtered, saving, saveModule, deleteModule
   const [review, setReview] = useState<Row>({ id: "", status: "APPROVED", notes: "" })
   return (
     <div className="space-y-6">
-      <Title title="Documents" subtitle="Contracte, acte proprietate, dosare clienti, expirari si review." />
+      <Title title="Documente" subtitle="Contracte, acte proprietate, dosare clienti, expirari si verificari." />
       <Kpis cards={[
-        ["Documente interne", docs.length, "contracts + files", "DOC"],
-        ["Documente client", clientDocs.length, "portal uploads", "CL"],
-        ["Pending review", clientDocs.filter((row) => !["APPROVED", "SIGNED"].includes(String(row.status || ""))).length, "needs action", "QA"],
-        ["Expirate", [...docs, ...clientDocs].filter((row) => row.expires_at && new Date(row.expires_at).getTime() < Date.now()).length, "renew", "EXP"],
+        ["Documente interne", docs.length, "contracte + fisiere", "DOC"],
+        ["Documente client", clientDocs.length, "incarcari portal", "CL"],
+        ["In review", clientDocs.filter((row) => !["APPROVED", "SIGNED"].includes(String(row.status || ""))).length, "necesita actiune", "QA"],
+        ["Expirate", [...docs, ...clientDocs].filter((row) => row.expires_at && new Date(row.expires_at).getTime() < Date.now()).length, "reinnoire", "EXP"],
       ]} />
       <div className="grid gap-5 xl:grid-cols-2">
         <ModuleEditor type="documents" title="Document intern" fields={["title", "owner_name", "property", "type", "status", "expires_at", "url", "notes"]} rows={docs} defaults={{ status: "VALID", type: "CONTRACT" }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} />
         <Panel>
-          <Title compact title="Review document client" />
+          <Title compact title="Verifica document client" />
           <Grid columns={1}>{["id", "status", "notes"].map((key) => <Field key={key} label={key} value={String(review[key] || "")} onChange={(value) => setReview({ ...review, [key]: value })} />)}</Grid>
-          <Button className="mt-4 w-full" disabled={!review.id || saving === "client-doc"} onClick={() => platformAction("client-doc", { type: "document_status", payload: review }, "Document client salvat.")}>Save review</Button>
+          <Button className="mt-4 w-full" disabled={!review.id || saving === "client-doc"} onClick={() => platformAction("client-doc", { type: "document_status", payload: review }, "Document client salvat.")}>Salveaza review</Button>
         </Panel>
         <ActionPanel title="DocuSign envelope" fields={["signer_email", "signer_name", "title", "subject", "property_id", "return_url"]} defaults={{ subject: "Contract HQS Imobiliare" }} saving={saving === "docusign"} onSubmit={(payload) => apiJson("/api/admin/docusign/envelopes", { method: "POST", body: JSON.stringify(payload) }).then(() => window.location.reload())} />
       </div>
-      <Panel tight><Table heads={["Envelope", "Signer", "Status", "Created"]} rows={versions} empty="Nu exista versiuni DocuSign." render={(row: Row) => <tr key={row.id || row.docusign_envelope_id} className="border-t border-bg-surface"><Td>{row.docusign_envelope_id || row.title}</Td><Td>{row.signer_email || "-"}</Td><Td><StatusBadge status={row.status || "DRAFT"} /></Td><Td>{date(row.created_at)}</Td></tr>} /></Panel>
-      <Panel tight><Table heads={["Client document", "Status", "Expira", "Detalii"]} rows={clientDocs} empty="Nu exista documente client." render={(row: Row) => <tr key={row.id || row.title} className="border-t border-bg-surface"><Td>{row.title || row.type}</Td><Td><StatusBadge status={row.status || "REQUESTED"} /></Td><Td>{date(row.expires_at)}</Td><Td>{row.client_email || row.property_title || row.id}</Td></tr>} /></Panel>
+      <Panel tight><Table heads={["Plic", "Semnatar", "Status", "Creat"]} rows={versions} empty="Nu exista versiuni DocuSign." render={(row: Row) => <tr key={row.id || row.docusign_envelope_id} className="border-t border-bg-surface"><Td>{row.docusign_envelope_id || row.title}</Td><Td>{row.signer_email || "-"}</Td><Td><StatusBadge status={row.status || "DRAFT"} /></Td><Td>{date(row.created_at)}</Td></tr>} /></Panel>
+      <Panel tight><Table heads={["Document client", "Status", "Expira", "Detalii"]} rows={clientDocs} empty="Nu exista documente client." render={(row: Row) => <tr key={row.id || row.title} className="border-t border-bg-surface"><Td>{row.title || row.type}</Td><Td><StatusBadge status={row.status || "REQUESTED"} /></Td><Td>{date(row.expires_at)}</Td><Td>{row.client_email || row.property_title || row.id}</Td></tr>} /></Panel>
     </div>
   )
 }
@@ -250,16 +250,16 @@ export function MarketingView({ filtered, saving, saveModule, deleteModule, plat
     <div className="space-y-6">
       <Title title="Marketing" subtitle="Campanii, continut, lead source tracking, email/SMS outbox si listing promotion." />
       <Kpis cards={[
-        ["Campanii", campaigns.length, "internal campaigns", "MK"],
-        ["Outbox", outbox.length, "email/SMS queue", "OB"],
+        ["Campanii", campaigns.length, "campanii interne", "MK"],
+        ["Outbox", outbox.length, "coada email/SMS", "OB"],
         ["CMS", cms.length, "landing pages", "CMS"],
-        ["Lead sources", Object.keys(countBy(asRows(filtered.leads), "source")).length, "tracked", "SRC"],
+        ["Surse leaduri", Object.keys(countBy(asRows(filtered.leads), "source")).length, "urmarite", "SRC"],
       ]} />
       <div className="grid gap-5 xl:grid-cols-2">
         <ModuleEditor type="notifications" title="Campanie / mesaj" fields={["title", "body", "channel", "status", "due_at", "target"]} rows={campaigns} defaults={{ channel: "email", status: "DRAFT" }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} />
         <ActionPanel title="Landing / CMS" fields={["slug", "title", "type", "status", "body"]} defaults={{ type: "landing", status: "DRAFT" }} saving={saving === "cms"} onSubmit={(payload) => platformAction("cms", { type: "cms", payload }, "Continut salvat.")} />
       </div>
-      <Panel tight><Table heads={["Outbox", "Canal", "Status", "Target"]} rows={outbox} empty="Nu exista mesaje in outbox." render={(row: Row) => <tr key={row.id || row.subject} className="border-t border-bg-surface"><Td>{row.subject || row.title}</Td><Td>{row.channel || "email"}</Td><Td><StatusBadge status={row.status || "QUEUED"} /></Td><Td>{row.target || row.client_email || "-"}</Td></tr>} /></Panel>
+      <Panel tight><Table heads={["Outbox", "Canal", "Status", "Tinta"]} rows={outbox} empty="Nu exista mesaje in outbox." render={(row: Row) => <tr key={row.id || row.subject} className="border-t border-bg-surface"><Td>{row.subject || row.title}</Td><Td>{row.channel || "email"}</Td><Td><StatusBadge status={row.status || "QUEUED"} /></Td><Td>{row.target || row.client_email || "-"}</Td></tr>} /></Panel>
     </div>
   )
 }
@@ -270,24 +270,24 @@ export function ComplianceView({ filtered, platform, saving, platformAction, set
   const docs = [...asRows(filtered.documents), ...asRows(filtered.clientDocuments)]
   const outbox = asRows(filtered.outbox)
   const checks = [
-    ["Role-based access", roles.length ? "Configured" : "Needs roles", "Users must have scoped permissions, not shared admin access."],
-    ["Fair housing review", "Manual gate", "Marketing and listing copy should describe property features, not protected classes."],
-    ["Customer data safeguards", docs.length ? "Documents tracked" : "Needs document inventory", "Sensitive client files need retention, expiry, and review status."],
-    ["Audit trail", audit.length ? `${audit.length} events` : "No events", "Important admin actions should produce audit records."],
-    ["Notification review", outbox.filter((row) => row.status !== "SENT").length ? "Queued messages" : "Clear", "Outbound housing communication should be reviewable."],
+    ["Acces pe roluri", roles.length ? "Configurat" : "Necesita roluri", "Utilizatorii trebuie sa aiba permisiuni limitate, nu acces admin comun."],
+    ["Review comunicare echitabila", "Filtru manual", "Textele de marketing si anunturile trebuie sa descrie proprietatea, nu clase protejate."],
+    ["Protectie date clienti", docs.length ? "Documente urmarite" : "Necesita inventar documente", "Fisierele sensibile ale clientilor au nevoie de retentie, expirare si status de review."],
+    ["Jurnal audit", audit.length ? `${audit.length} evenimente` : "Fara evenimente", "Actiunile admin importante trebuie sa produca inregistrari de audit."],
+    ["Review notificari", outbox.filter((row) => row.status !== "SENT").length ? "Mesaje in coada" : "Curat", "Comunicarea imobiliara outbound trebuie sa poata fi verificata."],
   ]
   return (
     <div className="space-y-6">
       <Title
-        title="Compliance and security"
-        subtitle="RBAC, audit trail, fair-housing review, customer-data controls and operational safeguards."
-        action={<Button disabled={saving === "audit"} onClick={() => platformAction("audit", { type: "audit_event", payload: { action: "COMPLIANCE_REVIEW", entity: "admin", details: { source: "compliance_view" } } }, "Compliance review logged.")}>Log review</Button>}
+        title="Conformitate si securitate"
+        subtitle="RBAC, audit, review comunicare echitabila, controale pentru datele clientilor si protectii operationale."
+        action={<Button disabled={saving === "audit"} onClick={() => platformAction("audit", { type: "audit_event", payload: { action: "COMPLIANCE_REVIEW", entity: "admin", details: { source: "compliance_view" } } }, "Review conformitate inregistrat.")}>Log review</Button>}
       />
       <Kpis cards={[
-        ["Admin role", platform?._admin?.role || "unknown", "current session", "ID"],
-        ["Permissions", Array.isArray(platform?._admin?.permissions) ? platform._admin.permissions.length : 0, "scoped access", "P"],
-        ["Audit events", audit.length, "traceability", "AUD"],
-        ["Docs needing review", docs.filter((row) => !["APPROVED", "SIGNED", "VALID"].includes(String(row.status || ""))).length, "risk queue", "RISK"],
+        ["Rol admin", platform?._admin?.role || "necunoscut", "sesiune curenta", "ID"],
+        ["Permisiuni", Array.isArray(platform?._admin?.permissions) ? platform._admin.permissions.length : 0, "acces limitat", "P"],
+        ["Evenimente audit", audit.length, "trasabilitate", "AUD"],
+        ["Documente de verificat", docs.filter((row) => !["APPROVED", "SIGNED", "VALID"].includes(String(row.status || ""))).length, "coada risc", "RISK"],
       ]} />
       <div className="grid gap-4 xl:grid-cols-2">
         {checks.map(([title, state, body]) => (
@@ -300,8 +300,8 @@ export function ComplianceView({ filtered, platform, saving, platformAction, set
         ))}
       </div>
       <div className="grid gap-5 xl:grid-cols-3">
-        <Panel><Title compact title="Fast controls" /><div className="space-y-2"><Button className="w-full" variant="ghost" onClick={() => setView("users")}>Review roles</Button><Button className="w-full" variant="ghost" onClick={() => setView("audit")}>Open audit</Button><Button className="w-full" variant="ghost" onClick={() => setView("documents")}>Review documents</Button></div></Panel>
-        <Panel className="xl:col-span-2"><BarList title="Audit by action" data={countBy(audit, "action")} /></Panel>
+        <Panel><Title compact title="Controale rapide" /><div className="space-y-2"><Button className="w-full" variant="ghost" onClick={() => setView("users")}>Verifica roluri</Button><Button className="w-full" variant="ghost" onClick={() => setView("audit")}>Deschide audit</Button><Button className="w-full" variant="ghost" onClick={() => setView("documents")}>Verifica documente</Button></div></Panel>
+        <Panel className="xl:col-span-2"><BarList title="Audit pe actiune" data={countBy(audit, "action")} /></Panel>
       </div>
     </div>
   )

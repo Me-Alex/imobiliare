@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { countBy, date, defaultModules, money, type Row } from "./admin-shared"
+import { countBy, date, defaultModules, money, statusLabel, type Row } from "./admin-shared"
 import { ActionPanel, ModuleEditor } from "./admin-operations"
 import { Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Result, Table, Td, Title } from "./admin-ui"
 
@@ -10,10 +10,10 @@ export function ContentView({ filtered, saving, platformAction }: any) {
     <div className="space-y-6">
       <Title title="Continut" subtitle="CMS, pagini, SEO si puncte de interes pentru zone." />
       <div className="grid gap-5 xl:grid-cols-2">
-        <ActionPanel title="CMS entry" fields={["slug", "title", "type", "status", "body"]} defaults={{ type: "page", status: "DRAFT" }} saving={saving === "cms"} onSubmit={(payload) => platformAction("cms", { type: "cms", payload }, "Continut salvat.")} />
+        <ActionPanel title="Intrare CMS" fields={["slug", "title", "type", "status", "body"]} defaults={{ type: "page", status: "DRAFT" }} saving={saving === "cms"} onSubmit={(payload) => platformAction("cms", { type: "cms", payload }, "Continut salvat.")} />
         <ActionPanel title="Punct de interes" fields={["zone_slug", "name", "category", "lat", "lng", "score", "notes"]} defaults={{ category: "school", score: 5 }} saving={saving === "zone"} onSubmit={(payload) => platformAction("zone", { type: "zone_poi", payload }, "Punct zona salvat.")} />
       </div>
-      <Panel tight><Table heads={["Continut", "Tip", "Status", "Creat"]} rows={filtered.cms} empty="Nu exista continut CMS." render={(row: Row) => <tr key={row.id || row.slug} className="border-t border-bg-surface"><Td>{row.title || row.slug}</Td><Td>{row.type || "page"}</Td><Td><Badge>{row.status || "DRAFT"}</Badge></Td><Td>{date(row.created_at)}</Td></tr>} /></Panel>
+      <Panel tight><Table heads={["Continut", "Tip", "Status", "Creat"]} rows={filtered.cms} empty="Nu exista continut CMS." render={(row: Row) => <tr key={row.id || row.slug} className="border-t border-bg-surface"><Td>{row.title || row.slug}</Td><Td>{row.type || "page"}</Td><Td><Badge>{statusLabel(row.status || "DRAFT")}</Badge></Td><Td>{date(row.created_at)}</Td></tr>} /></Panel>
       <Panel tight><Table heads={["Zona", "POI", "Categorie", "Scor"]} rows={filtered.zones} empty="Nu exista puncte de interes." render={(row: Row) => <tr key={row.id || row.name} className="border-t border-bg-surface"><Td>{row.zone_slug}</Td><Td>{row.name}</Td><Td>{row.category}</Td><Td>{row.score || "-"}</Td></tr>} /></Panel>
     </div>
   )
@@ -70,7 +70,7 @@ export function SettingsView({ modules, saving, saveSettings }: any) {
 export function AuditView({ filtered, saving, platformAction }: any) {
   return (
     <div className="space-y-6">
-      <Title title="Audit" subtitle="Jurnal de evenimente si trasabilitate." action={<Button variant="ghost" disabled={saving === "audit"} onClick={() => platformAction("audit", { type: "audit_event", payload: { action: "manual_check", entity: "admin", details: { source: "admin-ui" } } }, "Eveniment audit salvat.")}>Log manual</Button>} />
+      <Title title="Audit" subtitle="Jurnal de evenimente si trasabilitate." action={<Button variant="ghost" disabled={saving === "audit"} onClick={() => platformAction("audit", { type: "audit_event", payload: { action: "manual_check", entity: "admin", details: { source: "admin-ui" } } }, "Eveniment audit salvat.")}>Inregistrare manuala</Button>} />
       <Panel tight><Table heads={["Actiune", "Entitate", "Actor", "Detalii", "Data"]} rows={filtered.audit} empty="Nu exista evenimente audit." render={(row: Row) => <tr key={row.id || `${row.action}-${row.created_at}`} className="border-t border-bg-surface"><Td><Badge>{row.action}</Badge></Td><Td>{row.entity || "-"}</Td><Td>{row.actor || "-"}</Td><Td><p className="max-w-lg truncate">{JSON.stringify(row.details || {})}</p></Td><Td>{date(row.created_at, true)}</Td></tr>} /></Panel>
     </div>
   )

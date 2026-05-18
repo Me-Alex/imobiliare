@@ -1,7 +1,7 @@
 "use client"
 
 import { type ReactNode } from "react"
-import { type Row } from "./admin-shared"
+import { fieldLabel, type Row } from "./admin-shared"
 
 export function LoadingState() {
   return <Panel><div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-center"><span className="h-8 w-8 animate-spin rounded-full border-2 border-bg-surface border-t-accent" aria-hidden /><p className="text-lg font-black">Se incarca adminul</p><p className="max-w-md text-sm text-text-muted">Citire simultana din API-urile admin pentru CRM, portofoliu, module, platforma si rapoarte.</p></div></Panel>
@@ -37,11 +37,11 @@ export function Button({ children, onClick, disabled, variant = "primary", size 
 }
 
 export function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="block"><span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-text-muted">{label}</span><input className="form-input" value={value} onChange={(event) => onChange(event.target.value)} /></label>
+  return <label className="block"><span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-text-muted">{fieldLabel(label)}</span><input className="form-input" value={value} onChange={(event) => onChange(event.target.value)} /></label>
 }
 
 export function Area({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="mt-3 block"><span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-text-muted">{label}</span><textarea className="form-input min-h-24 resize-y" value={value} onChange={(event) => onChange(event.target.value)} /></label>
+  return <label className="mt-3 block"><span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-text-muted">{fieldLabel(label)}</span><textarea className="form-input min-h-24 resize-y" value={value} onChange={(event) => onChange(event.target.value)} /></label>
 }
 
 export function Select({ children, value, onChange, disabled }: { children: ReactNode; value: string; onChange: (value: string) => void; disabled?: boolean }) {
@@ -49,7 +49,7 @@ export function Select({ children, value, onChange, disabled }: { children: Reac
 }
 
 export function SelectField({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
-  return <label className="block"><span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-text-muted">{label}</span><select className="form-input" value={value} onChange={(event) => onChange(event.target.value)}>{children}</select></label>
+  return <label className="block"><span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-text-muted">{fieldLabel(label)}</span><select className="form-input" value={value} onChange={(event) => onChange(event.target.value)}>{children}</select></label>
 }
 
 export function Grid({ children, columns = 3 }: { children: ReactNode; columns?: 1 | 3 | 4 }) {

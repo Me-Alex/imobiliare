@@ -287,18 +287,18 @@ export default function AdminCommandCenter() {
       <aside className="border-b border-bg-surface bg-bg-card/95 md:fixed md:inset-y-0 md:left-0 md:w-72 md:border-b-0 md:border-r">
         <div className="flex items-center gap-3 p-4 md:p-5">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-accent font-black text-bg-primary">H</span>
-          <div><p className="font-black">HQS Admin</p><p className="text-xs text-text-muted">control panel</p></div>
+          <div><p className="font-black">HQS Admin</p><p className="text-xs text-text-muted">panou de control</p></div>
         </div>
         <div className="border-t border-bg-surface px-4 pb-4">
           <button type="button" onClick={() => navigateView("overview", "")} className="flex h-10 w-full items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 text-left text-sm font-black text-emerald-600 transition hover:border-emerald-500">
-            <span>Start here</span>
-            <span>Guide</span>
+            <span>Incepe aici</span>
+            <span>Ghid</span>
           </button>
         </div>
         <div className="grid grid-cols-3 gap-2 border-y border-bg-surface p-4">
           <MiniStat label="leaduri" value={core.leads.length} />
           <MiniStat label="active" value={metrics.activeLeads.length} />
-          <MiniStat label="tasks" value={modules.activities.length} />
+          <MiniStat label="sarcini" value={modules.activities.length} />
         </div>
         <nav className="flex gap-2 overflow-x-auto p-3 md:block md:space-y-6 md:p-4">
           {nav.map((group) => (
@@ -319,12 +319,12 @@ export default function AdminCommandCenter() {
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-text-muted">S</span>
                 <input className="form-input h-10 w-full !pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cauta in admin..." />
               </label>
-              <Button variant="ghost" onClick={toggleGuidedMode}>{guidedMode ? "Guided on" : "Guided off"}</Button>
+              <Button variant="ghost" onClick={toggleGuidedMode}>{guidedMode ? "Ghid pornit" : "Ghid oprit"}</Button>
               <ThemeToggle />
-              <Button variant="ghost" onClick={() => load()} disabled={refreshing}>{refreshing ? "Refresh..." : "Refresh"}</Button>
+              <Button variant="ghost" onClick={() => load()} disabled={refreshing}>{refreshing ? "Se reincarca..." : "Reincarca"}</Button>
               <Button onClick={exportLocalCsv}>CSV</Button>
               {adminEmail && <span className="rounded-lg border border-bg-surface px-3 py-2 text-xs font-black text-text-muted">{adminEmail}</span>}
-              <Button variant="ghost" onClick={() => fetch("/api/admin/session", { method: "DELETE" }).finally(() => supabase.auth.signOut().then(() => { window.location.href = "/admin/login" }))}>Logout</Button>
+              <Button variant="ghost" onClick={() => fetch("/api/admin/session", { method: "DELETE" }).finally(() => supabase.auth.signOut().then(() => { window.location.href = "/admin/login" }))}>Iesire</Button>
               <a className="inline-flex h-10 items-center rounded-lg border border-bg-surface px-3 text-sm font-bold" href="/">Site</a>
             </div>
           </div>
