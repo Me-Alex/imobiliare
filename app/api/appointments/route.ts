@@ -1,8 +1,7 @@
-import { jsonError } from "@/lib/admin-api"
+import { getAdminClient, jsonError } from "@/lib/admin-api"
 import { normalizeAppointmentPayload } from "@/lib/admin-appointments"
 import { appointmentRequestSchema, parseJsonBody } from "@/lib/api-validation"
 import { rateLimit } from "@/lib/rate-limit"
-import { supabase } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
 export const runtime = "edge"
@@ -16,8 +15,15 @@ export async function POST(request: Request) {
     if ("error" in parsed) return parsed.error
 
     const payload = normalizeAppointmentPayload(parsed.data)
-    const { data, error } = await supabase.rpc("public_create_appointment", { payload })
+    const supabase = getAdminClient()
+    const { data, error } = await supabase.from("appointments").insert(payload).select("*").single()
     if (error) return jsonError(error.message, 400)
+
+    if (data.slot_id) await supabase.from("appointment_slots").update({ status: "BOOKED", updated_at: new Date().toISOString() }).eq("id", data.slot_id)
+    await Promise.allSettled([
+      supabase.from("admin_notification_outbox").insert({ channel: "EMAIL", target: data.client_email, subject: "Programare HQS primita", body: `Solicitare vizionare pentru ${data.client_name || "client"}.`, status: "QUEUED", entity: "appointments", entity_id: data.id, metadata: data, created_by: "website" }),
+      supabase.from("admin_audit_log").insert({ actor: "website", action: "APPOINTMENT_CREATED", entity: "appointments", entity_id: data.id, details: data, metadata: data }),
+    ])
 
     return NextResponse.json({ appointment: data }, { status: 201 })
   } catch (error: any) {

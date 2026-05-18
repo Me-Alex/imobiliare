@@ -16,10 +16,9 @@ export async function POST(request: Request) {
       if (error) return jsonError(error.message, 400)
       payload = data
     }
-    const start = payload.start_at || payload.starts_at || payload.requested_at || payload.start
-    const end = payload.end_at || payload.ends_at || payload.end || new Date(new Date(start).getTime() + 3600000).toISOString()
+    const start = payload.starts_at || payload.requested_at || payload.start
+    const end = payload.ends_at || payload.end || new Date(new Date(start).getTime() + 3600000).toISOString()
     const event = await createGoogleCalendarEvent({
-      appointmentId: payload.id || body.appointment_id || null,
       summary: payload.summary || `Vizionare HQS: ${payload.property_title || payload.client_name || "client"}`,
       description: payload.notes || `Client: ${payload.client_name || payload.client_email || "-"}`,
       start,

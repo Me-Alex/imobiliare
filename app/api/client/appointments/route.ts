@@ -1,3 +1,4 @@
+import { getAdminClient } from "@/lib/admin-api"
 import { normalizeAppointmentPayload } from "@/lib/admin-appointments"
 import { clientAppointmentRequestSchema, parseJsonBody } from "@/lib/api-validation"
 import { requireClient } from "@/lib/client-api"
@@ -12,10 +13,10 @@ export async function GET(request: Request) {
 
   try {
     const email = String(session.user.email || "").toLowerCase()
-    const { data, error } = await session.supabase
+    const { data, error } = await getAdminClient()
       .from("appointments")
       .select("*")
-      .ilike("client_email", email)
+      .eq("client_email", email)
       .order("created_at", { ascending: false })
       .limit(100)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
@@ -51,12 +52,18 @@ export async function POST(request: Request) {
       notes: body.notes || "Programare trimisa din portalul clientului.",
     })
 
-    const { data, error } = await session.supabase.rpc("book_appointment_slot", {
-      payload,
-      p_client_user_id: session.user.id,
-      p_actor: "client_portal",
-    })
+    const supabase = getAdminClient()
+    const { data, error } = await supabase.from("appointments").insert(payload).select("*").single()
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+    if (data.slot_id) await supabase.from("appointment_slots").update({ status: "BOOKED", updated_at: new Date().toISOString() }).eq("id", data.slot_id)
+    await session.supabase.from("client_activity").insert({
+      user_id: session.user.id,
+      type: "APPOINTMENT_REQUESTED",
+      title: "Programare solicitata",
+      description: "Clientul a solicitat o vizionare din portal.",
+      metadata: { appointment: data, property_id: payload.property_id, slot_id: payload.slot_id },
+    })
 
     return NextResponse.json({ appointment: data }, { status: 201 })
   } catch (error: any) {

@@ -78,14 +78,6 @@ export function getAdminClient() {
 
 export const getAdminServiceClient = getAdminClient
 
-export function getAdminClientIfConfigured() {
-  const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY")
-  if (!serviceRoleKey) return null
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  })
-}
-
 export function getAdminRequestClient(request: Request) {
   const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY")
   if (serviceRoleKey) return getAdminClient()

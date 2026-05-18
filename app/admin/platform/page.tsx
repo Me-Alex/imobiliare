@@ -1,5 +1,9 @@
-﻿import { redirect } from "next/navigation"
+import { redirect } from "next/navigation"
 
-export default function AdminLegacyPage() {
+export const metadata = {
+  title: "Platform Console | HQS Admin",
+}
+
+export default function AdminPlatformPage() {
   redirect("/admin/dashboard")
 }

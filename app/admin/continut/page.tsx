@@ -1,5 +1,6 @@
-﻿import { redirect } from "next/navigation"
+"use client"
 
-export default function AdminLegacyPage() {
-  redirect("/admin/dashboard")
-}
+import { useState } from "react"
+import { AppShell } from "@/components/admin/app-shell"
+const sections=[{k:'hero',t:'Hero homepage'},{k:'zones',t:'Zone featured'},{k:'listings',t:'Proprietăți recomandate'},{k:'cta',t:'Call to action'}]
+export default function AdminContentPage(){const [active,setActive]=useState('hero');return <AppShell><div className="space-y-6"><div className="rounded-3xl border border-bg-surface bg-gradient-to-br from-bg-secondary via-bg-secondary to-bg-primary p-6"><h1 className="text-3xl font-semibold">Conținut</h1><p className="mt-2 text-text-muted">Editezi secțiunile publice ale site-ului.</p></div><div className="grid gap-4 lg:grid-cols-[280px_1fr]"><aside className="rounded-2xl border border-bg-surface bg-bg-secondary p-4 space-y-2">{sections.map(s=><button key={s.k} onClick={()=>setActive(s.k)} className={"w-full rounded-xl px-3 py-2 text-left "+(active===s.k?"bg-bg-primary":"hover:bg-bg-primary/50")}>{s.t}</button>)}</aside><section className="rounded-2xl border border-bg-surface bg-bg-secondary p-6"><div className="text-sm text-text-muted">Secțiune activă</div><div className="mt-2 text-2xl font-semibold">{sections.find(s=>s.k===active)?.t}</div><div className="mt-4 text-sm text-text-muted">Aici păstrăm editare, preview și autosave în pasul următor.</div></section></div></div></AppShell>}

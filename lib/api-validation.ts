@@ -88,15 +88,6 @@ export const favoriteRequestSchema = z.object({
   notes: optionalText(500).nullable().default(null),
 })
 
-export const savedSearchSchema = z.object({
-  id: optionalText(80).nullable().default(null),
-  label: requiredText(2, 120),
-  query: optionalText(160).default(""),
-  filters: metadataSchema,
-  results_count: safeInteger(0, 0, 100000),
-  notifications_enabled: z.boolean().default(true),
-})
-
 export const offerDraftSchema = z.object({
   propertyTitle: optionalText(160).default("Proprietate HQS"),
   listPrice: safeNumber(250_000, 1_000, 50_000_000),
@@ -134,33 +125,6 @@ export const clientActivitySchema = z.object({
   title: optionalText(180).default("Nota client"),
   description: optionalText(2000).nullable().default(null),
   metadata: metadataSchema,
-})
-
-export const clientNotificationUpdateSchema = z.object({
-  id: optionalText(80),
-  ids: z.array(z.string().trim().min(1).max(80)).max(100).optional().default([]),
-  action: z.enum(["read", "unread", "read_all"]).default("read"),
-}).refine((value) => value.action === "read_all" || Boolean(value.id) || value.ids.length > 0, {
-  message: "id sau ids sunt obligatorii.",
-  path: ["id"],
-})
-
-export const ownerFeedbackSchema = z.object({
-  property_id: requiredText(1, 80),
-  rating: safeInteger(5, 1, 5),
-  category: optionalText(80).default("GENERAL"),
-  message: requiredText(3, 2000),
-})
-
-export const adminMediaUploadSchema = z.object({
-  property_id: requiredText(1, 80),
-  file_name: requiredText(1, 180),
-  content_type: optionalText(120).default("application/octet-stream"),
-  kind: z.enum(["cover", "gallery", "floorplan"]).default("gallery"),
-  size: safeNumber(0, 0, 50_000_000),
-  checksum: optionalText(160).nullable().default(null),
-  width: safeInteger(0, 0, 20000),
-  height: safeInteger(0, 0, 20000),
 })
 
 export const propertyViewSchema = z.object({

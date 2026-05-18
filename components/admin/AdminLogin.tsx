@@ -22,38 +22,16 @@ export default function AdminLogin() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.access_token) {
-        establishAdminCookie(data.session.access_token)
-          .then(() => { window.location.href = "/admin/dashboard" })
-          .catch(() => supabase.auth.signOut())
-      }
+      if (data.session?.access_token) window.location.href = "/admin/dashboard"
     })
   }, [])
-
-  async function establishAdminCookie(token: string) {
-    const response = await fetch("/api/admin/session", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    const body = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(body.error || "Contul nu are rol admin.")
-    return body
-  }
-
-  async function auditFailedLogin(identifier: string, reason: string) {
-    await fetch("/api/admin/session", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identifier, reason }),
-    }).catch(() => undefined)
-  }
 
   const submit = async () => {
     setBusy(true)
     setError("")
     setMessage("")
-    const loginEmail = resolveLoginIdentifier(email)
     try {
+      const loginEmail = resolveLoginIdentifier(email)
       if (mode === "reset") {
         const { error } = await supabase.auth.resetPasswordForEmail(loginEmail, { redirectTo: `${window.location.origin}/admin/login` })
         if (error) throw error
@@ -64,10 +42,11 @@ export default function AdminLogin() {
       if (error) throw error
       const token = data.session?.access_token
       if (!token) throw new Error("Sesiunea Supabase nu a fost creata.")
-      await establishAdminCookie(token)
+      const response = await fetch("/api/admin/session", { headers: { Authorization: `Bearer ${token}` } })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(body.error || "Contul nu are rol admin.")
       window.location.href = "/admin/dashboard"
     } catch (err: any) {
-      if (mode === "login") void auditFailedLogin(loginEmail, err.message || "Autentificare esuata.")
       setError(err.message || "Autentificare esuata.")
     } finally {
       setBusy(false)

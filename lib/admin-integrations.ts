@@ -61,99 +61,10 @@ async function signJwt(payload: Json, privateKeyPem: string) {
   return `${input}.${base64Url(signature)}`
 }
 
-function secretBytes(secret: string | Uint8Array) {
-  return typeof secret === "string" ? new TextEncoder().encode(secret) : secret
-}
-
-async function hmac(secret: string | Uint8Array, payload: string, hash: "SHA-1" | "SHA-256") {
-  const bytes = secretBytes(secret)
-  const keyData = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
-  const key = await crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash }, false, ["sign"])
-  return crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload))
-}
-
 async function hmacSha256Hex(secret: string, payload: string) {
-  const signature = await hmac(secret, payload, "SHA-256")
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"])
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload))
   return Array.from(new Uint8Array(signature)).map((byte) => byte.toString(16).padStart(2, "0")).join("")
-}
-
-async function hmacBase64(secret: string | Uint8Array, payload: string, hash: "SHA-1" | "SHA-256") {
-  const signature = await hmac(secret, payload, hash)
-  return base64Url(signature).replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(base64Url(signature).length / 4) * 4, "=")
-}
-
-function timingSafeEqual(a: string, b: string) {
-  if (a.length !== b.length) return false
-  let mismatch = 0
-  for (let i = 0; i < a.length; i += 1) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  return mismatch === 0
-}
-
-function parseStripeSignatureHeader(header: string) {
-  return header.split(",").reduce<Record<string, string[]>>((acc, part) => {
-    const [key, ...rest] = part.split("=")
-    const name = key?.trim()
-    const value = rest.join("=").trim()
-    if (name && value) acc[name] = [...(acc[name] || []), value]
-    return acc
-  }, {})
-}
-
-function parseSvixSecret(secret: string) {
-  if (!secret.startsWith("whsec_")) return secret
-  const encoded = secret.slice("whsec_".length).replace(/-/g, "+").replace(/_/g, "/")
-  try {
-    const binary = atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "="))
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
-    return bytes
-  } catch {
-    return secret
-  }
-}
-
-export type WebhookVerificationResult = {
-  ok: boolean
-  configured: boolean
-  reason?: string
-}
-
-export function webhookVerificationError(result: WebhookVerificationResult, provider: string) {
-  if (result.ok) return ""
-  if (!result.configured) return `${provider} webhook secret is not configured.`
-  return result.reason || `Invalid ${provider} webhook signature.`
-}
-
-export async function verifyTwilioWebhook(url: string, params: Record<string, string>, signature: string | null): Promise<WebhookVerificationResult> {
-  const secret = getEnv("TWILIO_WEBHOOK_AUTH_TOKEN") || getEnv("TWILIO_AUTH_TOKEN")
-  if (!secret) return { ok: false, configured: false, reason: "TWILIO_AUTH_TOKEN is missing" }
-  if (!signature) return { ok: false, configured: true, reason: "Missing X-Twilio-Signature header" }
-  const signedPayload = Object.keys(params).sort().reduce((acc, key) => `${acc}${key}${params[key]}`, url)
-  const expected = await hmacBase64(secret, signedPayload, "SHA-1")
-  return { ok: timingSafeEqual(expected, signature), configured: true, reason: "Invalid X-Twilio-Signature header" }
-}
-
-export async function verifyResendWebhook(payload: string, headers: Headers): Promise<WebhookVerificationResult> {
-  const secret = getEnv("RESEND_WEBHOOK_SECRET")
-  if (!secret) return { ok: false, configured: false, reason: "RESEND_WEBHOOK_SECRET is missing" }
-  const id = headers.get("svix-id")
-  const timestamp = headers.get("svix-timestamp")
-  const signatureHeader = headers.get("svix-signature")
-  if (!id || !timestamp || !signatureHeader) return { ok: false, configured: true, reason: "Missing Svix signature headers" }
-  const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp))
-  if (!Number.isFinite(age) || age > 5 * 60) return { ok: false, configured: true, reason: "Webhook timestamp outside tolerance" }
-  const expected = await hmacBase64(parseSvixSecret(secret), `${id}.${timestamp}.${payload}`, "SHA-256")
-  const signatures = signatureHeader.split(" ").flatMap((part) => part.split(",")).map((part) => part.trim().replace(/^v\d+,?/, "")).filter(Boolean)
-  return { ok: signatures.some((candidate) => timingSafeEqual(candidate, expected)), configured: true, reason: "Invalid Svix signature" }
-}
-
-export async function verifyDocuSignWebhook(payload: string, headers: Headers): Promise<WebhookVerificationResult> {
-  const secret = getEnv("DOCUSIGN_HMAC_KEY") || getEnv("DOCUSIGN_CONNECT_HMAC_KEY")
-  if (!secret) return { ok: false, configured: false, reason: "DOCUSIGN_HMAC_KEY is missing" }
-  const signature = headers.get("x-docusign-signature-1")
-  if (!signature) return { ok: false, configured: true, reason: "Missing X-DocuSign-Signature-1 header" }
-  const expected = await hmacBase64(secret, payload, "SHA-256")
-  return { ok: timingSafeEqual(expected, signature), configured: true, reason: "Invalid X-DocuSign-Signature-1 header" }
 }
 
 async function parseJsonResponse(response: Response) {
@@ -166,12 +77,9 @@ async function parseJsonResponse(response: Response) {
 export function providerStatus() {
   return {
     resend: Boolean(getEnv("RESEND_API_KEY") && getEnv("RESEND_FROM_EMAIL")),
-    resendWebhook: Boolean(getEnv("RESEND_WEBHOOK_SECRET")),
     twilio: Boolean(getEnv("TWILIO_ACCOUNT_SID") && getEnv("TWILIO_AUTH_TOKEN") && getEnv("TWILIO_FROM_NUMBER")),
-    twilioWebhook: Boolean(getEnv("TWILIO_WEBHOOK_AUTH_TOKEN") || getEnv("TWILIO_AUTH_TOKEN")),
     google: Boolean(getEnv("GOOGLE_CALENDAR_ID") && getEnv("GOOGLE_SERVICE_ACCOUNT_EMAIL") && getEnv("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY")),
     docusign: Boolean(getEnv("DOCUSIGN_INTEGRATION_KEY") && getEnv("DOCUSIGN_USER_ID") && getEnv("DOCUSIGN_ACCOUNT_ID") && getEnv("DOCUSIGN_PRIVATE_KEY") && getEnv("DOCUSIGN_BASE_URL")),
-    docusignWebhook: Boolean(getEnv("DOCUSIGN_HMAC_KEY") || getEnv("DOCUSIGN_CONNECT_HMAC_KEY")),
     stripe: Boolean(getEnv("STRIPE_SECRET_KEY")),
   }
 }
@@ -233,17 +141,7 @@ async function getGoogleAccessToken() {
   return String(body.access_token || "")
 }
 
-type GoogleCalendarEventInput = {
-  appointmentId?: string | null
-  summary: string
-  description?: string
-  start: string
-  end: string
-  attendees?: string[]
-  location?: string
-}
-
-export async function createGoogleCalendarEvent(input: GoogleCalendarEventInput) {
+export async function createGoogleCalendarEvent(input: { summary: string; description?: string; start: string; end: string; attendees?: string[]; location?: string }) {
   requireEnv(["GOOGLE_CALENDAR_ID", "GOOGLE_SERVICE_ACCOUNT_EMAIL", "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"])
   const token = await getGoogleAccessToken()
   const calendarId = encodeURIComponent(getEnv("GOOGLE_CALENDAR_ID")!)
@@ -257,29 +155,7 @@ export async function createGoogleCalendarEvent(input: GoogleCalendarEventInput)
       start: { dateTime: input.start },
       end: { dateTime: input.end },
       attendees: (input.attendees || []).filter(Boolean).map((email) => ({ email })),
-      extendedProperties: input.appointmentId ? { private: { appointment_id: input.appointmentId } } : undefined,
     }),
-  })
-  return parseJsonResponse(response)
-}
-
-export async function listGoogleCalendarEvents(input: { timeMin?: string; timeMax?: string; maxResults?: number; syncToken?: string }) {
-  requireEnv(["GOOGLE_CALENDAR_ID", "GOOGLE_SERVICE_ACCOUNT_EMAIL", "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"])
-  const token = await getGoogleAccessToken()
-  const calendarId = encodeURIComponent(getEnv("GOOGLE_CALENDAR_ID")!)
-  const params = new URLSearchParams()
-  params.set("maxResults", String(Math.min(250, Math.max(1, input.maxResults || 100))))
-  if (input.syncToken) {
-    params.set("syncToken", input.syncToken)
-  } else {
-    params.set("singleEvents", "true")
-    params.set("orderBy", "startTime")
-    if (input.timeMin) params.set("timeMin", input.timeMin)
-    if (input.timeMax) params.set("timeMax", input.timeMax)
-  }
-
-  const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` },
   })
   return parseJsonResponse(response)
 }
@@ -378,11 +254,11 @@ export async function createStripeInvoice(input: { clientEmail: string; clientNa
 export async function verifyStripeSignature(payload: string, header: string | null) {
   requireEnv(["STRIPE_WEBHOOK_SECRET"])
   if (!header) return false
-  const parts = parseStripeSignatureHeader(header)
-  const timestamp = Number(parts.t?.[0])
-  if (!timestamp || !parts.v1?.length) return false
-  const age = Math.abs(Math.floor(Date.now() / 1000) - timestamp)
-  if (!Number.isFinite(age) || age > 5 * 60) return false
-  const expected = await hmacSha256Hex(getEnv("STRIPE_WEBHOOK_SECRET")!, `${timestamp}.${payload}`)
-  return parts.v1.some((candidate) => timingSafeEqual(candidate, expected))
+  const parts = Object.fromEntries(header.split(",").map((part) => {
+    const [key, ...rest] = part.split("=")
+    return [key, rest.join("=")]
+  }))
+  if (!parts.t || !parts.v1) return false
+  const expected = await hmacSha256Hex(getEnv("STRIPE_WEBHOOK_SECRET")!, `${parts.t}.${payload}`)
+  return expected === parts.v1
 }

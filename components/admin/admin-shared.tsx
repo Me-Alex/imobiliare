@@ -21,7 +21,6 @@ export type View =
   | "integrations"
   | "content"
   | "reports"
-  | "marketData"
   | "ownerPortal"
   | "analytics"
   | "compliance"
@@ -76,7 +75,6 @@ export const nav: Array<{ group: string; items: Array<{ id: View; label: string;
       { id: "integrations", label: "Integrations", mark: "API" },
       { id: "reports", label: "Reports", mark: "R" },
       { id: "analytics", label: "Analytics", mark: "AN" },
-      { id: "marketData", label: "Market data", mark: "MD" },
       { id: "ownerPortal", label: "Owners", mark: "OWN" },
       { id: "compliance", label: "Compliance", mark: "CO" },
       { id: "content", label: "Content", mark: "CMS" },

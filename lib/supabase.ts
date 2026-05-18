@@ -1,8 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
 
-export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://spmapzhlcwhzfrxuvgxd.supabase.co'
-export const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_24oJXCI0JLY1VyLq_Ls-AA_-tYFf729'
+// Variabilele de mediu sunt obligatorii. Daca lipsesc, aplicatia nu trebuie sa porneasca cu valori hardcodate.
+// Copiaza .env.local.example in .env.local si completeaza valorile reale.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    '[HQS] Variabilele de mediu NEXT_PUBLIC_SUPABASE_URL si NEXT_PUBLIC_SUPABASE_ANON_KEY sunt obligatorii.\n' +
+    'Copiaza .env.local.example in .env.local si completeaza valorile.'
+  )
+}
+
+export { supabaseUrl, supabaseAnonKey }
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export type PropertyType = 'APARTMENT' | 'HOUSE' | 'VILLA' | 'LAND' | 'COMMERCIAL'

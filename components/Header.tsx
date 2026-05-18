@@ -67,7 +67,14 @@ export default function Header() {
           <IconLink href="/proprietati" label="Cauta proprietati" icon={<Search className="h-4 w-4" aria-hidden />} />
           <IconLink href="/comparare" label={`Comparare${compareCount > 0 ? ` (${compareCount})` : ""}`} icon={<Scale className="h-4 w-4" aria-hidden />} />
           <IconLink href="/favorite" label={`Favorite${favoriteCount > 0 ? ` (${favoriteCount})` : ""}`} icon={<Heart className="h-4 w-4" aria-hidden />} />
-          <IconLink href="/login" label="Cont client" icon={<UserRound className="h-4 w-4" aria-hidden />} />
+          <IconLink href="/portal" label="Portal Client" icon={<UserRound className="h-4 w-4" aria-hidden />} />
+          <a
+            href="/owner"
+            className="hidden xl:inline-flex min-h-10 items-center justify-center gap-1.5 rounded-md border border-bg-surface px-3 py-2 text-xs font-black text-text-muted transition hover:border-accent hover:text-accent"
+            title="Portal Proprietar — statusul listingului tau"
+          >
+            Portal Proprietar
+          </a>
           <Link
             href={siteConfig.contact.phoneHref}
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-black text-bg-primary transition hover:opacity-90"
@@ -107,7 +114,7 @@ export default function Header() {
           </nav>
           <div className="mt-4 grid grid-cols-2 gap-2">
             <Link
-              href="/login"
+              href="/portal"
               prefetch={false}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-bg-surface font-black text-text-primary"
               onClick={() => setMenuOpen(false)}

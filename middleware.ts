@@ -1,19 +1,31 @@
-import { NextResponse, type NextRequest } from "next/server"
-import { ADMIN_SESSION_COOKIE, verifyAdminSessionCookie } from "@/lib/admin-session-cookie"
+import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 
-export async function middleware(request: NextRequest) {
+// Rute publice admin care nu necesita autentificare
+const PUBLIC_ADMIN_PATHS = ["/admin/login"]
+
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  if (!pathname.startsWith("/admin") || pathname.startsWith("/admin/login")) return NextResponse.next()
 
-  const session = await verifyAdminSessionCookie(request.cookies.get(ADMIN_SESSION_COOKIE)?.value)
-  if (session) return NextResponse.next()
+  // Redirectioneaza /admin si /admin/ spre /admin/dashboard
+  if (pathname === "/admin" || pathname === "/admin/") {
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url))
+  }
 
-  const loginUrl = request.nextUrl.clone()
-  loginUrl.pathname = "/admin/login"
-  loginUrl.searchParams.set("next", pathname)
-  return NextResponse.redirect(loginUrl)
+  // Protejeaza toate rutele /admin/* in afara de /admin/login
+  if (pathname.startsWith("/admin/") && !PUBLIC_ADMIN_PATHS.includes(pathname)) {
+    const authCookie = request.cookies.get("hqs_admin_token")?.value
+    const authHeader = request.headers.get("authorization")
+    const hasToken = !!(authCookie || authHeader?.startsWith("Bearer "))
+
+    if (!hasToken) {
+      const loginUrl = new URL("/admin/login", request.url)
+      loginUrl.searchParams.set("redirect", pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+  }
+
+  return NextResponse.next()
 }
 
-export const config = {
-  matcher: ["/admin/:path*"],
-}
+export const config = { matcher: ["/admin/:path*"] }

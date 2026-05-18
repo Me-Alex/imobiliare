@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { apiJson, countBy, date, defaultModules, money, type Row } from "./admin-shared"
+import { countBy, date, defaultModules, money, type Row } from "./admin-shared"
 import { ActionPanel, ModuleEditor } from "./admin-operations"
 import { Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Result, Table, Td, Title } from "./admin-ui"
 
@@ -14,7 +14,7 @@ export function ContentView({ filtered, saving, platformAction }: any) {
         <ActionPanel title="Punct de interes" fields={["zone_slug", "name", "category", "lat", "lng", "score", "notes"]} defaults={{ category: "school", score: 5 }} saving={saving === "zone"} onSubmit={(payload) => platformAction("zone", { type: "zone_poi", payload }, "Punct zona salvat.")} />
       </div>
       <Panel tight><Table heads={["Continut", "Tip", "Status", "Creat"]} rows={filtered.cms} empty="Nu exista continut CMS." render={(row: Row) => <tr key={row.id || row.slug} className="border-t border-bg-surface"><Td>{row.title || row.slug}</Td><Td>{row.type || "page"}</Td><Td><Badge>{row.status || "DRAFT"}</Badge></Td><Td>{date(row.created_at)}</Td></tr>} /></Panel>
-      <Panel tight><Table heads={["Zona", "POI", "Categorie", "Scor"]} rows={filtered.zones} empty="Nu exista puncte de interes." render={(row: Row) => <tr key={row.id || row.name} className="border-t border-bg-surface"><Td>{row.zone || row.zone_slug}</Td><Td>{row.name}</Td><Td>{row.category}</Td><Td>{row.score || "-"}</Td></tr>} /></Panel>
+      <Panel tight><Table heads={["Zona", "POI", "Categorie", "Scor"]} rows={filtered.zones} empty="Nu exista puncte de interes." render={(row: Row) => <tr key={row.id || row.name} className="border-t border-bg-surface"><Td>{row.zone_slug}</Td><Td>{row.name}</Td><Td>{row.category}</Td><Td>{row.score || "-"}</Td></tr>} /></Panel>
     </div>
   )
 }
@@ -38,25 +38,15 @@ export function ReportsView({ core, modules, platform, report, metrics, exportLo
   )
 }
 
-export function UsersView({ filtered, saving, saveModule, deleteModule, platformAction, reload }: any) {
-  const [busy, setBusy] = useState("")
-  const userAction = async (row: Row, action: string) => {
-    setBusy(`${action}-${row.email}`)
-    try {
-      await apiJson("/api/admin/users", { method: "POST", body: JSON.stringify({ email: row.email, action }) })
-      await reload()
-    } finally {
-      setBusy("")
-    }
-  }
+export function UsersView({ filtered, saving, saveModule, deleteModule, platformAction }: any) {
   return (
     <div className="space-y-6">
       <Title title="Echipa" subtitle="Utilizatori operationali si roluri admin." />
       <div className="grid gap-5 xl:grid-cols-2">
         <ModuleEditor type="team_users" title="Membri echipa" fields={["name", "email", "role", "status"]} rows={filtered.teamUsers} defaults={{ role: "agent", status: "ACTIVE" }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} />
-        <ActionPanel title="Rol admin" fields={["email", "role", "permissions", "status"]} defaults={{ role: "manager", permissions: "leads,clients,appointments,properties,documents,reports", status: "ACTIVE" }} saving={saving === "role"} onSubmit={(payload) => apiJson("/api/admin/users", { method: "POST", body: JSON.stringify({ ...payload, action: "invite" }) }).then(() => platformAction("role", { type: "audit_event", payload: { action: "ADMIN_INVITE_FROM_UI", entity: "admin_roles", details: { email: payload.email } } }, "Invitatie admin salvata."))} />
+        <ActionPanel title="Rol admin" fields={["email", "role", "permissions", "status"]} defaults={{ role: "manager", permissions: "crm,properties,reports", status: "ACTIVE" }} saving={saving === "role"} onSubmit={(payload) => platformAction("role", { type: "admin_role", payload }, "Rol admin salvat.")} />
       </div>
-      <Panel tight><Table heads={["Email", "Rol", "Permisiuni", "Status", "Actiuni"]} rows={filtered.roles} empty="Nu exista roluri admin." render={(row: Row) => <tr key={row.id || row.email} className="border-t border-bg-surface"><Td>{row.email}</Td><Td>{row.role}</Td><Td>{Array.isArray(row.permissions) ? row.permissions.join(", ") : row.permissions}</Td><Td><Badge>{row.status || "ACTIVE"}</Badge></Td><Td><div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" disabled={busy === `reset-${row.email}`} onClick={() => userAction(row, "reset")}>Reset</Button><Button size="sm" variant="danger" disabled={busy === `deactivate-${row.email}`} onClick={() => userAction(row, "deactivate")}>Deactivate</Button></div></Td></tr>} /></Panel>
+      <Panel tight><Table heads={["Email", "Rol", "Permisiuni", "Status"]} rows={filtered.roles} empty="Nu exista roluri admin." render={(row: Row) => <tr key={row.id || row.email} className="border-t border-bg-surface"><Td>{row.email}</Td><Td>{row.role}</Td><Td>{Array.isArray(row.permissions) ? row.permissions.join(", ") : row.permissions}</Td><Td><Badge>{row.status || "ACTIVE"}</Badge></Td></tr>} /></Panel>
     </div>
   )
 }
@@ -69,45 +59,7 @@ export function ToolsView({ filtered, modules }: any) {
   const principal = Math.max(0, Number(price || 0) - Number(advance || 0))
   const monthly = principal ? Math.round((principal * 0.005) / (1 - Math.pow(1.005, -Number(months || 1)))) : 0
   const avg = filtered.properties.length ? Math.round(filtered.properties.reduce((sum: number, row: Row) => sum + Number(row.price || 0), 0) / filtered.properties.length) : 0
-  return <div className="space-y-6"><Title title="Instrumente" subtitle="Calculatoare rapide, evaluare, comision si data browser server-side." /><div className="grid gap-5 xl:grid-cols-3"><Panel><Title compact title="Credit" /><Grid columns={1}>{[["price", price, setPrice], ["advance", advance, setAdvance], ["months", months, setMonths]].map(([label, value, set]: any) => <Field key={label} label={label} value={value} onChange={set} />)}</Grid><Result label="Rata estimata" value={money(monthly)} /></Panel><Panel><Title compact title="Evaluator" /><Result label="Pret mediu portofoliu" value={money(avg)} /><Result label="Inventar filtrat" value={filtered.properties.length} /></Panel><Panel><Title compact title="Comision" /><Result label="Comision standard" value={`${settings.commission || 3}%`} /><Result label="La pretul introdus" value={money(Number(price || 0) * Number(settings.commission || 3) / 100)} /></Panel></div><AdminDataBrowser /></div>
-}
-
-function AdminDataBrowser() {
-  const [table, setTable] = useState("leads")
-  const [query, setQuery] = useState("")
-  const [page, setPage] = useState(1)
-  const [result, setResult] = useState<Row>({ rows: [], total: 0, page_count: 1 })
-  const [busy, setBusy] = useState(false)
-  const dataTables = ["leads", "properties", "appointments", "slots", "media", "documents", "invoices", "provider_jobs", "owners", "roles", "audit", "bulk_imports", "rate_limits"]
-  const rows = Array.isArray(result.rows) ? result.rows : []
-  const keys = Array.from(rows.reduce<Set<string>>((set, row) => {
-    Object.keys(row || {}).slice(0, 10).forEach((key) => set.add(key))
-    return set
-  }, new Set<string>())).slice(0, 6)
-  const load = async (nextPage = page) => {
-    setBusy(true)
-    try {
-      const params = new URLSearchParams({ table, q: query, page: String(nextPage), page_size: "25" })
-      const data = await apiJson<Row>(`/api/admin/list?${params.toString()}`)
-      setResult(data)
-      setPage(nextPage)
-    } finally {
-      setBusy(false)
-    }
-  }
-  const exportPage = () => {
-    const headers = keys.length ? keys : ["json"]
-    const lines = [headers.join(","), ...rows.map((row) => headers.map((key) => `"${String(row[key] ?? JSON.stringify(row)).replace(/"/g, '""')}"`).join(","))]
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `admin-${table}-page-${page}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
-  return <Panel tight><div className="p-5"><Title compact title="Server-side data browser" subtitle="Cautare paginata pe tabele admin, fara sa incarci tot snapshot-ul in browser." /><div className="grid gap-3 md:grid-cols-[220px_1fr_auto_auto]"><label className="block text-xs font-bold uppercase text-text-muted">table<select className="form-input mt-2" value={table} onChange={(event) => setTable(event.target.value)}>{dataTables.map((item) => <option key={item}>{item}</option>)}</select></label><Field label="search" value={query} onChange={setQuery} /><Button disabled={busy} onClick={() => load(1)}>{busy ? "Loading..." : "Search"}</Button><Button variant="ghost" disabled={!rows.length} onClick={exportPage}>Export page</Button></div></div><Table heads={keys.length ? [...keys, "json"] : ["json"]} rows={rows} empty="Ruleaza o cautare server-side." render={(row) => <tr key={row.id || JSON.stringify(row).slice(0, 80)} className="border-t border-bg-surface">{keys.map((key) => <Td key={key}><p className="max-w-[220px] truncate">{String(row[key] ?? "-")}</p></Td>)}<Td><p className="max-w-xs truncate text-xs text-text-muted">{JSON.stringify(row)}</p></Td></tr>} /><div className="flex items-center justify-between gap-3 border-t border-bg-surface p-4 text-sm text-text-muted"><span>Total {result.total || 0}, pagina {page}/{result.page_count || 1}</span><div className="flex gap-2"><Button size="sm" variant="ghost" disabled={busy || page <= 1} onClick={() => load(page - 1)}>Prev</Button><Button size="sm" variant="ghost" disabled={busy || page >= Number(result.page_count || 1)} onClick={() => load(page + 1)}>Next</Button></div></div></Panel>
+  return <div className="space-y-6"><Title title="Instrumente" subtitle="Calculatoare rapide pentru credit, evaluare si comision." /><div className="grid gap-5 xl:grid-cols-3"><Panel><Title compact title="Credit" /><Grid columns={1}>{[["price", price, setPrice], ["advance", advance, setAdvance], ["months", months, setMonths]].map(([label, value, set]: any) => <Field key={label} label={label} value={value} onChange={set} />)}</Grid><Result label="Rata estimata" value={money(monthly)} /></Panel><Panel><Title compact title="Evaluator" /><Result label="Pret mediu portofoliu" value={money(avg)} /><Result label="Inventar filtrat" value={filtered.properties.length} /></Panel><Panel><Title compact title="Comision" /><Result label="Comision standard" value={`${settings.commission || 3}%`} /><Result label="La pretul introdus" value={money(Number(price || 0) * Number(settings.commission || 3) / 100)} /></Panel></div></div>
 }
 
 export function SettingsView({ modules, saving, saveSettings }: any) {

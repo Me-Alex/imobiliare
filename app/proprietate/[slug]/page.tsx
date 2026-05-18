@@ -1,4 +1,5 @@
 import Link from "next/link"
+import BackButton from "@/components/BackButton"
 import type { Metadata } from "next"
 import type { ReactNode } from "react"
 import { notFound } from "next/navigation"
@@ -12,7 +13,7 @@ import ProprietateCard from "@/components/ProprietateCard"
 import SmartPropertyImage from "@/components/SmartPropertyImage"
 import { supabase, type Property } from "@/lib/supabase"
 import { documentChecklist, estimateMonthlyPayment, zoneProfiles } from "@/lib/experience"
-import { buildOfferDraft, calculateValuation } from "@/lib/complexity"
+import { buildOfferDraft, buildViewingSlots, calculateValuation } from "@/lib/complexity"
 import { getPropertyMedia } from "@/lib/property-media"
 
 export const runtime = "edge"
@@ -46,14 +47,6 @@ export default async function PaginaProprietate({ params }: { params: { slug: st
     .eq("city", p.city)
     .neq("id", p.id)
     .limit(3)
-  const { data: liveSlots } = await supabase
-    .from("appointment_slots")
-    .select("starts_at, agent_email")
-    .eq("status", "AVAILABLE")
-    .eq("property_id", p.id)
-    .gte("starts_at", new Date().toISOString())
-    .order("starts_at", { ascending: true })
-    .limit(1)
 
   const media = getPropertyMedia(p)
   const galerie = media.gallery
@@ -64,7 +57,7 @@ export default async function PaginaProprietate({ params }: { params: { slug: st
   const zone = zoneProfiles.find((item) => p.city?.toLowerCase().includes(item.name.toLowerCase().split(" ")[0]))
   const valuation = calculateValuation({ area: p.area_sqm || 80, rooms: p.rooms || 2, zone: p.city || "Bucuresti Nord", condition: p.featured ? "premium" : "bun", parking: p.parking_spots || 0 })
   const offer = buildOfferDraft({ propertyTitle: p.title, listPrice: p.price, clientBudget: p.price, advancePercent: 20, closingDays: 30, riskLevel: valuation.market.risk as "scazut" | "mediu" | "ridicat" })
-  const nextSlot = liveSlots?.[0]?.starts_at ? new Date(liveSlots[0].starts_at).toLocaleString("ro-RO", { dateStyle: "medium", timeStyle: "short" }) : "De confirmat"
+  const slots = buildViewingSlots("normal")
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Residence",
@@ -82,10 +75,7 @@ export default async function PaginaProprietate({ params }: { params: { slug: st
 
       <section className="border-b border-bg-surface bg-bg-primary px-4 py-8 md:py-12">
         <div className="mx-auto max-w-7xl">
-          <Link href="/proprietati" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-text-muted transition-colors hover:text-accent">
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Inapoi la proprietati
-          </Link>
+          <BackButton defaultHref="/proprietati" label="Inapoi la proprietati" className="mb-6" />
 
           <div className="grid gap-8 lg:grid-cols-[1fr_390px] lg:items-end">
             <div>
@@ -180,7 +170,7 @@ export default async function PaginaProprietate({ params }: { params: { slug: st
             <section className="mt-8 grid gap-4 lg:grid-cols-3">
               <Metric title="Evaluare HQS" value={`EUR ${valuation.mid.toLocaleString("ro-RO")}`} text={`Interval realist: EUR ${valuation.low.toLocaleString("ro-RO")} - EUR ${valuation.high.toLocaleString("ro-RO")}.`} />
               <Metric title="Oferta recomandata" value={`EUR ${offer.recommended.toLocaleString("ro-RO")}`} text={`Avans orientativ: EUR ${offer.advance.toLocaleString("ro-RO")}.`} />
-              <Metric title="Vizionare" value={nextSlot} text={liveSlots?.length ? "Primul slot disponibil din calendarul real." : "Nu exista slot public disponibil; cererea ramane cu data preferata."} />
+              <Metric title="Vizionare" value={slots[0].label} text={`Slot recomandat automat, scor ${slots[0].score}%.`} />
             </section>
           </div>
 

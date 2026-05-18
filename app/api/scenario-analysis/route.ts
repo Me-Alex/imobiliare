@@ -1,5 +1,4 @@
 import { buildScenarioAnalysis } from "@/lib/complexity"
-import { loadMarketSignal } from "@/lib/market-data"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
@@ -17,7 +16,7 @@ export async function POST(request: Request) {
       ? body.competitionLevel
       : "mediu"
 
-    const input = {
+    const scenario = buildScenarioAnalysis({
       propertyPrice: Number(body.propertyPrice || 250000),
       area: Number(body.area || 75),
       zone: String(body.zone || "Bucuresti Nord").trim().slice(0, 80),
@@ -29,9 +28,7 @@ export async function POST(request: Request) {
       holdingYears: Number(body.holdingYears || 5),
       riskTolerance: Number(body.riskTolerance || 3),
       competitionLevel,
-    }
-    const market = await loadMarketSignal(input.zone)
-    const scenario = buildScenarioAnalysis(input, market)
+    })
 
     return NextResponse.json({ scenario })
   } catch (error: any) {

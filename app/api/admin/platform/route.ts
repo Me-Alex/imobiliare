@@ -193,7 +193,6 @@ function permissionForAction(type: string) {
     document_status: "documents",
     client_notification: "notifications",
     audit_event: "audit",
-    market_data: "analytics",
   }
   return map[type] || "reports"
 }
@@ -210,16 +209,6 @@ function filterPlatformData(data: Record<string, any>, session: any) {
   if (!hasAdminPermission(session, "notifications")) {
     next.client_notifications = []
     next.admin_notification_outbox = []
-  }
-  if (!hasAdminPermission(session, "analytics")) {
-    next.analytics_attribution = []
-    next.market_data = []
-    next.client_saved_searches = []
-    next.rate_limits = []
-  }
-  if (!hasAdminPermission(session, "integrations")) {
-    next.admin_provider_events = []
-    next.admin_provider_jobs = []
   }
   return next
 }
