@@ -1,4 +1,5 @@
 import { buildScenarioAnalysis } from "@/lib/complexity"
+import { loadMarketData } from "@/lib/market-data"
 import { rateLimit } from "@/lib/rate-limit"
 import { NextResponse } from "next/server"
 
@@ -11,6 +12,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json().catch(() => ({}))
+    const marketData = await loadMarketData()
     const competitionLevel = competitionLevels.includes(body.competitionLevel)
       ? body.competitionLevel
       : "mediu"
@@ -27,7 +29,7 @@ export async function POST(request: Request) {
       holdingYears: Number(body.holdingYears || 5),
       riskTolerance: Number(body.riskTolerance || 3),
       competitionLevel,
-    })
+    }, marketData)
 
     return NextResponse.json({ scenario })
   } catch (error: any) {

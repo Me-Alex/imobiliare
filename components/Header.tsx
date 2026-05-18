@@ -8,6 +8,7 @@ import { Heart, Menu, Phone, Scale, Search, UserRound, X } from "lucide-react"
 import ThemeToggle from "./ThemeToggle"
 import { COMPARE_KEY, FAVORITES_KEY, readStoredIds, subscribeClientPreferences } from "@/lib/client-preferences"
 import { siteConfig } from "@/lib/site-config"
+import { supabase } from "@/lib/supabase"
 
 const links = [
   { href: "/", label: "Acasa" },
@@ -28,6 +29,7 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [compareCount, setCompareCount] = useState(0)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     const sync = () => {
@@ -36,6 +38,34 @@ export default function Header() {
     }
     sync()
     return subscribeClientPreferences(sync)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const load = async (accessToken = "") => {
+      if (cancelled) return
+      if (!accessToken) {
+        setUnreadCount(0)
+        return
+      }
+
+      const response = await fetch("/api/client/notifications?unread=1", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }).catch(() => null)
+
+      if (!response?.ok) return
+      const body = await response.json().catch(() => ({}))
+      if (!cancelled) setUnreadCount(Number(body.unread || 0))
+    }
+
+    supabase.auth.getSession().then(({ data }) => load(data.session?.access_token || ""))
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => load(session?.access_token || ""))
+
+    return () => {
+      cancelled = true
+      listener.subscription.unsubscribe()
+    }
   }, [])
 
   return (
@@ -67,7 +97,7 @@ export default function Header() {
           <IconLink href="/proprietati" label="Cauta proprietati" icon={<Search className="h-4 w-4" aria-hidden />} />
           <IconLink href="/comparare" label={`Comparare${compareCount > 0 ? ` (${compareCount})` : ""}`} icon={<Scale className="h-4 w-4" aria-hidden />} />
           <IconLink href="/favorite" label={`Favorite${favoriteCount > 0 ? ` (${favoriteCount})` : ""}`} icon={<Heart className="h-4 w-4" aria-hidden />} />
-          <IconLink href="/portal" label="Portal Client" icon={<UserRound className="h-4 w-4" aria-hidden />} />
+          <IconLink href="/portal" label="Portal Client" icon={<UserRound className="h-4 w-4" aria-hidden />} badge={unreadCount} />
           <a
             href="/owner"
             className="hidden xl:inline-flex min-h-10 items-center justify-center gap-1.5 rounded-md border border-bg-surface px-3 py-2 text-xs font-black text-text-muted transition hover:border-accent hover:text-accent"
@@ -133,16 +163,21 @@ export default function Header() {
   )
 }
 
-function IconLink({ href, label, icon }: { href: string; label: string; icon: ReactNode }) {
+function IconLink({ href, label, icon, badge }: { href: string; label: string; icon: ReactNode; badge?: number }) {
   return (
     <Link
       href={href}
       prefetch={false}
       title={label}
       aria-label={label}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-bg-surface bg-bg-card text-text-primary transition-colors hover:border-accent hover:text-accent"
+      className="relative inline-flex h-10 w-10 items-center justify-center rounded-md border border-bg-surface bg-bg-card text-text-primary transition-colors hover:border-accent hover:text-accent"
     >
       {icon}
+      {badge && badge > 0 && (
+        <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
     </Link>
   )
 }

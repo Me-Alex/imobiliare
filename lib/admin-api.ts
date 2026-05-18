@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
-import { supabaseAnonKey, supabaseUrl } from "@/lib/supabase"
+import { supabaseAnonKey, supabaseUrl } from "./supabase"
 
 export type AdminSession = {
   actor: string

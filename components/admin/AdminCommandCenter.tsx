@@ -130,6 +130,7 @@ export default function AdminCommandCenter() {
     commissions: (platform.admin_commissions || []).filter((row: Row) => matches(row, query)),
     ownerReports: (platform.owner_reports || []).filter((row: Row) => matches(row, query)),
     attribution: (platform.analytics_attribution || []).filter((row: Row) => matches(row, query)),
+    marketData: (platform.market_data || []).filter((row: Row) => matches(row, query)),
   }), [core, modules, platform, query])
 
   const metrics = useMemo(() => {

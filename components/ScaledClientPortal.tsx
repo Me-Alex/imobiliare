@@ -46,6 +46,7 @@ export default function ScaledClientPortal() {
 
   const headers = (accessToken = token) => ({ Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" })
   const score = useMemo(() => Math.min(100, 35 + data.favorites.length * 8 + data.documents.length * 10 + data.offers.length * 12), [data])
+  const unreadNotifications = useMemo(() => (data.notifications || []).filter((n: any) => String(n.status || "").toUpperCase() === "UNREAD").length, [data.notifications])
 
   async function syncLocalFavorites(accessToken = token) {
     const ids = readStoredIds(FAVORITES_KEY)
@@ -85,6 +86,25 @@ export default function ScaledClientPortal() {
       notifications: activity.notifications || [],
       recommendations: recommendations.recommendations || [],
     })
+  }
+
+  async function toggleNotificationRead(id: string, nextRead: boolean) {
+    if (!token) return
+    const response = await fetch("/api/client/notifications", {
+      method: "PATCH",
+      headers: headers(),
+      body: JSON.stringify({ id, action: nextRead ? "read" : "unread" }),
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      setMessage(body.error || "Notificarea nu a putut fi actualizata.")
+      return
+    }
+    const updated = body.notification
+    setData((prev: any) => ({
+      ...prev,
+      notifications: (prev.notifications || []).map((n: any) => (n.id === id ? { ...n, ...updated } : n)),
+    }))
   }
 
   async function saveProfile() {
@@ -140,7 +160,36 @@ export default function ScaledClientPortal() {
         {tab === "recomandari" && <Grid>{data.recommendations.map((x: any) => <Card key={x.property.id} title={x.property.title} meta={(x.reasons || []).join(", ") || x.property.city} value={`${x.score}/100`} />)}</Grid>}
         {tab === "documente" && <Panel title="Documente si upload"><div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"><Input label="Titlu" value={doc.title} onChange={(v) => setDoc({ ...doc, title: v })} /><Input label="Link optional" value={doc.url} onChange={(v) => setDoc({ ...doc, url: v })} /><button onClick={addDocument} className="mt-6 rounded-lg bg-accent px-4 py-2 text-sm font-black text-bg-primary">Adauga</button></div><input className="mt-4 block w-full text-sm text-text-muted" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} /><Grid>{data.documents.map((x: any) => <Card key={x.id} title={x.title} meta={`${x.type} - ${x.notes || "in verificare"}`} value={x.status} action={x.signed_url ? <a href={x.signed_url} className="rounded-lg border border-bg-surface px-3 py-1 text-xs font-black text-accent" target="_blank">Descarca</a> : null} />)}</Grid></Panel>}
         {tab === "oferte" && <Grid>{data.offers.map((x: any) => <Card key={x.id} title={x.property_title} meta={`${new Date(x.created_at).toLocaleDateString("ro-RO")} - ${x.negotiation_history?.length || 0} pasi negociere`} value={`${x.status} - EUR ${Number(x.counter_offer || x.offer_price).toLocaleString("ro-RO")}`} />)}</Grid>}
-        {tab === "activitate" && <div className="grid gap-5 lg:grid-cols-2"><Panel title="Istoric">{data.activity.map((x: any) => <Card key={x.id} title={x.title} meta={x.description || x.type} value={new Date(x.created_at).toLocaleDateString("ro-RO")} />)}</Panel><Panel title="Notificari">{data.notifications.map((x: any) => <Card key={x.id} title={x.title} meta={x.body || x.status} value={x.due_at ? new Date(x.due_at).toLocaleDateString("ro-RO") : x.status} />)}</Panel></div>}
+        {tab === "activitate" && (
+          <div className="grid gap-5 lg:grid-cols-2">
+            <Panel title="Istoric">
+              {data.activity.map((x: any) => (
+                <Card key={x.id} title={x.title} meta={x.description || x.type} value={new Date(x.created_at).toLocaleDateString("ro-RO")} />
+              ))}
+            </Panel>
+            <Panel title={`Notificari${unreadNotifications ? ` (${unreadNotifications} necitite)` : ""}`}>
+              {data.notifications.map((x: any) => {
+                const isUnread = String(x.status || "").toUpperCase() === "UNREAD"
+                return (
+                  <Card
+                    key={x.id}
+                    title={x.title}
+                    meta={x.body || x.status}
+                    value={x.due_at ? new Date(x.due_at).toLocaleDateString("ro-RO") : x.status}
+                    action={
+                      <button
+                        onClick={() => toggleNotificationRead(x.id, isUnread)}
+                        className={`rounded-lg border px-3 py-1 text-xs font-black ${isUnread ? "border-accent text-accent" : "border-bg-surface text-text-muted"}`}
+                      >
+                        {isUnread ? "Marcheaza citit" : "Marcheaza necitit"}
+                      </button>
+                    }
+                  />
+                )
+              })}
+            </Panel>
+          </div>
+        )}
         {tab === "securitate" && <Panel title="Securitate cont"><div className="grid gap-3 md:grid-cols-2"><Input label="Parola noua" value={security.password} onChange={(v) => setSecurity({ ...security, password: v })} type="password" /><Input label="Confirma parola" value={security.confirm} onChange={(v) => setSecurity({ ...security, confirm: v })} type="password" /></div><div className="mt-4 flex flex-col gap-3 sm:flex-row"><button onClick={updatePassword} className="rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary">Actualizeaza parola</button><button onClick={logout} className="rounded-lg border border-bg-surface px-4 py-3 text-sm font-black text-text-muted">Logout complet</button></div><p className="mt-3 text-sm leading-6 text-text-muted">Dupa un email de resetare, aceasta fila iti permite sa setezi parola noua pentru contul autentificat.</p></Panel>}
       </div>
     </section>

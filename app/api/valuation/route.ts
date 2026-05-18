@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { parseJsonBody, valuationSchema } from "@/lib/api-validation"
 import { calculateValuation } from "@/lib/complexity"
+import { loadMarketData } from "@/lib/market-data"
 import { rateLimit } from "@/lib/rate-limit"
 
 
@@ -12,6 +13,7 @@ export async function POST(request: Request) {
     const parsed = await parseJsonBody(request, valuationSchema)
     if ("error" in parsed) return parsed.error
     const body = parsed.data
+    const marketData = await loadMarketData()
 
     const valuation = calculateValuation({
       area: body.area,
@@ -20,7 +22,7 @@ export async function POST(request: Request) {
       condition: body.condition,
       parking: body.parking,
       floor: body.floor,
-    })
+    }, marketData)
 
     return NextResponse.json({ valuation })
   } catch (error: any) {

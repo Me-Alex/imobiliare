@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { countBy, date, defaultModules, money, statusLabel, type Row } from "./admin-shared"
+import { apiJson, countBy, date, defaultModules, money, statusLabel, type Row } from "./admin-shared"
 import { ActionPanel, ModuleEditor } from "./admin-operations"
 import { Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Result, Table, Td, Title } from "./admin-ui"
 
@@ -39,6 +39,26 @@ export function ReportsView({ core, modules, platform, report, metrics, exportLo
 }
 
 export function UsersView({ filtered, saving, saveModule, deleteModule, platformAction }: any) {
+  const [createUser, setCreateUser] = useState<Row>({
+    email: "",
+    password: "",
+    role: "manager",
+    permissions: "crm,properties,reports",
+    status: "ACTIVE",
+  })
+  const [busy, setBusy] = useState(false)
+
+  const submitCreateUser = async () => {
+    if (!createUser.email || !createUser.password) return
+    setBusy(true)
+    try {
+      await apiJson("/api/admin/users", { method: "POST", body: JSON.stringify(createUser) })
+      window.location.reload()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Title title="Echipa" subtitle="Utilizatori operationali si roluri admin." />
@@ -46,6 +66,18 @@ export function UsersView({ filtered, saving, saveModule, deleteModule, platform
         <ModuleEditor type="team_users" title="Membri echipa" fields={["name", "email", "role", "status"]} rows={filtered.teamUsers} defaults={{ role: "agent", status: "ACTIVE" }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} />
         <ActionPanel title="Rol admin" fields={["email", "role", "permissions", "status"]} defaults={{ role: "manager", permissions: "crm,properties,reports", status: "ACTIVE" }} saving={saving === "role"} onSubmit={(payload) => platformAction("role", { type: "admin_role", payload }, "Rol admin salvat.")} />
       </div>
+      <Panel>
+        <Title compact title="Creeaza cont Supabase + rol admin" subtitle="Creeaza user in Supabase Auth si scrie automat admin_roles (necesita SUPABASE_SERVICE_ROLE_KEY)." />
+        <Grid columns={4}>
+          <Field label="email" value={String(createUser.email || "")} onChange={(value) => setCreateUser({ ...createUser, email: value })} />
+          <Field label="password" type="password" value={String(createUser.password || "")} onChange={(value) => setCreateUser({ ...createUser, password: value })} />
+          <Field label="role" value={String(createUser.role || "")} onChange={(value) => setCreateUser({ ...createUser, role: value })} />
+          <Field label="permissions" value={String(createUser.permissions || "")} onChange={(value) => setCreateUser({ ...createUser, permissions: value })} />
+        </Grid>
+        <Button className="mt-4" disabled={busy || !String(createUser.email || "").includes("@") || String(createUser.password || "").length < 8} onClick={submitCreateUser}>
+          {busy ? "Se creeaza..." : "Creeaza user"}
+        </Button>
+      </Panel>
       <Panel tight><Table heads={["Email", "Rol", "Permisiuni", "Status"]} rows={filtered.roles} empty="Nu exista roluri admin." render={(row: Row) => <tr key={row.id || row.email} className="border-t border-bg-surface"><Td>{row.email}</Td><Td>{row.role}</Td><Td>{Array.isArray(row.permissions) ? row.permissions.join(", ") : row.permissions}</Td><Td><Badge>{row.status || "ACTIVE"}</Badge></Td></tr>} /></Panel>
     </div>
   )

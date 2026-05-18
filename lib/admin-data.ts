@@ -93,6 +93,7 @@ export async function listAdminPlatform(supabase = getAdminClient()) {
     calendar_sync_events,
     analytics_attribution,
     admin_bulk_imports,
+    market_data,
   ] = await Promise.all([
     safeRows(supabase, "client_profiles", "updated_at", false, 500),
     safeRows(supabase, "client_favorites", "created_at", false, 500),
@@ -117,6 +118,7 @@ export async function listAdminPlatform(supabase = getAdminClient()) {
     safeRows(supabase, "calendar_sync_events", "created_at", false, 500),
     safeRows(supabase, "analytics_attribution", "created_at", false, 1000),
     safeRows(supabase, "admin_bulk_imports", "created_at", false, 200),
+    safeRows(supabase, "market_data", "updated_at", false, 200),
   ])
 
   return {
@@ -143,6 +145,7 @@ export async function listAdminPlatform(supabase = getAdminClient()) {
     calendar_sync_events,
     analytics_attribution,
     admin_bulk_imports,
+    market_data,
   }
 }
 

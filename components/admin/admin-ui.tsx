@@ -36,8 +36,8 @@ export function Button({ children, onClick, disabled, variant = "primary", size 
   return <button type="button" disabled={disabled} onClick={onClick} className={`inline-flex items-center justify-center gap-2 rounded-lg border font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${size === "sm" ? "h-8 px-2 text-xs" : "h-10 px-3 text-sm"} ${styles[variant]} ${className}`}>{children}</button>
 }
 
-export function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="block"><span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-text-muted">{fieldLabel(label)}</span><input className="form-input" value={value} onChange={(event) => onChange(event.target.value)} /></label>
+export function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
+  return <label className="block"><span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-text-muted">{fieldLabel(label)}</span><input className="form-input" type={type} value={value} onChange={(event) => onChange(event.target.value)} /></label>
 }
 
 export function Area({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {

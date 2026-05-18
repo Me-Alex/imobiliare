@@ -125,6 +125,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ poi: data })
     }
 
+    if (body.type === "market_data") {
+      const zone = String(payload.zone || "").trim()
+      if (!zone) return jsonError("Zona lipseste", 400)
+      if (payload.action === "delete") {
+        const { data, error } = await supabase.from("market_data").delete().eq("zone", zone).select("*").maybeSingle()
+        if (error) return jsonError(error.message, 400)
+        await logAudit(actor, "MARKET_DATA_DELETED", "market_data", zone, data || { zone }, supabase)
+        return NextResponse.json({ market: data || { zone, deleted: true } })
+      }
+      const row = {
+        zone,
+        avg_price: number(payload.avg_price) ?? 0,
+        rent_yield: number(payload.rent_yield) ?? 0,
+        liquidity: Math.round(number(payload.liquidity) ?? 0),
+        growth: number(payload.growth) ?? 0,
+        risk: payload.risk || "mediu",
+        poi: Array.isArray(payload.poi) ? payload.poi : String(payload.poi || "").split(",").map((item) => item.trim()).filter(Boolean),
+        updated_at: new Date().toISOString(),
+      }
+      const { data, error } = await supabase.from("market_data").upsert(row, { onConflict: "zone" }).select("*").single()
+      if (error) return jsonError(error.message, 400)
+      await logAudit(actor, "MARKET_DATA_UPSERTED", "market_data", data.zone, data, supabase)
+      return NextResponse.json({ market: data })
+    }
+
     if (body.type === "document_status") {
       const id = payload.id || body.id
       if (!id) return jsonError("Document id lipseste", 400)
@@ -191,6 +216,7 @@ function permissionForAction(type: string) {
     cms: "cms",
     admin_role: "roles",
     zone_poi: "zones",
+    market_data: "analytics",
     document_status: "documents",
     client_notification: "notifications",
     audit_event: "audit",
@@ -207,6 +233,7 @@ function filterPlatformData(data: Record<string, any>, session: any) {
   if (!hasAdminPermission(session, "zones")) next.zone_poi = []
   if (!hasAdminPermission(session, "roles")) next.admin_roles = []
   if (!hasAdminPermission(session, "audit")) next.admin_audit_log = []
+  if (!hasAdminPermission(session, "analytics")) next.market_data = []
   if (!hasAdminPermission(session, "notifications")) {
     next.client_notifications = []
     next.admin_notification_outbox = []

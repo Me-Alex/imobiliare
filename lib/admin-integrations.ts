@@ -1,4 +1,4 @@
-import { getEnv } from "@/lib/admin-api"
+import { getEnv } from "./admin-api"
 
 export class IntegrationConfigError extends Error {
   constructor(message: string) {

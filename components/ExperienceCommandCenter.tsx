@@ -10,6 +10,7 @@ import {
   calculateValuation,
   complexityPillars,
   getMarketSignal,
+  type MarketSignal,
 } from "@/lib/complexity"
 import { formatCurrency } from "@/lib/format"
 
@@ -24,10 +25,11 @@ export default function ExperienceCommandCenter({ properties }: { properties: Pr
   const [condition, setCondition] = useState<"renovat" | "bun" | "de-renovat" | "premium">("renovat")
   const [urgency, setUrgency] = useState<"rapid" | "normal" | "flexibil">("normal")
   const [slots, setSlots] = useState<ReturnType<typeof buildViewingSlots>>([])
+  const [marketRows, setMarketRows] = useState<MarketSignal[]>([])
 
   const analytics = useMemo(() => buildPortfolioAnalytics(properties), [properties])
-  const valuation = useMemo(() => calculateValuation({ area, rooms, zone, condition, parking: 1, floor: 3 }), [area, rooms, zone, condition])
-  const signal = useMemo(() => getMarketSignal(zone), [zone])
+  const valuation = useMemo(() => calculateValuation({ area, rooms, zone, condition, parking: 1, floor: 3 }, marketRows), [area, rooms, zone, condition, marketRows])
+  const signal = useMemo(() => getMarketSignal(zone, marketRows), [zone, marketRows])
   const selected = properties[0]
   const offer = useMemo(() => buildOfferDraft({
     propertyTitle: selected?.title || "Proprietate selectata HQS",
@@ -42,6 +44,16 @@ export default function ExperienceCommandCenter({ properties }: { properties: Pr
   useEffect(() => {
     setSlots(buildViewingSlots(urgency))
   }, [urgency])
+
+  useEffect(() => {
+    fetch("/api/market-data")
+      .then((res) => res.ok ? res.json() : null)
+      .then((body) => {
+        const next = Array.isArray(body?.market_data) ? body.market_data : []
+        if (next.length) setMarketRows(next)
+      })
+      .catch(() => undefined)
+  }, [])
 
   return (
     <section className="border-y border-bg-surface bg-bg-secondary px-4 py-14">
