@@ -50,7 +50,7 @@ export default function Footer() {
 
       <div className="mx-auto mt-10 flex max-w-7xl flex-col gap-3 border-t border-bg-surface pt-5 text-xs font-semibold uppercase tracking-[0.16em] text-text-muted md:flex-row md:items-center md:justify-between">
         <p>&copy; {new Date().getFullYear()} HQS Imobiliare. Toate drepturile rezervate.</p>
-        <a href="https://wa.me/40700000000" className="hover:text-accent">WhatsApp</a>
+        <a href="https://wa.me/40711993512" className="hover:text-accent">WhatsApp</a>
       </div>
     </footer>
   )
