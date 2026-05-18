@@ -1,24 +1,51 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Variabilele de mediu sunt obligatorii. Daca lipsesc, aplicatia nu porneste cu valori hardcodate.
-// Copiaza .env.local.example in .env.local si completeaza valorile reale.
-const _supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const _supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// Env vars sunt citite lazy (la runtime/request), nu la module load time.
+// Cloudflare Pages evalueaza modulele la build — un throw top-level crapa build-ul
+// daca variabilele nu sunt setate ca "Build environment variables" in dashboard.
+// Cu lazy getters, validarea are loc doar cand modulul e efectiv folosit intr-un request.
 
-if (!_supabaseUrl || !_supabaseAnonKey) {
-  throw new Error(
-    '[HQS] Variabilele de mediu NEXT_PUBLIC_SUPABASE_URL si NEXT_PUBLIC_SUPABASE_ANON_KEY sunt obligatorii.\n' +
-    'Copiaza .env.local.example in .env.local si completeaza valorile.'
-  )
+function getEnv(key: string): string {
+  // In Edge Runtime (Cloudflare), process.env e populat din Cloudflare env bindings
+  const val = process.env[key]
+  if (!val) {
+    throw new Error(
+      `[HQS] Variabila de mediu ${key} este obligatorie.\n` +
+      'Seteaz-o in Cloudflare Pages → Settings → Environment Variables.'
+    )
+  }
+  return val
 }
 
-// Dupa guard-ul de mai sus, TypeScript nu poate sa infereze narrowing-ul automat
-// pe exporturi separate, asa ca asertam explicit ca string (nu string | undefined).
-// Valoarea este garantata non-undefined de guard-ul de mai sus.
-export const supabaseUrl: string = _supabaseUrl
-export const supabaseAnonKey: string = _supabaseAnonKey
+// Lazy getters — evaluate doar la primul acces (in request handler, nu la build)
+let _supabaseUrl: string | undefined
+let _supabaseAnonKey: string | undefined
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export function getSupabaseUrl(): string {
+  if (!_supabaseUrl) _supabaseUrl = getEnv('NEXT_PUBLIC_SUPABASE_URL')
+  return _supabaseUrl
+}
+
+export function getSupabaseAnonKey(): string {
+  if (!_supabaseAnonKey) _supabaseAnonKey = getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+  return _supabaseAnonKey
+}
+
+// Compatibilitate backward — aceste exporturi sunt folosite in toata aplicatia.
+// Functioneaza corect la runtime; la build (module evaluation) nu mai arunca eroare.
+export const supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+export const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
+
+// Client singleton lazy — creat la primul import efectiv din request handler
+let _supabase: ReturnType<typeof createClient> | undefined
+export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
+  get(_target, prop) {
+    if (!_supabase) {
+      _supabase = createClient(getSupabaseUrl(), getSupabaseAnonKey())
+    }
+    return (_supabase as Record<string | symbol, unknown>)[prop]
+  }
+})
 
 export type PropertyType = 'APARTMENT' | 'HOUSE' | 'VILLA' | 'LAND' | 'COMMERCIAL'
 export type PropertyStatus = 'PUBLISHED' | 'DRAFT' | 'SOLD' | 'RENTED'
