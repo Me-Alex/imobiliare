@@ -58,7 +58,8 @@ export default async function PaginaProprietate({ params }: { params: { slug: st
   const valuation = calculateValuation({ area: p.area_sqm || 80, rooms: p.rooms || 2, zone: p.city || "Bucuresti Nord", condition: p.featured ? "premium" : "bun", parking: p.parking_spots || 0 })
   const offer = buildOfferDraft({ propertyTitle: p.title, listPrice: p.price, clientBudget: p.price, advancePercent: 20, closingDays: 30, riskLevel: valuation.market.risk as "scazut" | "mediu" | "ridicat" })
   const slots = buildViewingSlots("normal")
-  const jsonLd = {
+  const siteBase = process.env.NEXT_PUBLIC_SITE_URL || "https://hqsimobiliare.ro"
+  const jsonLdResidence = {
     "@context": "https://schema.org",
     "@type": "Residence",
     name: p.title,
@@ -67,15 +68,36 @@ export default async function PaginaProprietate({ params }: { params: { slug: st
     numberOfRooms: p.rooms,
     offers: { "@type": "Offer", price: p.price, priceCurrency: p.currency || "EUR", availability: "https://schema.org/InStock" },
   }
+  const jsonLdBreadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "HQS Imobiliare", item: siteBase },
+      { "@type": "ListItem", position: 2, name: "Proprietati", item: `${siteBase}/proprietati` },
+      { "@type": "ListItem", position: 3, name: p.city, item: `${siteBase}/proprietati?zone=${encodeURIComponent(p.city)}` },
+      { "@type": "ListItem", position: 4, name: p.title, item: `${siteBase}/proprietate/${p.slug}` },
+    ],
+  }
 
   return (
     <main id="continut">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdResidence) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumb) }} />
       <Header />
 
       <section className="border-b border-bg-surface bg-bg-primary px-4 py-8 md:py-12">
         <div className="mx-auto max-w-7xl">
-          <BackButton defaultHref="/proprietati" label="Inapoi la proprietati" className="mb-6" />
+          {/* Breadcrumbs vizuale */}
+          <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-1.5 text-xs text-text-muted">
+            <Link href="/" className="hover:text-accent transition-colors">Acasa</Link>
+            <span aria-hidden>/</span>
+            <Link href="/proprietati" className="hover:text-accent transition-colors">Proprietati</Link>
+            <span aria-hidden>/</span>
+            <Link href={`/proprietati?zone=${encodeURIComponent(p.city)}`} className="hover:text-accent transition-colors">{p.city}</Link>
+            <span aria-hidden>/</span>
+            <span className="text-text-primary font-semibold line-clamp-1 max-w-[200px]">{p.title}</span>
+          </nav>
+          <BackButton defaultHref="/proprietati" label="Inapoi la rezultate" className="mb-4" />
 
           <div className="grid gap-8 lg:grid-cols-[1fr_390px] lg:items-end">
             <div>

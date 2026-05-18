@@ -28,7 +28,7 @@ export default async function ZoneDetailPage({ params }: { params: { slug: strin
 
   const { data } = await supabase
     .from("properties")
-    .select("*")
+    .select("id,slug,title,city,county,address,price,area_sqm,rooms,bathrooms,cover_image_url,featured,type,currency,parking_spots,published_at,created_at,description,gallery_urls")
     .eq("status", "PUBLISHED")
     .ilike("city", `%${zone.name.split(" ")[0]}%`)
     .limit(6)

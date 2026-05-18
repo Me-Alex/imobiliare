@@ -7,14 +7,45 @@ import { listPropertyFacets, propertyFiltersFromSearchParams, searchPublishedPro
 
 export const runtime = "edge"
 
-export const metadata = {
-  title: "Proprietati disponibile | HQS Imobiliare",
-  description: "Apartamente, case, vile si terenuri verificate de HQS Imobiliare.",
-}
-
 export const revalidate = 60
 
 type SearchParams = Record<string, string | string[] | undefined>
+
+const TIP_LABEL: Record<string, string> = {
+  APARTMENT: "Apartamente",
+  HOUSE: "Case",
+  VILLA: "Vile",
+  LAND: "Terenuri",
+  COMMERCIAL: "Spatii comerciale",
+}
+
+export async function generateMetadata({ searchParams }: { searchParams?: SearchParams }) {
+  const sp = searchParams || {}
+  const tip = String(sp.type || "").toUpperCase()
+  const zone = String(sp.zone || "").trim()
+  const rooms = Number(sp.rooms || 0)
+  const maxPrice = Number(sp.maxPrice || sp.budget || 0)
+
+  const parts: string[] = []
+  if (tip && TIP_LABEL[tip]) parts.push(TIP_LABEL[tip])
+  if (rooms > 0) parts.push(`${rooms}+ camere`)
+  if (zone && zone !== "Toate zonele") parts.push(`in ${zone}`)
+  if (maxPrice > 0) parts.push(`pana la EUR ${maxPrice.toLocaleString("ro-RO")}`)
+
+  const hasFilters = parts.length > 0
+  const title = hasFilters
+    ? `${parts.join(", ")} | HQS Imobiliare`
+    : "Proprietati disponibile | HQS Imobiliare"
+  const description = hasFilters
+    ? `${parts.join(", ")} — proprietati verificate si selectate de HQS Imobiliare in Bucuresti.`
+    : "Apartamente, case, vile si terenuri verificate de HQS Imobiliare."
+
+  return {
+    title,
+    description,
+    alternates: { canonical: "/proprietati" },
+  }
+}
 
 export default async function ProprietatiPage({ searchParams }: { searchParams?: SearchParams }) {
   const filters = propertyFiltersFromSearchParams(searchParams)

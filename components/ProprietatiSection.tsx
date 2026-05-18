@@ -309,6 +309,19 @@ export default function ProprietatiSection({
           </div>
 
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            {/* Chips camere — vizibile permanent, fara a deschide "Filtre" */}
+            {[0, 1, 2, 3, 4].map((nr) => (
+              <button
+                key={`camere-${nr}`}
+                onClick={() => setFiltruCamere(filtruCamere === nr ? 0 : nr)}
+                className={`shrink-0 rounded-md border px-3.5 py-2 text-sm font-black transition ${filtruCamere === nr && nr > 0 ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-primary text-text-muted hover:border-accent hover:text-accent"}`}
+                aria-pressed={filtruCamere === nr && nr > 0}
+                title={nr === 0 ? "Orice numar de camere" : `Minim ${nr} ${nr === 1 ? "camera" : "camere"}`}
+              >
+                {nr === 0 ? "Orice" : nr === 4 ? "4+ cam" : `${nr} cam`}
+              </button>
+            ))}
+            <span className="mx-1 border-l border-bg-surface" aria-hidden />
             {Object.entries(TIPURI).map(([value, label]) => (
               <button
                 key={value}

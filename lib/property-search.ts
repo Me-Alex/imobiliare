@@ -93,7 +93,10 @@ function normalizeTextSearch(value: string) {
 export async function searchPublishedProperties(filters: PropertySearchFilters): Promise<PropertySearchResult> {
   let query = supabase
     .from("properties")
-    .select("*", { count: "exact" })
+    .select(
+    "id,slug,title,description,price,currency,type,status,city,county,address,area_sqm,rooms,bathrooms,parking_spots,featured,cover_image_url,gallery_urls,published_at,created_at",
+    { count: "exact" }
+  )
     .eq("status", "PUBLISHED")
 
   if (filters.type !== "toate") query = query.eq("type", filters.type as PropertyType)
