@@ -1,18 +1,23 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Variabilele de mediu sunt obligatorii. Daca lipsesc, aplicatia nu trebuie sa porneasca cu valori hardcodate.
+// Variabilele de mediu sunt obligatorii. Daca lipsesc, aplicatia nu porneste cu valori hardcodate.
 // Copiaza .env.local.example in .env.local si completeaza valorile reale.
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const _supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const _supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!_supabaseUrl || !_supabaseAnonKey) {
   throw new Error(
     '[HQS] Variabilele de mediu NEXT_PUBLIC_SUPABASE_URL si NEXT_PUBLIC_SUPABASE_ANON_KEY sunt obligatorii.\n' +
     'Copiaza .env.local.example in .env.local si completeaza valorile.'
   )
 }
 
-export { supabaseUrl, supabaseAnonKey }
+// Dupa guard-ul de mai sus, TypeScript nu poate sa infereze narrowing-ul automat
+// pe exporturi separate, asa ca asertam explicit ca string (nu string | undefined).
+// Valoarea este garantata non-undefined de guard-ul de mai sus.
+export const supabaseUrl: string = _supabaseUrl
+export const supabaseAnonKey: string = _supabaseAnonKey
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export type PropertyType = 'APARTMENT' | 'HOUSE' | 'VILLA' | 'LAND' | 'COMMERCIAL'
