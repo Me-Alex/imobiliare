@@ -232,14 +232,15 @@ export function usePropertyFilters({
     const newSearch: SavedSearch = {
       id: Date.now().toString(),
       label,
+      query: query.trim(),
       type: filtruTip,
       zone: filtruZona,
       rooms: filtruCamere,
-      budget: pretMax,
+      maxPrice: pretMax,
       minArea: suprafataMin,
       featuredOnly: doarFeatured,
       results: total,
-      savedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     }
     const next = [newSearch, ...savedSearches.slice(0, 4)]
     writeSavedSearches(next)
@@ -250,7 +251,7 @@ export function usePropertyFilters({
     setFiltruTip(search.type)
     setFiltruZona(search.zone)
     setFiltruCamere(search.rooms)
-    setPretMax(search.budget)
+    setPretMax(search.maxPrice)
     setSuprafataMin(search.minArea)
     setDoarFeatured(search.featuredOnly)
   }, [])
