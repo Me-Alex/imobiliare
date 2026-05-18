@@ -31,6 +31,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.75,
   }))
 
+  const zoneTypeRoutes = zoneProfiles.flatMap((zone) => ["apartamente", "case", "vile", "terenuri", "comercial"].map((type) => ({
+    url: `${base}/zone/${zone.slug}/${type}`,
+    lastModified: now,
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  })))
+
   const propertyRoutes = (properties || []).filter((property) => property.slug).map((property) => ({
     url: `${base}/proprietate/${property.slug}`,
     lastModified: new Date(property.updated_at || property.published_at || property.created_at || now),
@@ -38,5 +45,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }))
 
-  return [...staticRoutes, ...zoneRoutes, ...propertyRoutes]
+  return [...staticRoutes, ...zoneRoutes, ...zoneTypeRoutes, ...propertyRoutes]
 }

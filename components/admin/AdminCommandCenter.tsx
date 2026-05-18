@@ -7,7 +7,7 @@ import { AppointmentsView, CrmView, Overview, PropertiesView } from "./admin-cor
 import { AgentsView, ClientsView, ComplianceView, DocumentsCenterView, ListingsView, MaintenanceView, MarketingView, TransactionsView } from "./admin-real-estate-views"
 import { OperationsView } from "./admin-operations"
 import { AuditView, ContentView, ReportsView, SettingsView, ToolsView, UsersView } from "./admin-secondary-views"
-import { AccountingView, AnalyticsOpsView, BulkOpsView, CalendarOpsView, IntegrationsView, MediaView, OwnerPortalAdminView } from "./admin-upgrade-views"
+import { AccountingView, AnalyticsOpsView, BulkOpsView, CalendarOpsView, IntegrationsView, MarketDataView, MediaView, OwnerPortalAdminView } from "./admin-upgrade-views"
 import { Banner, Button, LoadingState, MiniStat, NavButton } from "./admin-ui"
 import { apiJson, csv, defaultCore, defaultModules, matches, nav, slugify, type ModuleType, type Row, type View } from "./admin-shared"
 
@@ -230,6 +230,7 @@ export default function AdminCommandCenter() {
     if (view === "content") return <ContentView {...props} />
     if (view === "reports") return <ReportsView {...props} />
     if (view === "analytics") return <AnalyticsOpsView {...props} />
+    if (view === "marketData") return <MarketDataView {...props} />
     if (view === "ownerPortal") return <OwnerPortalAdminView {...props} />
     if (view === "compliance") return <ComplianceView {...props} />
     if (view === "users") return <UsersView {...props} />
@@ -274,7 +275,7 @@ export default function AdminCommandCenter() {
               <Button variant="ghost" onClick={() => load()} disabled={refreshing}>{refreshing ? "Refresh..." : "Refresh"}</Button>
               <Button onClick={exportLocalCsv}>CSV</Button>
               {adminEmail && <span className="rounded-lg border border-bg-surface px-3 py-2 text-xs font-black text-text-muted">{adminEmail}</span>}
-              <Button variant="ghost" onClick={() => supabase.auth.signOut().then(() => { window.location.href = "/admin/login" })}>Logout</Button>
+              <Button variant="ghost" onClick={() => fetch("/api/admin/session", { method: "DELETE" }).finally(() => supabase.auth.signOut().then(() => { window.location.href = "/admin/login" }))}>Logout</Button>
               <a className="inline-flex h-10 items-center rounded-lg border border-bg-surface px-3 text-sm font-bold" href="/">Site</a>
             </div>
           </div>

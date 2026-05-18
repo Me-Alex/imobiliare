@@ -29,6 +29,9 @@ export default function ZonePage() {
               <div className="rounded-lg bg-bg-secondary p-3"><p className="text-xs text-text-muted">Pret mediu</p><p className="font-black text-text-primary">EUR {zone.avgPrice}/mp</p></div>
               <div className="rounded-lg bg-bg-secondary p-3"><p className="text-xs text-text-muted">Cerere</p><p className="font-black text-text-primary">{zone.demand}</p></div>
             </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {["apartamente", "vile", "case"].map((type) => <span key={type} className="rounded-full border border-bg-surface px-3 py-1 text-xs font-bold text-text-muted">/{type}</span>)}
+            </div>
           </Link>
         ))}
       </section>

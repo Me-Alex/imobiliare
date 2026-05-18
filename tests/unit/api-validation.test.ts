@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { adminMediaUploadSchema, clientNotificationUpdateSchema, leadRequestSchema, valuationSchema } from "@/lib/api-validation"
+import { adminMediaUploadSchema, clientNotificationUpdateSchema, leadRequestSchema, savedSearchSchema, valuationSchema } from "@/lib/api-validation"
 
 describe("api validation", () => {
   it("requires either phone or email for leads", () => {
@@ -30,5 +30,11 @@ describe("api validation", () => {
     expect(parsed.kind).toBe("gallery")
     expect(parsed.content_type).toBe("application/octet-stream")
     expect(parsed.size).toBe(0)
+  })
+
+  it("validates saved search payloads", () => {
+    const parsed = savedSearchSchema.parse({ label: "Pipera 3 camere", filters: { zone: "Pipera", rooms: 3 }, results_count: 12 })
+    expect(parsed.notifications_enabled).toBe(true)
+    expect(parsed.filters.zone).toBe("Pipera")
   })
 })

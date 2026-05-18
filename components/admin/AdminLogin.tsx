@@ -22,9 +22,23 @@ export default function AdminLogin() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.access_token) window.location.href = "/admin/dashboard"
+      if (data.session?.access_token) {
+        establishAdminCookie(data.session.access_token)
+          .then(() => { window.location.href = "/admin/dashboard" })
+          .catch(() => supabase.auth.signOut())
+      }
     })
   }, [])
+
+  async function establishAdminCookie(token: string) {
+    const response = await fetch("/api/admin/session", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(body.error || "Contul nu are rol admin.")
+    return body
+  }
 
   const submit = async () => {
     setBusy(true)
@@ -42,9 +56,7 @@ export default function AdminLogin() {
       if (error) throw error
       const token = data.session?.access_token
       if (!token) throw new Error("Sesiunea Supabase nu a fost creata.")
-      const response = await fetch("/api/admin/session", { headers: { Authorization: `Bearer ${token}` } })
-      const body = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(body.error || "Contul nu are rol admin.")
+      await establishAdminCookie(token)
       window.location.href = "/admin/dashboard"
     } catch (err: any) {
       setError(err.message || "Autentificare esuata.")

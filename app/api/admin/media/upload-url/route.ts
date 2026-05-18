@@ -47,6 +47,10 @@ export async function POST(request: Request) {
     const property = await auth.supabase.from("properties").select("id").eq("id", propertyId).maybeSingle()
     if (property.error) return jsonError(property.error.message, 400)
     if (!property.data) return jsonError("Proprietatea nu exista.", 404)
+    if (body.checksum) {
+      const duplicate = await auth.supabase.from("property_media").select("id,path").eq("property_id", propertyId).eq("checksum", body.checksum).maybeSingle()
+      if (duplicate.data) return jsonError(`Fisier duplicat pentru aceasta proprietate: ${duplicate.data.path}`, 409)
+    }
 
     const path = `${propertyId}/${kind}/${Date.now()}-${fileName}`
     const { data, error } = await auth.supabase.storage.from("property-media").createSignedUploadUrl(path)
@@ -58,6 +62,9 @@ export async function POST(request: Request) {
       content_type: contentType,
       max_size_bytes: maxBytes,
       allowed_types: Array.from(allowedTypes),
+      checksum: body.checksum || null,
+      width: body.width || 0,
+      height: body.height || 0,
     })
   } catch (error: any) {
     return jsonError(error.message || "Media upload URL failed")

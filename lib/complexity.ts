@@ -40,6 +40,16 @@ export type ScenarioAnalysisInput = {
   competitionLevel: "scazut" | "mediu" | "ridicat"
 }
 
+export type MarketSignal = {
+  zone: string
+  avgPrice: number
+  rentYield: number
+  liquidity: number
+  growth: number
+  risk: "scazut" | "mediu" | "ridicat" | string
+  poi: string[]
+}
+
 function finiteNumber(value: number, fallback: number) {
   return Number.isFinite(value) ? value : fallback
 }
@@ -66,7 +76,7 @@ export const complexityPillars: ComplexityPillar[] = [
   { key: "audit-security", title: "Audit si securitate operationala", complexity: "enterprise", surfaces: ["Admin", "API"], outcome: "log actiuni, validari si erori explicite" },
 ]
 
-export const localMarketMatrix = [
+export const localMarketMatrix: MarketSignal[] = [
   { zone: "Pipera", avgPrice: 2190, rentYield: 5.6, liquidity: 82, growth: 8.4, risk: "mediu", poi: ["scoli private", "birouri", "centura", "restaurante"] },
   { zone: "Floreasca", avgPrice: 3010, rentYield: 4.9, liquidity: 91, growth: 7.1, risk: "scazut", poi: ["parc", "mall", "clinici", "business"] },
   { zone: "Corbeanca", avgPrice: 1680, rentYield: 4.1, liquidity: 68, growth: 6.2, risk: "mediu", poi: ["teren", "scoli", "lac", "aeroport"] },
@@ -78,12 +88,12 @@ export function getMarketSignal(zone: string) {
   return localMarketMatrix.find((item) => q.includes(item.zone.toLowerCase()) || item.zone.toLowerCase().includes(q)) || localMarketMatrix[3]
 }
 
-export function calculateValuation(input: ValuationInput) {
+export function calculateValuation(input: ValuationInput, marketOverride?: MarketSignal) {
   const area = clampNumber(finiteNumber(input.area, 70), 15, 2_000)
   const rooms = Math.round(clampNumber(finiteNumber(input.rooms, 2), 1, 12))
   const parking = Math.round(clampNumber(finiteNumber(input.parking, 0), 0, 8))
   const floor = typeof input.floor === "number" ? Math.round(clampNumber(finiteNumber(input.floor, 0), -2, 80)) : undefined
-  const market = getMarketSignal(input.zone || "Bucuresti Nord")
+  const market = marketOverride || getMarketSignal(input.zone || "Bucuresti Nord")
   const conditionFactor = { premium: 1.14, renovat: 1.06, bun: 1, "de-renovat": 0.88 }[input.condition]
   const roomFactor = rooms >= 4 ? 1.05 : rooms === 1 ? 0.94 : 1
   const parkingBonus = Math.min(parking, 3) * 8500
@@ -133,8 +143,8 @@ export function buildOfferDraft(input: OfferInput) {
   }
 }
 
-export function buildScenarioAnalysis(input: ScenarioAnalysisInput) {
-  const market = getMarketSignal(input.zone || "Bucuresti Nord")
+export function buildScenarioAnalysis(input: ScenarioAnalysisInput, marketOverride?: MarketSignal) {
+  const market = marketOverride || getMarketSignal(input.zone || "Bucuresti Nord")
   const propertyPrice = clampNumber(finiteNumber(input.propertyPrice, 250_000), 25_000, 50_000_000)
   const area = clampNumber(finiteNumber(input.area, 70), 15, 2_000)
   const monthlyRent = clampNumber(finiteNumber(input.monthlyRent, Math.round(propertyPrice * 0.004)), 0, 250_000)
