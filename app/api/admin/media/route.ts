@@ -97,6 +97,7 @@ export async function DELETE(request: Request) {
     if (!id) return jsonError("id lipseste", 400)
     const { data, error } = await auth.supabase.from("property_media").delete().eq("id", id).select("*").maybeSingle()
     if (error) return jsonError(error.message, 400)
+    if (data?.path) await auth.supabase.storage.from(data.bucket || "property-media").remove([data.path]).then(() => undefined)
     if (data?.property_id) await syncPropertyMedia(data.property_id, auth.supabase)
     return NextResponse.json({ deleted: true, media: data })
   } catch (error: any) {

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ChangeEvent } from "react"
+import { supabase } from "@/lib/supabase"
 import { ActionPanel, ModuleEditor } from "./admin-operations"
 import { apiJson, countBy, date, money, slugify, type ModuleType, type Row } from "./admin-shared"
 import { Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Table, Td, Title } from "./admin-ui"
@@ -218,6 +219,23 @@ export function DocumentsCenterView({ filtered, saving, saveModule, deleteModule
   const clientDocs = asRows(filtered.clientDocuments)
   const versions = asRows(filtered.documentVersions)
   const [review, setReview] = useState<Row>({ id: "", status: "APPROVED", notes: "" })
+  const [privateDoc, setPrivateDoc] = useState<Row>({ user_id: "", title: "", type: "dosar client", status: "PENDING", expires_at: "" })
+  const [privateFile, setPrivateFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const uploadPrivateDocument = async () => {
+    if (!privateFile || !privateDoc.user_id) return
+    setUploading(true)
+    try {
+      const signed = await apiJson<Row>("/api/admin/documents/upload-url", { method: "POST", body: JSON.stringify({ user_id: privateDoc.user_id, file_name: privateFile.name, content_type: privateFile.type, size: privateFile.size }) })
+      const { error } = await supabase.storage.from(signed.bucket || "client-documents").uploadToSignedUrl(signed.path, signed.token, privateFile, { contentType: privateFile.type })
+      if (error) throw error
+      await apiJson("/api/admin/documents", { method: "POST", body: JSON.stringify({ ...privateDoc, path: signed.path, bucket: signed.bucket, file_name: privateFile.name, content_type: privateFile.type, size: privateFile.size, title: privateDoc.title || privateFile.name }) })
+      setPrivateFile(null)
+      await reload()
+    } finally {
+      setUploading(false)
+    }
+  }
   return (
     <div className="space-y-6">
       <Title title="Documents" subtitle="Contracte, acte proprietate, dosare clienti, expirari si review." />
@@ -233,6 +251,16 @@ export function DocumentsCenterView({ filtered, saving, saveModule, deleteModule
           <Title compact title="Review document client" />
           <Grid columns={1}>{["id", "status", "notes"].map((key) => <Field key={key} label={key} value={String(review[key] || "")} onChange={(value) => setReview({ ...review, [key]: value })} />)}</Grid>
           <Button className="mt-4 w-full" disabled={!review.id || saving === "client-doc"} onClick={() => platformAction("client-doc", { type: "document_status", payload: review }, "Document client salvat.")}>Save review</Button>
+        </Panel>
+        <Panel>
+          <Title compact title="Upload document privat" subtitle="Fisierul merge in bucket privat si este expus clientului doar prin signed URL." />
+          <Grid columns={1}>
+            <label className="block text-xs font-bold uppercase text-text-muted">client<select className="form-input mt-2" value={privateDoc.user_id} onChange={(event) => setPrivateDoc({ ...privateDoc, user_id: event.target.value })}><option value="">Alege client</option>{filtered.clients.map((client: Row) => <option key={client.user_id || client.id || client.email} value={client.user_id}>{client.full_name || client.email || client.user_id}</option>)}</select></label>
+            {["title", "type", "status", "expires_at"].map((key) => <Field key={key} label={key} value={String(privateDoc[key] || "")} onChange={(value) => setPrivateDoc({ ...privateDoc, [key]: value })} />)}
+          </Grid>
+          <input className="mt-4 block w-full text-sm" type="file" accept="application/pdf,image/*,.doc,.docx" onChange={(event: ChangeEvent<HTMLInputElement>) => setPrivateFile(event.target.files?.[0] || null)} />
+          {privateFile && <p className="mt-3 rounded-lg border border-bg-surface bg-bg-secondary p-3 text-xs font-bold text-text-muted">{privateFile.name} / {Math.round(privateFile.size / 1024)} KB</p>}
+          <Button className="mt-4 w-full" disabled={uploading || !privateFile || !privateDoc.user_id} onClick={uploadPrivateDocument}>{uploading ? "Uploading..." : "Upload private document"}</Button>
         </Panel>
         <ActionPanel title="DocuSign envelope" fields={["signer_email", "signer_name", "title", "subject", "property_id", "return_url"]} defaults={{ subject: "Contract HQS Imobiliare" }} saving={saving === "docusign"} onSubmit={(payload) => apiJson("/api/admin/docusign/envelopes", { method: "POST", body: JSON.stringify(payload) }).then(() => reload())} />
       </div>

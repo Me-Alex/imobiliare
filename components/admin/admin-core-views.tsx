@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import { buildPropertyPublishChecklist, leadNextAction } from "@/lib/admin-workflows"
 import { appointmentStatuses, countBy, date, leadStatuses, money, propertyStatuses, propertyTypes, slugify, type Row } from "./admin-shared"
 import { Area, Badge, BarList, Button, Empty, Field, Grid, Kpis, MiniRow, Panel, Recent, Select, SelectField, Table, Td, Title } from "./admin-ui"
 
@@ -76,6 +77,7 @@ export function Overview({ core, modules, platform, report, metrics, setView, ex
 
 export function CrmView({ filtered, saving, patchLead, followUp, platformAction }: any) {
   const [client, setClient] = useState<Row>({ full_name: "", email: "", phone: "", budget: 250000, purpose: "locuire", status: "ACTIVE" })
+  const leadQueue = useMemo(() => [...filtered.leads].map((lead: Row) => ({ lead, action: leadNextAction(lead) })).sort((a, b) => (b.action.priority === "HIGH" ? 2 : b.action.priority === "MEDIUM" ? 1 : 0) - (a.action.priority === "HIGH" ? 2 : a.action.priority === "MEDIUM" ? 1 : 0)), [filtered.leads])
   return (
     <div className="space-y-6">
       <Title title="CRM si clienti" subtitle="Leaduri, scoring, follow-up si profiluri de clienti." />
@@ -86,7 +88,7 @@ export function CrmView({ filtered, saving, patchLead, followUp, platformAction 
               <Td><p className="font-black">{lead.name || "Lead fara nume"}</p><p className="text-xs text-text-muted">{lead.phone || lead.email || "-"}</p></Td>
               <Td><Select value={lead.status || "NEW"} onChange={(value) => patchLead(lead, value)} disabled={saving === `lead-${lead.id}`}>{leadStatuses.map((status) => <option key={status}>{status}</option>)}</Select></Td>
               <Td><Badge>{lead.score ?? 0}</Badge></Td>
-              <Td>{lead.next_follow_up ? date(lead.next_follow_up, true) : lead.message || "-"}</Td>
+              <Td><p className="font-black">{leadNextAction(lead).label}</p><p className="text-xs text-text-muted">{leadNextAction(lead).reasons.join(", ")}</p></Td>
               <Td><Button size="sm" variant="ghost" disabled={saving === `follow-${lead.id}`} onClick={() => followUp(lead)}>Follow-up</Button></Td>
             </tr>
           )} />
@@ -97,6 +99,13 @@ export function CrmView({ filtered, saving, patchLead, followUp, platformAction 
         <Button className="mt-4 w-full" disabled={!client.full_name || saving === "client-profile"} onClick={() => platformAction("client-profile", { type: "client_profile", payload: { ...client, budget: Number(client.budget || 0) } }, "Profil client salvat.")}>Salveaza profil</Button>
         </Panel>
       </div>
+      <Panel>
+        <Title compact title="CRM queue" subtitle="Leaduri ordonate dupa scor, vechime si urgenta pentru actiuni rapide." />
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {leadQueue.slice(0, 6).map(({ lead, action }: any) => <MiniRow key={lead.id} title={lead.name || lead.phone || lead.email || "Lead"} meta={action.reasons.join(", ")} value={`${action.priority} / ${action.label}`} />)}
+        </div>
+        {!leadQueue.length && <Empty text="Nu exista leaduri in queue." />}
+      </Panel>
       <Panel tight>
         <Table heads={["Profil", "Preferinte", "Status", "Creat"]} rows={filtered.clients} empty="Nu exista profiluri client." render={(row: Row) => (
           <tr key={row.id || row.email} className="border-t border-bg-surface"><Td><p className="font-black">{row.full_name || row.name || "Client"}</p><p className="text-xs text-text-muted">{row.email || row.phone || "-"}</p></Td><Td>{money(row.budget || row.max_budget || 0)} / {row.purpose || "-"}</Td><Td><Badge>{row.status || "ACTIVE"}</Badge></Td><Td>{date(row.created_at)}</Td></tr>
@@ -109,6 +118,7 @@ export function CrmView({ filtered, saving, patchLead, followUp, platformAction 
 export function PropertiesView({ filtered, saving, patchProperty, deleteProperty, createProperty }: any) {
   const blank: Row = { title: "", slug: "", description: "", type: "APARTMENT", transaction_type: "sale", status: "DRAFT", price: 150000, currency: "EUR", city: "Bucuresti", county: "Bucuresti", address: "", area_sqm: 70, rooms: 3, bathrooms: 1, parking_spots: 0, floor: "", year_built: "", amenities: "", cover_image_url: "", gallery_urls: "", floorplan_urls: "", meta_title: "", meta_description: "", owner_email: "", agent_email: "", featured: false }
   const [draft, setDraft] = useState<Row>(blank)
+  const publishChecklist = buildPropertyPublishChecklist(draft, filtered.media || [])
   const savePayload = {
     ...draft,
     price: Number(draft.price || 0),
@@ -149,6 +159,15 @@ export function PropertiesView({ filtered, saving, patchProperty, deleteProperty
       </Panel>
       <Panel>
         <Title compact title={draft.id ? "Editare proprietate" : "Proprietate noua"} subtitle="Campurile media pot fi completate manual sau generate prin upload in sectiunea Media." />
+        <div className="mb-5 rounded-lg border border-bg-surface bg-bg-secondary p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div><p className="font-black">Publish checklist</p><p className="text-sm text-text-muted">{publishChecklist.passed}/{publishChecklist.total} criterii completate. Scor {publishChecklist.score}%.</p></div>
+            <Badge>{publishChecklist.ready ? "READY" : "NEEDS WORK"}</Badge>
+          </div>
+          <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+            {publishChecklist.checks.map((item) => <div key={item.id} className={`rounded-lg border p-3 text-xs ${item.ok ? "border-emerald-500/30 bg-emerald-500/10" : "border-amber-500/30 bg-amber-500/10"}`}><p className="font-black">{item.ok ? "OK" : "Fix"}: {item.label}</p>{!item.ok && <p className="mt-1 text-text-muted">{item.fix}</p>}</div>)}
+          </div>
+        </div>
         <Grid columns={4}>
           {["title", "slug", "price", "currency", "transaction_type", "city", "county", "address", "area_sqm", "rooms", "bathrooms", "parking_spots", "floor", "year_built", "owner_email", "agent_email", "cover_image_url", "meta_title"].map((key) => <Field key={key} label={key} value={String(draft[key] || "")} onChange={(value) => setDraft({ ...draft, [key]: value })} />)}
           <SelectField label="type" value={draft.type} onChange={(value) => setDraft({ ...draft, type: value })}>{propertyTypes.map((item) => <option key={item}>{item}</option>)}</SelectField>
@@ -184,7 +203,7 @@ export function AppointmentsView({ filtered, saving, patchAppointment, platformA
         <Button className="mt-4" disabled={!slot.starts_at || saving === "slot"} onClick={() => platformAction("slot", { type: "appointment_slot", payload: { ...slot, capacity: Number(slot.capacity || 1) } }, "Slot salvat.")}>Salveaza slot</Button>
       </Panel>
       <Panel tight>
-        <Table heads={["Slot", "Agent", "Capacitate", "Status"]} rows={filtered.slots} empty="Nu exista sloturi." render={(row: Row) => <tr key={row.id || row.starts_at} className="border-t border-bg-surface"><Td>{date(row.starts_at, true)} - {date(row.ends_at, true)}</Td><Td>{row.agent_email || "-"}</Td><Td>{row.capacity || 1}</Td><Td><Badge>{row.status || "AVAILABLE"}</Badge></Td></tr>} />
+        <Table heads={["Slot", "Agent", "Capacitate", "Status", "Actiuni"]} rows={filtered.slots} empty="Nu exista sloturi." render={(row: Row) => <tr key={row.id || row.starts_at} className="border-t border-bg-surface"><Td>{date(row.starts_at, true)} - {date(row.ends_at, true)}</Td><Td>{row.agent_email || "-"}</Td><Td>{row.capacity || 1}</Td><Td><Badge>{row.status || "AVAILABLE"}</Badge></Td><Td><div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" disabled={saving === "slot"} onClick={() => platformAction("slot", { type: "appointment_slot", payload: { ...row, status: "AVAILABLE" } }, "Slot disponibil.")}>Available</Button><Button size="sm" variant="ghost" disabled={saving === "slot"} onClick={() => platformAction("slot", { type: "appointment_slot", payload: { ...row, status: "HELD" } }, "Slot blocat temporar.")}>Hold</Button><Button size="sm" variant="ghost" disabled={saving === "slot"} onClick={() => platformAction("slot", { type: "appointment_slot", payload: { ...row, status: "CANCELLED" } }, "Slot anulat.")}>Cancel</Button><Button size="sm" variant="danger" disabled={saving === "slot"} onClick={() => platformAction("slot", { type: "appointment_slot", payload: { id: row.id, action: "delete" } }, "Slot sters.")}>Delete</Button></div></Td></tr>} />
       </Panel>
     </div>
   )

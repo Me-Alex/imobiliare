@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ChangeEvent } from "react"
+import { useEffect, useState, type ChangeEvent } from "react"
+import { adminCsv, buildWeekBuckets } from "@/lib/admin-workflows"
 import { supabase } from "@/lib/supabase"
 import { apiJson, countBy, date, money, type Row } from "./admin-shared"
 import { ActionPanel, ModuleEditor } from "./admin-operations"
@@ -62,9 +63,10 @@ async function fileDetails(file: File) {
   return { checksum, ...dimensions }
 }
 
-export function CalendarOpsView({ filtered, reload }: any) {
+export function CalendarOpsView({ filtered, reload, platformAction, saving }: any) {
   const [form, setForm] = useState<Row>({ appointment_id: "", summary: "Vizionare HQS", start: "", end: "", client_email: "", agent_email: "" })
   const [busy, setBusy] = useState(false)
+  const week = buildWeekBuckets([...(filtered.slots || []), ...(filtered.appointments || [])])
   const sync = async () => {
     setBusy(true)
     try { await apiJson("/api/admin/calendar/sync", { method: "POST", body: JSON.stringify(form) }); await reload() } finally { setBusy(false) }
@@ -73,16 +75,81 @@ export function CalendarOpsView({ filtered, reload }: any) {
     setBusy(true)
     try { await apiJson("/api/admin/calendar/import", { method: "POST", body: JSON.stringify({}) }); await reload() } finally { setBusy(false) }
   }
-  return <div className="space-y-6"><Title title="Calendar sync" subtitle="Google Calendar event creation, import/backfill and appointment reconciliation." action={<Button disabled={busy} onClick={importEvents}>{busy ? "Working..." : "Import Google events"}</Button>} /><div className="grid gap-5 xl:grid-cols-[380px_1fr]"><Panel><Title compact title="Sync event" /><Grid columns={1}><label className="block text-xs font-bold uppercase text-text-muted">appointment<select className="form-input mt-2" value={form.appointment_id} onChange={(event) => setForm({ ...form, appointment_id: event.target.value })}><option value="">Manual event</option>{filtered.appointments.map((appointment: Row) => <option key={appointment.id} value={appointment.id}>{appointment.client_name || appointment.client_email || appointment.id} - {date(appointment.requested_at || appointment.start_at, true)}</option>)}</select></label>{["summary", "start", "end", "client_email", "agent_email"].map((key) => <Field key={key} label={key} value={String(form[key] || "")} onChange={(value) => setForm({ ...form, [key]: value })} />)}</Grid><Button className="mt-4 w-full" disabled={busy || (!form.appointment_id && !form.start)} onClick={sync}>{busy ? "Sync..." : "Create Google event"}</Button></Panel><Panel tight><Table heads={["Client", "Data", "Status", "Agent"]} rows={filtered.appointments} empty="Nu exista programari." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td><p className="font-black">{row.client_name || row.client_email}</p><p className="text-xs text-text-muted">{row.property_title || row.id}</p></Td><Td>{date(row.requested_at || row.start_at || row.starts_at, true)}</Td><Td><Badge>{row.status || "REQUESTED"}</Badge></Td><Td>{row.agent_email || "-"}</Td></tr>} /></Panel></div></div>
+  return (
+    <div className="space-y-6">
+      <Title
+        title="Calendar sync"
+        subtitle="Google Calendar event creation, import/backfill, real slot status and appointment reconciliation."
+        action={<Button disabled={busy} onClick={importEvents}>{busy ? "Working..." : "Import Google events"}</Button>}
+      />
+      <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
+        <Panel>
+          <Title compact title="Sync event" />
+          <Grid columns={1}>
+            <label className="block text-xs font-bold uppercase text-text-muted">
+              appointment
+              <select className="form-input mt-2" value={form.appointment_id} onChange={(event) => setForm({ ...form, appointment_id: event.target.value })}>
+                <option value="">Manual event</option>
+                {filtered.appointments.map((appointment: Row) => <option key={appointment.id} value={appointment.id}>{appointment.client_name || appointment.client_email || appointment.id} - {date(appointment.requested_at || appointment.start_at, true)}</option>)}
+              </select>
+            </label>
+            {["summary", "start", "end", "client_email", "agent_email"].map((key) => <Field key={key} label={key} value={String(form[key] || "")} onChange={(value) => setForm({ ...form, [key]: value })} />)}
+          </Grid>
+          <Button className="mt-4 w-full" disabled={busy || (!form.appointment_id && !form.start)} onClick={sync}>{busy ? "Sync..." : "Create Google event"}</Button>
+        </Panel>
+        <Panel>
+          <Title compact title="Week board" subtitle="Sloturi si vizionari pentru urmatoarele 7 zile." />
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+            {week.map((day) => (
+              <div key={day.day} className="rounded-lg border border-bg-surface bg-bg-secondary p-3">
+                <p className="text-xs font-black uppercase text-text-muted">{date(day.day)}</p>
+                <div className="mt-3 space-y-2">
+                  {day.rows.slice(0, 5).map((row) => (
+                    <div key={row.id || `${row.starts_at}-${row.client_email}`} className="rounded-lg border border-bg-surface bg-bg-card p-2 text-xs">
+                      <p className="font-black">{row.client_name || row.agent_email || row.client_email || "Slot"}</p>
+                      <p className="text-text-muted">{date(row.starts_at || row.start_at || row.requested_at, true)}</p>
+                      <Badge>{row.status || "REQUESTED"}</Badge>
+                    </div>
+                  ))}
+                  {!day.rows.length && <p className="text-xs text-text-muted">Liber</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+      <Panel tight>
+        <Table
+          heads={["Client", "Data", "Status", "Agent", "Slot actions"]}
+          rows={filtered.appointments}
+          empty="Nu exista programari."
+          render={(row) => (
+            <tr key={row.id} className="border-t border-bg-surface">
+              <Td><p className="font-black">{row.client_name || row.client_email}</p><p className="text-xs text-text-muted">{row.property_title || row.id}</p></Td>
+              <Td>{date(row.requested_at || row.start_at || row.starts_at, true)}</Td>
+              <Td><Badge>{row.status || "REQUESTED"}</Badge></Td>
+              <Td>{row.agent_email || "-"}</Td>
+              <Td>
+                <div className="flex flex-wrap gap-2">
+                  {filtered.slots.filter((slot: Row) => slot.id === row.slot_id).map((slot: Row) => <Button key={slot.id} size="sm" variant="ghost" disabled={saving === "slot"} onClick={() => platformAction("slot", { type: "appointment_slot", payload: { ...slot, status: "AVAILABLE" } }, "Slot eliberat.")}>Release slot</Button>)}
+                </div>
+              </Td>
+            </tr>
+          )}
+        />
+      </Panel>
+    </div>
+  )
 }
 
 export function AccountingView({ filtered, platform, reload }: any) {
   const [invoice, setInvoice] = useState<Row>({ client_email: "", client_name: "", amount: 500, currency: "eur", description: "Servicii HQS Imobiliare", property_id: "" })
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<boolean | string>(false)
   const invoices = rows(platform.admin_invoices)
   const commissions = rows(platform.admin_commissions)
   const create = async () => { setBusy(true); try { await apiJson("/api/admin/stripe/invoices", { method: "POST", body: JSON.stringify(invoice) }); await reload() } finally { setBusy(false) } }
-  return <div className="space-y-6"><Title title="Accounting" subtitle="Stripe invoices, commission tracking, VAT and payment operations." /><Kpis cards={[["Invoices", invoices.length, "Stripe-backed", "INV"], ["Invoice value", money(invoices.reduce((sum, row) => sum + Number(row.amount || 0), 0)), "gross", "EUR"], ["Commissions", commissions.length, "agent payouts", "COM"], ["Deals", filtered.offers.length, "offer pipeline", "OF"]]} /><div className="grid gap-5 xl:grid-cols-[380px_1fr]"><Panel><Title compact title="Create Stripe invoice" /><Grid columns={1}>{["client_email", "client_name", "amount", "currency", "description", "property_id"].map((key) => <Field key={key} label={key} value={String(invoice[key] || "")} onChange={(value) => setInvoice({ ...invoice, [key]: value })} />)}</Grid><Button className="mt-4 w-full" disabled={busy || !invoice.client_email || !invoice.amount} onClick={create}>{busy ? "Creating..." : "Create and send invoice"}</Button></Panel><Panel tight><Table heads={["Invoice", "Client", "Amount", "Status"]} rows={invoices} empty="Nu exista facturi." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td><p className="font-black">{row.stripe_invoice_id || row.id}</p><p className="max-w-md truncate text-xs text-text-muted">{row.hosted_invoice_url || "-"}</p></Td><Td>{row.client_email}</Td><Td>{money(row.amount, row.currency || "EUR")}</Td><Td><Badge>{row.status}</Badge></Td></tr>} /></Panel></div></div>
+  const invoiceAction = async (row: Row, action: string) => { setBusy(`${action}-${row.id}`); try { await apiJson("/api/admin/stripe/invoices", { method: "PATCH", body: JSON.stringify({ id: row.id, action }) }); await reload() } finally { setBusy(false) } }
+  return <div className="space-y-6"><Title title="Accounting" subtitle="Stripe invoices, commission tracking, VAT and payment operations." /><Kpis cards={[["Invoices", invoices.length, "Stripe-backed", "INV"], ["Invoice value", money(invoices.reduce((sum, row) => sum + Number(row.amount || 0), 0)), "gross", "EUR"], ["Commissions", commissions.length, "agent payouts", "COM"], ["Deals", filtered.offers.length, "offer pipeline", "OF"]]} /><div className="grid gap-5 xl:grid-cols-[380px_1fr]"><Panel><Title compact title="Create Stripe invoice" /><Grid columns={1}>{["client_email", "client_name", "amount", "currency", "description", "property_id"].map((key) => <Field key={key} label={key} value={String(invoice[key] || "")} onChange={(value) => setInvoice({ ...invoice, [key]: value })} />)}</Grid><Button className="mt-4 w-full" disabled={busy === true || !invoice.client_email || !invoice.amount} onClick={create}>{busy === true ? "Creating..." : "Create and send invoice"}</Button></Panel><Panel tight><Table heads={["Invoice", "Client", "Amount", "Status", "Actions"]} rows={invoices} empty="Nu exista facturi." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td><p className="font-black">{row.stripe_invoice_id || row.id}</p><p className="max-w-md truncate text-xs text-text-muted">{row.hosted_invoice_url || "-"}</p></Td><Td>{row.client_email}</Td><Td>{money(row.amount, row.currency || "EUR")}</Td><Td><Badge>{row.status}</Badge></Td><Td><div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" disabled={busy === `mark_paid-${row.id}`} onClick={() => invoiceAction(row, "mark_paid")}>Paid</Button><Button size="sm" variant="ghost" disabled={busy === `resend-${row.id}`} onClick={() => invoiceAction(row, "resend")}>Resend</Button><Button size="sm" variant="danger" disabled={busy === `void-${row.id}`} onClick={() => invoiceAction(row, "void")}>Void</Button></div></Td></tr>} /></Panel></div></div>
 }
 
 export function IntegrationsView({ platform, reload }: any) {
@@ -93,13 +160,15 @@ export function IntegrationsView({ platform, reload }: any) {
   useEffect(() => { apiJson<Row>("/api/admin/integrations/test").then((data) => setStatus(data.providers || {})).catch(() => setStatus({})) }, [])
   const test = async (provider: string) => { setBusy(provider); try { await apiJson("/api/admin/integrations/test", { method: "POST", body: JSON.stringify({ provider, target }) }); await reload() } finally { setBusy("") } }
   const processJobs = async () => { setBusy("process"); try { await apiJson("/api/admin/provider-jobs/process", { method: "POST", body: JSON.stringify({ limit: 25 }) }); await reload() } finally { setBusy("") } }
-  return <div className="space-y-6"><Title title="Live integrations" subtitle="Resend, Twilio, Google Calendar, DocuSign and Stripe with safe config failures." action={<Button disabled={busy === "process"} onClick={processJobs}>{busy === "process" ? "Processing..." : "Process due jobs"}</Button>} /><Panel><div className="grid gap-3 md:grid-cols-[1fr_auto]"><Field label="test target email/phone" value={target} onChange={setTarget} /><div className="flex flex-wrap items-end gap-2">{["resend", "twilio", "google", "docusign", "stripe"].map((provider) => <Button key={provider} disabled={busy === provider || !target} onClick={() => test(provider)}>{provider}: {status[provider] ? "ready" : "missing"}</Button>)}</div></div></Panel><Panel tight><Table heads={["Provider", "Action", "Status", "Next", "Error"]} rows={jobs} empty="Nu exista joburi provider." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td>{row.provider}</Td><Td>{row.action}</Td><Td><Badge>{row.status}</Badge></Td><Td>{date(row.next_attempt_at, true)}</Td><Td><p className="max-w-lg truncate">{row.error || row.target || "-"}</p></Td></tr>} /></Panel></div>
+  const jobAction = async (row: Row, action: string) => { setBusy(`${action}-${row.id}`); try { await apiJson(`/api/admin/provider-jobs/${row.id}`, { method: "PATCH", body: JSON.stringify({ action }) }); await reload() } finally { setBusy("") } }
+  return <div className="space-y-6"><Title title="Live integrations" subtitle="Resend, Twilio, Google Calendar, DocuSign and Stripe with safe config failures." action={<Button disabled={busy === "process"} onClick={processJobs}>{busy === "process" ? "Processing..." : "Process due jobs"}</Button>} /><Panel><div className="grid gap-3 md:grid-cols-[1fr_auto]"><Field label="test target email/phone" value={target} onChange={setTarget} /><div className="flex flex-wrap items-end gap-2">{["resend", "twilio", "google", "docusign", "stripe"].map((provider) => <Button key={provider} disabled={busy === provider || !target} onClick={() => test(provider)}>{provider}: {status[provider] ? "ready" : "missing"}</Button>)}</div></div></Panel><Panel tight><Table heads={["Provider", "Action", "Status", "Next", "Error", "Controls"]} rows={jobs} empty="Nu exista joburi provider." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td>{row.provider}</Td><Td>{row.action}</Td><Td><Badge>{row.status}</Badge></Td><Td>{date(row.next_attempt_at, true)}</Td><Td><p className="max-w-lg truncate">{row.error || row.target || "-"}</p></Td><Td><div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" disabled={busy === `retry-${row.id}`} onClick={() => jobAction(row, "retry")}>Retry</Button><Button size="sm" variant="danger" disabled={busy === `cancel-${row.id}`} onClick={() => jobAction(row, "cancel")}>Cancel</Button></div></Td></tr>} /></Panel></div>
 }
 
-export function BulkOpsView({ reload }: any) {
+export function BulkOpsView({ platform, reload }: any) {
   const [csv, setCsv] = useState("title,price,city,type,status\nApartament test,250000,Bucuresti,APARTMENT,DRAFT")
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState<Row | null>(null)
+  const imports = rows(platform.admin_bulk_imports)
   const submitRows = async (dry_run: boolean) => {
     const data = parseCsvRows(csv)
     setBusy(true)
@@ -111,16 +180,28 @@ export function BulkOpsView({ reload }: any) {
       setBusy(false)
     }
   }
+  const rollback = async (id: string) => {
+    setBusy(true)
+    try {
+      await apiJson(`/api/admin/bulk/properties?id=${id}`, { method: "DELETE" })
+      await reload()
+    } finally {
+      setBusy(false)
+    }
+  }
   return (
-    <Panel>
-      <Title title="Bulk operations" subtitle="CSV import cu preview, validari, deduplicare slug si audit pentru rollback." />
-      <textarea className="form-input mt-4 min-h-72 font-mono text-xs" value={csv} onChange={(event) => setCsv(event.target.value)} />
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button disabled={busy || !csv.includes("\n")} onClick={() => submitRows(true)}>{busy ? "Checking..." : "Preview import"}</Button>
-        <Button variant="ghost" disabled={busy || !csv.includes("\n")} onClick={() => submitRows(false)}>{busy ? "Importing..." : "Import valid rows"}</Button>
-      </div>
-      {preview && <div className="mt-5 rounded-lg border border-bg-surface bg-bg-secondary p-4"><p className="font-black text-text-primary">Preview: {preview.success_count || 0} randuri valide, {preview.error_count || 0} erori.</p><div className="mt-3 space-y-2">{rows(preview.errors).slice(0, 8).map((error, index) => <p key={index} className="text-sm text-rose-500">Rand {error.row || "-"}: {error.message}</p>)}</div></div>}
-    </Panel>
+    <div className="space-y-6">
+      <Panel>
+        <Title title="Bulk operations" subtitle="CSV import cu preview, validari, deduplicare slug si rollback." />
+        <textarea className="form-input mt-4 min-h-72 font-mono text-xs" value={csv} onChange={(event) => setCsv(event.target.value)} />
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button disabled={busy || !csv.includes("\n")} onClick={() => submitRows(true)}>{busy ? "Checking..." : "Preview import"}</Button>
+          <Button variant="ghost" disabled={busy || !csv.includes("\n")} onClick={() => submitRows(false)}>{busy ? "Importing..." : "Import valid rows"}</Button>
+        </div>
+        {preview && <div className="mt-5 rounded-lg border border-bg-surface bg-bg-secondary p-4"><p className="font-black text-text-primary">Preview: {preview.success_count || 0} randuri valide, {preview.error_count || 0} erori.</p><div className="mt-3 space-y-2">{rows(preview.errors).slice(0, 8).map((error, index) => <p key={index} className="text-sm text-rose-500">Rand {error.row || "-"}: {error.message}</p>)}</div></div>}
+      </Panel>
+      <Panel tight><Table heads={["Import", "Status", "Rows", "Owner", "Actions"]} rows={imports} empty="Nu exista importuri." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td><p className="font-black">{row.type}</p><p className="text-xs text-text-muted">{date(row.created_at, true)}</p></Td><Td><Badge>{row.status}</Badge></Td><Td>{row.success_count || 0}/{row.total_count || 0}</Td><Td>{row.created_by || "-"}</Td><Td><Button size="sm" variant="danger" disabled={busy || row.status === "ROLLED_BACK"} onClick={() => rollback(row.id)}>Rollback</Button></Td></tr>} /></Panel>
+    </div>
   )
 }
 
@@ -155,10 +236,11 @@ function parseCsvLine(line: string) {
 export function OwnerPortalAdminView({ filtered, platform, saving, saveModule, deleteModule, reload }: any) {
   const reports = rows(platform.owner_reports)
   const feedback = rows(platform.owner_feedback)
-  return <div className="space-y-6"><Title title="Owner portal" subtitle="Seller/owner records, owner-facing property reports, feedback and mandate status." /><div className="grid gap-5 xl:grid-cols-2"><ModuleEditor type="owners" title="Owners" fields={["name", "phone", "email", "type", "status", "notes"]} rows={filtered.owners} defaults={{ type: "PRIVATE", status: "ACTIVE" }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} /><ActionPanel title="Owner report" fields={["owner_email", "property_id", "title", "summary", "status", "period_start", "period_end"]} defaults={{ status: "PUBLISHED" }} saving={saving === "owner-report"} onSubmit={(payload) => apiJson("/api/admin/owner-reports", { method: "POST", body: JSON.stringify(payload) }).then(() => reload())} /></div><div className="grid gap-5 xl:grid-cols-2"><Panel tight><Table heads={["Owner", "Report", "Status", "Created"]} rows={reports} empty="Nu exista rapoarte proprietar." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td>{row.owner_email}</Td><Td>{row.title}</Td><Td><Badge>{row.status}</Badge></Td><Td>{date(row.created_at)}</Td></tr>} /></Panel><Panel tight><Table heads={["Owner", "Rating", "Status", "Message"]} rows={feedback} empty="Nu exista feedback de la proprietari." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td><p className="font-black">{row.owner_email}</p><p className="text-xs text-text-muted">{row.property_id}</p></Td><Td>{row.rating || 5}/5</Td><Td><Badge>{row.status || "NEW"}</Badge></Td><Td><p className="max-w-md truncate">{row.message || "-"}</p></Td></tr>} /></Panel></div></div>
+  return <div className="space-y-6"><Title title="Owner portal" subtitle="Seller/owner records, owner-facing property reports, feedback and mandate status." /><Kpis cards={[["Owners", filtered.owners.length, "admin records", "OWN"], ["Reports", reports.length, "owner portal", "REP"], ["Scheduled", reports.filter((row) => row.next_send_at).length, "next send", "SCH"], ["Feedback", feedback.length, "owner messages", "FB"]]} /><div className="grid gap-5 xl:grid-cols-2"><ModuleEditor type="owners" title="Owners" fields={["name", "phone", "email", "type", "status", "notes"]} rows={filtered.owners} defaults={{ type: "PRIVATE", status: "ACTIVE" }} saving={saving} saveModule={saveModule} deleteModule={deleteModule} /><ActionPanel title="Owner report" fields={["owner_email", "property_id", "title", "summary", "status", "period_start", "period_end", "scheduled_at", "cadence"]} defaults={{ status: "PUBLISHED", cadence: "monthly" }} saving={saving === "owner-report"} onSubmit={(payload) => apiJson("/api/admin/owner-reports", { method: "POST", body: JSON.stringify(payload) }).then(() => reload())} /></div><div className="grid gap-5 xl:grid-cols-2"><Panel tight><Table heads={["Owner", "Report", "Status", "Next send", "Actions"]} rows={reports} empty="Nu exista rapoarte proprietar." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td>{row.owner_email}</Td><Td><p className="font-black">{row.title}</p><p className="text-xs text-text-muted">{row.summary || "-"}</p></Td><Td><Badge>{row.status}</Badge></Td><Td>{date(row.next_send_at || row.scheduled_at, true)}</Td><Td><div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" onClick={() => apiJson("/api/admin/owner-reports", { method: "PATCH", body: JSON.stringify({ id: row.id, ...row, status: "PUBLISHED" }) }).then(() => reload())}>Publish</Button><Button size="sm" variant="danger" onClick={() => apiJson(`/api/admin/owner-reports?id=${row.id}`, { method: "DELETE" }).then(() => reload())}>Delete</Button></div></Td></tr>} /></Panel><Panel tight><Table heads={["Owner", "Rating", "Status", "Message"]} rows={feedback} empty="Nu exista feedback de la proprietari." render={(row) => <tr key={row.id} className="border-t border-bg-surface"><Td><p className="font-black">{row.owner_email}</p><p className="text-xs text-text-muted">{row.property_id}</p></Td><Td>{row.rating || 5}/5</Td><Td><Badge>{row.status || "NEW"}</Badge></Td><Td><p className="max-w-md truncate">{row.message || "-"}</p></Td></tr>} /></Panel></div></div>
 }
 
 export function AnalyticsOpsView({ core, platform }: any) {
+  const [range, setRange] = useState("30")
   const attribution = rows(platform.analytics_attribution)
   const jobs = rows(platform.admin_provider_jobs)
   const events = rows(platform.admin_provider_events)
@@ -166,7 +248,19 @@ export function AnalyticsOpsView({ core, platform }: any) {
   const audit = rows(platform.admin_audit_log)
   const failedJobs = jobs.filter((job) => String(job.status).includes("FAILED"))
   const loginEvents = audit.filter((row) => String(row.action || "").includes("ADMIN_LOGIN"))
-  return <div className="space-y-6"><Title title="Advanced analytics" subtitle="Attribution, provider health, rate limit spikes, login audit and operational intelligence." /><Kpis cards={[["Attribution events", attribution.length, "campaign/source", "UTM"], ["Lead conversion", `${core.leads.length ? Math.round((core.leads.filter((lead: Row) => ["QUALIFIED", "CLOSED"].includes(lead.status)).length / core.leads.length) * 100) : 0}%`, "qualified+closed", "CVR"], ["Provider failures", failedJobs.length, "integration health", "ERR"], ["Rate windows", limits.length, "persistent limiter", "RL"], ["Webhook events", events.length, "verified providers", "WH"], ["Admin logins", loginEvents.length, "success/failure audit", "AUTH"]]} /><div className="grid gap-5 xl:grid-cols-2"><Panel><BarList title="Sources" data={countBy(attribution, "source")} /></Panel><Panel><BarList title="Provider jobs" data={countBy(jobs, "status")} /></Panel><Panel><BarList title="Rate limit scopes" data={countBy(limits, "scope")} /></Panel><Panel><BarList title="Webhook providers" data={countBy(events, "provider")} /></Panel></div><Panel tight><Table heads={["Risk", "Area", "Status", "Details"]} rows={[...failedJobs.slice(0, 8), ...limits.filter((row) => Number(row.request_count || 0) > 20).slice(0, 8)]} empty="Nu exista alerte operationale." render={(row) => <tr key={row.id || `${row.scope}-${row.window_start}`} className="border-t border-bg-surface"><Td>{row.provider || row.scope}</Td><Td>{row.action || "rate-limit"}</Td><Td><Badge>{row.status || row.request_count}</Badge></Td><Td><p className="max-w-lg truncate">{row.error || row.target || row.identifier_hash || "-"}</p></Td></tr>} /></Panel></div>
+  const cutoff = Date.now() - Number(range || 30) * 24 * 60 * 60 * 1000
+  const inRange = (row: Row) => !row.created_at || new Date(row.created_at).getTime() >= cutoff
+  const alertRows = [...failedJobs.filter(inRange), ...limits.filter((row) => Number(row.request_count || 0) > 20).filter(inRange)]
+  const exportAlerts = () => {
+    const blob = new Blob([adminCsv(alertRows)], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "admin-analytics-alerts.csv"
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+  return <div className="space-y-6"><Title title="Advanced analytics" subtitle="Attribution, provider health, rate limit spikes, login audit and operational intelligence." action={<div className="flex flex-wrap gap-2"><label className="flex items-center gap-2 text-xs font-black uppercase text-text-muted">range<Field label="days" value={range} onChange={setRange} /></label><Button variant="ghost" onClick={exportAlerts}>Export alerts CSV</Button></div>} /><Kpis cards={[["Attribution events", attribution.filter(inRange).length, "campaign/source", "UTM"], ["Lead conversion", `${core.leads.length ? Math.round((core.leads.filter((lead: Row) => ["QUALIFIED", "CLOSED"].includes(lead.status)).length / core.leads.length) * 100) : 0}%`, "qualified+closed", "CVR"], ["Provider failures", failedJobs.filter(inRange).length, "integration health", "ERR"], ["Rate windows", limits.filter(inRange).length, "persistent limiter", "RL"], ["Webhook events", events.filter(inRange).length, "verified providers", "WH"], ["Admin logins", loginEvents.filter(inRange).length, "success/failure audit", "AUTH"]]} /><div className="grid gap-5 xl:grid-cols-2"><Panel><BarList title="Sources" data={countBy(attribution.filter(inRange), "source")} /></Panel><Panel><BarList title="Provider jobs" data={countBy(jobs.filter(inRange), "status")} /></Panel><Panel><BarList title="Rate limit scopes" data={countBy(limits.filter(inRange), "scope")} /></Panel><Panel><BarList title="Webhook providers" data={countBy(events.filter(inRange), "provider")} /></Panel></div><Panel tight><Table heads={["Risk", "Area", "Status", "Details"]} rows={alertRows.slice(0, 20)} empty="Nu exista alerte operationale." render={(row) => <tr key={row.id || `${row.scope}-${row.window_start}`} className="border-t border-bg-surface"><Td>{row.provider || row.scope}</Td><Td>{row.action || "rate-limit"}</Td><Td><Badge>{row.status || row.request_count}</Badge></Td><Td><p className="max-w-lg truncate">{row.error || row.target || row.identifier_hash || "-"}</p></Td></tr>} /></Panel></div>
 }
 
 export function MarketDataView({ platform, reload }: any) {
