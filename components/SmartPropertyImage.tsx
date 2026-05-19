@@ -1,25 +1,53 @@
 "use client"
 
-import type { ImgHTMLAttributes } from "react"
+import Image, { type ImageLoaderProps, type ImageProps } from "next/image"
 import { useEffect, useState } from "react"
 
-type SmartPropertyImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "onError"> & {
+type SmartPropertyImageProps = Omit<ImageProps, "src" | "loader"> & {
   src: string
-  fallbackSrc?: string  // optional — default la string gol (nu mai face loop de erori)
-  fill?: boolean
-  priority?: boolean
+  fallbackSrc?: string // optional - default la string gol (nu mai face loop de erori)
 }
 
-export default function SmartPropertyImage({
-  src,
-  fallbackSrc = "",
-  fill,
-  priority,
-  className,
-  loading,
-  decoding,
-  ...props
-}: SmartPropertyImageProps) {
+function isSupabaseStorageObject(url: URL) {
+  return url.hostname.endsWith(".supabase.co") && url.pathname.startsWith("/storage/v1/object/public/")
+}
+
+function isSupabaseStorageRender(url: URL) {
+  return url.hostname.endsWith(".supabase.co") && url.pathname.startsWith("/storage/v1/render/image/public/")
+}
+
+function hqsImageLoader({ src, width, quality }: ImageLoaderProps) {
+  const trimmed = String(src || "").trim()
+  if (!trimmed) return trimmed
+  if (trimmed.startsWith("data:")) return trimmed
+
+  try {
+    const url = new URL(trimmed)
+
+    if (url.hostname === "images.unsplash.com") {
+      url.searchParams.set("w", String(width))
+      url.searchParams.set("q", String(quality || 80))
+      if (!url.searchParams.get("auto")) url.searchParams.set("auto", "format")
+      return url.toString()
+    }
+
+    if (isSupabaseStorageObject(url)) {
+      url.pathname = url.pathname.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/")
+    }
+
+    if (isSupabaseStorageRender(url)) {
+      url.searchParams.set("width", String(width))
+      url.searchParams.set("quality", String(quality || 80))
+      return url.toString()
+    }
+
+    return url.toString()
+  } catch {
+    return trimmed
+  }
+}
+
+export default function SmartPropertyImage({ src, fallbackSrc = "", ...props }: SmartPropertyImageProps) {
   const [currentSrc, setCurrentSrc] = useState(src)
 
   useEffect(() => {
@@ -27,15 +55,14 @@ export default function SmartPropertyImage({
   }, [src])
 
   return (
-    <img
+    <Image
       {...props}
+      loader={hqsImageLoader}
       src={currentSrc}
-      loading={priority ? "eager" : loading || "lazy"}
-      decoding={decoding || "async"}
-      className={`${fill ? "absolute inset-0 h-full w-full " : ""}${className || ""}`}
       onError={() => {
-        if (currentSrc !== fallbackSrc) setCurrentSrc(fallbackSrc)
+        if (fallbackSrc && currentSrc !== fallbackSrc) setCurrentSrc(fallbackSrc)
       }}
     />
   )
 }
+

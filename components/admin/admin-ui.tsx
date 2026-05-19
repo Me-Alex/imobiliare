@@ -31,9 +31,9 @@ export function Td({ children }: { children: ReactNode }) {
   return <td className="px-5 py-4 align-middle">{children}</td>
 }
 
-export function Button({ children, onClick, disabled, variant = "primary", size = "md", className = "" }: { children: ReactNode; onClick?: () => void; disabled?: boolean; variant?: "primary" | "ghost" | "danger"; size?: "sm" | "md"; className?: string }) {
+export function Button({ children, onClick, disabled, variant = "primary", size = "md", className = "", title }: { children: ReactNode; onClick?: () => void; disabled?: boolean; variant?: "primary" | "ghost" | "danger"; size?: "sm" | "md"; className?: string; title?: string }) {
   const styles = { primary: "border-accent bg-accent text-bg-primary hover:bg-accent/90", ghost: "border-bg-surface bg-bg-secondary text-text-primary hover:border-accent hover:text-accent", danger: "border-rose-500/40 bg-rose-500/10 text-rose-500 hover:border-rose-500" }
-  return <button type="button" disabled={disabled} onClick={onClick} className={`inline-flex items-center justify-center gap-2 rounded-lg border font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${size === "sm" ? "h-8 px-2 text-xs" : "h-10 px-3 text-sm"} ${styles[variant]} ${className}`}>{children}</button>
+  return <button title={title} type="button" disabled={disabled} onClick={onClick} className={`inline-flex items-center justify-center gap-2 rounded-lg border font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${size === "sm" ? "h-8 px-2 text-xs" : "h-10 px-3 text-sm"} ${styles[variant]} ${className}`}>{children}</button>
 }
 
 export function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {

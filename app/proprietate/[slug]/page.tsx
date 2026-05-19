@@ -16,6 +16,7 @@ import { supabase, type Property } from "@/lib/supabase"
 import { documentChecklist, estimateMonthlyPayment, zoneProfiles } from "@/lib/experience"
 import { buildOfferDraft, buildViewingSlots, calculateValuation } from "@/lib/complexity"
 import { getPropertyMedia } from "@/lib/property-media"
+import { loadMarketData } from "@/lib/market-data"
 
 
 const TIP_LABEL: Record<string, string> = {
@@ -59,9 +60,30 @@ export default async function PaginaProprietate({ params }: PropertyPageProps) {
   const estimatedMonthly = p.price > 0 ? estimateMonthlyPayment(p.price).toLocaleString("ro-RO") : null
   const matchScore = Math.min(98, 62 + (p.featured ? 12 : 0) + (p.parking_spots > 0 ? 8 : 0) + (p.rooms >= 3 ? 8 : 0))
   const zone = zoneProfiles.find((item) => p.city?.toLowerCase().includes(item.name.toLowerCase().split(" ")[0]))
-  const valuation = calculateValuation({ area: p.area_sqm || 80, rooms: p.rooms || 2, zone: p.city || "Bucuresti Nord", condition: p.featured ? "premium" : "bun", parking: p.parking_spots || 0 })
+  const marketRows = await loadMarketData()
+  const valuation = calculateValuation(
+    { area: p.area_sqm || 80, rooms: p.rooms || 2, zone: p.city || "Bucuresti Nord", condition: p.featured ? "premium" : "bun", parking: p.parking_spots || 0 },
+    marketRows,
+  )
   const offer = buildOfferDraft({ propertyTitle: p.title, listPrice: p.price, clientBudget: p.price, advancePercent: 20, closingDays: 30, riskLevel: valuation.market.risk as "scazut" | "mediu" | "ridicat" })
-  const slots = buildViewingSlots("normal")
+  const fallbackSlots = buildViewingSlots("normal")
+  const nowIso = new Date().toISOString()
+  const { data: nextSlot } = await supabase
+    .from("appointment_slots")
+    .select("starts_at, agent_email")
+    .eq("status", "AVAILABLE")
+    .eq("property_id", p.id)
+    .gte("starts_at", nowIso)
+    .order("starts_at", { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  const viewingValue = nextSlot?.starts_at
+    ? new Date(nextSlot.starts_at).toLocaleString("ro-RO")
+    : fallbackSlots[0]?.label
+  const viewingText = nextSlot?.starts_at
+    ? `Slot disponibil real${nextSlot.agent_email ? ` (${nextSlot.agent_email})` : ""}.`
+    : `Slot recomandat automat, scor ${fallbackSlots[0]?.score ?? 0}%.`
   const siteBase = process.env.NEXT_PUBLIC_SITE_URL || "https://hqsimobiliare.ro"
   const jsonLdResidence = {
     "@context": "https://schema.org",
@@ -190,7 +212,7 @@ export default async function PaginaProprietate({ params }: PropertyPageProps) {
             <section className="mt-8 grid gap-4 lg:grid-cols-3">
               <Metric title="Evaluare HQS" value={`EUR ${valuation.mid.toLocaleString("ro-RO")}`} text={`Interval realist: EUR ${valuation.low.toLocaleString("ro-RO")} - EUR ${valuation.high.toLocaleString("ro-RO")}.`} />
               <Metric title="Oferta recomandata" value={`EUR ${offer.recommended.toLocaleString("ro-RO")}`} text={`Avans orientativ: EUR ${offer.advance.toLocaleString("ro-RO")}.`} />
-              <Metric title="Vizionare" value={slots[0].label} text={`Slot recomandat automat, scor ${slots[0].score}%.`} />
+              <Metric title="Vizionare" value={viewingValue} text={viewingText} />
             </section>
           </div>
 

@@ -82,6 +82,9 @@ export default function ProprietatiSection({
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(initialHasMore)
   const [query, setQuery] = useState(initialQuery)
+  const [suggestions, setSuggestions] = useState<{ type: string; value: string }[]>([])
+  const [suggestOpen, setSuggestOpen] = useState(false)
+  const [queryFocused, setQueryFocused] = useState(false)
   const [sort, setSort] = useState<SortKey>(initialSort)
   const [filtruTip, setFiltruTip] = useState(TIPURI[initialType] ? initialType : "toate")
   const [zones, setZones] = useState(["Toate zonele", ...Array.from(new Set([initialZone, ...(initialZones || []), ...DEFAULT_ZONES])).filter((zone) => zone && zone !== "Toate zonele")])
@@ -108,6 +111,37 @@ export default function ProprietatiSection({
       })
       .catch(() => undefined)
   }, [])
+
+  useEffect(() => {
+    const term = query.trim()
+    if (term.length < 2) {
+      setSuggestions([])
+      setSuggestOpen(false)
+      return
+    }
+
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => {
+      fetch(`/api/search/suggestions?q=${encodeURIComponent(term)}`, { signal: controller.signal })
+        .then((res) => res.ok ? res.json() : null)
+        .then((body) => {
+          const next = Array.isArray(body?.suggestions)
+            ? body.suggestions
+              .filter((item: any) => item && typeof item === "object")
+              .map((item: any) => ({ type: String(item.type || "zone"), value: String(item.value || "").trim() }))
+              .filter((item: any) => item.value)
+            : []
+          setSuggestions(next)
+          setSuggestOpen(queryFocused && Boolean(next.length))
+        })
+        .catch(() => undefined)
+    }, 200)
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(timeout)
+    }
+  }, [query, queryFocused])
 
   useEffect(() => {
     const syncSelection = () => {
@@ -289,9 +323,40 @@ export default function ProprietatiSection({
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => {
+                  setQueryFocused(true)
+                  if (suggestions.length) setSuggestOpen(true)
+                }}
+                onBlur={() => {
+                  setQueryFocused(false)
+                  setSuggestOpen(false)
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setSuggestOpen(false)
+                }}
                 className="h-12 w-full border border-bg-surface bg-bg-primary pl-11 pr-4 text-sm font-semibold text-text-primary placeholder:text-text-muted/70 focus:border-accent focus:outline-none"
                 placeholder="Cauta dupa zona, adresa sau descriere"
               />
+              {queryFocused && suggestOpen && suggestions.length > 0 && (
+                <div className="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-md border border-bg-surface bg-bg-primary shadow-card">
+                  {suggestions.slice(0, 12).map((item) => (
+                    <button
+                      key={`${item.type}:${item.value}`}
+                      type="button"
+                      onMouseDown={(event) => {
+                        event.preventDefault()
+                        if (item.type === "zone") setFiltruZona(item.value)
+                        else setQuery(item.value)
+                        setSuggestOpen(false)
+                      }}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm font-semibold text-text-primary transition hover:bg-bg-secondary"
+                    >
+                      <span className="min-w-0 truncate">{item.value}</span>
+                      <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.18em] text-text-muted">{item.type}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </label>
             <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className="h-12 border border-bg-surface bg-bg-primary px-3 text-sm font-semibold text-text-primary focus:border-accent focus:outline-none">
               {Object.entries(SORT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}

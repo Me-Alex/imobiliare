@@ -70,6 +70,14 @@ export function ListingsView({ filtered, saving, patchProperty, createProperty, 
               row.price ? "pret" : "",
               row.city ? "zona" : "",
             ].filter(Boolean)
+            const missingPublish = [
+              row.title ? "" : "titlu",
+              row.slug ? "" : "slug",
+              row.price ? "" : "pret",
+              row.city ? "" : "zona",
+              row.cover_image_url ? "" : "cover",
+            ].filter(Boolean)
+            const canPublish = missingPublish.length === 0
             return (
               <tr key={row.id} className="border-t border-bg-surface">
                 <Td><p className="font-black">{row.title}</p><p className="text-xs text-text-muted">{row.slug || row.city || "-"}</p></Td>
@@ -78,9 +86,21 @@ export function ListingsView({ filtered, saving, patchProperty, createProperty, 
                 <Td><StatusBadge status={row.status} /></Td>
                 <Td>
                   <div className="flex flex-wrap gap-2">
-                    <Button size="sm" disabled={saving === `property-${row.id}`} onClick={() => patchProperty(row, { status: "PUBLISHED", published_at: new Date().toISOString() })}>Aproba</Button>
+                    <Button
+                      size="sm"
+                      disabled={saving === `property-${row.id}` || !canPublish}
+                      title={!canPublish ? `Blocat: lipseste ${missingPublish.join(", ")}.` : undefined}
+                      onClick={() => patchProperty(row, { status: "PUBLISHED", published_at: new Date().toISOString() })}
+                    >
+                      Aproba
+                    </Button>
                     <Button size="sm" variant="ghost" disabled={saving === `property-${row.id}`} onClick={() => patchProperty(row, { status: "DRAFT" })}>Draft</Button>
                     <Button size="sm" variant="ghost" disabled={saving === `property-${row.id}`} onClick={() => patchProperty(row, { featured: !row.featured })}>{row.featured ? "Scoate din promovate" : "Promoveaza"}</Button>
+                    {!canPublish && (
+                      <Button size="sm" variant="ghost" onClick={() => setView("properties")}>
+                        Repara
+                      </Button>
+                    )}
                   </div>
                 </Td>
               </tr>

@@ -3,7 +3,7 @@
   publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22.16.0"
   NEXT_TELEMETRY_DISABLED = "1"
   NEXT_PUBLIC_SITE_URL = "https://hqsimobiliare.ro"
   NEXT_PUBLIC_AUTH_REDIRECT_ORIGIN = "https://hqsimobiliare.ro"

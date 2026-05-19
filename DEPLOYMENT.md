@@ -7,6 +7,7 @@
 - Legacy Pages build compatibility: `npm run cloudflare:build` / `npm run pages:build` builds OpenNext and prepares fallback static assets for the existing Pages project while production traffic is intended to run through the Worker.
 - Production builds use `next build --webpack`; this avoids Next 16 Turbopack server chunk loading failures in the Worker runtime.
 - Data/auth: Supabase. Admin access uses Supabase Auth Bearer tokens and `admin_roles` RBAC, not Basic Auth.
+- Next.js 16 requires Node.js >= 20.9 for builds; this repo pins Cloudflare Pages builds to Node 22.16.0 via `.nvmrc` / `.node-version`.
 - Required public variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_AUTH_REDIRECT_ORIGIN`.
 - Required admin variables: `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_BOOTSTRAP_EMAILS`, `RATE_LIMIT_SALT`.
 - Provider variables: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`, `GOOGLE_CALENDAR_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`, `GOOGLE_WORKSPACE_IMPERSONATE_EMAIL`, `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_USER_ID`, `DOCUSIGN_ACCOUNT_ID`, `DOCUSIGN_PRIVATE_KEY`, `DOCUSIGN_BASE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.

@@ -51,3 +51,59 @@ export function normalizePropertyPayload(payload: Record<string, any>) {
     updated_at: new Date().toISOString(),
   }
 }
+
+function hasOwn(payload: Record<string, any>, key: string) {
+  return Object.prototype.hasOwnProperty.call(payload, key)
+}
+
+// For PATCH updates: only include keys explicitly supplied by the client.
+// This prevents accidental data loss when the UI patches just one field (e.g. status).
+export function normalizePropertyPatch(payload: Record<string, any>) {
+  const patch: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  }
+
+  if (hasOwn(payload, "title")) {
+    patch.title = String(payload.title || "").trim()
+  }
+  if (hasOwn(payload, "slug")) {
+    const title = patch.title ?? String(payload.title || "").trim()
+    patch.slug = String(payload.slug || slugifyProperty(title) || "proprietate").trim()
+  }
+  if (hasOwn(payload, "description")) patch.description = payload.description || null
+  if (hasOwn(payload, "type")) patch.type = payload.type || "APARTMENT"
+  if (hasOwn(payload, "transaction_type") || hasOwn(payload, "transaction")) {
+    patch.transaction_type = payload.transaction_type || payload.transaction || "sale"
+  }
+  if (hasOwn(payload, "price")) patch.price = numericValue(payload.price) || 0
+  if (hasOwn(payload, "currency")) patch.currency = payload.currency || "EUR"
+  if (hasOwn(payload, "city") || hasOwn(payload, "zone")) patch.city = payload.city || payload.zone || "Bucuresti"
+  if (hasOwn(payload, "county")) patch.county = payload.county || null
+  if (hasOwn(payload, "address")) patch.address = payload.address || null
+  if (hasOwn(payload, "area_sqm") || hasOwn(payload, "surface")) patch.area_sqm = numericValue(payload.area_sqm || payload.surface) || 0
+  if (hasOwn(payload, "rooms")) patch.rooms = numericValue(payload.rooms) || 0
+  if (hasOwn(payload, "bathrooms") || hasOwn(payload, "baths")) patch.bathrooms = numericValue(payload.bathrooms || payload.baths) || 0
+  if (hasOwn(payload, "parking_spots")) patch.parking_spots = numericValue(payload.parking_spots) || 0
+  if (hasOwn(payload, "floor")) patch.floor = numericValue(payload.floor)
+  if (hasOwn(payload, "year_built")) patch.year_built = numericValue(payload.year_built)
+  if (hasOwn(payload, "status")) patch.status = payload.status || "DRAFT"
+  if (hasOwn(payload, "featured")) patch.featured = Boolean(payload.featured === true || payload.featured === "true" || payload.featured === "1")
+  if (hasOwn(payload, "cover_image_url")) patch.cover_image_url = payload.cover_image_url || null
+  if (hasOwn(payload, "gallery_urls")) patch.gallery_urls = listValue(payload.gallery_urls)
+  if (hasOwn(payload, "floorplan_urls")) patch.floorplan_urls = listValue(payload.floorplan_urls)
+  if (hasOwn(payload, "amenities")) patch.amenities = listValue(payload.amenities)
+  if (hasOwn(payload, "meta_title")) patch.meta_title = payload.meta_title || null
+  if (hasOwn(payload, "meta_description")) patch.meta_description = payload.meta_description || null
+  if (hasOwn(payload, "owner_email")) patch.owner_email = payload.owner_email || null
+  if (hasOwn(payload, "agent_email")) patch.agent_email = payload.agent_email || null
+
+  if (hasOwn(payload, "published_at")) {
+    patch.published_at = payload.published_at || null
+  }
+
+  if (String(patch.status || "").toUpperCase() === "PUBLISHED") {
+    patch.published_at = patch.published_at || payload.published_at || new Date().toISOString()
+  }
+
+  return patch
+}
