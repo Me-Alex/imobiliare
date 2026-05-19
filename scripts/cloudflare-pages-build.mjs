@@ -49,12 +49,38 @@ function run(command, args) {
 }
 
 async function preparePagesFallbackOutput() {
-  const assetsDir = join(process.cwd(), ".open-next", "assets")
+  const openNextDir = join(process.cwd(), ".open-next")
+  const assetsDir = join(openNextDir, "assets")
   const pagesDir = join(process.cwd(), ".vercel", "output", "static")
+
+  const workerEntrypoint = join(openNextDir, "worker.js")
   if (!existsSync(assetsDir)) throw new Error(`OpenNext assets not found at ${assetsDir}`)
+  if (!existsSync(workerEntrypoint)) throw new Error(`OpenNext worker entrypoint not found at ${workerEntrypoint}`)
 
   await mkdir(pagesDir, { recursive: true })
   await cp(assetsDir, pagesDir, { recursive: true, force: true })
+
+  // Cloudflare Pages "advanced mode" expects a `_worker.js` entry in the output directory.
+  // We keep all server-only modules inside `_worker.js/` so they don't get served as static assets.
+  const pagesWorkerDir = join(pagesDir, "_worker.js")
+  await mkdir(pagesWorkerDir, { recursive: true })
+
+  await cp(workerEntrypoint, join(pagesWorkerDir, "index.js"), { force: true })
+
+  const workerModuleDirs = [
+    ".build",
+    "cache",
+    "cloudflare",
+    "dynamodb-provider",
+    "middleware",
+    "server-functions",
+  ]
+
+  for (const dir of workerModuleDirs) {
+    const src = join(openNextDir, dir)
+    if (!existsSync(src)) continue
+    await cp(src, join(pagesWorkerDir, dir), { recursive: true, force: true })
+  }
 
   const routesPath = join(pagesDir, "_routes.json")
   const routes = {
