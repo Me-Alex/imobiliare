@@ -1,7 +1,8 @@
-import { cp, mkdir, rm, writeFile } from "node:fs/promises"
+import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { spawn } from "node:child_process"
+import { gzipSync } from "node:zlib"
 
 const fallbackPublicEnv = {
   NEXT_PUBLIC_SUPABASE_URL: "https://spmapzhlcwhzfrxuvgxd.supabase.co",
@@ -52,6 +53,7 @@ async function preparePagesFallbackOutput() {
   const openNextDir = join(process.cwd(), ".open-next")
   const assetsDir = join(openNextDir, "assets")
   const pagesDir = join(process.cwd(), ".vercel", "output", "static")
+  const workerBundleDir = join(process.cwd(), ".open-next-pages-worker")
 
   const workerEntrypoint = join(openNextDir, "worker.js")
   if (!existsSync(assetsDir)) throw new Error(`OpenNext assets not found at ${assetsDir}`)
@@ -59,86 +61,44 @@ async function preparePagesFallbackOutput() {
 
   // Ensure we don't keep old files around (which could push the bundle over Pages limits).
   await rm(pagesDir, { recursive: true, force: true })
+  await rm(workerBundleDir, { recursive: true, force: true })
 
   await mkdir(pagesDir, { recursive: true })
   await cp(assetsDir, pagesDir, { recursive: true, force: true })
 
-  // Cloudflare Pages "advanced mode" expects a `_worker.js` entry in the output directory.
-  // We keep all server-only modules inside `_worker.js/` so they don't get served as static assets.
-  const pagesWorkerDir = join(pagesDir, "_worker.js")
-  await mkdir(pagesWorkerDir, { recursive: true })
+  // Pages advanced mode expects a single `_worker.js` file in the output directory.
+  // Wrangler's bundler applies Cloudflare's Node compatibility transforms; raw esbuild leaves unsupported dynamic requires.
+  const pagesWorkerFile = join(pagesDir, "_worker.js")
+  await run("npx", [
+    "--yes",
+    "--package",
+    "node@22.16.0",
+    "node",
+    "node_modules/wrangler/bin/wrangler.js",
+    "deploy",
+    "--dry-run",
+    "--outdir",
+    ".open-next-pages-worker",
+  ])
 
-  await cp(workerEntrypoint, join(pagesWorkerDir, "index.js"), { force: true })
+  const bundledFiles = await readdir(workerBundleDir)
+  const bundledWorker = bundledFiles.find((file) => file.endsWith(".js") && !file.endsWith(".js.map"))
+  if (!bundledWorker) throw new Error(`Wrangler did not emit a Worker bundle in ${workerBundleDir}`)
 
-  const workerModuleDirs = [
-    ".build",
-    "cloudflare",
-    "dynamodb-provider",
-    "middleware",
-    "server-functions",
-  ]
+  await cp(join(workerBundleDir, bundledWorker), pagesWorkerFile, { force: true })
+  await rm(workerBundleDir, { recursive: true, force: true })
 
-  for (const dir of workerModuleDirs) {
-    const src = join(openNextDir, dir)
-    if (!existsSync(src)) continue
-    await cp(src, join(pagesWorkerDir, dir), { recursive: true, force: true })
+  const workerBytes = await readFile(pagesWorkerFile)
+  const gzipBytes = gzipSync(workerBytes)
+  console.log(
+    `Prepared Pages worker at ${pagesWorkerFile} (${(workerBytes.length / 1024 / 1024).toFixed(2)} MiB raw, ${(gzipBytes.length / 1024 / 1024).toFixed(2)} MiB gzip)`,
+  )
+
+  if (gzipBytes.length > 3_000_000) {
+    throw new Error(
+      `Cloudflare Pages worker bundle is ${(gzipBytes.length / 1024 / 1024).toFixed(2)} MiB gzip, above the Workers Free 3 MB limit.`,
+    )
   }
-
-  // Cloudflare Pages Functions have a strict uncompressed size limit (25 MiB). OpenNext's output contains
-  // build-time-only artifacts that can be safely removed after bundling to keep the deployed bundle small.
-  // This pruning is intentionally conservative: remove known-large dev/build-only files and cache seeds.
-  await rm(join(pagesWorkerDir, "cache"), { recursive: true, force: true })
-  await rm(join(pagesWorkerDir, "server-functions", "default", "handler.mjs.meta.json"), { force: true })
-  await rm(
-    join(
-      pagesWorkerDir,
-      "server-functions",
-      "default",
-      "node_modules",
-      "next",
-      "dist",
-      "server",
-      "capsize-font-metrics.json",
-    ),
-    { force: true },
-  )
-  await rm(
-    join(
-      pagesWorkerDir,
-      "server-functions",
-      "default",
-      "node_modules",
-      "next",
-      "dist",
-      "compiled",
-      "@next",
-      "font",
-      "dist",
-      "fontkit",
-    ),
-    { recursive: true, force: true },
-  )
-  await rm(
-    join(
-      pagesWorkerDir,
-      "server-functions",
-      "default",
-      "node_modules",
-      "next",
-      "dist",
-      "compiled",
-      "@next",
-      "font",
-      "dist",
-      "google",
-      "font-data.json",
-    ),
-    { force: true },
-  )
-  await rm(
-    join(pagesWorkerDir, "server-functions", "default", "node_modules", "next", "dist", "compiled", "next-devtools"),
-    { recursive: true, force: true },
-  )
 
   const routesPath = join(pagesDir, "_routes.json")
   const routes = {
