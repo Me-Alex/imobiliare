@@ -1,4 +1,4 @@
-import { cp, mkdir, writeFile } from "node:fs/promises"
+import { cp, mkdir, rm, writeFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { spawn } from "node:child_process"
@@ -57,6 +57,9 @@ async function preparePagesFallbackOutput() {
   if (!existsSync(assetsDir)) throw new Error(`OpenNext assets not found at ${assetsDir}`)
   if (!existsSync(workerEntrypoint)) throw new Error(`OpenNext worker entrypoint not found at ${workerEntrypoint}`)
 
+  // Ensure we don't keep old files around (which could push the bundle over Pages limits).
+  await rm(pagesDir, { recursive: true, force: true })
+
   await mkdir(pagesDir, { recursive: true })
   await cp(assetsDir, pagesDir, { recursive: true, force: true })
 
@@ -69,7 +72,6 @@ async function preparePagesFallbackOutput() {
 
   const workerModuleDirs = [
     ".build",
-    "cache",
     "cloudflare",
     "dynamodb-provider",
     "middleware",
@@ -81,6 +83,62 @@ async function preparePagesFallbackOutput() {
     if (!existsSync(src)) continue
     await cp(src, join(pagesWorkerDir, dir), { recursive: true, force: true })
   }
+
+  // Cloudflare Pages Functions have a strict uncompressed size limit (25 MiB). OpenNext's output contains
+  // build-time-only artifacts that can be safely removed after bundling to keep the deployed bundle small.
+  // This pruning is intentionally conservative: remove known-large dev/build-only files and cache seeds.
+  await rm(join(pagesWorkerDir, "cache"), { recursive: true, force: true })
+  await rm(join(pagesWorkerDir, "server-functions", "default", "handler.mjs.meta.json"), { force: true })
+  await rm(
+    join(
+      pagesWorkerDir,
+      "server-functions",
+      "default",
+      "node_modules",
+      "next",
+      "dist",
+      "server",
+      "capsize-font-metrics.json",
+    ),
+    { force: true },
+  )
+  await rm(
+    join(
+      pagesWorkerDir,
+      "server-functions",
+      "default",
+      "node_modules",
+      "next",
+      "dist",
+      "compiled",
+      "@next",
+      "font",
+      "dist",
+      "fontkit",
+    ),
+    { recursive: true, force: true },
+  )
+  await rm(
+    join(
+      pagesWorkerDir,
+      "server-functions",
+      "default",
+      "node_modules",
+      "next",
+      "dist",
+      "compiled",
+      "@next",
+      "font",
+      "dist",
+      "google",
+      "font-data.json",
+    ),
+    { force: true },
+  )
+  await rm(
+    join(pagesWorkerDir, "server-functions", "default", "node_modules", "next", "dist", "compiled", "next-devtools"),
+    { recursive: true, force: true },
+  )
 
   const routesPath = join(pagesDir, "_routes.json")
   const routes = {
