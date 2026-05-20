@@ -7,7 +7,6 @@ import { AgentsView, ClientsView, ComplianceView, DocumentsCenterView, ListingsV
 import { OperationsView } from "./admin-operations"
 import { AuditView, ContentView, ReportsView, SettingsView, ToolsView, UsersView } from "./admin-secondary-views"
 import { AccountingView, AnalyticsOpsView, BulkOpsView, CalendarOpsView, IntegrationsView, MediaView, OwnerPortalAdminView } from "./admin-upgrade-views"
-import { AdminFoolproofLayer } from "./admin-foolproof"
 import { apiJson, confirmRisk, csv, date, defaultCore, defaultModules, matches, money, nav, propertyTypeLabel, slugify, statusLabel, type ModuleType, type Row, type View } from "./admin-shared"
 
 const allNavItems = nav.flatMap((group) => group.items.map((item) => ({ ...item, group: group.group })))
@@ -290,6 +289,12 @@ export default function AdminCommandCenter() {
     link.click()
     URL.revokeObjectURL(url)
   }, "Export generat.")
+
+  const logout = () => {
+    fetch("/api/admin/session", { method: "DELETE" })
+      .finally(() => supabase.auth.signOut().then(() => { window.location.href = "/admin/login" }))
+  }
+
   const title = allNavItems.find((item) => item.id === view)?.label || "Admin"
 
   const renderView = () => {
@@ -320,7 +325,7 @@ export default function AdminCommandCenter() {
     if (view === "tools") return <ToolsView {...props} />
     if (view === "settings") return <HqsSettingsView {...props} />
     if (view === "audit") return <AuditView {...props} />
-    return <HqsOverview core={core} modules={modules} platform={platform} report={report} metrics={metrics} saving={saving} lastLoadedAt={lastLoadedAt} setView={navigateView} exportServer={exportServer} exportLocalCsv={exportLocalCsv} reload={load} patchLead={patchLead} followUp={followUp} patchAppointment={patchAppointment} patchProperty={patchProperty} showToast={showToast} />
+    return <HqsOverview core={core} modules={modules} platform={platform} report={report} metrics={metrics} saving={saving} lastLoadedAt={lastLoadedAt} setView={navigateView} exportServer={exportServer} exportLocalCsv={exportLocalCsv} reload={load} patchLead={patchLead} followUp={followUp} patchAppointment={patchAppointment} patchProperty={patchProperty} createProperty={createProperty} showToast={showToast} />
   }
 
   const activePanel = renderView()
@@ -385,6 +390,7 @@ export default function AdminCommandCenter() {
                   <strong>{adminEmail || "HQS Admin"}</strong>
                   <span>{title}</span>
                 </div>
+                <button type="button" className="profile-logout" onClick={logout}>Ieșire</button>
               </div>
             </div>
           </header>
@@ -485,6 +491,7 @@ function HqsLeadsView({ filtered, query, saving, followUp, createLead, showToast
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("all")
   const [modalOpen, setModalOpen] = useState(false)
+  const [selected, setSelected] = useState<Row | null>(null)
   const source = filtered.leads.length ? filtered.leads : (query ? [] : demoPriorityLeads)
   const visible = source.filter((lead: Row) => Object.values(lead).join(" ").toLowerCase().includes(search.toLowerCase().trim()) && (status === "all" || String(lead.status || "").toUpperCase() === status))
   return (
@@ -504,18 +511,19 @@ function HqsLeadsView({ filtered, query, saving, followUp, createLead, showToast
             <tbody>
               {visible.length ? visible.map((lead: Row, index: number) => {
                 const name = lead.name || lead.full_name || lead.email || lead.phone || "Lead nou"
-                return <tr key={lead.id || lead.email || index}><td><div className="client-cell"><div className="lead-avatar">{initials(name)}</div><strong>{name}</strong></div></td><td>{lead.interest || lead.message || lead.property_title || "Preferințe necompletate"}</td><td>{lead.budget || lead.max_budget ? money(lead.budget || lead.max_budget) : "-"}</td><td><span className={`tag ${statusTone(lead.status || "NEW")}`}>{statusLabel(lead.status || "NEW")}</span></td><td>{lead.next || lead.next_follow_up || "Sună azi"}</td><td>{lead.agent || lead.assigned_to || "HQS"}</td><td><button type="button" className="btn small" disabled={lead.id && saving === `follow-${lead.id}`} onClick={() => lead.id ? followUp(lead) : showToast("Lead demo: deschiderea fișei se aplică pentru date live.")}>Deschide</button></td></tr>
+                return <tr key={lead.id || lead.email || index}><td><div className="client-cell"><div className="lead-avatar">{initials(name)}</div><strong>{name}</strong></div></td><td>{lead.interest || lead.message || lead.property_title || "Preferințe necompletate"}</td><td>{lead.budget || lead.max_budget ? money(lead.budget || lead.max_budget) : "-"}</td><td><span className={`tag ${statusTone(lead.status || "NEW")}`}>{statusLabel(lead.status || "NEW")}</span></td><td>{lead.next || lead.next_follow_up || "Sună azi"}</td><td>{lead.agent || lead.assigned_to || "HQS"}</td><td><button type="button" className="btn small" disabled={lead.id && saving === `follow-${lead.id}`} onClick={() => setSelected(lead)}>Deschide</button></td></tr>
               }) : <tr><td colSpan={7}><div className="empty">Nu există lead-uri pentru filtrele alese.</div></td></tr>}
             </tbody>
           </table>
         </div>
       </section>
       {modalOpen && <LeadModal saving={saving === "lead-create"} onClose={() => setModalOpen(false)} onSubmit={async (payload) => { await createLead(payload); setModalOpen(false) }} />}
+      {selected && <LeadDetailsModal lead={selected} saving={Boolean(selected.id && saving === `follow-${selected.id}`)} onClose={() => setSelected(null)} onFollowUp={() => selected.id ? followUp(selected) : showToast("Lead demo: follow-up-ul se salvează când există ID în backend.")} />}
     </>
   )
 }
 
-function HqsPipelineView({ filtered, platformAction, saving, showToast }: any) {
+function HqsPipelineView({ filtered, platformAction, saving, showToast, reload }: any) {
   const offers = filtered.offers.length ? filtered.offers : demoOffers
   const stages = [
     { name: "Shortlist", statuses: ["SHORTLIST", "NEW", "SUBMITTED", "PENDING"] },
@@ -526,7 +534,7 @@ function HqsPipelineView({ filtered, platformAction, saving, showToast }: any) {
   const nextStatus: Record<string, string> = { SHORTLIST: "VIEWING", NEW: "VIEWING", SUBMITTED: "VIEWING", PENDING: "VIEWING", VIEWING: "NEGOTIATING", REQUESTED: "NEGOTIATING", CONFIRMED: "NEGOTIATING", NEGOTIATING: "DUE_DILIGENCE", OFFER: "DUE_DILIGENCE", ACCEPTED: "DUE_DILIGENCE", DUE_DILIGENCE: "SIGNED" }
   return (
     <>
-      <HqsPageHead eyebrow="Tranzacții" title="Pipeline vânzări" body="Vizualizează oportunitățile pe etape: shortlist, vizionare, ofertă și due diligence." action={<button type="button" className="btn dark" onClick={() => showToast("Pipeline actualizat cu date live.")}>Actualizează pipeline</button>} />
+      <HqsPageHead eyebrow="Tranzacții" title="Pipeline vânzări" body="Vizualizează oportunitățile pe etape: shortlist, vizionare, ofertă și due diligence." action={<button type="button" className="btn dark" onClick={() => reload()}>Actualizează pipeline</button>} />
       <div className="pipeline">
         {stages.map((stage) => {
           const deals = offers.filter((offer: Row) => stage.statuses.includes(String(offer.status || "SHORTLIST").toUpperCase()))
@@ -570,6 +578,7 @@ function HqsCalendarView({ filtered, platform, patchAppointment, createAppointme
 
 function HqsAgentsView({ filtered, core, saveModule, saving, showToast }: any) {
   const [modalOpen, setModalOpen] = useState(false)
+  const [selected, setSelected] = useState<Row | null>(null)
   const agents = filtered.teamUsers.length ? filtered.teamUsers : (filtered.roles.length ? filtered.roles : demoAgents)
   return (
     <>
@@ -579,10 +588,11 @@ function HqsAgentsView({ filtered, core, saveModule, saving, showToast }: any) {
           const name = agent.name || agent.full_name || agent.email || `Agent ${index + 1}`
           const listings = agent.listings ?? core.properties.filter((property: Row) => property.agent_email === agent.email).length
           const leads = agent.leads ?? core.leads.filter((lead: Row) => lead.assigned_to === agent.email).length
-          return <article className="agent-card" key={agent.id || agent.email || index}><div className="agent-photo">{agent.initials || initials(name)}</div><h3>{name}</h3><p>{agent.role || "Agent HQS"}</p><div className="agent-metrics"><span>{listings}<br />listări</span><span>{leads}<br />lead-uri</span><span>{agent.conversion || "28%"}<br />conv.</span></div><button type="button" className="btn small" onClick={() => showToast(`Profil agent deschis: ${name}.`)}>Vezi profil</button></article>
+          return <article className="agent-card" key={agent.id || agent.email || index}><div className="agent-photo">{agent.initials || initials(name)}</div><h3>{name}</h3><p>{agent.role || "Agent HQS"}</p><div className="agent-metrics"><span>{listings}<br />listări</span><span>{leads}<br />lead-uri</span><span>{agent.conversion || "28%"}<br />conv.</span></div><button type="button" className="btn small" onClick={() => setSelected({ ...agent, _computed_listings: listings, _computed_leads: leads })}>Vezi profil</button></article>
         })}
       </section>
       {modalOpen && <AgentModal saving={saving === "team_users-save"} onClose={() => setModalOpen(false)} onSubmit={async (payload) => { await saveModule("team_users", payload); setModalOpen(false) }} />}
+      {selected && <AgentDetailsModal agent={selected} onClose={() => setSelected(null)} />}
     </>
   )
 }
@@ -661,7 +671,8 @@ function HqsLoadingState() {
   )
 }
 
-function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, setView, exportServer, exportLocalCsv, reload, followUp, patchAppointment, patchProperty, showToast }: any) {
+function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, setView, exportServer, exportLocalCsv, reload, followUp, patchAppointment, patchProperty, createProperty, showToast }: any) {
+  const [quickPropertyOpen, setQuickPropertyOpen] = useState(false)
   const docs = [...modules.documents, ...((platform.client_documents || []) as Row[])]
   const publishedRate = core.properties.length ? Math.round((metrics.published.length / core.properties.length) * 100) : 77
   const contactedRate = core.leads.length ? Math.round((core.leads.filter((lead: Row) => !["NEW", "LOST"].includes(String(lead.status || ""))).length / core.leads.length) * 100) : 84
@@ -688,7 +699,7 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
           <h1>Control complet pentru proprietăți premium.</h1>
           <p>Admin page pentru listări, lead-uri, vizionări, agenți, rapoarte și setări. UI-ul este conectat la datele live când API-urile admin răspund și rămâne utilizabil cu fallback sigur când lipsesc credențiale.</p>
         </div>
-        <button type="button" className="btn dark" onClick={() => setView("properties")}>Adaugă rapid</button>
+        <button type="button" className="btn dark" onClick={() => setQuickPropertyOpen(true)}>Adaugă rapid</button>
       </div>
 
       <div className="hero-grid">
@@ -846,6 +857,17 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
           </div>
         </section>
       </div>
+      {quickPropertyOpen && (
+        <PropertyModal
+          property={null}
+          saving={saving === "create-property"}
+          onClose={() => setQuickPropertyOpen(false)}
+          onSubmit={async (payload) => {
+            await createProperty(payload)
+            setQuickPropertyOpen(false)
+          }}
+        />
+      )}
     </>
   )
 }
@@ -861,21 +883,72 @@ function LeadModal({ saving, onClose, onSubmit }: { saving: boolean; onClose: ()
   const [form, setForm] = useState<Row>({ name: "", phone: "", email: "", message: "", budget: "", status: "NEW", source: "admin" })
   const update = (key: string, value: string | number) => setForm((prev) => ({ ...prev, [key]: value }))
   const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); await onSubmit({ ...form, budget: Number(form.budget || 0) }) }
-  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>Adaugă lead</h2><button type="button" className="close-btn" onClick={onClose}>x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Nume</label><input value={form.name} required onChange={(event) => update("name", event.target.value)} /></div><div className="form-row"><label>Telefon</label><input value={form.phone} onChange={(event) => update("phone", event.target.value)} /></div><div className="form-row"><label>Email</label><input value={form.email} type="email" onChange={(event) => update("email", event.target.value)} /></div><div className="form-row"><label>Buget EUR</label><input value={form.budget} type="number" onChange={(event) => update("budget", event.target.value)} /></div></div><div className="form-row"><label>Interes</label><textarea value={form.message} onChange={(event) => update("message", event.target.value)} /></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează lead"}</button></div></form></div></div>
+  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>Adaugă lead</h2><button type="button" className="close-btn" onClick={onClose} aria-label="Inchide">x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Nume</label><input value={form.name} required onChange={(event) => update("name", event.target.value)} /></div><div className="form-row"><label>Telefon</label><input value={form.phone} onChange={(event) => update("phone", event.target.value)} /></div><div className="form-row"><label>Email</label><input value={form.email} type="email" onChange={(event) => update("email", event.target.value)} /></div><div className="form-row"><label>Buget EUR</label><input value={form.budget} type="number" onChange={(event) => update("budget", event.target.value)} /></div></div><div className="form-row"><label>Interes</label><textarea value={form.message} onChange={(event) => update("message", event.target.value)} /></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează lead"}</button></div></form></div></div>
 }
 
 function AppointmentModal({ saving, properties, onClose, onSubmit }: { saving: boolean; properties: Row[]; onClose: () => void; onSubmit: (payload: Row) => Promise<void> }) {
   const [form, setForm] = useState<Row>({ client_name: "", client_email: "", client_phone: "", property_id: "", starts_at: "", notes: "", status: "REQUESTED" })
   const update = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
   const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); await onSubmit({ ...form, requested_at: form.starts_at ? new Date(form.starts_at).toISOString() : undefined }) }
-  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>Programează vizionare</h2><button type="button" className="close-btn" onClick={onClose}>x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Client</label><input value={form.client_name} required onChange={(event) => update("client_name", event.target.value)} /></div><div className="form-row"><label>Email client</label><input value={form.client_email} type="email" onChange={(event) => update("client_email", event.target.value)} /></div><div className="form-row"><label>Telefon</label><input value={form.client_phone} onChange={(event) => update("client_phone", event.target.value)} /></div><div className="form-row"><label>Data și ora</label><input value={form.starts_at} type="datetime-local" required onChange={(event) => update("starts_at", event.target.value)} /></div><div className="form-row"><label>Proprietate</label><select value={form.property_id} onChange={(event) => update("property_id", event.target.value)}><option value="">Fără proprietate</option>{properties.map((property) => property.id && <option key={property.id} value={property.id}>{property.title}</option>)}</select></div></div><div className="form-row"><label>Note</label><textarea value={form.notes} onChange={(event) => update("notes", event.target.value)} /></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează vizionarea"}</button></div></form></div></div>
+  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>Programează vizionare</h2><button type="button" className="close-btn" onClick={onClose} aria-label="Inchide">x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Client</label><input value={form.client_name} required onChange={(event) => update("client_name", event.target.value)} /></div><div className="form-row"><label>Email client</label><input value={form.client_email} type="email" onChange={(event) => update("client_email", event.target.value)} /></div><div className="form-row"><label>Telefon</label><input value={form.client_phone} onChange={(event) => update("client_phone", event.target.value)} /></div><div className="form-row"><label>Data și ora</label><input value={form.starts_at} type="datetime-local" required onChange={(event) => update("starts_at", event.target.value)} /></div><div className="form-row"><label>Proprietate</label><select value={form.property_id} onChange={(event) => update("property_id", event.target.value)}><option value="">Fără proprietate</option>{properties.map((property) => property.id && <option key={property.id} value={property.id}>{property.title}</option>)}</select></div></div><div className="form-row"><label>Note</label><textarea value={form.notes} onChange={(event) => update("notes", event.target.value)} /></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează vizionarea"}</button></div></form></div></div>
 }
 
 function AgentModal({ saving, onClose, onSubmit }: { saving: boolean; onClose: () => void; onSubmit: (payload: Row) => Promise<void> }) {
   const [form, setForm] = useState<Row>({ name: "", email: "", role: "agent", status: "ACTIVE" })
   const update = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
   const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); await onSubmit(form) }
-  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>Invită agent</h2><button type="button" className="close-btn" onClick={onClose}>x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Nume</label><input value={form.name} required onChange={(event) => update("name", event.target.value)} /></div><div className="form-row"><label>Email</label><input value={form.email} type="email" required onChange={(event) => update("email", event.target.value)} /></div><div className="form-row"><label>Rol</label><select value={form.role} onChange={(event) => update("role", event.target.value)}><option value="agent">Agent</option><option value="manager">Manager</option><option value="admin">Admin</option></select></div></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Trimite invitația"}</button></div></form></div></div>
+  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>Invită agent</h2><button type="button" className="close-btn" onClick={onClose} aria-label="Inchide">x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Nume</label><input value={form.name} required onChange={(event) => update("name", event.target.value)} /></div><div className="form-row"><label>Email</label><input value={form.email} type="email" required onChange={(event) => update("email", event.target.value)} /></div><div className="form-row"><label>Rol</label><select value={form.role} onChange={(event) => update("role", event.target.value)}><option value="agent">Agent</option><option value="manager">Manager</option><option value="admin">Admin</option></select></div></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Trimite invitația"}</button></div></form></div></div>
+}
+
+function LeadDetailsModal({ lead, saving, onClose, onFollowUp }: { lead: Row; saving: boolean; onClose: () => void; onFollowUp: () => void }) {
+  const name = lead.name || lead.full_name || lead.email || lead.phone || "Lead"
+  const status = String(lead.status || "NEW")
+  const budget = lead.budget || lead.max_budget || lead.price
+  return (
+    <div className="modal-backdrop open" role="dialog" aria-modal="true">
+      <div className="modal">
+        <div className="modal-head">
+          <h2>Lead: {name}</h2>
+          <button type="button" className="close-btn" onClick={onClose} aria-label="Inchide">x</button>
+        </div>
+        <div className="mini-list">
+          <div className="mini-item"><span>Status</span><strong>{statusLabel(status)}</strong></div>
+          <div className="mini-item"><span>Buget</span><strong>{budget ? money(budget) : "-"}</strong></div>
+          <div className="mini-item"><span>Telefon</span><strong>{lead.phone || "-"}</strong></div>
+          <div className="mini-item"><span>Email</span><strong>{lead.email || "-"}</strong></div>
+          <div className="mini-item"><span>Interes</span><strong>{lead.interest || lead.message || lead.property_title || "-"}</strong></div>
+        </div>
+        <div className="form-actions" style={{ marginTop: 14 }}>
+          <button type="button" className="btn" onClick={onClose}>Închide</button>
+          <button type="button" className="btn primary" disabled={saving} onClick={onFollowUp}>{saving ? "Se salvează..." : "Marchează follow-up"}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AgentDetailsModal({ agent, onClose }: { agent: Row; onClose: () => void }) {
+  const name = agent.name || agent.full_name || agent.email || "Agent"
+  return (
+    <div className="modal-backdrop open" role="dialog" aria-modal="true">
+      <div className="modal">
+        <div className="modal-head">
+          <h2>Agent: {name}</h2>
+          <button type="button" className="close-btn" onClick={onClose} aria-label="Inchide">x</button>
+        </div>
+        <div className="mini-list">
+          <div className="mini-item"><span>Email</span><strong>{agent.email || "-"}</strong></div>
+          <div className="mini-item"><span>Rol</span><strong>{agent.role || "agent"}</strong></div>
+          <div className="mini-item"><span>Listări</span><strong>{agent._computed_listings ?? agent.listings ?? "-"}</strong></div>
+          <div className="mini-item"><span>Lead-uri</span><strong>{agent._computed_leads ?? agent.leads ?? "-"}</strong></div>
+          <div className="mini-item"><span>Conversie</span><strong>{agent.conversion || "-"}</strong></div>
+        </div>
+        <div className="form-actions" style={{ marginTop: 14 }}>
+          <button type="button" className="btn primary" onClick={onClose}>Închide</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function SwitchRow({ title, text, enabled, onClick }: { title: string; text: string; enabled: boolean; onClick: () => void }) {

@@ -18,7 +18,7 @@ const TIP_LABEL: Record<string, string> = {
   COMMERCIAL: "Comercial",
 }
 
-export default function ProprietateCard({ proprietate: p, matchScore, matchReasons = [] }: { proprietate: Property; matchScore?: number; matchReasons?: string[] }) {
+export default function ProprietateCard({ proprietate: p, matchScore, matchReasons = [], priorityImage = false }: { proprietate: Property; matchScore?: number; matchReasons?: string[]; priorityImage?: boolean }) {
   const media = getPropertyMedia(p)
   const [favorite, setFavorite] = useState(false)
   const [compare, setCompare] = useState(false)
@@ -58,6 +58,8 @@ export default function ProprietateCard({ proprietate: p, matchScore, matchReaso
           alt={p.title}
           fill
           sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+          loading={priorityImage ? "eager" : "lazy"}
+          fetchPriority={priorityImage ? "high" : "auto"}
           className="pointer-events-none object-cover transition duration-700 group-hover:scale-105"
         />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/70 to-transparent" />

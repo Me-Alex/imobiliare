@@ -483,7 +483,7 @@ export default function ProprietatiSection({
         ) : scoredFiltered.length > 0 ? (
           <>
             <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {scoredFiltered.map(({ property, score, reasons }) => <ProprietateCard key={property.id} proprietate={property} matchScore={score} matchReasons={reasons} />)}
+              {scoredFiltered.map(({ property, score, reasons }, index) => <ProprietateCard key={property.id} proprietate={property} matchScore={score} matchReasons={reasons} priorityImage={index === 0} />)}
             </div>
             {hasMore && (
               <div className="mt-8 text-center">

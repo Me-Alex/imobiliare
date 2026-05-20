@@ -62,6 +62,19 @@ export const appointmentRequestSchema = z.object({
   slot_id: optionalText(80),
 })
 
+// Accept common alternative field names used by some clients/UIs.
+export const appointmentRequestCompatSchema = z.preprocess((value) => {
+  if (!value || typeof value !== "object") return value
+  const payload = value as Record<string, unknown>
+  return {
+    ...payload,
+    name: payload.name ?? payload.client_name,
+    phone: payload.phone ?? payload.client_phone,
+    email: payload.email ?? payload.client_email,
+    requested_at: payload.requested_at ?? payload.starts_at,
+  }
+}, appointmentRequestSchema)
+
 export const clientAppointmentRequestSchema = appointmentRequestSchema.partial({
   name: true,
   phone: true,

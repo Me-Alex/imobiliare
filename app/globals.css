@@ -302,6 +302,8 @@ textarea {
 .hqs-admin .avatar { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; color: #fff; background: linear-gradient(145deg, var(--hqs-brand), var(--hqs-brand-2)); font-weight: 850; }
 .hqs-admin .profile strong { display: block; font-size: 0.87rem; }
 .hqs-admin .profile span { display: block; margin-top: 1px; color: var(--hqs-muted); font-size: 0.74rem; }
+.hqs-admin .profile-logout { min-height: 32px; padding: 0 10px; border-radius: 12px; color: var(--hqs-brand); background: var(--hqs-gold-soft); font-size: 0.78rem; font-weight: 950; }
+.hqs-admin .profile-logout:hover { box-shadow: var(--hqs-shadow-soft); }
 .hqs-admin .content { padding: 24px 2px 50px; animation: hqsFadeUp 0.32s var(--hqs-ease); }
 
 @keyframes hqsFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

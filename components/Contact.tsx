@@ -81,7 +81,7 @@ export default function Contact() {
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div>
-            <h2 className="text-3xl font-black leading-tight tracking-normal text-text-primary md:text-5xl">Spune-ne ce cauti, apoi iti raspundem concret.</h2>
+            <h1 className="text-3xl font-black leading-tight tracking-normal text-text-primary md:text-5xl">Spune-ne ce cauti, apoi iti raspundem concret.</h1>
             <p className="mt-4 leading-8 text-text-muted">
               Nu trimitem raspunsuri automate si nu impingem proprietati nepotrivite. Daca avem o varianta buna, iti explicam de ce. Daca nu, iti spunem direct.
             </p>

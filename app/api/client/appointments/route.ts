@@ -51,7 +51,11 @@ export async function POST(request: Request) {
     })
 
     // Atomic booking is handled inside the RPC (slot availability + slot status update + audit/outbox).
-    const { data, error } = await session.supabase.rpc("book_appointment_slot", { payload })
+    const { data, error } = await session.supabase.rpc("book_appointment_slot", {
+      payload,
+      p_client_user_id: session.user.id,
+      p_actor: session.user.email || "client",
+    })
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
     await session.supabase.from("client_activity").insert({

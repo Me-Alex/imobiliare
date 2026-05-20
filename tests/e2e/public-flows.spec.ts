@@ -19,5 +19,5 @@ test("admin login page accepts username alias", async ({ page }) => {
   await page.getByRole("textbox", { name: "Parola" }).fill("1234")
   await page.getByRole("button", { name: "Intra in admin" }).click()
   await expect(page).toHaveURL(/\/admin\/dashboard/)
-  await expect(page.getByText("admin@hqsimobiliare.ro")).toBeVisible()
+  await expect(page.getByText("1@2.com")).toBeVisible()
 })

@@ -108,9 +108,9 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
       <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1fr_460px]">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-accent">Cont client</p>
-          <h2 className="mt-3 max-w-3xl text-3xl font-black text-text-primary md:text-5xl">
+          <h1 className="mt-3 max-w-3xl text-3xl font-black text-text-primary md:text-5xl">
             Cont client securizat, conectat la Supabase Auth.
-          </h2>
+          </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-text-muted">
             Clientii isi pot crea cont, intra cu parola, reseta parola si accesa profilul, favoritele, documentele, ofertele si programarile salvate.
           </p>
