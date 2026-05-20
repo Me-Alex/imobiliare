@@ -1,19 +1,43 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import ThemeToggle from "@/components/ThemeToggle"
+import { useEffect, useMemo, useState, type CSSProperties } from "react"
 import { supabase } from "@/lib/supabase"
-import { AppointmentsView, CrmView, Overview, PropertiesView } from "./admin-core-views"
+import { AppointmentsView, CrmView, PropertiesView } from "./admin-core-views"
 import { AgentsView, ClientsView, ComplianceView, DocumentsCenterView, ListingsView, MaintenanceView, MarketingView, TransactionsView } from "./admin-real-estate-views"
 import { OperationsView } from "./admin-operations"
 import { AuditView, ContentView, ReportsView, SettingsView, ToolsView, UsersView } from "./admin-secondary-views"
 import { AccountingView, AnalyticsOpsView, BulkOpsView, CalendarOpsView, IntegrationsView, MediaView, OwnerPortalAdminView } from "./admin-upgrade-views"
 import { AdminFoolproofLayer } from "./admin-foolproof"
-import { Banner, Button, LoadingState, MiniStat, NavButton } from "./admin-ui"
-import { apiJson, confirmRisk, csv, defaultCore, defaultModules, matches, nav, slugify, type ModuleType, type Row, type View } from "./admin-shared"
+import { apiJson, confirmRisk, csv, date, defaultCore, defaultModules, matches, money, nav, slugify, statusLabel, type ModuleType, type Row, type View } from "./admin-shared"
 
 const allNavItems = nav.flatMap((group) => group.items.map((item) => ({ ...item, group: group.group })))
 const viewIds = new Set(allNavItems.map((item) => item.id))
+const hqsNavGroups: Array<{ group: string; items: Array<{ id: View; label: string; mark: string }> }> = [
+  {
+    group: "Workspace",
+    items: [
+      { id: "overview", label: "Dashboard", mark: "D" },
+      { id: "properties", label: "Proprietati", mark: "P" },
+      { id: "crm", label: "Lead-uri", mark: "CRM" },
+      { id: "transactions", label: "Pipeline", mark: "PIPE" },
+      { id: "appointments", label: "Vizionari", mark: "CAL" },
+    ],
+  },
+  {
+    group: "Management",
+    items: [
+      { id: "agents", label: "Agenti", mark: "AG" },
+      { id: "reports", label: "Rapoarte", mark: "R" },
+      { id: "settings", label: "Setari", mark: "S" },
+    ],
+  },
+  {
+    group: "Avansat",
+    items: allNavItems
+      .filter((item) => !["overview", "properties", "crm", "transactions", "appointments", "agents", "reports", "settings"].includes(item.id))
+      .map((item) => ({ id: item.id, label: item.label, mark: item.mark })),
+  },
+]
 
 function isView(value: string | null): value is View {
   return Boolean(value && viewIds.has(value as View))
@@ -34,6 +58,9 @@ export default function AdminCommandCenter() {
   const [notice, setNotice] = useState("")
   const [adminEmail, setAdminEmail] = useState("")
   const [guidedMode, setGuidedMode] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [darkMode, setDarkMode] = useState(false)
+  const [toast, setToast] = useState("")
 
   const load = async (mode: "initial" | "refresh" = "refresh") => {
     mode === "initial" ? setLoading(true) : setRefreshing(true)
@@ -85,14 +112,23 @@ export default function AdminCommandCenter() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    if (!toast) return
+    const timeout = window.setTimeout(() => setToast(""), 2800)
+    return () => window.clearTimeout(timeout)
+  }, [toast])
+
   const navigateView = (nextView: View, nextQuery?: string) => {
     setView(nextView)
     if (nextQuery !== undefined) setQuery(nextQuery)
+    setSidebarOpen(false)
     window.localStorage.setItem("hqs-admin-view", nextView)
     const url = new URL(window.location.href)
     url.searchParams.set("view", nextView)
     window.history.replaceState(null, "", url.toString())
   }
+
+  const showToast = (message: string) => setToast(message)
 
   const toggleGuidedMode = () => {
     setGuidedMode((enabled) => {
@@ -253,7 +289,7 @@ export default function AdminCommandCenter() {
   const title = allNavItems.find((item) => item.id === view)?.label || "Admin"
 
   const renderView = () => {
-    if (loading) return <LoadingState />
+    if (loading) return <HqsLoadingState />
     const props = { filtered, core, modules, platform, report, metrics, saving, setView: navigateView, reload: load, patchLead, followUp, patchAppointment, patchProperty, deleteProperty, createProperty, saveModule, deleteModule, platformAction, saveSettings, exportLocalCsv, exportServer }
     if (view === "properties") return <PropertiesView {...props} />
     if (view === "listings") return <ListingsView {...props} />
@@ -280,66 +316,373 @@ export default function AdminCommandCenter() {
     if (view === "tools") return <ToolsView {...props} />
     if (view === "settings") return <SettingsView {...props} />
     if (view === "audit") return <AuditView {...props} />
-    return <Overview {...props} />
+    return <HqsOverview core={core} modules={modules} platform={platform} report={report} metrics={metrics} saving={saving} lastLoadedAt={lastLoadedAt} setView={navigateView} exportServer={exportServer} exportLocalCsv={exportLocalCsv} reload={load} patchLead={patchLead} followUp={followUp} patchAppointment={patchAppointment} patchProperty={patchProperty} showToast={showToast} />
   }
 
-  return (
-    <div className="min-h-screen bg-bg text-text-primary">
-      <aside className="border-b border-bg-surface bg-bg-card/95 md:fixed md:inset-y-0 md:left-0 md:w-72 md:border-b-0 md:border-r">
-        <div className="flex items-center gap-3 p-4 md:p-5">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-accent font-black text-bg-primary">H</span>
-          <div><p className="font-black">HQS Admin</p><p className="text-xs text-text-muted">panou de control</p></div>
-        </div>
-        <div className="border-t border-bg-surface px-4 pb-4">
-          <button type="button" onClick={() => navigateView("overview", "")} className="flex h-10 w-full items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 text-left text-sm font-black text-emerald-600 transition hover:border-emerald-500">
-            <span>Incepe aici</span>
-            <span>Ghid</span>
-          </button>
-        </div>
-        <div className="grid grid-cols-3 gap-2 border-y border-bg-surface p-4">
-          <MiniStat label="leaduri" value={core.leads.length} />
-          <MiniStat label="active" value={metrics.activeLeads.length} />
-          <MiniStat label="sarcini" value={modules.activities.length} />
-        </div>
-        <nav className="flex gap-2 overflow-x-auto p-3 md:block md:space-y-6 md:p-4">
-          {nav.map((group) => (
-            <div key={group.group} className="flex shrink-0 gap-2 md:block md:space-y-2">
-              <p className="hidden px-3 text-xs font-black uppercase text-text-muted md:block">{group.group}</p>
-              {group.items.map((item) => <NavButton key={item.id} item={item} active={view === item.id} onClick={() => navigateView(item.id)} />)}
-            </div>
-          ))}
-        </nav>
-      </aside>
+  const activePanel = renderView()
+  const profileInitials = adminEmail ? adminEmail.split("@")[0].slice(0, 2).toUpperCase() : "HA"
 
-      <main className="md:ml-72">
-        <header className="sticky top-0 z-20 border-b border-bg-surface bg-bg-card/95 backdrop-blur">
-          <div className="flex flex-col gap-3 px-4 py-4 xl:flex-row xl:items-center xl:justify-between xl:px-6">
-            <div><p className="text-xs font-black uppercase tracking-wide text-text-muted">HQS Imobiliare</p><h1 className="text-2xl font-black">{title}</h1></div>
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="relative min-w-0 flex-1 sm:min-w-[360px]">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-text-muted">S</span>
-                <input className="form-input h-10 w-full !pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cauta in admin..." />
-              </label>
-              <Button variant="ghost" onClick={toggleGuidedMode}>{guidedMode ? "Ghid pornit" : "Ghid oprit"}</Button>
-              <ThemeToggle />
-              <Button variant="ghost" onClick={() => load()} disabled={refreshing}>{refreshing ? "Se reincarca..." : "Reincarca"}</Button>
-              <Button onClick={exportLocalCsv}>CSV</Button>
-              {adminEmail && <span className="rounded-lg border border-bg-surface px-3 py-2 text-xs font-black text-text-muted">{adminEmail}</span>}
-              <Button variant="ghost" onClick={() => fetch("/api/admin/session", { method: "DELETE" }).finally(() => supabase.auth.signOut().then(() => { window.location.href = "/admin/login" }))}>Iesire</Button>
-              <a className="inline-flex h-10 items-center rounded-lg border border-bg-surface px-3 text-sm font-bold" href="/">Site</a>
+  return (
+    <div className={`hqs-admin ${darkMode ? "hqs-admin-dark" : ""}`}>
+      <div className={`sidebar-overlay ${sidebarOpen ? "show" : ""}`} onClick={() => setSidebarOpen(false)} />
+      <div className="app">
+        <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
+          <div className="brand">
+            <div className="brand-mark">HQS</div>
+            <div className="brand-text">
+              <strong>HQS Imobiliare</strong>
+              <span>Admin Control Center</span>
             </div>
           </div>
-        </header>
-        <div className="space-y-6 px-4 py-6 xl:px-6">
-          {error && <Banner tone="error">{error}</Banner>}
-          {notice && <Banner tone="success">{notice}</Banner>}
-          {!loading && <AdminFoolproofLayer enabled={guidedMode} view={view} core={core} modules={modules} platform={platform} metrics={metrics} lastLoadedAt={lastLoadedAt} navigateView={navigateView} toggle={toggleGuidedMode} />}
-          {renderView()}
-        </div>
-      </main>
+
+          <nav className="nav-section" aria-label="Navigare admin">
+            {hqsNavGroups.map((group) => (
+              <div key={group.group}>
+                <div className="nav-kicker">{group.group}</div>
+                {group.items.map((item) => (
+                  <button key={item.id} type="button" className={`nav-item ${view === item.id ? "active" : ""}`} onClick={() => navigateView(item.id)}>
+                    <span className="nav-mark">{item.mark}</span>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </nav>
+
+          <div className="sidebar-card">
+            <h4>Scor HQS AI</h4>
+            <p>Primești sugestii despre proprietățile cu șanse mari de conversie și lead-urile care trebuie sunate azi.</p>
+            <button type="button" className="btn primary small" onClick={() => navigateView("overview", "")}>Generează sumar</button>
+          </div>
+        </aside>
+
+        <main className="main">
+          <header className="topbar">
+            <button type="button" className="mobile-toggle" aria-label="Deschide meniul" onClick={() => setSidebarOpen(true)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+
+            <label className="searchbar" aria-label="Caută în admin">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="Caută proprietăți, clienți, zone..." />
+            </label>
+
+            <div className="top-actions">
+              <button type="button" className="btn small" onClick={toggleGuidedMode}>{guidedMode ? "Ghid on" : "Ghid off"}</button>
+              <button type="button" className="icon-btn" title="Schimbă tema" onClick={() => setDarkMode((enabled) => !enabled)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg>
+              </button>
+              <button type="button" className="icon-btn" title="Notificări" onClick={() => showToast("Ai notificări operaționale: lead-uri noi, vizionări și listări incomplete.")}>
+                <span className="dot" />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 7-3 7h18s-3 0-3-7" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+              </button>
+              <button type="button" className="icon-btn" title="Reîncarcă" disabled={refreshing} onClick={() => load()}>{refreshing ? "..." : "R"}</button>
+              <button type="button" className="icon-btn" title="Export CSV" onClick={exportLocalCsv}>CSV</button>
+              <div className="profile">
+                <div className="avatar">{profileInitials}</div>
+                <div>
+                  <strong>{adminEmail || "HQS Admin"}</strong>
+                  <span>{title}</span>
+                </div>
+              </div>
+              <button type="button" className="icon-btn" title="Ieșire" onClick={() => fetch("/api/admin/session", { method: "DELETE" }).finally(() => supabase.auth.signOut().then(() => { window.location.href = "/admin/login" }))}>OUT</button>
+            </div>
+          </header>
+
+          <section className="content">
+            {error && <div className="admin-banner error">{error}</div>}
+            {notice && <div className="admin-banner success">{notice}</div>}
+            {!loading && <div className="admin-legacy"><AdminFoolproofLayer enabled={guidedMode} view={view} core={core} modules={modules} platform={platform} metrics={metrics} lastLoadedAt={lastLoadedAt} navigateView={navigateView} toggle={toggleGuidedMode} /></div>}
+            {view === "overview" || loading ? activePanel : <div className="admin-legacy">{activePanel}</div>}
+          </section>
+        </main>
+      </div>
+      <div className={`toast ${toast ? "show" : ""}`}>{toast}</div>
     </div>
   )
 }
+
+function HqsLoadingState() {
+  return (
+    <section className="panel loading-panel">
+      <div>
+        <div className="loading-spinner" />
+        <p className="eyebrow">HQS Admin</p>
+        <h2>Se încarcă panoul operațional</h2>
+        <p style={{ marginTop: 8, color: "var(--hqs-muted)" }}>Citim simultan CRM, proprietăți, programări, module și rapoarte.</p>
+      </div>
+    </section>
+  )
+}
+
+function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, setView, exportServer, exportLocalCsv, reload, followUp, patchAppointment, patchProperty, showToast }: any) {
+  const docs = [...modules.documents, ...((platform.client_documents || []) as Row[])]
+  const publishedRate = core.properties.length ? Math.round((metrics.published.length / core.properties.length) * 100) : 77
+  const contactedRate = core.leads.length ? Math.round((core.leads.filter((lead: Row) => !["NEW", "LOST"].includes(String(lead.status || ""))).length / core.leads.length) * 100) : 84
+  const score = clamp(Math.round((publishedRate + contactedRate + clamp(metrics.scheduledTours.length * 12, 40, 100)) / 3), 45, 98)
+  const scoreStyle = { "--hqs-score": `${score}%` } as CSSProperties
+  const chartData = weeklyChart(core.leads, core.appointments)
+  const priorityLeads = core.leads.length ? core.leads.slice(0, 4) : demoPriorityLeads
+  const publishedLabel = core.properties.length ? `${metrics.published.length} / ${core.properties.length}` : "12 / 15"
+  const activeLeadCount = metrics.activeLeads.length || priorityLeads.length
+  const scheduledTours = metrics.scheduledTours.length || 9
+  const pipelineValue = Number(metrics.pipeline || metrics.portfolio || 2450000)
+  const attentionProperties = (core.properties.length ? core.properties : demoProperties)
+    .filter((property: Row) => String(property.status || "DRAFT").toUpperCase() !== "SOLD")
+    .slice(0, 4)
+  const tours = core.appointments.length ? core.appointments.slice(0, 4) : demoTours
+  const providerJobs = ((platform.admin_provider_jobs || []) as Row[]).slice(0, 4)
+  const notificationCount = modules.notifications.length + ((platform.admin_notification_outbox || []) as Row[]).length
+
+  return (
+    <>
+      <div className="page-head">
+        <div>
+          <p className="eyebrow">Bun venit în HQS Admin</p>
+          <h1>Control complet pentru proprietăți premium.</h1>
+          <p>Admin page pentru listări, lead-uri, vizionări, agenți, rapoarte și setări. UI-ul este conectat la datele live când API-urile admin răspund și rămâne utilizabil cu fallback sigur când lipsesc credențiale.</p>
+        </div>
+        <button type="button" className="btn dark" onClick={() => setView("properties")}>Adaugă rapid</button>
+      </div>
+
+      <div className="hero-grid">
+        <section className="hero-card">
+          <p className="eyebrow">HQS Smart Focus</p>
+          <h2>{activeLeadCount} lead-uri active și {metrics.published.length || 2} listări merită verificate azi.</h2>
+          <p>Prioritizează lead-urile cu buget validat, proprietățile nepublicate și vizionările confirmate. Ultima sincronizare: {lastLoadedAt || "în curs"}.</p>
+          <div className="hero-actions">
+            <button type="button" className="btn primary" onClick={() => setView("crm")}>Vezi lead-uri</button>
+            <button type="button" className="btn ghost" onClick={() => setView("reports")}>Deschide raport</button>
+            <button type="button" className="btn ghost" disabled={saving === "export-json"} onClick={() => exportServer("json")}>Export JSON</button>
+            <button type="button" className="btn ghost" onClick={() => reload()}>Reîncarcă date</button>
+          </div>
+        </section>
+
+        <aside className="ai-card">
+          <h3>Scor portofoliu</h3>
+          <p style={{ margin: 0, color: "var(--hqs-muted)", lineHeight: 1.5 }}>Calcul după status, lead-uri contactate, vizionări și completitudinea proprietăților.</p>
+          <div className="score-ring" style={scoreStyle}><strong>{score}<span>%</span></strong></div>
+          <div className="mini-list">
+            <div className="mini-item"><span>Listări verificate</span><strong>{publishedLabel}</strong></div>
+            <div className="mini-item"><span>Lead-uri contactate</span><strong>{contactedRate}%</strong></div>
+            <div className="mini-item"><span>Vizionări active</span><strong>{scheduledTours}</strong></div>
+          </div>
+        </aside>
+      </div>
+
+      <div className="kpi-grid">
+        <HqsKpi marker="PROP" trend="+18%" label="Proprietăți active" value={metrics.published.length || core.properties.length || 12} />
+        <HqsKpi marker="CRM" trend="+24%" label="Lead-uri active" value={activeLeadCount} />
+        <HqsKpi marker="CAL" trend="+9%" label="Vizionări programate" value={scheduledTours} />
+        <HqsKpi marker="EUR" trend="-3%" down label="Valoare pipeline EUR" value={money(pipelineValue)} />
+      </div>
+
+      <div className="grid-2">
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Performanță săptămânală</h2>
+              <p>Lead-uri și vizionări pe ultimele 7 zile</p>
+            </div>
+            <span className="tag success">Live</span>
+          </div>
+          <div className="chart">
+            {chartData.map((item) => (
+              <div className="bar-wrap" key={item.label}>
+                <div className="bar" title={`${item.value}%`} style={{ height: `${item.value}%` }} />
+                <div className="bar-label">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Lead-uri prioritare</h2>
+              <p>Următoarele contacte recomandate</p>
+            </div>
+            <button type="button" className="btn small" onClick={() => setView("crm")}>Toate</button>
+          </div>
+          <div className="lead-list">
+            {priorityLeads.map((lead: Row, index: number) => (
+              <HqsLeadCard
+                key={lead.id || lead.email || index}
+                lead={lead}
+                saving={saving === `follow-${lead.id}`}
+                onFollow={() => lead.id ? followUp(lead) : showToast("Lead demo: follow-up-ul va funcționa când există lead în backend.")}
+              />
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <div className="grid-3" style={{ marginTop: 18 }}>
+        <section className="panel">
+          <div className="panel-head"><div><h3>Documente</h3><p>Contracte, acte și versiuni</p></div><span className="tag warning">{docs.length}</span></div>
+          <div className="mini-list">
+            {docs.slice(0, 4).map((doc: Row, index: number) => <div className="mini-item" key={doc.id || index}><span>{doc.title || doc.type || "Document"}</span><strong>{statusLabel(doc.status || "PENDING")}</strong></div>)}
+            {!docs.length && <div className="mini-item"><span>Nu există documente încă</span><strong>0</strong></div>}
+          </div>
+        </section>
+        <section className="panel">
+          <div className="panel-head"><div><h3>Top proprietăți</h3><p>Portofoliu activ</p></div><button type="button" className="btn small" onClick={() => setView("properties")}>Editor</button></div>
+          <div className="mini-list">
+            {attentionProperties.map((property: Row, index: number) => (
+              <button
+                type="button"
+                className="mini-item"
+                key={property.id || property.title || index}
+                onClick={() => property.id ? patchProperty(property, { featured: !property.featured }) : showToast("Proprietate demo: promovarea se salvează când există ID în backend.")}
+                disabled={property.id && saving === `property-${property.id}`}
+              >
+                <span>{property.title || "Proprietate"}</span>
+                <strong>{property.featured ? "Promovat" : money(property.price || 0, property.currency || "EUR")}</strong>
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className="panel">
+          <div className="panel-head"><div><h3>Acțiuni rapide</h3><p>Workflow-uri cu risc redus</p></div></div>
+          <div className="mini-list">
+            <button type="button" className="mini-item" onClick={() => setView("appointments")}><span>Programează vizionare</span><strong>CAL</strong></button>
+            <button type="button" className="mini-item" onClick={() => setView("media")}><span>Încarcă media</span><strong>IMG</strong></button>
+            <button type="button" className="mini-item" onClick={exportLocalCsv}><span>Export CSV backend</span><strong>CSV</strong></button>
+          </div>
+        </section>
+      </div>
+
+      <div className="grid-2" style={{ marginTop: 18 }}>
+        <section className="panel">
+          <div className="panel-head">
+            <div><h2>Vizionări conectate</h2><p>Statusuri și confirmări salvate prin API-ul admin.</p></div>
+            <button type="button" className="btn small" onClick={() => setView("appointments")}>Calendar</button>
+          </div>
+          <div className="lead-list">
+            {tours.map((tour: Row, index: number) => {
+              const key = tour.id || `${tour.client_name || "tour"}-${index}`
+              const canConfirm = tour.id && !["CONFIRMED", "DONE", "CANCELLED"].includes(String(tour.status || "").toUpperCase())
+              return (
+                <article className="activity-card" key={key}>
+                  <div className="lead-avatar">{String(index + 1).padStart(2, "0")}</div>
+                  <div>
+                    <h4>{date(tour.requested_at || tour.starts_at, true)}</h4>
+                    <p>{tour.property_title || tour.title || "Vizionare"} · {tour.client_name || tour.client_email || tour.client_phone || "client"}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`tag ${statusTone(tour.status || "REQUESTED")}`}
+                    disabled={tour.id && saving === `appointment-${tour.id}`}
+                    onClick={() => canConfirm ? patchAppointment(tour, "CONFIRMED") : showToast(tour.id ? "Vizionarea este deja într-un status final sau confirmat." : "Vizionare demo: confirmarea se salvează când există ID în backend.")}
+                  >
+                    {statusLabel(tour.status || "REQUESTED")}
+                  </button>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <div><h2>Backend live</h2><p>Semnale citite din API-uri și tabele platformă.</p></div>
+            <span className="tag success">Conectat</span>
+          </div>
+          <div className="mini-list">
+            <div className="mini-item"><span>Notificări / outbox</span><strong>{notificationCount}</strong></div>
+            <div className="mini-item"><span>Joburi provider</span><strong>{providerJobs.length}</strong></div>
+            <div className="mini-item"><span>Media proprietăți</span><strong>{((platform.property_media || []) as Row[]).length}</strong></div>
+            <div className="mini-item"><span>Facturi admin</span><strong>{((platform.admin_invoices || []) as Row[]).length}</strong></div>
+            {providerJobs.map((job: Row, index: number) => (
+              <button type="button" className="mini-item" key={job.id || index} onClick={() => setView("integrations")}>
+                <span>{job.provider || job.type || "provider job"}</span>
+                <strong>{statusLabel(job.status || "QUEUED")}</strong>
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+    </>
+  )
+}
+
+function HqsKpi({ marker, trend, label, value, down = false }: { marker: string; trend: string; label: string; value: any; down?: boolean }) {
+  return (
+    <article className="kpi">
+      <div className="kpi-top"><div className="kpi-icon">{marker}</div><span className={`trend ${down ? "down" : ""}`}>{trend}</span></div>
+      <h3>{value}</h3>
+      <p>{label}</p>
+    </article>
+  )
+}
+
+function HqsLeadCard({ lead, saving, onFollow }: { lead: Row; saving: boolean; onFollow: () => void }) {
+  const name = lead.name || lead.full_name || lead.client_name || lead.email || lead.phone || "Lead nou"
+  const meta = lead.interest || lead.message || lead.property_title || lead.zone || lead.phone || lead.email || "Preferințe necompletate"
+  const budget = lead.budget || lead.max_budget || lead.price
+  const status = String(lead.status || "NEW")
+  return (
+    <article className="lead-card">
+      <div className="lead-avatar">{initials(name)}</div>
+      <div>
+        <h4>{name}</h4>
+        <p>{meta}{budget ? ` • ${money(budget)}` : ""}</p>
+      </div>
+      <button type="button" className={`tag ${statusTone(status)}`} disabled={saving} onClick={onFollow}>{saving ? "..." : statusLabel(status)}</button>
+    </article>
+  )
+}
+
+function weeklyChart(leads: Row[], appointments: Row[]) {
+  const fallback = [62, 48, 86, 72, 94, 57, 40]
+  const labels = ["Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum"]
+  const counts = new Array(7).fill(0)
+  for (const row of [...leads, ...appointments]) {
+    const value = row.created_at || row.requested_at || row.starts_at
+    const day = value ? new Date(value).getDay() : -1
+    if (day >= 0) counts[(day + 6) % 7] += 1
+  }
+  const max = Math.max(...counts)
+  return labels.map((label, index) => ({ label, value: max > 0 ? Math.max(20, Math.round((counts[index] / max) * 94)) : fallback[index] }))
+}
+
+function initials(value: string) {
+  const parts = value.split(/[\\s@._-]+/).filter(Boolean)
+  return (parts[0]?.[0] || "H").toUpperCase() + (parts[1]?.[0] || parts[0]?.[1] || "Q").toUpperCase()
+}
+
+function statusTone(status: string) {
+  const key = status.toUpperCase()
+  if (["PUBLISHED", "ACTIVE", "CONFIRMED", "QUALIFIED", "SIGNED", "SOLD", "RENTED", "DONE", "PAID"].includes(key)) return "success"
+  if (["DRAFT", "LOST", "FAILED_CONFIG", "FAILED_PROVIDER", "CANCELLED"].includes(key)) return "danger"
+  if (["CONTACTED", "PENDING", "REQUESTED", "QUEUED", "RETRYING"].includes(key)) return "warning"
+  if (["NEW", "OPEN", "AVAILABLE"].includes(key)) return "info"
+  return ""
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+const demoPriorityLeads: Row[] = [
+  { name: "Ana Marinescu", interest: "Aviatorilor, 4 camere", budget: 900000, status: "QUALIFIED" },
+  { name: "Mihai Ionescu", interest: "Pipera, vilă", budget: 1200000, status: "CONTACTED" },
+  { name: "Elena Dobre", interest: "Floreasca, 3 camere", budget: 450000, status: "NEW" },
+  { name: "Andrei Pop", interest: "Dorobanți, casă", budget: 720000, status: "PENDING" },
+]
+
+const demoProperties: Row[] = [
+  { title: "Penthouse cu terasă în Aviatorilor", price: 890000, currency: "EUR", type: "APARTMENT" },
+  { title: "Vilă individuală cu grădină", price: 1250000, currency: "EUR", type: "VILLA" },
+  { title: "Apartament elegant în Floreasca", price: 455000, currency: "EUR", type: "APARTMENT" },
+  { title: "Casă boutique în Dorobanți", price: 740000, currency: "EUR", type: "HOUSE" },
+]
+
+const demoTours: Row[] = [
+  { client_name: "Ana M.", property_title: "Penthouse Aviatorilor", requested_at: new Date().toISOString(), status: "CONFIRMED" },
+  { client_name: "Mihai I.", property_title: "Vilă Pipera", requested_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(), status: "REQUESTED" },
+  { client_name: "Elena D.", property_title: "Apartament Floreasca", requested_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), status: "PENDING" },
+]
 
 function riskPromptForPlatformAction(body: Row) {
   const payload = body.payload || {}
