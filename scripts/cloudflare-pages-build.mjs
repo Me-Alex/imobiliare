@@ -4,6 +4,32 @@ import { dirname, join } from "node:path"
 import { spawn } from "node:child_process"
 import { gzipSync } from "node:zlib"
 
+const nodeBuiltinsRequiringPrefix = [
+  "assert",
+  "async_hooks",
+  "buffer",
+  "crypto",
+  "events",
+  "fs",
+  "http",
+  "https",
+  "module",
+  "net",
+  "os",
+  "path",
+  "process",
+  "querystring",
+  "stream",
+  "string_decoder",
+  "timers",
+  "tls",
+  "tty",
+  "url",
+  "util",
+  "vm",
+  "zlib",
+]
+
 const fallbackPublicEnv = {
   NEXT_PUBLIC_SUPABASE_URL: "https://spmapzhlcwhzfrxuvgxd.supabase.co",
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_24oJXCI0JLY1VyLq_Ls-AA_-tYFf729",
@@ -87,6 +113,20 @@ async function preparePagesFallbackOutput() {
 
   await cp(join(workerBundleDir, bundledWorker), pagesWorkerFile, { force: true })
   await rm(workerBundleDir, { recursive: true, force: true })
+
+  // Cloudflare's Git-based Pages builder currently re-bundles advanced-mode
+  // `_worker.js` with an older internal Wrangler than the project dependency.
+  // Prefixing Node builtins keeps that second bundling step compatible.
+  let workerText = await readFile(pagesWorkerFile, "utf8")
+  for (const builtin of nodeBuiltinsRequiringPrefix) {
+    const escaped = builtin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    workerText = workerText
+      .replace(new RegExp(`from "(${escaped})"`, "g"), `from "node:${builtin}"`)
+      .replace(new RegExp(`from '(${escaped})'`, "g"), `from 'node:${builtin}'`)
+      .replace(new RegExp(`import\\("(${escaped})"\\)`, "g"), `import("node:${builtin}")`)
+      .replace(new RegExp(`import\\('(${escaped})'\\)`, "g"), `import('node:${builtin}')`)
+  }
+  await writeFile(pagesWorkerFile, workerText)
 
   const workerBytes = await readFile(pagesWorkerFile)
   const gzipBytes = gzipSync(workerBytes)
