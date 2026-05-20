@@ -19,7 +19,7 @@ const intentOptions = [
   "Vreau o evaluare",
 ]
 
-export default function Contact() {
+export default function Contact({ headingLevel = "h1" }: { headingLevel?: "h1" | "h2" }) {
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -81,7 +81,11 @@ export default function Contact() {
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div>
-            <h1 className="text-3xl font-black leading-tight tracking-normal text-text-primary md:text-5xl">Spune-ne ce cauti, apoi iti raspundem concret.</h1>
+            {headingLevel === "h1" ? (
+              <h1 className="text-3xl font-black leading-tight tracking-normal text-text-primary md:text-5xl">Spune-ne ce cauti, apoi iti raspundem concret.</h1>
+            ) : (
+              <h2 className="text-3xl font-black leading-tight tracking-normal text-text-primary md:text-5xl">Spune-ne ce cauti, apoi iti raspundem concret.</h2>
+            )}
             <p className="mt-4 leading-8 text-text-muted">
               Nu trimitem raspunsuri automate si nu impingem proprietati nepotrivite. Daca avem o varianta buna, iti explicam de ce. Daca nu, iti spunem direct.
             </p>

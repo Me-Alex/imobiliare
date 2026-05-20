@@ -107,7 +107,7 @@ export default function ClientPropertyWorkspace({ properties, mode }: { properti
   if (mode === "portal") {
     return (
       <section className="mx-auto max-w-7xl px-4 py-12">
-        <Toolbar title={`Portal ${clientName}`} subtitle="Spatiu client cu favorite, comparatii, documente si urmatorii pasi." action={<Link href="/proprietati" className="rounded-lg bg-accent px-4 py-2 text-sm font-bold text-bg-primary">Cauta proprietati</Link>} />
+        <Toolbar headingLevel="h2" title={`Portal ${clientName}`} subtitle="Spatiu client cu favorite, comparatii, documente si urmatorii pasi." action={<Link href="/proprietati" className="rounded-lg bg-accent px-4 py-2 text-sm font-bold text-bg-primary">Cauta proprietati</Link>} />
         <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
           <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
             <label className="block text-xs font-bold uppercase text-text-muted">Nume client</label>
@@ -186,8 +186,9 @@ export default function ClientPropertyWorkspace({ properties, mode }: { properti
   )
 }
 
-function Toolbar({ title, subtitle, action }: any) {
-  return <div className="mb-7 flex flex-col gap-3 border-b border-bg-surface pb-5 md:flex-row md:items-end md:justify-between"><div><h1 className="text-3xl font-black text-text-primary">{title}</h1><p className="mt-1 text-sm text-text-muted">{subtitle}</p></div>{action}</div>
+function Toolbar({ title, subtitle, action, headingLevel = "h1" }: any) {
+  const Heading = headingLevel === "h2" ? "h2" : "h1"
+  return <div className="mb-7 flex flex-col gap-3 border-b border-bg-surface pb-5 md:flex-row md:items-end md:justify-between"><div><Heading className="text-3xl font-black text-text-primary">{title}</Heading><p className="mt-1 text-sm text-text-muted">{subtitle}</p></div>{action}</div>
 }
 
 function Metric({ label, value }: { label: string; value: number }) {

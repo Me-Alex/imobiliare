@@ -664,7 +664,7 @@ function HqsLoadingState() {
       <div>
         <div className="loading-spinner" />
         <p className="eyebrow">HQS Admin</p>
-        <h2>Se încarcă panoul operațional</h2>
+        <h1>Se încarcă panoul operațional</h1>
         <p style={{ marginTop: 8, color: "var(--hqs-muted)" }}>Citim simultan CRM, proprietăți, programări, module și rapoarte.</p>
       </div>
     </section>

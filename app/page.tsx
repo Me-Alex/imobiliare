@@ -22,7 +22,7 @@ export default async function Home() {
       <Hero entry={cms['home.hero']} properties={publishedProperties} />
       <ProprietatiSection initialProperties={publishedProperties} />
       <HomeRedesignSections properties={publishedProperties} />
-      <Contact />
+      <Contact headingLevel="h2" />
       <Footer />
     </main>
   )
