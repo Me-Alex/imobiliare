@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react"
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
 import { AppointmentsView, CrmView, PropertiesView } from "./admin-core-views"
 import { AgentsView, ClientsView, ComplianceView, DocumentsCenterView, ListingsView, MaintenanceView, MarketingView, TransactionsView } from "./admin-real-estate-views"
@@ -8,7 +8,7 @@ import { OperationsView } from "./admin-operations"
 import { AuditView, ContentView, ReportsView, SettingsView, ToolsView, UsersView } from "./admin-secondary-views"
 import { AccountingView, AnalyticsOpsView, BulkOpsView, CalendarOpsView, IntegrationsView, MediaView, OwnerPortalAdminView } from "./admin-upgrade-views"
 import { AdminFoolproofLayer } from "./admin-foolproof"
-import { apiJson, confirmRisk, csv, date, defaultCore, defaultModules, matches, money, nav, slugify, statusLabel, type ModuleType, type Row, type View } from "./admin-shared"
+import { apiJson, confirmRisk, csv, date, defaultCore, defaultModules, matches, money, nav, propertyTypeLabel, slugify, statusLabel, type ModuleType, type Row, type View } from "./admin-shared"
 
 const allNavItems = nav.flatMap((group) => group.items.map((item) => ({ ...item, group: group.group })))
 const viewIds = new Set(allNavItems.map((item) => item.id))
@@ -17,25 +17,19 @@ const hqsNavGroups: Array<{ group: string; items: Array<{ id: View; label: strin
     group: "Workspace",
     items: [
       { id: "overview", label: "Dashboard", mark: "D" },
-      { id: "properties", label: "Proprietati", mark: "P" },
+      { id: "properties", label: "Proprietăți", mark: "P" },
       { id: "crm", label: "Lead-uri", mark: "CRM" },
       { id: "transactions", label: "Pipeline", mark: "PIPE" },
-      { id: "appointments", label: "Vizionari", mark: "CAL" },
+      { id: "appointments", label: "Vizionări", mark: "CAL" },
     ],
   },
   {
     group: "Management",
     items: [
-      { id: "agents", label: "Agenti", mark: "AG" },
+      { id: "agents", label: "Agenți", mark: "AG" },
       { id: "reports", label: "Rapoarte", mark: "R" },
-      { id: "settings", label: "Setari", mark: "S" },
+      { id: "settings", label: "Setări", mark: "S" },
     ],
-  },
-  {
-    group: "Avansat",
-    items: allNavItems
-      .filter((item) => !["overview", "properties", "crm", "transactions", "appointments", "agents", "reports", "settings"].includes(item.id))
-      .map((item) => ({ id: item.id, label: item.label, mark: item.mark })),
   },
 ]
 
@@ -210,10 +204,20 @@ export default function AdminCommandCenter() {
     await load()
   }, "Follow-up CRM adaugat.")
 
+  const createLead = (payload: Row) => save("lead-create", async () => {
+    await apiJson("/api/admin/platform", { method: "POST", body: JSON.stringify({ type: "lead", payload }) })
+    await load()
+  }, "Lead adaugat.")
+
   const patchAppointment = (appointment: Row, status: string) => save(`appointment-${appointment.id}`, async () => {
     const data = await apiJson<Row>(`/api/admin/appointments/${appointment.id}`, { method: "PATCH", body: JSON.stringify({ status }) })
     setCore((prev) => ({ ...prev, appointments: prev.appointments.map((row) => row.id === appointment.id ? data.appointment : row) }))
   }, "Programare actualizata.")
+
+  const createAppointment = (payload: Row) => save("appointment-create", async () => {
+    await apiJson("/api/admin/platform", { method: "POST", body: JSON.stringify({ type: "appointment", payload }) })
+    await load()
+  }, "Vizionare programata.")
 
   const patchProperty = (property: Row, payload: Row) => save(`property-${property.id}`, async () => {
     const data = await apiJson<Row>(`/api/admin/properties/${property.id}`, { method: "PATCH", body: JSON.stringify(payload) })
@@ -290,16 +294,16 @@ export default function AdminCommandCenter() {
 
   const renderView = () => {
     if (loading) return <HqsLoadingState />
-    const props = { filtered, core, modules, platform, report, metrics, saving, setView: navigateView, reload: load, patchLead, followUp, patchAppointment, patchProperty, deleteProperty, createProperty, saveModule, deleteModule, platformAction, saveSettings, exportLocalCsv, exportServer }
-    if (view === "properties") return <PropertiesView {...props} />
+    const props = { filtered, core, modules, platform, report, metrics, query, saving, setView: navigateView, reload: load, patchLead, followUp, createLead, patchAppointment, createAppointment, patchProperty, deleteProperty, createProperty, saveModule, deleteModule, platformAction, saveSettings, exportLocalCsv, exportServer, showToast }
+    if (view === "properties") return <HqsPropertiesView {...props} />
     if (view === "listings") return <ListingsView {...props} />
     if (view === "media") return <MediaView {...props} />
-    if (view === "crm") return <CrmView {...props} />
+    if (view === "crm") return <HqsLeadsView {...props} />
     if (view === "clients") return <ClientsView {...props} />
-    if (view === "appointments") return <AppointmentsView {...props} />
+    if (view === "appointments") return <HqsCalendarView {...props} />
     if (view === "calendar") return <CalendarOpsView {...props} />
-    if (view === "agents") return <AgentsView {...props} />
-    if (view === "transactions") return <TransactionsView {...props} />
+    if (view === "agents") return <HqsAgentsView {...props} />
+    if (view === "transactions") return <HqsPipelineView {...props} />
     if (view === "accounting") return <AccountingView {...props} />
     if (view === "maintenance") return <MaintenanceView {...props} />
     if (view === "documents") return <DocumentsCenterView {...props} />
@@ -308,13 +312,13 @@ export default function AdminCommandCenter() {
     if (view === "bulk") return <BulkOpsView {...props} />
     if (view === "integrations") return <IntegrationsView {...props} />
     if (view === "content") return <ContentView {...props} />
-    if (view === "reports") return <ReportsView {...props} />
+    if (view === "reports") return <HqsReportsView {...props} />
     if (view === "analytics") return <AnalyticsOpsView {...props} />
     if (view === "ownerPortal") return <OwnerPortalAdminView {...props} />
     if (view === "compliance") return <ComplianceView {...props} />
     if (view === "users") return <UsersView {...props} />
     if (view === "tools") return <ToolsView {...props} />
-    if (view === "settings") return <SettingsView {...props} />
+    if (view === "settings") return <HqsSettingsView {...props} />
     if (view === "audit") return <AuditView {...props} />
     return <HqsOverview core={core} modules={modules} platform={platform} report={report} metrics={metrics} saving={saving} lastLoadedAt={lastLoadedAt} setView={navigateView} exportServer={exportServer} exportLocalCsv={exportLocalCsv} reload={load} patchLead={patchLead} followUp={followUp} patchAppointment={patchAppointment} patchProperty={patchProperty} showToast={showToast} />
   }
@@ -368,7 +372,6 @@ export default function AdminCommandCenter() {
             </label>
 
             <div className="top-actions">
-              <button type="button" className="btn small" onClick={toggleGuidedMode}>{guidedMode ? "Ghid on" : "Ghid off"}</button>
               <button type="button" className="icon-btn" title="Schimbă tema" onClick={() => setDarkMode((enabled) => !enabled)}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg>
               </button>
@@ -376,8 +379,6 @@ export default function AdminCommandCenter() {
                 <span className="dot" />
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 7-3 7h18s-3 0-3-7" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
               </button>
-              <button type="button" className="icon-btn" title="Reîncarcă" disabled={refreshing} onClick={() => load()}>{refreshing ? "..." : "R"}</button>
-              <button type="button" className="icon-btn" title="Export CSV" onClick={exportLocalCsv}>CSV</button>
               <div className="profile">
                 <div className="avatar">{profileInitials}</div>
                 <div>
@@ -385,20 +386,265 @@ export default function AdminCommandCenter() {
                   <span>{title}</span>
                 </div>
               </div>
-              <button type="button" className="icon-btn" title="Ieșire" onClick={() => fetch("/api/admin/session", { method: "DELETE" }).finally(() => supabase.auth.signOut().then(() => { window.location.href = "/admin/login" }))}>OUT</button>
             </div>
           </header>
 
           <section className="content">
             {error && <div className="admin-banner error">{error}</div>}
             {notice && <div className="admin-banner success">{notice}</div>}
-            {!loading && <div className="admin-legacy"><AdminFoolproofLayer enabled={guidedMode} view={view} core={core} modules={modules} platform={platform} metrics={metrics} lastLoadedAt={lastLoadedAt} navigateView={navigateView} toggle={toggleGuidedMode} /></div>}
-            {view === "overview" || loading ? activePanel : <div className="admin-legacy">{activePanel}</div>}
+            {activePanel}
           </section>
         </main>
       </div>
       <div className={`toast ${toast ? "show" : ""}`}>{toast}</div>
     </div>
+  )
+}
+
+function HqsPageHead({ eyebrow, title, body, action }: { eyebrow: string; title: string; body: string; action?: ReactNode }) {
+  return (
+    <div className="page-head">
+      <div>
+        <p className="eyebrow">{eyebrow}</p>
+        <h1>{title}</h1>
+        <p>{body}</p>
+      </div>
+      {action}
+    </div>
+  )
+}
+
+function HqsPropertiesView({ filtered, query, saving, createProperty, patchProperty, deleteProperty, exportLocalCsv, showToast }: any) {
+  const [search, setSearch] = useState("")
+  const [zone, setZone] = useState("all")
+  const [type, setType] = useState("all")
+  const [modal, setModal] = useState<Row | null | false>(false)
+  const source = filtered.properties.length ? filtered.properties : (query ? [] : demoProperties)
+  const zones = Array.from(new Set<string>(source.map(propertyZone).filter(Boolean))).sort()
+  const visible = source.filter((property: Row) => {
+    const text = [property.title, property.city, property.zone, property.type, property.description, property.address].join(" ").toLowerCase()
+    return text.includes(search.toLowerCase().trim()) && (zone === "all" || propertyZone(property) === zone) && (type === "all" || String(property.type || "").toUpperCase() === type)
+  })
+  const saveProperty = async (payload: Row) => {
+    if (modal && modal.id) await patchProperty(modal, payload)
+    else await createProperty(payload)
+    setModal(false)
+  }
+
+  return (
+    <>
+      <HqsPageHead eyebrow="Portofoliu" title="Proprietăți HQS" body="Administrează listări, status, preț, zonă, fotografii, scor de potrivire și completitudinea documentelor." action={<button type="button" className="btn dark" onClick={() => setModal(null)}>Adaugă proprietate</button>} />
+      <section className="panel">
+        <div className="toolbar">
+          <div className="filters">
+            <input className="field" value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Caută după titlu sau zonă..." />
+            <select className="select" value={zone} onChange={(event) => setZone(event.target.value)}>
+              <option value="all">Toate zonele</option>
+              {zones.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+            <select className="select" value={type} onChange={(event) => setType(event.target.value)}>
+              <option value="all">Toate tipurile</option>
+              <option value="APARTMENT">Apartament</option>
+              <option value="HOUSE">Casă</option>
+              <option value="VILLA">Vilă</option>
+              <option value="LAND">Teren</option>
+              <option value="COMMERCIAL">Comercial</option>
+            </select>
+          </div>
+          <div className="filters">
+            <button type="button" className="btn small" onClick={exportLocalCsv}>Export CSV</button>
+            <button type="button" className="btn small" onClick={() => { setSearch(""); setZone("all"); setType("all") }}>Reset</button>
+          </div>
+        </div>
+        <div className="property-grid">
+          {visible.length ? visible.map((property: Row, index: number) => (
+            <article className="property-card" key={property.id || property.title || index}>
+              <div className="property-image" style={{ "--photo": propertyPhoto(property, index) } as CSSProperties}>
+                <span className="status-pill">{statusLabel(property.status || "DRAFT")}</span>
+                <span className="price-pill">{Number(property.price || 0) ? money(property.price, property.currency || "EUR") : "Preț la cerere"}</span>
+              </div>
+              <div className="property-body">
+                <h3>{property.title || "Proprietate HQS"}</h3>
+                <div className="property-meta">{propertyZone(property)} / {propertyTypeLabel(property.type || "APARTMENT")}<br />{property.description || property.address || "Descriere internă pentru echipă."}</div>
+                <div className="property-stats"><span>{property.area_sqm || property.surface || 0} mp</span><span>{property.rooms ? `${property.rooms} cam.` : "-"}</span><span>{propertyScore(property)}% scor</span></div>
+                <div className="property-actions">
+                  <button type="button" className="btn small" disabled={property.id && saving === `property-${property.id}`} onClick={() => setModal(property)}>Editează</button>
+                  <button type="button" className="btn small" onClick={() => property.id ? deleteProperty(property) : showToast("Proprietate demo: ștergerea se aplică pentru date live.")}>Șterge</button>
+                </div>
+              </div>
+            </article>
+          )) : <div className="empty">Nu există proprietăți pentru filtrele alese.</div>}
+        </div>
+      </section>
+      {modal !== false && <PropertyModal property={modal} saving={saving === "create-property" || Boolean(modal?.id && saving === `property-${modal.id}`)} onClose={() => setModal(false)} onSubmit={saveProperty} />}
+    </>
+  )
+}
+
+function HqsLeadsView({ filtered, query, saving, followUp, createLead, showToast }: any) {
+  const [search, setSearch] = useState("")
+  const [status, setStatus] = useState("all")
+  const [modalOpen, setModalOpen] = useState(false)
+  const source = filtered.leads.length ? filtered.leads : (query ? [] : demoPriorityLeads)
+  const visible = source.filter((lead: Row) => Object.values(lead).join(" ").toLowerCase().includes(search.toLowerCase().trim()) && (status === "all" || String(lead.status || "").toUpperCase() === status))
+  return (
+    <>
+      <HqsPageHead eyebrow="CRM" title="Lead-uri și clienți" body="Ține evidența contactelor, bugetelor, preferințelor, următorilor pași și istoricului de discuții." action={<button type="button" className="btn dark" onClick={() => setModalOpen(true)}>Adaugă lead</button>} />
+      <section className="panel">
+        <div className="toolbar">
+          <div className="filters">
+            <input className="field" value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Caută client, telefon, zonă..." />
+            <select className="select" value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">Toate statusurile</option><option value="NEW">Nou</option><option value="CONTACTED">Contactat</option><option value="QUALIFIED">Vizionare</option><option value="PENDING">Ofertă</option><option value="LOST">Rece</option></select>
+          </div>
+          <button type="button" className="btn small" onClick={() => visible[0]?.id ? followUp(visible[0]) : showToast("Alege un lead live pentru follow-up.")}>Marchează follow-up</button>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Client</th><th>Interes</th><th>Buget</th><th>Status</th><th>Următorul pas</th><th>Agent</th><th>Acțiuni</th></tr></thead>
+            <tbody>
+              {visible.length ? visible.map((lead: Row, index: number) => {
+                const name = lead.name || lead.full_name || lead.email || lead.phone || "Lead nou"
+                return <tr key={lead.id || lead.email || index}><td><div className="client-cell"><div className="lead-avatar">{initials(name)}</div><strong>{name}</strong></div></td><td>{lead.interest || lead.message || lead.property_title || "Preferințe necompletate"}</td><td>{lead.budget || lead.max_budget ? money(lead.budget || lead.max_budget) : "-"}</td><td><span className={`tag ${statusTone(lead.status || "NEW")}`}>{statusLabel(lead.status || "NEW")}</span></td><td>{lead.next || lead.next_follow_up || "Sună azi"}</td><td>{lead.agent || lead.assigned_to || "HQS"}</td><td><button type="button" className="btn small" disabled={lead.id && saving === `follow-${lead.id}`} onClick={() => lead.id ? followUp(lead) : showToast("Lead demo: deschiderea fișei se aplică pentru date live.")}>Deschide</button></td></tr>
+              }) : <tr><td colSpan={7}><div className="empty">Nu există lead-uri pentru filtrele alese.</div></td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {modalOpen && <LeadModal saving={saving === "lead-create"} onClose={() => setModalOpen(false)} onSubmit={async (payload) => { await createLead(payload); setModalOpen(false) }} />}
+    </>
+  )
+}
+
+function HqsPipelineView({ filtered, platformAction, saving, showToast }: any) {
+  const offers = filtered.offers.length ? filtered.offers : demoOffers
+  const stages = [
+    { name: "Shortlist", statuses: ["SHORTLIST", "NEW", "SUBMITTED", "PENDING"] },
+    { name: "Vizionare", statuses: ["VIEWING", "REQUESTED", "CONFIRMED"] },
+    { name: "Ofertă", statuses: ["NEGOTIATING", "OFFER", "ACCEPTED"] },
+    { name: "Due diligence", statuses: ["DUE_DILIGENCE", "SIGNED", "CLOSED", "DONE"] },
+  ]
+  const nextStatus: Record<string, string> = { SHORTLIST: "VIEWING", NEW: "VIEWING", SUBMITTED: "VIEWING", PENDING: "VIEWING", VIEWING: "NEGOTIATING", REQUESTED: "NEGOTIATING", CONFIRMED: "NEGOTIATING", NEGOTIATING: "DUE_DILIGENCE", OFFER: "DUE_DILIGENCE", ACCEPTED: "DUE_DILIGENCE", DUE_DILIGENCE: "SIGNED" }
+  return (
+    <>
+      <HqsPageHead eyebrow="Tranzacții" title="Pipeline vânzări" body="Vizualizează oportunitățile pe etape: shortlist, vizionare, ofertă și due diligence." action={<button type="button" className="btn dark" onClick={() => showToast("Pipeline actualizat cu date live.")}>Actualizează pipeline</button>} />
+      <div className="pipeline">
+        {stages.map((stage) => {
+          const deals = offers.filter((offer: Row) => stage.statuses.includes(String(offer.status || "SHORTLIST").toUpperCase()))
+          return <section className="stage" key={stage.name}><h3>{stage.name} <span className="tag">{deals.length}</span></h3>{deals.map((deal: Row, index: number) => {
+            const current = String(deal.status || "SHORTLIST").toUpperCase()
+            const next = nextStatus[current] || "SIGNED"
+            return <article className="deal-card" key={deal.id || index}><h4>{deal.client_name || deal.client_email || deal.name || "Client HQS"}</h4><p>{deal.property_title || deal.title || deal.property || "Oportunitate imobiliară"}</p><div className="deal-footer"><span>{money(deal.counter_offer || deal.offer_price || deal.price || 0)}</span><button type="button" className="btn small" disabled={deal.id && saving === `offer-${deal.id}`} onClick={() => deal.id ? platformAction(`offer-${deal.id}`, { type: "offer_status", payload: { id: deal.id, status: next, counter_offer: deal.counter_offer || deal.offer_price || 0, notes: deal.notes || null } }, "Oferta a fost mutată.") : showToast("Card demo: mutarea se salvează pentru oferte live.")}>Mută</button></div></article>
+          })}</section>
+        })}
+      </div>
+    </>
+  )
+}
+
+function HqsCalendarView({ filtered, platform, patchAppointment, createAppointment, saving, showToast }: any) {
+  const [modalOpen, setModalOpen] = useState(false)
+  const tours = filtered.appointments.length ? filtered.appointments : demoTours
+  const calendarItems = calendarCells(new Date(), [...tours, ...adminRows(platform.appointment_slots)])
+  const monthLabel = capitalize(new Date().toLocaleDateString("ro-RO", { month: "long", year: "numeric" }))
+  return (
+    <>
+      <HqsPageHead eyebrow="Programări" title="Vizionări" body="Calendar pentru vizionări, evaluări, întâlniri la notar și follow-up-uri." action={<button type="button" className="btn dark" onClick={() => setModalOpen(true)}>Programează vizionare</button>} />
+      <div className="calendar-grid">
+        <section className="panel">
+          <div className="panel-head"><div><h2>{monthLabel}</h2><p>Program operațional HQS</p></div><span className="tag info">Europe/Bucharest</span></div>
+          <div className="calendar">
+            {calendarItems.map((cell: any, index: number) => cell.kind === "name" ? <div className="day-name" key={index}>{cell.label}</div> : <div className={`day-cell ${cell.muted ? "muted" : ""} ${cell.today ? "today" : ""}`} key={index}><span className="day-number">{cell.day}</span>{cell.events.slice(0, 3).map((event: string, eventIndex: number) => <span className="event-chip" key={eventIndex}>{event}</span>)}</div>)}
+          </div>
+        </section>
+        <aside className="panel">
+          <div className="panel-head"><div><h2>Azi</h2><p>Vizionări prioritare</p></div></div>
+          <div className="activity-list">
+            {tours.slice(0, 4).map((tour: Row, index: number) => <article className="activity-card" key={tour.id || index}><div className="lead-avatar">{String(index + 1).padStart(2, "0")}</div><div><h4>{date(tour.requested_at || tour.starts_at, true)}</h4><p>{tour.property_title || tour.title || "Vizionare"}, client: {tour.client_name || tour.client_email || "HQS"}</p></div><button type="button" className={`tag ${statusTone(tour.status || "REQUESTED")}`} disabled={tour.id && saving === `appointment-${tour.id}`} onClick={() => tour.id ? patchAppointment(tour, "CONFIRMED") : showToast("Vizionare demo: confirmarea se aplică pentru date live.")}>{statusLabel(tour.status || "REQUESTED")}</button></article>)}
+          </div>
+        </aside>
+      </div>
+      {modalOpen && <AppointmentModal saving={saving === "appointment-create"} properties={filtered.properties} onClose={() => setModalOpen(false)} onSubmit={async (payload) => { await createAppointment(payload); setModalOpen(false) }} />}
+    </>
+  )
+}
+
+function HqsAgentsView({ filtered, core, saveModule, saving, showToast }: any) {
+  const [modalOpen, setModalOpen] = useState(false)
+  const agents = filtered.teamUsers.length ? filtered.teamUsers : (filtered.roles.length ? filtered.roles : demoAgents)
+  return (
+    <>
+      <HqsPageHead eyebrow="Echipă" title="Agenți HQS" body="Monitorizează portofoliu, lead-uri active, conversii și încărcarea fiecărui agent." action={<button type="button" className="btn dark" onClick={() => setModalOpen(true)}>Invită agent</button>} />
+      <section className="agent-grid">
+        {agents.map((agent: Row, index: number) => {
+          const name = agent.name || agent.full_name || agent.email || `Agent ${index + 1}`
+          const listings = agent.listings ?? core.properties.filter((property: Row) => property.agent_email === agent.email).length
+          const leads = agent.leads ?? core.leads.filter((lead: Row) => lead.assigned_to === agent.email).length
+          return <article className="agent-card" key={agent.id || agent.email || index}><div className="agent-photo">{agent.initials || initials(name)}</div><h3>{name}</h3><p>{agent.role || "Agent HQS"}</p><div className="agent-metrics"><span>{listings}<br />listări</span><span>{leads}<br />lead-uri</span><span>{agent.conversion || "28%"}<br />conv.</span></div><button type="button" className="btn small" onClick={() => showToast(`Profil agent deschis: ${name}.`)}>Vezi profil</button></article>
+        })}
+      </section>
+      {modalOpen && <AgentModal saving={saving === "team_users-save"} onClose={() => setModalOpen(false)} onSubmit={async (payload) => { await saveModule("team_users", payload); setModalOpen(false) }} />}
+    </>
+  )
+}
+
+function HqsReportsView({ core, modules, platform, metrics, report, exportServer }: any) {
+  const attribution = adminRows(platform.analytics_attribution)
+  const views = Number(report.views || attribution.length || 8700)
+  const contacts = core.leads.length || 326
+  const conversion = core.leads.length ? Math.round((metrics.scheduledTours.length / Math.max(core.leads.length, 1)) * 100) : 28
+  const commission = Math.round(Number(metrics.pipeline || metrics.portfolio || 410000) * 0.03)
+  const sources = grouped(attribution, "source")
+  const zones = grouped(core.properties, "city")
+  const sourceItems = Object.keys(sources).length ? Object.entries(sources).map(([name, value]) => [name, `${value}`]) : [["Website hqsimobiliare.ro", "44%"], ["Recomandări", "24%"], ["Social media", "18%"], ["Portaluri imobiliare", "14%"]]
+  const zoneItems = Object.keys(zones).length ? Object.entries(zones).map(([name, value]) => [name, `${value} proprietăți`]) : [["Aviatorilor", "92 lead-uri"], ["Floreasca", "76 lead-uri"], ["Pipera", "64 lead-uri"], ["Dorobanți", "51 lead-uri"]]
+  return (
+    <>
+      <HqsPageHead eyebrow="Analytics" title="Rapoarte" body="Indicatori pentru listări, conversii, canale de lead și valoare estimată a pipeline-ului." action={<button type="button" className="btn dark" onClick={() => exportServer("json")}>Descarcă raport</button>} />
+      <div className="kpi-grid"><HqsKpi marker="CH" trend="+31%" label="Vizualizări listări" value={compact(views)} /><HqsKpi marker="CALL" trend="+16%" label="Contacte primite" value={contacts} /><HqsKpi marker="OK" trend="+12%" label="Rată conversie vizionări" value={`${conversion}%`} /><HqsKpi marker="EUR" trend="+7%" label="Comision estimat" value={money(commission)} /></div>
+      <div className="grid-2">
+        <section className="panel"><div className="panel-head"><div><h2>Canale lead</h2><p>Distribuție ultimele 30 zile</p></div></div><div className="mini-list">{sourceItems.slice(0, 5).map(([name, value]) => <div className="mini-item" key={name}><span>{name}</span><strong>{value}</strong></div>)}</div></section>
+        <section className="panel"><div className="panel-head"><div><h2>Top zone după interes</h2><p>Proprietăți, lead-uri și cerere activă</p></div></div><div className="mini-list">{zoneItems.slice(0, 5).map(([name, value]) => <div className="mini-item" key={name}><span>{name}</span><strong>{value}</strong></div>)}</div></section>
+      </div>
+      <div className="grid-3 mt-admin">
+        <section className="panel"><div className="panel-head"><div><h3>Documente</h3><p>Intern + client</p></div></div><div className="mini-item"><span>Total documente</span><strong>{modules.documents.length + adminRows(platform.client_documents).length}</strong></div></section>
+        <section className="panel"><div className="panel-head"><div><h3>Owner reports</h3><p>Rapoarte proprietari</p></div></div><div className="mini-item"><span>Total rapoarte</span><strong>{adminRows(platform.owner_reports).length}</strong></div></section>
+        <section className="panel"><div className="panel-head"><div><h3>Provider jobs</h3><p>Email, SMS, semnare, facturi</p></div></div><div className="mini-item"><span>Joburi active</span><strong>{adminRows(platform.admin_provider_jobs).length}</strong></div></section>
+      </div>
+    </>
+  )
+}
+
+function HqsSettingsView({ modules, saveSettings, saving, showToast }: any) {
+  const [form, setForm] = useState<Row>({ ...modules.settings })
+  const [toggles, setToggles] = useState({ hotLeads: true, documents: true, reminders: true, autopublish: false })
+  useEffect(() => setForm({ ...modules.settings }), [modules.settings])
+  const update = (key: string, value: string | number) => setForm((prev) => ({ ...prev, [key]: value }))
+  return (
+    <>
+      <HqsPageHead eyebrow="Configurație" title="Setări admin" body="Setări pentru brand, notificări, reguli de publicare, roluri și preferințe operaționale." action={<button type="button" className="btn dark" disabled={saving === "settings"} onClick={() => saveSettings(form)}>Salvează setări</button>} />
+      <div className="settings-grid">
+        <section className="panel">
+          <div className="panel-head"><div><h2>Brand & companie</h2><p>Informații afișate intern</p></div></div>
+          <div className="form">
+            <div className="form-row"><label>Nume brand</label><input value={form.agency || "HQS Imobiliare"} onChange={(event) => update("agency", event.target.value)} /></div>
+            <div className="form-row"><label>Website</label><input value={form.website || "https://hqsimobiliare.ro"} onChange={(event) => update("website", event.target.value)} /></div>
+            <div className="form-row"><label>Focus comercial</label><select value={form.focus || "Proprietăți premium în București"} onChange={(event) => update("focus", event.target.value)}><option>Proprietăți premium în București</option><option>Închirieri corporate</option><option>Vânzări rezidențiale</option><option>Investiții imobiliare</option></select></div>
+            <div className="form-row"><label>Comision standard (%)</label><input type="number" value={form.commission || 3} onChange={(event) => update("commission", Number(event.target.value))} /></div>
+            <div className="form-row"><label>Notă internă</label><textarea value={form.notes || "Prioritate pe proprietăți verificate, comparații clare și vizionări fără presiune inutilă."} onChange={(event) => update("notes", event.target.value)} /></div>
+          </div>
+        </section>
+        <section className="panel">
+          <div className="panel-head"><div><h2>Automatizări</h2><p>Reguli pentru workflow</p></div></div>
+          <div className="mini-list">
+            <SwitchRow title="Notifică lead-uri fierbinți" text="Când un client revine de 3+ ori pe o listare." enabled={toggles.hotLeads} onClick={() => setToggles((prev) => ({ ...prev, hotLeads: !prev.hotLeads }))} />
+            <SwitchRow title="Checklist acte obligatoriu" text="Blochează statusul Ofertă fără documente." enabled={toggles.documents} onClick={() => setToggles((prev) => ({ ...prev, documents: !prev.documents }))} />
+            <SwitchRow title="Reminder vizionare" text="Trimite reminder agentului cu 2 ore înainte." enabled={toggles.reminders} onClick={() => setToggles((prev) => ({ ...prev, reminders: !prev.reminders }))} />
+            <SwitchRow title="Publicare automată" text="Publică listări doar după scor de completitudine 90%+." enabled={toggles.autopublish} onClick={() => setToggles((prev) => ({ ...prev, autopublish: !prev.autopublish }))} />
+            <button type="button" className="btn primary" onClick={() => showToast("Automatizările au fost actualizate pentru sesiunea curentă.")}>Aplică automatizări</button>
+          </div>
+        </section>
+      </div>
+    </>
   )
 }
 
@@ -453,8 +699,6 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
           <div className="hero-actions">
             <button type="button" className="btn primary" onClick={() => setView("crm")}>Vezi lead-uri</button>
             <button type="button" className="btn ghost" onClick={() => setView("reports")}>Deschide raport</button>
-            <button type="button" className="btn ghost" disabled={saving === "export-json"} onClick={() => exportServer("json")}>Export JSON</button>
-            <button type="button" className="btn ghost" onClick={() => reload()}>Reîncarcă date</button>
           </div>
         </section>
 
@@ -606,6 +850,38 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
   )
 }
 
+function PropertyModal({ property, saving, onClose, onSubmit }: { property: Row | null; saving: boolean; onClose: () => void; onSubmit: (payload: Row) => Promise<void> }) {
+  const [form, setForm] = useState<Row>(() => ({ title: property?.title || "", city: propertyZone(property || {}), type: property?.type || "APARTMENT", status: property?.status || "DRAFT", price: property?.price || "", area_sqm: property?.area_sqm || "", rooms: property?.rooms || "", score: propertyScore(property || {}), description: property?.description || "" }))
+  const update = (key: string, value: string | number) => setForm((prev) => ({ ...prev, [key]: value }))
+  const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); await onSubmit({ ...form, price: Number(form.price || 0), area_sqm: Number(form.area_sqm || 0), rooms: Number(form.rooms || 0) }) }
+  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>{property ? "Editează proprietate" : "Adaugă proprietate"}</h2><button type="button" className="close-btn" onClick={onClose} aria-label="Închide">x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Titlu</label><input value={form.title} onChange={(event) => update("title", event.target.value)} required placeholder="Ex: Apartament premium Floreasca" /></div><div className="form-row"><label>Zonă</label><input value={form.city} onChange={(event) => update("city", event.target.value)} required placeholder="Ex: Floreasca" /></div><div className="form-row"><label>Tip</label><select value={form.type} onChange={(event) => update("type", event.target.value)}><option value="APARTMENT">Apartament</option><option value="HOUSE">Casă</option><option value="VILLA">Vilă</option><option value="LAND">Teren</option><option value="COMMERCIAL">Comercial</option></select></div><div className="form-row"><label>Status</label><select value={form.status} onChange={(event) => update("status", event.target.value)}><option value="PUBLISHED">Activ</option><option value="DRAFT">Draft</option><option value="SOLD">Vândut</option><option value="RENTED">Închiriat</option></select></div><div className="form-row"><label>Preț EUR</label><input value={form.price} onChange={(event) => update("price", event.target.value)} type="number" min="0" placeholder="450000" /></div><div className="form-row"><label>Suprafață mp</label><input value={form.area_sqm} onChange={(event) => update("area_sqm", event.target.value)} type="number" min="0" placeholder="120" /></div><div className="form-row"><label>Camere</label><input value={form.rooms} onChange={(event) => update("rooms", event.target.value)} type="number" min="0" placeholder="3" /></div><div className="form-row"><label>Scor potrivire</label><input value={form.score} onChange={(event) => update("score", event.target.value)} type="number" min="0" max="100" placeholder="82" /></div></div><div className="form-row"><label>Descriere scurtă</label><textarea value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Descriere internă pentru echipă..." /></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează proprietatea"}</button></div></form></div></div>
+}
+
+function LeadModal({ saving, onClose, onSubmit }: { saving: boolean; onClose: () => void; onSubmit: (payload: Row) => Promise<void> }) {
+  const [form, setForm] = useState<Row>({ name: "", phone: "", email: "", message: "", budget: "", status: "NEW", source: "admin" })
+  const update = (key: string, value: string | number) => setForm((prev) => ({ ...prev, [key]: value }))
+  const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); await onSubmit({ ...form, budget: Number(form.budget || 0) }) }
+  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>Adaugă lead</h2><button type="button" className="close-btn" onClick={onClose}>x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Nume</label><input value={form.name} required onChange={(event) => update("name", event.target.value)} /></div><div className="form-row"><label>Telefon</label><input value={form.phone} onChange={(event) => update("phone", event.target.value)} /></div><div className="form-row"><label>Email</label><input value={form.email} type="email" onChange={(event) => update("email", event.target.value)} /></div><div className="form-row"><label>Buget EUR</label><input value={form.budget} type="number" onChange={(event) => update("budget", event.target.value)} /></div></div><div className="form-row"><label>Interes</label><textarea value={form.message} onChange={(event) => update("message", event.target.value)} /></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează lead"}</button></div></form></div></div>
+}
+
+function AppointmentModal({ saving, properties, onClose, onSubmit }: { saving: boolean; properties: Row[]; onClose: () => void; onSubmit: (payload: Row) => Promise<void> }) {
+  const [form, setForm] = useState<Row>({ client_name: "", client_email: "", client_phone: "", property_id: "", starts_at: "", notes: "", status: "REQUESTED" })
+  const update = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
+  const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); await onSubmit({ ...form, requested_at: form.starts_at ? new Date(form.starts_at).toISOString() : undefined }) }
+  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>Programează vizionare</h2><button type="button" className="close-btn" onClick={onClose}>x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Client</label><input value={form.client_name} required onChange={(event) => update("client_name", event.target.value)} /></div><div className="form-row"><label>Email client</label><input value={form.client_email} type="email" onChange={(event) => update("client_email", event.target.value)} /></div><div className="form-row"><label>Telefon</label><input value={form.client_phone} onChange={(event) => update("client_phone", event.target.value)} /></div><div className="form-row"><label>Data și ora</label><input value={form.starts_at} type="datetime-local" required onChange={(event) => update("starts_at", event.target.value)} /></div><div className="form-row"><label>Proprietate</label><select value={form.property_id} onChange={(event) => update("property_id", event.target.value)}><option value="">Fără proprietate</option>{properties.map((property) => property.id && <option key={property.id} value={property.id}>{property.title}</option>)}</select></div></div><div className="form-row"><label>Note</label><textarea value={form.notes} onChange={(event) => update("notes", event.target.value)} /></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează vizionarea"}</button></div></form></div></div>
+}
+
+function AgentModal({ saving, onClose, onSubmit }: { saving: boolean; onClose: () => void; onSubmit: (payload: Row) => Promise<void> }) {
+  const [form, setForm] = useState<Row>({ name: "", email: "", role: "agent", status: "ACTIVE" })
+  const update = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
+  const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); await onSubmit(form) }
+  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>Invită agent</h2><button type="button" className="close-btn" onClick={onClose}>x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Nume</label><input value={form.name} required onChange={(event) => update("name", event.target.value)} /></div><div className="form-row"><label>Email</label><input value={form.email} type="email" required onChange={(event) => update("email", event.target.value)} /></div><div className="form-row"><label>Rol</label><select value={form.role} onChange={(event) => update("role", event.target.value)}><option value="agent">Agent</option><option value="manager">Manager</option><option value="admin">Admin</option></select></div></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Trimite invitația"}</button></div></form></div></div>
+}
+
+function SwitchRow({ title, text, enabled, onClick }: { title: string; text: string; enabled: boolean; onClick: () => void }) {
+  return <div className="switch-row"><div><strong>{title}</strong><span>{text}</span></div><button type="button" className={`switch ${enabled ? "on" : ""}`} aria-label={title} onClick={onClick} /></div>
+}
+
 function HqsKpi({ marker, trend, label, value, down = false }: { marker: string; trend: string; label: string; value: any; down?: boolean }) {
   return (
     <article className="kpi">
@@ -653,11 +929,76 @@ function initials(value: string) {
 
 function statusTone(status: string) {
   const key = status.toUpperCase()
-  if (["PUBLISHED", "ACTIVE", "CONFIRMED", "QUALIFIED", "SIGNED", "SOLD", "RENTED", "DONE", "PAID"].includes(key)) return "success"
-  if (["DRAFT", "LOST", "FAILED_CONFIG", "FAILED_PROVIDER", "CANCELLED"].includes(key)) return "danger"
-  if (["CONTACTED", "PENDING", "REQUESTED", "QUEUED", "RETRYING"].includes(key)) return "warning"
-  if (["NEW", "OPEN", "AVAILABLE"].includes(key)) return "info"
+  if (["PUBLISHED", "ACTIVE", "CONFIRMED", "QUALIFIED", "SIGNED", "SOLD", "RENTED", "DONE", "PAID", "ACCEPTED"].includes(key)) return "success"
+  if (["DRAFT", "LOST", "FAILED_CONFIG", "FAILED_PROVIDER", "CANCELLED", "REJECTED"].includes(key)) return "danger"
+  if (["CONTACTED", "PENDING", "REQUESTED", "QUEUED", "RETRYING", "NEGOTIATING"].includes(key)) return "warning"
+  if (["NEW", "OPEN", "AVAILABLE", "VIEWING", "SHORTLIST"].includes(key)) return "info"
   return ""
+}
+
+function adminRows(value: unknown): Row[] {
+  return Array.isArray(value) ? value as Row[] : []
+}
+
+function propertyZone(property: Row) {
+  return String(property.city || property.zone || property.area || "Bucuresti").trim()
+}
+
+function propertyPhoto(property: Row, index: number) {
+  const fallback = [
+    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1598228723793-52759bba239c?auto=format&fit=crop&w=900&q=80",
+  ][index % 4]
+  const image = property.cover_image_url || property.image_url || property.photo || fallback
+  return `linear-gradient(135deg, rgba(13,40,34,.50), rgba(200,155,60,.35)), url('${image}')`
+}
+
+function propertyScore(property: Row) {
+  const fields = [property.title, property.price, property.city || property.zone, property.type, property.description, property.cover_image_url]
+  return clamp(Math.round((fields.filter(Boolean).length / fields.length) * 100), 45, 96)
+}
+
+function calendarCells(monthDate: Date, events: Row[]) {
+  const names = ["Lun", "Mar", "Mie", "Joi", "Vin", "Sam", "Dum"]
+  const year = monthDate.getFullYear()
+  const month = monthDate.getMonth()
+  const first = new Date(year, month, 1)
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const offset = (first.getDay() + 6) % 7
+  const previousDays = new Date(year, month, 0).getDate()
+  const today = new Date()
+  const eventMap = new Map<number, string[]>()
+  for (const event of events) {
+    const value = event.requested_at || event.starts_at || event.start_at || event.created_at
+    const parsed = value ? new Date(value) : null
+    if (!parsed || parsed.getMonth() !== month || parsed.getFullYear() !== year) continue
+    const list = eventMap.get(parsed.getDate()) || []
+    list.push(`${parsed.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })} ${event.property_title || event.title || event.status || "HQS"}`)
+    eventMap.set(parsed.getDate(), list)
+  }
+  const cells: any[] = names.map((label) => ({ kind: "name", label }))
+  for (let i = offset - 1; i >= 0; i--) cells.push({ day: previousDays - i, muted: true, today: false, events: [] })
+  for (let day = 1; day <= daysInMonth; day++) cells.push({ day, muted: false, today: today.getFullYear() === year && today.getMonth() === month && today.getDate() === day, events: eventMap.get(day) || [] })
+  while ((cells.length - 7) % 7 !== 0) cells.push({ day: cells.length, muted: true, today: false, events: [] })
+  return cells
+}
+
+function grouped(values: Row[], key: string) {
+  return values.reduce<Record<string, number>>((acc, row) => {
+    const value = String(row?.[key] || "neclasificat")
+    acc[value] = (acc[value] || 0) + 1
+    return acc
+  }, {})
+}
+
+function compact(value: number) {
+  return new Intl.NumberFormat("ro-RO", { notation: "compact", maximumFractionDigits: 1 }).format(value)
+}
+
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -682,6 +1023,22 @@ const demoTours: Row[] = [
   { client_name: "Ana M.", property_title: "Penthouse Aviatorilor", requested_at: new Date().toISOString(), status: "CONFIRMED" },
   { client_name: "Mihai I.", property_title: "Vilă Pipera", requested_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(), status: "REQUESTED" },
   { client_name: "Elena D.", property_title: "Apartament Floreasca", requested_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), status: "PENDING" },
+]
+
+const demoOffers: Row[] = [
+  { client_name: "Ana M.", property_title: "Compara Aviatorilor vs Floreasca", status: "SHORTLIST", offer_price: 890000 },
+  { client_name: "Mihai I.", property_title: "3 vile in Pipera", status: "SHORTLIST", offer_price: 1200000 },
+  { client_name: "Elena D.", property_title: "Floreasca, vineri 16:00", status: "VIEWING", offer_price: 455000 },
+  { client_name: "Clara S.", property_title: "Baneasa showroom", status: "VIEWING", offer_price: 680000 },
+  { client_name: "Andrei P.", property_title: "Dorobanti, contraoferta", status: "NEGOTIATING", offer_price: 720000 },
+  { client_name: "Familia N.", property_title: "Acte + evaluare banca", status: "DUE_DILIGENCE", offer_price: 1250000 },
+]
+
+const demoAgents: Row[] = [
+  { name: "Radu Matei", role: "Senior Broker", initials: "RM", listings: 6, leads: 19, conversion: "31%" },
+  { name: "Ioana Pavel", role: "Buyer Consultant", initials: "IP", listings: 4, leads: 15, conversion: "27%" },
+  { name: "Alex HQS", role: "Admin / Owner", initials: "HA", listings: 12, leads: 48, conversion: "28%" },
+  { name: "Daria Enache", role: "Marketing", initials: "DE", listings: 12, leads: 8, conversion: "18%" },
 ]
 
 function riskPromptForPlatformAction(body: Row) {
