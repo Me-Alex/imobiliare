@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase"
 export const metadata = {
   title: "Comparare proprietati | HQS Imobiliare",
   description: "Compara proprietatile salvate dupa pret, suprafata, rata estimata si potrivire.",
+  alternates: { canonical: "/comparare" },
 }
 
 export default async function CompararePage() {

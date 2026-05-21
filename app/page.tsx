@@ -6,6 +6,10 @@ import Contact from '@/components/Contact'
 import Footer from '@/components/Footer'
 import { supabase, type Property } from '@/lib/supabase'
 
+export const metadata = {
+  alternates: { canonical: "/" },
+}
+
 export const revalidate = 60
 
 export default async function Home() {

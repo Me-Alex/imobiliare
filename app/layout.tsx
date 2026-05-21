@@ -18,7 +18,6 @@ export const metadata: Metadata = {
     icon: '/favicon.svg',
   },
   metadataBase: new URL(siteConfig.url),
-  alternates: { canonical: '/' },
   openGraph: {
     title: 'HQS Imobiliare',
     description: 'Proprietati premium in Bucuresti',

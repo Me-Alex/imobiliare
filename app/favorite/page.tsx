@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase"
 export const metadata = {
   title: "Favorite | HQS Imobiliare",
   description: "Proprietatile salvate de tine intr-o lista scurta.",
+  alternates: { canonical: "/favorite" },
 }
 
 export default async function FavoritePage() {

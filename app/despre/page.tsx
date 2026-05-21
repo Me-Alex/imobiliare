@@ -6,6 +6,7 @@ import ProcessSection from "@/components/ProcessSection"
 export const metadata = {
   title: "Despre HQS Imobiliare",
   description: "Cum lucram cu proprietarii, cumparatorii si chiriasii.",
+  alternates: { canonical: "/despre" },
 }
 
 export default function DesprePage() {

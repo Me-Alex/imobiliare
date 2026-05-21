@@ -5,6 +5,7 @@ import PortalLoginEntry from "@/components/PortalLoginEntry"
 export const metadata = {
   title: "Cont client | HQS Imobiliare",
   description: "Autentificare client HQS Imobiliare cu email, parola si resetare parola.",
+  alternates: { canonical: "/login" },
 }
 
 export default function LoginPage() {

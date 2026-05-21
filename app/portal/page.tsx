@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase"
 export const metadata = {
   title: "Cont client | HQS Imobiliare",
   description: "Cont client cu login Supabase, profil, favorite, documente, oferte, programari si securitate cont.",
+  alternates: { canonical: "/portal" },
 }
 
 async function getPortalProperties() {

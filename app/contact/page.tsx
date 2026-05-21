@@ -5,6 +5,12 @@ import Header from "@/components/Header"
 export const metadata = {
   title: "Contact | HQS Imobiliare",
   description: "Contacteaza echipa HQS Imobiliare pentru proprietati, vizionari si recomandari.",
+  alternates: { canonical: "/contact" },
+  openGraph: {
+    title: "Contact | HQS Imobiliare",
+    description: "Contacteaza echipa HQS Imobiliare pentru proprietati, vizionari si recomandari.",
+    url: "/contact",
+  },
 }
 
 export default function ContactPage() {

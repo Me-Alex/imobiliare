@@ -37,7 +37,7 @@ export async function generateMetadata({ searchParams }: { searchParams?: Search
     ? `${parts.join(", ")} | HQS Imobiliare`
     : "Proprietati disponibile | HQS Imobiliare"
   const description = hasFilters
-    ? `${parts.join(", ")} — proprietati verificate si selectate de HQS Imobiliare in Bucuresti.`
+    ? `${parts.join(", ")} - proprietati verificate si selectate de HQS Imobiliare in Bucuresti.`
     : "Apartamente, case, vile si terenuri verificate de HQS Imobiliare."
 
   return {
