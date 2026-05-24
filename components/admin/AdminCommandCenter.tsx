@@ -823,7 +823,7 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
                   <div className="lead-avatar">{String(index + 1).padStart(2, "0")}</div>
                   <div>
                     <h4>{date(tour.requested_at || tour.starts_at, true)}</h4>
-                    <p>{tour.property_title || tour.title || "Vizionare"} Â· {tour.client_name || tour.client_email || tour.client_phone || "client"}</p>
+                    <p>{tour.property_title || tour.title || "Vizionare"} - {tour.client_name || tour.client_email || tour.client_phone || "client"}</p>
                   </div>
                   <button
                     type="button"
@@ -976,7 +976,7 @@ function HqsLeadCard({ lead, saving, onFollow }: { lead: Row; saving: boolean; o
       <div className="lead-avatar">{initials(name)}</div>
       <div>
         <h4>{name}</h4>
-        <p>{meta}{budget ? ` â€˘ ${money(budget)}` : ""}</p>
+        <p>{meta}{budget ? ` - ${money(budget)}` : ""}</p>
       </div>
       <button type="button" className={`tag ${statusTone(status)}`} disabled={saving} onClick={onFollow}>{saving ? "..." : statusLabel(status)}</button>
     </article>
