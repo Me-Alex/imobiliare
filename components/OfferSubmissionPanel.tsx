@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { hasKnownPrice } from "@/lib/property-display"
 
 export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPrice }: { propertyId: string; propertyTitle: string; listPrice: number }) {
   const [token, setToken] = useState("")
@@ -9,12 +10,18 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
   const [closingDays, setClosingDays] = useState(30)
   const [message, setMessage] = useState("")
   const [nextPath, setNextPath] = useState("")
+  const formId = useId()
+  const knownPrice = hasKnownPrice(listPrice)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setToken(data.session?.access_token || ""))
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setToken(session?.access_token || ""))
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (knownPrice) setOfferPrice(Math.round(listPrice * 0.96))
+  }, [knownPrice, listPrice])
 
   useEffect(() => {
     // Preserve the current page so /login can return the client back here.
@@ -43,6 +50,10 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
 
   async function submitOffer() {
     setMessage("")
+    if (!knownPrice) {
+      setMessage("Oferta se poate trimite dupa confirmarea pretului de listare.")
+      return
+    }
     if (!token) {
       window.location.href = loginHref
       return
@@ -66,11 +77,11 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
   return (
     <div className="rounded-3xl border border-bg-surface bg-bg-card p-5 shadow-[var(--shadow-card)]">
       <h3 className="font-black text-text-primary">Trimite oferta</h3>
-      <label className="mt-4 block text-xs font-bold uppercase text-text-muted">Pret oferit</label>
-      <input className="mt-3 w-full accent-accent" type="range" min={Math.round(listPrice * 0.8)} max={listPrice} step={1000} value={offerPrice} onChange={(event) => setOfferPrice(Number(event.target.value))} />
+      <label htmlFor={`${formId}-offer-price`} className="mt-4 block text-xs font-bold uppercase text-text-muted">Pret oferit</label>
+      <input id={`${formId}-offer-price`} className="mt-3 w-full accent-accent" type="range" min={Math.round(listPrice * 0.8)} max={listPrice} step={1000} value={offerPrice} onChange={(event) => setOfferPrice(Number(event.target.value))} disabled={!knownPrice} />
       <p className="mt-2 text-2xl font-black text-accent">EUR {offerPrice.toLocaleString("ro-RO")}</p>
-      <label className="mt-4 block text-xs font-bold uppercase text-text-muted">Termen inchidere</label>
-      <select className="form-input mt-2" value={closingDays} onChange={(event) => setClosingDays(Number(event.target.value))}>
+      <label htmlFor={`${formId}-closing-days`} className="mt-4 block text-xs font-bold uppercase text-text-muted">Termen inchidere</label>
+      <select id={`${formId}-closing-days`} className="form-input mt-2" value={closingDays} onChange={(event) => setClosingDays(Number(event.target.value))}>
         <option value={14}>14 zile</option>
         <option value={30}>30 zile</option>
         <option value={45}>45 zile</option>

@@ -1,19 +1,47 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { usePathname } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { FAVORITES_KEY, readBuyerIntent, readStoredIds } from "@/lib/client-preferences"
 import PortalAuthGateway from "@/components/PortalAuthGateway"
+import { formatPropertyPrice } from "@/lib/property-display"
 
 type Profile = { full_name: string; phone: string; budget: number; preferred_zones: string[]; rooms: number; purpose: string; financing_status: string }
 
 const tabs = ["profil", "favorite", "recomandari", "documente", "oferte", "activitate", "securitate"] as const
+type PortalTab = (typeof tabs)[number]
+const routeToTab: Record<string, PortalTab> = {
+  profile: "profil",
+  profil: "profil",
+  favorite: "favorite",
+  favorites: "favorite",
+  recommendations: "recomandari",
+  recomandari: "recomandari",
+  documents: "documente",
+  documente: "documente",
+  offers: "oferte",
+  oferte: "oferte",
+  activity: "activitate",
+  activitate: "activitate",
+  security: "securitate",
+  securitate: "securitate",
+}
+const tabToRoute: Record<PortalTab, string> = {
+  profil: "profile",
+  favorite: "favorites",
+  recomandari: "recommendations",
+  documente: "documents",
+  oferte: "offers",
+  activitate: "activity",
+  securitate: "security",
+}
 const emptyProfile: Profile = { full_name: "Client HQS", phone: "", budget: 250000, preferred_zones: ["Pipera"], rooms: 3, purpose: "locuire", financing_status: "preaprobare in lucru" }
 const emptyData = { documents: [], offers: [], favorites: [], activity: [], notifications: [], recommendations: [] }
 
-export default function ScaledClientPortal() {
+export default function ScaledClientPortal({ initialSection }: { initialSection?: string }) {
   const [token, setToken] = useState("")
-  const [tab, setTab] = useState<(typeof tabs)[number]>("profil")
+  const [tab, setTab] = useState<PortalTab>(() => routeToTab[String(initialSection || "").toLowerCase()] || "profil")
   const [profile, setProfile] = useState<Profile>(emptyProfile)
   const [user, setUser] = useState<{ id?: string; email?: string } | null>(null)
   const [data, setData] = useState<any>(emptyData)
@@ -21,6 +49,13 @@ export default function ScaledClientPortal() {
   const [file, setFile] = useState<File | null>(null)
   const [security, setSecurity] = useState({ password: "", confirm: "" })
   const [message, setMessage] = useState("")
+  const pathname = usePathname()
+
+  useEffect(() => {
+    const segment = pathname?.split("/").filter(Boolean)[1] || initialSection || ""
+    const nextTab = routeToTab[String(segment).toLowerCase()]
+    if (nextTab) setTab(nextTab)
+  }, [initialSection, pathname])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -146,6 +181,14 @@ export default function ScaledClientPortal() {
     setMessage("")
   }
 
+  function selectTab(nextTab: PortalTab) {
+    setTab(nextTab)
+    const nextPath = nextTab === "profil" ? "/portal/profile" : `/portal/${tabToRoute[nextTab]}`
+    if (typeof window !== "undefined" && window.location.pathname !== nextPath) {
+      window.history.replaceState(null, "", nextPath)
+    }
+  }
+
   if (!token) return <PortalAuthGateway onAuthenticated={(accessToken) => { setToken(accessToken); load(accessToken) }} />
 
   return (
@@ -153,10 +196,10 @@ export default function ScaledClientPortal() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><div><span className="text-xs font-bold uppercase tracking-widest text-accent">Cont client</span><h2 className="mt-2 text-3xl font-black text-text-primary">Workspace personal</h2>{user?.email && <p className="mt-1 text-sm text-text-muted">{user.email}</p>}</div><button onClick={logout} className="rounded-lg border border-bg-surface px-4 py-2 text-sm font-bold text-text-muted">Logout</button></div>
         <div className="mb-5 grid gap-3 md:grid-cols-4"><Metric label="Scor pregatire" value={`${score}/100`} /><Metric label="Favorite" value={data.favorites.length} /><Metric label="Documente" value={data.documents.length} /><Metric label="Oferte" value={data.offers.length} /></div>
-        <nav className="mb-5 flex gap-2 overflow-x-auto">{tabs.map((item) => <button key={item} onClick={() => setTab(item)} className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-black ${tab === item ? "border-accent bg-accent text-bg-primary" : "border-bg-surface text-text-muted"}`}>{item}</button>)}</nav>
+        <nav className="mb-5 flex gap-2 overflow-x-auto">{tabs.map((item) => <button key={item} onClick={() => selectTab(item)} className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-black ${tab === item ? "border-accent bg-accent text-bg-primary" : "border-bg-surface text-text-muted"}`}>{item}</button>)}</nav>
         {message && <div className="mb-5 rounded-lg border border-bg-surface bg-bg-card p-3 text-sm text-text-muted">{message}</div>}
         {tab === "profil" && <Panel title="Profil financiar"><div className="grid gap-3 md:grid-cols-2"><Input label="Nume" value={profile.full_name} onChange={(v) => setProfile({ ...profile, full_name: v })} /><Input label="Telefon" value={profile.phone} onChange={(v) => setProfile({ ...profile, phone: v })} /><Input label="Buget" value={String(profile.budget)} onChange={(v) => setProfile({ ...profile, budget: Number(v) })} /><Input label="Zone" value={profile.preferred_zones.join(", ")} onChange={(v) => setProfile({ ...profile, preferred_zones: v.split(",").map((x) => x.trim()).filter(Boolean) })} /></div><button onClick={saveProfile} className="mt-4 rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary">Salveaza profil</button></Panel>}
-        {tab === "favorite" && <Grid>{data.favorites.map((x: any) => <Card key={x.id} title={x.property?.title || "Proprietate"} meta={x.property?.city || "zona"} value={`EUR ${Number(x.property?.price || 0).toLocaleString("ro-RO")}`} />)}</Grid>}
+        {tab === "favorite" && <Grid>{data.favorites.map((x: any) => <Card key={x.id} title={x.property?.title || "Proprietate"} meta={x.property?.city || "zona"} value={formatPropertyPrice(x.property?.price)} />)}</Grid>}
         {tab === "recomandari" && <Grid>{data.recommendations.map((x: any) => <Card key={x.property.id} title={x.property.title} meta={(x.reasons || []).join(", ") || x.property.city} value={`${x.score}/100`} />)}</Grid>}
         {tab === "documente" && <Panel title="Documente si upload"><div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"><Input label="Titlu" value={doc.title} onChange={(v) => setDoc({ ...doc, title: v })} /><Input label="Link optional" value={doc.url} onChange={(v) => setDoc({ ...doc, url: v })} /><button onClick={addDocument} className="mt-6 rounded-lg bg-accent px-4 py-2 text-sm font-black text-bg-primary">Adauga</button></div><input className="mt-4 block w-full text-sm text-text-muted" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} /><Grid>{data.documents.map((x: any) => <Card key={x.id} title={x.title} meta={`${x.type} - ${x.notes || "in verificare"}`} value={x.status} action={x.signed_url ? <a href={x.signed_url} className="rounded-lg border border-bg-surface px-3 py-1 text-xs font-black text-accent" target="_blank">Descarca</a> : null} />)}</Grid></Panel>}
         {tab === "oferte" && <Grid>{data.offers.map((x: any) => <Card key={x.id} title={x.property_title} meta={`${new Date(x.created_at).toLocaleDateString("ro-RO")} - ${x.negotiation_history?.length || 0} pasi negociere`} value={`${x.status} - EUR ${Number(x.counter_offer || x.offer_price).toLocaleString("ro-RO")}`} />)}</Grid>}

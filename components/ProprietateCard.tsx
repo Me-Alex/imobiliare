@@ -7,7 +7,7 @@ import { useEffect, useState } from "react"
 import { Property, supabase } from "@/lib/supabase"
 import { COMPARE_KEY, FAVORITES_KEY, readStoredIds, subscribeClientPreferences, toggleStoredId } from "@/lib/client-preferences"
 import { getPropertyMedia } from "@/lib/property-media"
-import { formatCurrency } from "@/lib/format"
+import { formatPropertyArea, formatPropertyCount, formatPropertyPrice, propertyLocation } from "@/lib/property-display"
 import SmartPropertyImage from "./SmartPropertyImage"
 
 const TIP_LABEL: Record<string, string> = {
@@ -106,13 +106,13 @@ export default function ProprietateCard({ proprietate: p, matchScore, matchReaso
 
         <p className="mt-4 flex items-start gap-2 text-sm leading-6 text-text-muted">
           <MapPin className="mt-1 h-4 w-4 shrink-0 text-accent" aria-hidden />
-          <span className="line-clamp-2">{p.address || p.city}, {p.county || "Romania"}</span>
+          <span className="line-clamp-2">{propertyLocation(p)}</span>
         </p>
 
         <div className="mt-5 grid grid-cols-3 gap-2 text-sm text-text-muted">
-          <Metric icon={<BedDouble className="h-4 w-4" />} value={p.rooms > 0 ? `${p.rooms}` : "-"} label="camere" />
-          <Metric icon={<Ruler className="h-4 w-4" />} value={`${p.area_sqm}`} label="mp" />
-          <Metric icon={<Bath className="h-4 w-4" />} value={p.bathrooms > 0 ? `${p.bathrooms}` : "-"} label="bai" />
+          <Metric icon={<BedDouble className="h-4 w-4" />} value={formatPropertyCount(p.rooms, "camera", "camere", "-")} label="camere" />
+          <Metric icon={<Ruler className="h-4 w-4" />} value={formatPropertyArea(p.area_sqm, "-")} label="suprafata" />
+          <Metric icon={<Bath className="h-4 w-4" />} value={formatPropertyCount(p.bathrooms, "baie", "bai", "-")} label="bai" />
         </div>
 
         {matchReasons.length > 0 && (
@@ -128,7 +128,7 @@ export default function ProprietateCard({ proprietate: p, matchScore, matchReaso
         <div className="mt-5 flex items-end justify-between gap-4 border-t border-bg-surface pt-5">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-text-muted">Pret</p>
-            <p className="mt-1 text-2xl font-black text-accent">{formatCurrency(p.price)}</p>
+            <p className="mt-1 text-2xl font-black text-accent">{formatPropertyPrice(p.price)}</p>
           </div>
           <Link href={`/proprietate/${p.slug}`} className="rounded-md bg-accent/10 px-4 py-2.5 text-sm font-black text-accent transition hover:bg-accent hover:text-bg-primary">
             Detalii

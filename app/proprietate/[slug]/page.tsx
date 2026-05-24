@@ -10,14 +10,14 @@ import ContactDetaliu from "@/components/ContactDetaliu"
 import OfferSubmissionPanel from "@/components/OfferSubmissionPanel"
 import PropertyDecisionPanel from "@/components/PropertyDecisionPanel"
 import ProprietateCard from "@/components/ProprietateCard"
-import SmartPropertyImage from "@/components/SmartPropertyImage"
 import PropertyGallery from "@/components/PropertyGallery"
 import { PUBLIC_PROPERTY_SELECT, supabase, type Property } from "@/lib/supabase"
 import { documentChecklist, estimateMonthlyPayment, zoneProfiles } from "@/lib/experience"
 import { buildOfferDraft, buildViewingSlots, calculateValuation } from "@/lib/complexity"
 import { getPropertyMedia } from "@/lib/property-media"
-import { loadMarketData } from "@/lib/market-data"
+import { formatPropertyArea, formatPropertyCount, formatPropertyPrice, hasKnownPrice, propertyLocation, propertyShortLocation } from "@/lib/property-display"
 
+export const revalidate = 60
 
 const TIP_LABEL: Record<string, string> = {
   APARTMENT: "Apartament",
@@ -85,44 +85,30 @@ export default async function PaginaProprietate({ params }: PropertyPageProps) {
 
   const media = getPropertyMedia(p)
   const galerie = media.gallery
-  const pret = `EUR ${p.price.toLocaleString("ro-RO")}`
+  const hasPrice = hasKnownPrice(p.price)
+  const pret = formatPropertyPrice(p.price)
+  const location = propertyLocation(p)
+  const shortLocation = propertyShortLocation(p)
   const pricePerMeter = p.area_sqm > 0 && p.price > 0 ? Math.round(p.price / p.area_sqm).toLocaleString("ro-RO") : null
   const estimatedMonthly = p.price > 0 ? estimateMonthlyPayment(p.price).toLocaleString("ro-RO") : null
   const matchScore = Math.min(98, 62 + (p.featured ? 12 : 0) + (p.parking_spots > 0 ? 8 : 0) + (p.rooms >= 3 ? 8 : 0))
   const zone = zoneProfiles.find((item) => p.city?.toLowerCase().includes(item.name.toLowerCase().split(" ")[0]))
-  const marketRows = await loadMarketData()
   const valuation = calculateValuation(
     { area: p.area_sqm || 80, rooms: p.rooms || 2, zone: p.city || "Bucuresti Nord", condition: p.featured ? "premium" : "bun", parking: p.parking_spots || 0 },
-    marketRows,
   )
-  const offer = buildOfferDraft({ propertyTitle: p.title, listPrice: p.price, clientBudget: p.price, advancePercent: 20, closingDays: 30, riskLevel: valuation.market.risk as "scazut" | "mediu" | "ridicat" })
+  const offer = hasPrice ? buildOfferDraft({ propertyTitle: p.title, listPrice: p.price, clientBudget: p.price, advancePercent: 20, closingDays: 30, riskLevel: valuation.market.risk as "scazut" | "mediu" | "ridicat" }) : null
   const fallbackSlots = buildViewingSlots("normal")
-  const nowIso = new Date().toISOString()
-  const { data: nextSlot } = await supabase
-    .from("appointment_slots")
-    .select("starts_at, agent_email")
-    .eq("status", "AVAILABLE")
-    .eq("property_id", p.id)
-    .gte("starts_at", nowIso)
-    .order("starts_at", { ascending: true })
-    .limit(1)
-    .maybeSingle()
-
-  const viewingValue = nextSlot?.starts_at
-    ? new Date(nextSlot.starts_at).toLocaleString("ro-RO")
-    : fallbackSlots[0]?.label
-  const viewingText = nextSlot?.starts_at
-    ? `Slot disponibil real${nextSlot.agent_email ? ` (${nextSlot.agent_email})` : ""}.`
-    : `Slot recomandat automat, scor ${fallbackSlots[0]?.score ?? 0}%.`
+  const viewingValue = fallbackSlots[0]?.label
+  const viewingText = `Slot recomandat automat, scor ${fallbackSlots[0]?.score ?? 0}%. Sloturile live se incarca in formularul de vizionare.`
   const siteBase = process.env.NEXT_PUBLIC_SITE_URL || "https://hqsimobiliare.ro"
   const jsonLdResidence = {
     "@context": "https://schema.org",
     "@type": "Residence",
     name: p.title,
-    address: `${p.address}, ${p.city}`,
-    floorSize: { "@type": "QuantitativeValue", value: p.area_sqm, unitCode: "MTK" },
-    numberOfRooms: p.rooms,
-    offers: { "@type": "Offer", price: p.price, priceCurrency: p.currency || "EUR", availability: "https://schema.org/InStock" },
+    address: location,
+    ...(p.area_sqm > 0 ? { floorSize: { "@type": "QuantitativeValue", value: p.area_sqm, unitCode: "MTK" } } : {}),
+    ...(p.rooms > 0 ? { numberOfRooms: p.rooms } : {}),
+    ...(hasPrice ? { offers: { "@type": "Offer", price: p.price, priceCurrency: p.currency || "EUR", availability: "https://schema.org/InStock" } } : {}),
   }
   const jsonLdBreadcrumb = {
     "@context": "https://schema.org",
@@ -130,7 +116,7 @@ export default async function PaginaProprietate({ params }: PropertyPageProps) {
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "HQS Imobiliare", item: siteBase },
       { "@type": "ListItem", position: 2, name: "Proprietati", item: `${siteBase}/proprietati` },
-      { "@type": "ListItem", position: 3, name: p.city, item: `${siteBase}/proprietati?zone=${encodeURIComponent(p.city)}` },
+      { "@type": "ListItem", position: 3, name: p.city || "Proprietati", item: `${siteBase}/proprietati${p.city ? `?zone=${encodeURIComponent(p.city)}` : ""}` },
       { "@type": "ListItem", position: 4, name: p.title, item: `${siteBase}/proprietate/${p.slug}` },
     ],
   }
@@ -149,7 +135,7 @@ export default async function PaginaProprietate({ params }: PropertyPageProps) {
             <span aria-hidden>/</span>
             <Link href="/proprietati" className="hover:text-accent transition-colors">Proprietati</Link>
             <span aria-hidden>/</span>
-            <Link href={`/proprietati?zone=${encodeURIComponent(p.city)}`} className="hover:text-accent transition-colors">{p.city}</Link>
+            <Link href={p.city ? `/proprietati?zone=${encodeURIComponent(p.city)}` : "/proprietati"} className="hover:text-accent transition-colors">{p.city || "Portofoliu"}</Link>
             <span aria-hidden>/</span>
             <span className="text-text-primary font-semibold line-clamp-1 max-w-[200px]">{p.title}</span>
           </nav>
@@ -165,7 +151,7 @@ export default async function PaginaProprietate({ params }: PropertyPageProps) {
               <h1 className="max-w-4xl text-3xl font-black leading-tight text-text-primary md:text-5xl">{p.title}</h1>
               <p className="mt-4 flex items-start gap-2 text-sm leading-6 text-text-muted md:text-base">
                 <MapPin className="mt-1 h-4 w-4 shrink-0 text-accent" aria-hidden />
-                {p.address}, {p.city}, {p.county}
+                {location}
               </p>
             </div>
 
@@ -190,10 +176,10 @@ export default async function PaginaProprietate({ params }: PropertyPageProps) {
             />
 
             <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <Fact icon={<Ruler className="h-5 w-5" />} label="Suprafata" value={`${p.area_sqm} mp`} />
-              <Fact icon={<BedDouble className="h-5 w-5" />} label="Camere" value={p.rooms > 0 ? String(p.rooms) : "-"} />
-              <Fact icon={<Bath className="h-5 w-5" />} label="Bai" value={p.bathrooms > 0 ? String(p.bathrooms) : "-"} />
-              <Fact icon={<Car className="h-5 w-5" />} label="Parcare" value={p.parking_spots > 0 ? String(p.parking_spots) : "-"} />
+              <Fact icon={<Ruler className="h-5 w-5" />} label="Suprafata" value={formatPropertyArea(p.area_sqm)} />
+              <Fact icon={<BedDouble className="h-5 w-5" />} label="Camere" value={formatPropertyCount(p.rooms, "camera", "camere")} />
+              <Fact icon={<Bath className="h-5 w-5" />} label="Bai" value={formatPropertyCount(p.bathrooms, "baie", "bai")} />
+              <Fact icon={<Car className="h-5 w-5" />} label="Parcare" value={formatPropertyCount(p.parking_spots, "loc", "locuri")} />
             </div>
 
             {p.description && (
@@ -240,8 +226,8 @@ export default async function PaginaProprietate({ params }: PropertyPageProps) {
             </section>
 
             <section className="mt-8 grid gap-4 lg:grid-cols-3">
-              <Metric title="Evaluare HQS" value={`EUR ${valuation.mid.toLocaleString("ro-RO")}`} text={`Interval realist: EUR ${valuation.low.toLocaleString("ro-RO")} - EUR ${valuation.high.toLocaleString("ro-RO")}.`} />
-              <Metric title="Oferta recomandata" value={`EUR ${offer.recommended.toLocaleString("ro-RO")}`} text={`Avans orientativ: EUR ${offer.advance.toLocaleString("ro-RO")}.`} />
+              <Metric title="Evaluare HQS" value={hasPrice ? `EUR ${valuation.mid.toLocaleString("ro-RO")}` : "La cerere"} text={hasPrice ? `Interval realist: EUR ${valuation.low.toLocaleString("ro-RO")} - EUR ${valuation.high.toLocaleString("ro-RO")}.` : "Avem nevoie de pretul proprietarului pentru o evaluare precisa."} />
+              <Metric title="Oferta recomandata" value={offer ? `EUR ${offer.recommended.toLocaleString("ro-RO")}` : "Dupa discutie"} text={offer ? `Avans orientativ: EUR ${offer.advance.toLocaleString("ro-RO")}.` : "Oferta se pregateste dupa confirmarea pretului de listare."} />
               <Metric title="Vizionare" value={viewingValue} text={viewingText} />
             </section>
           </div>
@@ -254,7 +240,7 @@ export default async function PaginaProprietate({ params }: PropertyPageProps) {
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.18em] text-text-muted">Pret</p>
                     <p className="mt-1 text-3xl font-black text-accent">{pret}</p>
-                    <p className="mt-2 text-sm text-text-muted">{p.city}, {p.county}</p>
+                    <p className="mt-2 text-sm text-text-muted">{shortLocation}</p>
                   </div>
                 </div>
                 {estimatedMonthly && (
@@ -267,7 +253,15 @@ export default async function PaginaProprietate({ params }: PropertyPageProps) {
               </div>
               <PropertyDecisionPanel property={p} />
               <ContactDetaliu proprietate={p.title} propertyId={p.id} />
-              <OfferSubmissionPanel propertyId={p.id} propertyTitle={p.title} listPrice={Number(p.price || 0)} />
+              {hasPrice ? (
+                <OfferSubmissionPanel propertyId={p.id} propertyTitle={p.title} listPrice={Number(p.price || 0)} />
+              ) : (
+                <div className="rounded-3xl border border-bg-surface bg-bg-card p-5 shadow-[var(--shadow-card)]">
+                  <h3 className="font-black text-text-primary">Oferta personalizata</h3>
+                  <p className="mt-2 text-sm leading-6 text-text-muted">Pretul nu este publicat inca. Trimite o cerere de vizionare si pregatim oferta dupa confirmarea datelor comerciale.</p>
+                  <Link href="/contact" className="mt-4 block rounded-xl bg-accent px-4 py-3 text-center text-sm font-black text-bg-primary">Discuta cu HQS</Link>
+                </div>
+              )}
             </div>
           </aside>
         </div>

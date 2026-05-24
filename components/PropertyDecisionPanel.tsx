@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useState } from "react"
 import Link from "next/link"
 import { supabase, type Property } from "@/lib/supabase"
 import { estimateMonthlyPayment, scoreProperty, type BuyerProfile } from "@/lib/experience"
@@ -16,6 +16,7 @@ import {
   writeBuyerIntent,
   type BuyerIntent,
 } from "@/lib/client-preferences"
+import { hasKnownPrice } from "@/lib/property-display"
 
 const purposeLabels: Record<BuyerProfile["purpose"], string> = {
   locuire: "Locuire",
@@ -31,6 +32,8 @@ export default function PropertyDecisionPanel({ property }: { property: Property
   const [advancePercent, setAdvancePercent] = useState(20)
   const [years, setYears] = useState(25)
   const [message, setMessage] = useState("")
+  const formId = useId()
+  const knownPrice = hasKnownPrice(property.price)
 
   useEffect(() => {
     rememberPropertyView({
@@ -53,9 +56,9 @@ export default function PropertyDecisionPanel({ property }: { property: Property
   }, [property.id])
 
   const match = useMemo(() => scoreProperty(property, intent), [property, intent])
-  const monthlyPayment = useMemo(() => estimateMonthlyPayment(property.price, advancePercent, years), [property.price, advancePercent, years])
-  const cashNeeded = Math.round(property.price * (advancePercent / 100))
-  const priceGap = property.price - intent.budget
+  const monthlyPayment = useMemo(() => knownPrice ? estimateMonthlyPayment(property.price, advancePercent, years) : 0, [knownPrice, property.price, advancePercent, years])
+  const cashNeeded = knownPrice ? Math.round(property.price * (advancePercent / 100)) : 0
+  const priceGap = knownPrice ? property.price - intent.budget : 0
 
   const updateIntent = (next: BuyerIntent) => {
     setIntent(next)
@@ -106,33 +109,33 @@ export default function PropertyDecisionPanel({ property }: { property: Property
       {message && <p className="mt-3 text-sm text-text-muted">{message}</p>}
 
       <div className="mt-5 rounded-2xl border border-bg-surface bg-bg-secondary p-4">
-        <label className="block text-xs font-bold uppercase text-text-muted">Bugetul meu</label>
-        <input className="mt-3 w-full accent-accent" type="range" min={75000} max={1000000} step={25000} value={intent.budget} onChange={(event) => updateIntent({ ...intent, budget: Number(event.target.value) })} />
+        <label htmlFor={`${formId}-budget`} className="block text-xs font-bold uppercase text-text-muted">Bugetul meu</label>
+        <input id={`${formId}-budget`} className="mt-3 w-full accent-accent" type="range" min={75000} max={1000000} step={25000} value={intent.budget} onChange={(event) => updateIntent({ ...intent, budget: Number(event.target.value) })} />
         <div className="mt-2 flex items-center justify-between gap-3">
           <p className="font-black text-accent">EUR {intent.budget.toLocaleString("ro-RO")}</p>
-          <p className={`text-xs font-bold ${priceGap <= 0 ? "text-emerald-500" : "text-amber-500"}`}>
-            {priceGap <= 0 ? "in buget" : `+ EUR ${priceGap.toLocaleString("ro-RO")}`}
+          <p className={`text-xs font-bold ${!knownPrice || priceGap <= 0 ? "text-emerald-600" : "text-amber-700"}`}>
+            {!knownPrice ? "pret la cerere" : priceGap <= 0 ? "in buget" : `+ EUR ${priceGap.toLocaleString("ro-RO")}`}
           </p>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-bg-surface bg-bg-secondary p-4">
-          <label className="text-xs font-bold uppercase text-text-muted">Avans</label>
-          <input className="mt-3 w-full accent-accent" type="range" min={10} max={40} step={5} value={advancePercent} onChange={(event) => setAdvancePercent(Number(event.target.value))} />
-          <p className="mt-2 font-black text-text-primary">{advancePercent}% - EUR {cashNeeded.toLocaleString("ro-RO")}</p>
+          <label htmlFor={`${formId}-advance`} className="text-xs font-bold uppercase text-text-muted">Avans</label>
+          <input id={`${formId}-advance`} className="mt-3 w-full accent-accent" type="range" min={10} max={40} step={5} value={advancePercent} onChange={(event) => setAdvancePercent(Number(event.target.value))} disabled={!knownPrice} />
+          <p className="mt-2 font-black text-text-primary">{knownPrice ? `${advancePercent}% - EUR ${cashNeeded.toLocaleString("ro-RO")}` : "Se calculeaza dupa pret"}</p>
         </div>
         <div className="rounded-2xl border border-bg-surface bg-bg-secondary p-4">
-          <label className="text-xs font-bold uppercase text-text-muted">Perioada</label>
-          <input className="mt-3 w-full accent-accent" type="range" min={15} max={30} step={5} value={years} onChange={(event) => setYears(Number(event.target.value))} />
+          <label htmlFor={`${formId}-years`} className="text-xs font-bold uppercase text-text-muted">Perioada</label>
+          <input id={`${formId}-years`} className="mt-3 w-full accent-accent" type="range" min={15} max={30} step={5} value={years} onChange={(event) => setYears(Number(event.target.value))} disabled={!knownPrice} />
           <p className="mt-2 font-black text-text-primary">{years} ani</p>
         </div>
       </div>
 
       <div className="mt-4 rounded-2xl border border-bg-surface p-4">
         <p className="text-xs font-bold uppercase text-text-muted">Rata orientativa</p>
-        <p className="mt-1 text-2xl font-black text-accent">EUR {monthlyPayment.toLocaleString("ro-RO")}/luna</p>
-        <p className="mt-1 text-xs text-text-muted">Estimare simplificata pentru comparatie rapida, fara costuri bancare.</p>
+        <p className="mt-1 text-2xl font-black text-accent">{knownPrice ? `EUR ${monthlyPayment.toLocaleString("ro-RO")}/luna` : "La cerere"}</p>
+        <p className="mt-1 text-xs text-text-muted">{knownPrice ? "Estimare simplificata pentru comparatie rapida, fara costuri bancare." : "Calculul devine disponibil dupa confirmarea pretului."}</p>
       </div>
 
       <div className="mt-4">

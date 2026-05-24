@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type FormEvent } from "react"
 import { KeyRound, Loader2, LockKeyhole, ShieldCheck, UserPlus } from "lucide-react"
 import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { supabase } from "@/lib/supabase"
@@ -37,7 +37,8 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
   const callbackUrl = getAuthRedirectUrl(redirectTo || "/portal")
   const canSubmit = email.includes("@") && (mode === "reset" || password.length >= 8)
 
-  async function submit() {
+  async function submit(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault()
     if (!canSubmit || loading) return
     setLoading(true)
     setMessage("")
@@ -121,7 +122,7 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
           </div>
         </div>
 
-        <div className="rounded-lg border border-bg-surface bg-bg-card p-5 shadow-card">
+        <form className="rounded-lg border border-bg-surface bg-bg-card p-5 shadow-card" onSubmit={submit}>
           <div className="mb-5 flex items-start gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-accent/10 text-accent">
               <Icon className="h-5 w-5" aria-hidden />
@@ -166,8 +167,7 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
           )}
 
           <button
-            type="button"
-            onClick={submit}
+            type="submit"
             disabled={!canSubmit || loading}
             className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -179,7 +179,7 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
 
           {message && <p className="mt-4 rounded-lg border border-accent/20 bg-accent/10 p-3 text-sm font-bold text-accent">{message}</p>}
           {error && <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm font-bold text-red-500">{error}</p>}
-        </div>
+        </form>
       </div>
     </section>
   )

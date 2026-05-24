@@ -23,6 +23,7 @@ export default function Contact({ headingLevel = "h1" }: { headingLevel?: "h1" |
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -34,6 +35,15 @@ export default function Contact({ headingLevel = "h1" }: { headingLevel?: "h1" |
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const nextErrors: Record<string, string> = {}
+    if (!form.name.trim()) nextErrors.name = "Completeaza numele."
+    if (form.phone.trim().length < 7) nextErrors.phone = "Completeaza un telefon valid."
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) nextErrors.email = "Emailul nu pare valid."
+    setFieldErrors(nextErrors)
+    if (Object.values(nextErrors).some(Boolean)) {
+      setError("Verifica datele de contact marcate.")
+      return
+    }
     setLoading(true)
     setError("")
 
@@ -121,21 +131,21 @@ export default function Contact({ headingLevel = "h1" }: { headingLevel?: "h1" |
                 <p className="text-text-muted text-sm">Revenim cu un raspuns clar, de obicei in aceeasi zi lucratoare.</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="grid gap-4">
+              <form onSubmit={handleSubmit} className="grid gap-4" noValidate>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <Field label="Nume complet" required>
+                  <Field label="Nume complet" required error={fieldErrors.name}>
                     <input required name="name" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      className="form-input" placeholder="Numele tau" />
+                      className="form-input" placeholder="Numele tau" aria-invalid={Boolean(fieldErrors.name)} />
                   </Field>
-                  <Field label="Telefon" required>
+                  <Field label="Telefon" required error={fieldErrors.phone}>
                     <input required name="tel" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className="form-input" placeholder="07XX XXX XXX" />
+                      className="form-input" placeholder="07XX XXX XXX" aria-invalid={Boolean(fieldErrors.phone)} />
                   </Field>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <Field label="Email">
+                  <Field label="Email" error={fieldErrors.email}>
                     <input name="email" type="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      className="form-input" placeholder="email@exemplu.ro" />
+                      className="form-input" placeholder="email@exemplu.ro" aria-invalid={Boolean(fieldErrors.email)} />
                   </Field>
                   <Field label="Interes">
                     <select name="intent" value={form.intent} onChange={(e) => setForm({ ...form, intent: e.target.value })} className="form-input">
@@ -168,13 +178,14 @@ export default function Contact({ headingLevel = "h1" }: { headingLevel?: "h1" |
   )
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
     <label className="block">
       <span className="text-xs font-medium text-text-muted mb-1.5 block uppercase tracking-wider">
         {label}{required ? " *" : ""}
       </span>
       {children}
+      {error && <span className="mt-1 block text-xs font-bold text-red-500">{error}</span>}
     </label>
   )
 }

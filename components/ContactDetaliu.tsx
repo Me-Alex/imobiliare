@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useState, type FormEvent } from "react"
 import { CheckCircle2 } from "lucide-react"
 
 export default function ContactDetaliu({ proprietate, propertyId }: { proprietate: string; propertyId?: string }) {
@@ -11,6 +11,8 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
   const [suggestedSlots, setSuggestedSlots] = useState<any[]>([])
   const [slotsLive, setSlotsLive] = useState(false)
   const [mode, setMode] = useState<"slot" | "manual">("slot")
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const formId = useId()
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
   const [form, setForm] = useState({ name: "", phone: "", email: "", requested_at: tomorrow, slot_id: "", notes: "" })
 
@@ -38,17 +40,31 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
 
   const selectedSlot = useMemo(() => slots.find((slot) => String(slot.id) === String(form.slot_id)), [slots, form.slot_id])
 
-  const pickSuggested = (value: string) => {
+  const pickSuggested = (slot: any) => {
+    const value = String(slot.inputValue || slot.localValue || slot.value || slot.iso || "")
     const d = new Date(value)
     const pad = (n: number) => String(n).padStart(2, "0")
-    const next = Number.isNaN(d.getTime())
+    const next = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)
       ? value.slice(0, 16)
+      : Number.isNaN(d.getTime())
+        ? value.slice(0, 16)
       : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
     setForm((prev) => ({ ...prev, requested_at: next }))
+    setFieldErrors((prev) => ({ ...prev, requested_at: "" }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    const nextErrors: Record<string, string> = {}
+    if (!form.name.trim()) nextErrors.name = "Completeaza numele."
+    if (form.phone.trim().length < 7) nextErrors.phone = "Completeaza un telefon valid."
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) nextErrors.email = "Emailul nu pare valid."
+    if (mode === "manual" && !form.requested_at) nextErrors.requested_at = "Alege data preferata."
+    setFieldErrors(nextErrors)
+    if (Object.values(nextErrors).some(Boolean)) {
+      setError("Verifica campurile marcate si incearca din nou.")
+      return
+    }
     setLoading(true)
     setError("")
 
@@ -91,17 +107,20 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
     <div className="rounded-3xl border border-bg-surface bg-bg-card p-6 shadow-[var(--shadow-card)]">
       <h3 className="text-text-primary font-bold mb-1">Programeaza o vizionare</h3>
       <p className="text-text-muted text-xs mb-4">Alege un slot disponibil (cand exista) sau propune un interval, lasa datele si revenim cu confirmarea.</p>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
         {[
           { key: "name", label: "Nume *", placeholder: "Numele tau", type: "text", req: true },
           { key: "phone", label: "Telefon *", placeholder: "07XX XXX XXX", type: "tel", req: true },
           { key: "email", label: "Email", placeholder: "email@exemplu.ro", type: "email", req: false },
         ].map((f) => (
           <div key={f.key}>
-            <label className="text-xs font-medium text-text-muted mb-1 block uppercase tracking-wider">{f.label}</label>
-            <input type={f.type} required={f.req} value={(form as any)[f.key]} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+            <label htmlFor={`${formId}-${f.key}`} className="text-xs font-medium text-text-muted mb-1 block uppercase tracking-wider">{f.label}</label>
+            <input id={`${formId}-${f.key}`} type={f.type} required={f.req} value={(form as any)[f.key]} onChange={(e) => { setForm({ ...form, [f.key]: e.target.value }); setFieldErrors((prev) => ({ ...prev, [f.key]: "" })) }}
               className="form-input"
+              aria-invalid={Boolean(fieldErrors[f.key])}
+              aria-describedby={fieldErrors[f.key] ? `${formId}-${f.key}-error` : undefined}
               placeholder={f.placeholder} />
+            {fieldErrors[f.key] && <p id={`${formId}-${f.key}-error`} className="mt-1 text-xs font-bold text-red-500">{fieldErrors[f.key]}</p>}
           </div>
         ))}
 
@@ -115,13 +134,16 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
               </div>
             </div>
             {mode === "slot" && (
-              <select className="form-input mt-3" value={form.slot_id} onChange={(e) => setForm({ ...form, slot_id: e.target.value })}>
-                {slots.slice(0, 10).map((slot) => (
-                  <option key={slot.id || slot.value} value={slot.id || ""}>
-                    {slot.label || new Date(slot.starts_at || slot.value).toLocaleString("ro-RO")}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label htmlFor={`${formId}-slot`} className="sr-only">Alege slot real</label>
+                <select id={`${formId}-slot`} className="form-input mt-3" value={form.slot_id} onChange={(e) => setForm({ ...form, slot_id: e.target.value })}>
+                  {slots.slice(0, 10).map((slot) => (
+                    <option key={slot.id || slot.value} value={slot.id || ""}>
+                      {slot.label || new Date(slot.starts_at || slot.value).toLocaleString("ro-RO")}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
             {mode === "slot" && selectedSlot?.agent_email && (
               <p className="mt-2 text-xs font-bold uppercase text-accent">Agent: {selectedSlot.agent_email}</p>
@@ -140,7 +162,7 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
                       key={slot.value || slot.iso || slot.label}
                       type="button"
                       className="rounded-lg border border-bg-surface bg-bg-card px-3 py-2 text-left text-xs font-black text-text-primary hover:border-accent"
-                      onClick={() => pickSuggested(String(slot.value || slot.iso || ""))}
+                      onClick={() => pickSuggested(slot)}
                     >
                       {slot.label || "Interval propus"}
                     </button>
@@ -148,19 +170,23 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
                 </div>
               </div>
             )}
-            <label className="text-xs font-medium text-text-muted mb-1 block uppercase tracking-wider">Data preferata *</label>
+            <label htmlFor={`${formId}-requested-at`} className="text-xs font-medium text-text-muted mb-1 block uppercase tracking-wider">Data preferata *</label>
             <input
+              id={`${formId}-requested-at`}
               type="datetime-local"
               required
               value={form.requested_at}
-              onChange={(e) => setForm({ ...form, requested_at: e.target.value })}
+              onChange={(e) => { setForm({ ...form, requested_at: e.target.value }); setFieldErrors((prev) => ({ ...prev, requested_at: "" })) }}
               className="form-input"
+              aria-invalid={Boolean(fieldErrors.requested_at)}
+              aria-describedby={fieldErrors.requested_at ? `${formId}-requested-at-error` : undefined}
             />
+            {fieldErrors.requested_at && <p id={`${formId}-requested-at-error`} className="mt-1 text-xs font-bold text-red-500">{fieldErrors.requested_at}</p>}
           </div>
         )}
         <div>
-          <label className="text-xs font-medium text-text-muted mb-1 block uppercase tracking-wider">Observatii</label>
-          <textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          <label htmlFor={`${formId}-notes`} className="text-xs font-medium text-text-muted mb-1 block uppercase tracking-wider">Observatii</label>
+          <textarea id={`${formId}-notes`} rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
             className="form-input resize-none" placeholder="Ex: prefer dupa ora 18:00 sau vreau detalii despre acte." />
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}

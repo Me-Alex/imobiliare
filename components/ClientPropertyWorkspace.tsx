@@ -13,9 +13,11 @@ import {
   readRecentPropertyViews,
   readStoredIds,
   subscribeClientPreferences,
+  writeStoredIds,
   writeBuyerIntent,
   type RecentPropertyView,
 } from "@/lib/client-preferences"
+import { formatPropertyArea, formatPropertyPrice, hasKnownPrice } from "@/lib/property-display"
 
 type Mode = "favorite" | "compare" | "portal"
 
@@ -37,6 +39,14 @@ export default function ClientPropertyWorkspace({ properties, mode }: { properti
     sync()
     return subscribeClientPreferences(sync)
   }, [])
+
+  useEffect(() => {
+    const validIds = new Set(properties.map((property) => property.id))
+    const validFavorites = favoriteIds.filter((id) => validIds.has(id))
+    const validCompare = compareIds.filter((id) => validIds.has(id))
+    if (favoriteIds.length && validFavorites.length !== favoriteIds.length) writeStoredIds(FAVORITES_KEY, validFavorites)
+    if (compareIds.length && validCompare.length !== compareIds.length) writeStoredIds(COMPARE_KEY, validCompare)
+  }, [compareIds, favoriteIds, properties])
 
   const rows = useMemo(() => {
     const ids = mode === "compare" ? compareIds : favoriteIds
@@ -89,10 +99,10 @@ export default function ClientPropertyWorkspace({ properties, mode }: { properti
                   const score = Math.max(35, Math.min(98, 100 - Math.round(Math.max(0, p.price - budget) / 10000) + (p.featured ? 10 : 0)))
                   return <tr key={p.id} className="border-t border-bg-surface">
                     <td className="p-4"><Link href={`/proprietate/${p.slug}`} className="font-black text-text-primary hover:text-accent">{p.title}</Link><p className="text-xs text-text-muted">{p.city}</p></td>
-                    <td className="p-4 font-black text-accent">EUR {p.price.toLocaleString("ro-RO")}</td>
-                    <td className="p-4">EUR {sqm.toLocaleString("ro-RO")}</td>
-                    <td className="p-4">{p.rooms || "-"} camere / {p.area_sqm} mp</td>
-                    <td className="p-4">EUR {estimateMonthlyPayment(p.price).toLocaleString("ro-RO")}/luna</td>
+                    <td className="p-4 font-black text-accent">{formatPropertyPrice(p.price)}</td>
+                    <td className="p-4">{hasKnownPrice(p.price) && sqm > 0 ? `EUR ${sqm.toLocaleString("ro-RO")}` : "-"}</td>
+                    <td className="p-4">{p.rooms || "-"} camere / {formatPropertyArea(p.area_sqm)}</td>
+                    <td className="p-4">{hasKnownPrice(p.price) ? `EUR ${estimateMonthlyPayment(p.price).toLocaleString("ro-RO")}/luna` : "-"}</td>
                     <td className="p-4"><span className="rounded-full bg-accent px-3 py-1 text-xs font-black text-bg-primary">{score}</span></td>
                   </tr>
                 })}
@@ -137,7 +147,7 @@ export default function ClientPropertyWorkspace({ properties, mode }: { properti
                 {recentViews.length ? recentViews.slice(0, 4).map((view) => (
                   <Link key={view.id} href={`/proprietate/${view.slug}`} className="rounded-lg bg-bg-secondary p-4 hover:text-accent">
                     <p className="font-black text-text-primary">{view.title}</p>
-                    <p className="mt-1 text-sm text-text-muted">{view.city || "HQS"}{view.price ? ` - EUR ${view.price.toLocaleString("ro-RO")}` : ""}</p>
+                    <p className="mt-1 text-sm text-text-muted">{view.city || "HQS"}{view.price ? ` - ${formatPropertyPrice(view.price)}` : ""}</p>
                   </Link>
                 )) : <p className="text-sm text-text-muted">Istoricul se completeaza cand deschizi pagini de proprietate.</p>}
               </div>
@@ -196,8 +206,9 @@ function Metric({ label, value }: { label: string; value: number }) {
 }
 
 function MiniProperty({ property, budget }: { property: Property; budget: number }) {
-  const over = property.price > budget
-  return <Link href={`/proprietate/${property.slug}`} className="rounded-lg border border-bg-surface bg-bg-secondary p-4 hover:border-accent"><h3 className="font-black text-text-primary">{property.title}</h3><p className="mt-1 text-sm text-text-muted">{property.city} - {property.area_sqm} mp - {property.rooms || "-"} camere</p><p className="mt-3 font-black text-accent">EUR {property.price.toLocaleString("ro-RO")}</p><p className={`mt-2 text-xs font-bold ${over ? "text-amber-500" : "text-emerald-500"}`}>{over ? "peste bugetul salvat" : "in bugetul salvat"}</p></Link>
+  const knownPrice = hasKnownPrice(property.price)
+  const over = knownPrice && property.price > budget
+  return <Link href={`/proprietate/${property.slug}`} className="rounded-lg border border-bg-surface bg-bg-secondary p-4 hover:border-accent"><h3 className="font-black text-text-primary">{property.title}</h3><p className="mt-1 text-sm text-text-muted">{property.city} - {formatPropertyArea(property.area_sqm)} - {property.rooms || "-"} camere</p><p className="mt-3 font-black text-accent">{formatPropertyPrice(property.price)}</p><p className={`mt-2 text-xs font-bold ${over ? "text-amber-700" : "text-emerald-600"}`}>{knownPrice ? over ? "peste bugetul salvat" : "in bugetul salvat" : "pret la cerere"}</p></Link>
 }
 
 function EmptyState({ text }: { text: string }) {

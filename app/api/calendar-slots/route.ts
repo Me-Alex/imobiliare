@@ -37,7 +37,7 @@ export async function GET(request: Request) {
   // When there are no live slots, do not return synthetic slots as "available".
   // Instead, return suggestions separately so the UI can label them correctly.
   const suggestedSlots = buildViewingSlots(["rapid", "normal", "flexibil"].includes(urgency) ? (urgency as any) : "normal")
-    .map((slot) => ({ value: slot.iso, label: slot.label, score: slot.score }))
+    .map((slot) => ({ value: slot.localValue, iso: slot.iso, inputValue: slot.localValue, label: slot.label, score: slot.score }))
 
   return NextResponse.json({ slots: [], suggestedSlots, live: false })
 }

@@ -1,13 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import PortalAuthGateway from "@/components/PortalAuthGateway"
 import PortalAppointmentsConsole from "@/components/PortalAppointmentsConsole"
 import ScaledClientPortal from "@/components/ScaledClientPortal"
 import { supabase, type Property } from "@/lib/supabase"
 
-export default function ClientPortalShell({ properties }: { properties: Property[] }) {
+export default function ClientPortalShell({ properties, initialSection }: { properties: Property[]; initialSection?: string }) {
   const [token, setToken] = useState("")
+  const pathname = usePathname()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setToken(data.session?.access_token || ""))
@@ -16,13 +18,12 @@ export default function ClientPortalShell({ properties }: { properties: Property
   }, [])
 
   // Keep the portal a single gated experience. When unauthenticated, we show only auth.
-  if (!token) return <PortalAuthGateway redirectTo="/portal" onAuthenticated={setToken} />
+  if (!token) return <PortalAuthGateway redirectTo={pathname || "/portal"} onAuthenticated={setToken} />
 
   return (
     <>
-      <ScaledClientPortal />
+      <ScaledClientPortal initialSection={initialSection} />
       <PortalAppointmentsConsole properties={properties} />
     </>
   )
 }
-

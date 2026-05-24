@@ -231,12 +231,18 @@ export function buildViewingSlots(urgency: "rapid" | "normal" | "flexibil" = "no
     const date = new Date(now)
     date.setDate(now.getDate() + days)
     date.setHours(index % 2 === 0 ? 11 : 17, 30, 0, 0)
+    const localValue = `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}T${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`
     return {
       iso: date.toISOString(),
+      localValue,
       label: date.toLocaleString("ro-RO", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" }),
       score: 94 - index * 7,
     }
   })
+}
+
+function padDatePart(value: number) {
+  return String(value).padStart(2, "0")
 }
 
 function estimateAmortizedPayment(principal: number, annualRate: number, years: number) {

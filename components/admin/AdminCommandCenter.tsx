@@ -112,9 +112,17 @@ export default function AdminCommandCenter() {
     return () => window.clearTimeout(timeout)
   }, [toast])
 
+  useEffect(() => {
+    if (!notice) return
+    const timeout = window.setTimeout(() => setNotice(""), 3200)
+    return () => window.clearTimeout(timeout)
+  }, [notice])
+
   const navigateView = (nextView: View, nextQuery?: string) => {
     setView(nextView)
     if (nextQuery !== undefined) setQuery(nextQuery)
+    setNotice("")
+    setError("")
     setSidebarOpen(false)
     window.localStorage.setItem("hqs-admin-view", nextView)
     const url = new URL(window.location.href)
@@ -264,17 +272,22 @@ export default function AdminCommandCenter() {
     setModules((prev) => ({ ...prev, settings: payload }))
   }, "Setari salvate.")
 
-  const exportLocalCsv = () => {
-    const rows = [
-      ["tip", "nume", "status", "data", "detalii"],
-      ...core.leads.map((row) => ["lead", row.name, row.status, row.created_at, row.phone || row.email || ""]),
-      ...core.properties.map((row) => ["proprietate", row.title, row.status, row.created_at, `${row.city || ""} ${row.price || ""}`]),
-      ...core.appointments.map((row) => ["programare", row.client_name, row.status || "REQUESTED", row.requested_at, row.property_title || ""]),
-    ]
+  const exportLocalCsv = (scope: "all" | "properties" = "all", rowsOverride?: Row[]) => {
+    const rows = scope === "properties"
+      ? [
+          ["id", "titlu", "slug", "status", "tip", "oras", "judet", "adresa", "pret", "moneda", "suprafata_mp", "camere", "bai", "parcari", "promovat"],
+          ...(rowsOverride || core.properties).map((row) => [row.id || "", row.title || "", row.slug || "", row.status || "", row.type || "", row.city || "", row.county || "", row.address || "", row.price || "", row.currency || "EUR", row.area_sqm || "", row.rooms || "", row.bathrooms || "", row.parking_spots || "", row.featured ? "da" : "nu"]),
+        ]
+      : [
+          ["tip", "nume", "status", "data", "detalii"],
+          ...core.leads.map((row) => ["lead", row.name, row.status, row.created_at, row.phone || row.email || ""]),
+          ...core.properties.map((row) => ["proprietate", row.title, row.status, row.created_at, `${row.city || ""} ${row.price || ""}`]),
+          ...core.appointments.map((row) => ["programare", row.client_name, row.status || "REQUESTED", row.requested_at, row.property_title || ""]),
+        ]
     const url = URL.createObjectURL(new Blob([csv(rows)], { type: "text/csv;charset=utf-8" }))
     const link = document.createElement("a")
     link.href = url
-    link.download = "admin-export.csv"
+    link.download = scope === "properties" ? "hqs-proprietati.csv" : "admin-export.csv"
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -459,7 +472,7 @@ function HqsPropertiesView({ filtered, query, saving, createProperty, patchPrope
             </select>
           </div>
           <div className="filters">
-            <button type="button" className="btn small" onClick={exportLocalCsv}>Export CSV</button>
+            <button type="button" className="btn small" onClick={() => exportLocalCsv("properties", visible)}>Export CSV</button>
             <button type="button" className="btn small" onClick={() => { setSearch(""); setZone("all"); setType("all") }}>Reset</button>
           </div>
         </div>
@@ -473,7 +486,7 @@ function HqsPropertiesView({ filtered, query, saving, createProperty, patchPrope
               <div className="property-body">
                 <h3>{property.title || "Proprietate HQS"}</h3>
                 <div className="property-meta">{propertyZone(property)} / {propertyTypeLabel(property.type || "APARTMENT")}<br />{property.description || property.address || "Descriere internă pentru echipă."}</div>
-                <div className="property-stats"><span>{property.area_sqm || property.surface || 0} mp</span><span>{property.rooms ? `${property.rooms} cam.` : "-"}</span><span>{propertyScore(property)}% scor</span></div>
+                <div className="property-stats"><span>{property.area_sqm || property.surface ? `${property.area_sqm || property.surface} mp` : "La cerere"}</span><span>{property.rooms ? `${property.rooms} cam.` : "-"}</span><span>{propertyScore(property)}% scor</span></div>
                 <div className="property-actions">
                   <button type="button" className="btn small" disabled={property.id && saving === `property-${property.id}`} onClick={() => setModal(property)}>Editează</button>
                   <button type="button" className="btn small" onClick={() => property.id ? deleteProperty(property) : showToast("Proprietate demo: ștergerea se aplică pentru date live.")}>Șterge</button>
@@ -494,6 +507,7 @@ function HqsLeadsView({ filtered, query, saving, followUp, createLead, showToast
   const [modalOpen, setModalOpen] = useState(false)
   const [selected, setSelected] = useState<Row | null>(null)
   const source = filtered.leads
+  const statusOptions = Array.from(new Set(["NEW", "CONTACTED", "QUALIFIED", "PENDING", "CLOSED", "LOST", ...source.map((lead: Row) => String(lead.status || "").toUpperCase()).filter(Boolean)]))
   const visible = source.filter((lead: Row) => Object.values(lead).join(" ").toLowerCase().includes(search.toLowerCase().trim()) && (status === "all" || String(lead.status || "").toUpperCase() === status))
   return (
     <>
@@ -502,7 +516,10 @@ function HqsLeadsView({ filtered, query, saving, followUp, createLead, showToast
         <div className="toolbar">
           <div className="filters">
             <input className="field" value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Caută client, telefon, zonă..." />
-            <select className="select" value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">Toate statusurile</option><option value="NEW">Nou</option><option value="CONTACTED">Contactat</option><option value="QUALIFIED">Vizionare</option><option value="PENDING">Ofertă</option><option value="LOST">Rece</option></select>
+            <select className="select" value={status} onChange={(event) => setStatus(event.target.value)}>
+              <option value="all">Toate statusurile</option>
+              {statusOptions.map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
+            </select>
           </div>
           <button type="button" className="btn small" onClick={() => visible[0]?.id ? followUp(visible[0]) : showToast("Alege un lead live pentru follow-up.")}>Marchează follow-up</button>
         </div>
@@ -524,8 +541,10 @@ function HqsLeadsView({ filtered, query, saving, followUp, createLead, showToast
   )
 }
 
-function HqsPipelineView({ filtered, platformAction, saving, showToast, reload }: any) {
+function HqsPipelineView({ filtered, platformAction, patchLead, patchAppointment, saving, showToast, reload }: any) {
   const offers = filtered.offers
+  const leads = filtered.leads
+  const appointments = filtered.appointments
   const stages = [
     { name: "Shortlist", statuses: ["SHORTLIST", "NEW", "SUBMITTED", "PENDING"] },
     { name: "Vizionare", statuses: ["VIEWING", "REQUESTED", "CONFIRMED"] },
@@ -533,16 +552,46 @@ function HqsPipelineView({ filtered, platformAction, saving, showToast, reload }
     { name: "Due diligence", statuses: ["DUE_DILIGENCE", "SIGNED", "CLOSED", "DONE"] },
   ]
   const nextStatus: Record<string, string> = { SHORTLIST: "VIEWING", NEW: "VIEWING", SUBMITTED: "VIEWING", PENDING: "VIEWING", VIEWING: "NEGOTIATING", REQUESTED: "NEGOTIATING", CONFIRMED: "NEGOTIATING", NEGOTIATING: "DUE_DILIGENCE", OFFER: "DUE_DILIGENCE", ACCEPTED: "DUE_DILIGENCE", DUE_DILIGENCE: "SIGNED" }
+  const opportunities = [
+    ...offers.map((row: Row) => ({ source: "offer", row, status: String(row.status || "SHORTLIST").toUpperCase(), title: row.client_name || row.client_email || row.name || "Client HQS", meta: row.property_title || row.title || row.property || "Oferta", value: row.counter_offer || row.offer_price || row.price || 0 })),
+    ...leads.map((row: Row) => {
+      const leadStatus = String(row.status || "NEW").toUpperCase()
+      const mapped = leadStatus === "QUALIFIED" ? "VIEWING" : leadStatus === "CLOSED" ? "DUE_DILIGENCE" : leadStatus
+      return { source: "lead", row, status: mapped, title: row.name || row.email || row.phone || "Lead HQS", meta: row.interest || row.message || row.property_title || "Lead CRM", value: row.budget || row.max_budget || 0 }
+    }),
+    ...appointments.map((row: Row) => {
+      const appointmentStatus = String(row.status || "REQUESTED").toUpperCase()
+      const mapped = ["DONE", "CONFIRMED"].includes(appointmentStatus) ? appointmentStatus : "VIEWING"
+      return { source: "appointment", row, status: mapped, title: row.client_name || row.client_email || "Vizionare HQS", meta: row.property_title || date(row.requested_at || row.starts_at, true), value: row.price || 0 }
+    }),
+  ]
+  const moveDeal = (deal: any, next: string) => {
+    if (!deal.row?.id) {
+      showToast("Card demo: mutarea se salvează pentru date live.")
+      return
+    }
+    if (deal.source === "offer") {
+      platformAction(`offer-${deal.row.id}`, { type: "offer_status", payload: { id: deal.row.id, status: next, counter_offer: deal.row.counter_offer || deal.row.offer_price || 0, notes: deal.row.notes || null } }, "Oferta a fost mutată.")
+      return
+    }
+    if (deal.source === "lead") {
+      const leadNext: Record<string, string> = { VIEWING: "QUALIFIED", NEGOTIATING: "PENDING", DUE_DILIGENCE: "CLOSED", SIGNED: "CLOSED" }
+      patchLead(deal.row, leadNext[next] || "CONTACTED")
+      return
+    }
+    patchAppointment(deal.row, next === "NEGOTIATING" ? "CONFIRMED" : next === "DUE_DILIGENCE" || next === "SIGNED" ? "DONE" : "REQUESTED")
+  }
   return (
     <>
       <HqsPageHead eyebrow="Tranzacții" title="Pipeline vânzări" body="Vizualizează oportunitățile pe etape: shortlist, vizionare, ofertă și due diligence." action={<button type="button" className="btn dark" onClick={() => reload()}>Actualizează pipeline</button>} />
       <div className="pipeline">
         {stages.map((stage) => {
-          const deals = offers.filter((offer: Row) => stage.statuses.includes(String(offer.status || "SHORTLIST").toUpperCase()))
+          const deals = opportunities.filter((deal) => stage.statuses.includes(deal.status))
           return <section className="stage" key={stage.name}><h3>{stage.name} <span className="tag">{deals.length}</span></h3>{deals.map((deal: Row, index: number) => {
             const current = String(deal.status || "SHORTLIST").toUpperCase()
             const next = nextStatus[current] || "SIGNED"
-            return <article className="deal-card" key={deal.id || index}><h4>{deal.client_name || deal.client_email || deal.name || "Client HQS"}</h4><p>{deal.property_title || deal.title || deal.property || "Oportunitate imobiliară"}</p><div className="deal-footer"><span>{money(deal.counter_offer || deal.offer_price || deal.price || 0)}</span><button type="button" className="btn small" disabled={deal.id && saving === `offer-${deal.id}`} onClick={() => deal.id ? platformAction(`offer-${deal.id}`, { type: "offer_status", payload: { id: deal.id, status: next, counter_offer: deal.counter_offer || deal.offer_price || 0, notes: deal.notes || null } }, "Oferta a fost mutată.") : showToast("Card demo: mutarea se salvează pentru oferte live.")}>Mută</button></div></article>
+            const savingKey = deal.source === "offer" ? `offer-${deal.row?.id}` : deal.source === "lead" ? `lead-${deal.row?.id}` : `appointment-${deal.row?.id}`
+            return <article className="deal-card" key={`${deal.source}-${deal.row?.id || index}`}><h4>{deal.title}</h4><p>{deal.meta}</p><div className="deal-footer"><span>{deal.value ? money(deal.value) : statusLabel(deal.row?.status || current)}</span><button type="button" className="btn small" disabled={deal.row?.id && saving === savingKey} onClick={() => moveDeal(deal, next)}>Mută</button></div></article>
           })}</section>
         })}
       </div>
@@ -610,7 +659,7 @@ function HqsReportsView({ core, modules, platform, metrics, report, exportServer
   const zoneItems = Object.keys(zones).length ? Object.entries(zones).map(([name, value]) => [name, `${value} Proprietăți`]) : [["Aviatorilor", "92 lead-uri"], ["Floreasca", "76 lead-uri"], ["Pipera", "64 lead-uri"], ["Dorobanți", "51 lead-uri"]]
   return (
     <>
-      <HqsPageHead eyebrow="Analytics" title="Rapoarte" body="Indicatori pentru listări, conversii, canale de lead și valoare estimată a pipeline-ului." action={<button type="button" className="btn dark" onClick={() => exportServer("json")}>Descarcă raport</button>} />
+      <HqsPageHead eyebrow="Analytics" title="Rapoarte" body="Indicatori pentru listări, conversii, canale de lead și valoare estimată a pipeline-ului." action={<button type="button" className="btn dark" onClick={() => exportServer("csv")}>Descarcă raport CSV</button>} />
       <div className="kpi-grid"><HqsKpi marker="CH" trend="+31%" label="Vizualizări listări" value={compact(views)} /><HqsKpi marker="CALL" trend="+16%" label="Contacte primite" value={contacts} /><HqsKpi marker="OK" trend="+12%" label="Rată conversie Vizionări" value={`${conversion}%`} /><HqsKpi marker="EUR" trend="+7%" label="Comision estimat" value={money(commission)} /></div>
       <div className="grid-2">
         <section className="panel"><div className="panel-head"><div><h2>Canale lead</h2><p>Distribuție ultimele 30 zile</p></div></div><div className="mini-list">{sourceItems.slice(0, 5).map(([name, value]) => <div className="mini-item" key={name}><span>{name}</span><strong>{value}</strong></div>)}</div></section>
