@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react"
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
 import { AppointmentsView, CrmView, PropertiesView } from "./admin-core-views"
 import { AgentsView, ClientsView, ComplianceView, DocumentsCenterView, ListingsView, MaintenanceView, MarketingView, TransactionsView } from "./admin-real-estate-views"
@@ -626,13 +626,20 @@ function HqsReportsView({ core, modules, platform, metrics, report, exportServer
 }
 
 function HqsSettingsView({ modules, saveSettings, saving, showToast }: any) {
-  const [form, setForm] = useState<Row>({ ...modules.settings })
-  const [toggles, setToggles] = useState({ hotLeads: true, documents: true, reminders: true, autopublish: false })
-  useEffect(() => setForm({ ...modules.settings }), [modules.settings])
+  const defaultAutomations = { hotLeads: true, documents: true, reminders: true, autopublish: false }
+  const [form, setForm] = useState<Row>(() => ({ ...modules.settings, automations: { ...defaultAutomations, ...(modules.settings?.automations || {}) } }))
+  useEffect(() => setForm({ ...modules.settings, automations: { ...defaultAutomations, ...(modules.settings?.automations || {}) } }), [modules.settings])
   const update = (key: string, value: string | number) => setForm((prev) => ({ ...prev, [key]: value }))
+  const automations = { ...defaultAutomations, ...(form.automations || {}) }
+  const toggleAutomation = (key: keyof typeof defaultAutomations) => {
+    setForm((prev) => ({
+      ...prev,
+      automations: { ...defaultAutomations, ...(prev.automations || {}), [key]: !Boolean((prev.automations || {})[key]) },
+    }))
+  }
   return (
     <>
-      <HqsPageHead eyebrow="Configurație" title="Setări admin" body="Setări pentru brand, notificări, reguli de publicare, roluri și preferințe operaționale." action={<button type="button" className="btn dark" disabled={saving === "settings"} onClick={() => saveSettings(form)}>Salvează Setări</button>} />
+      <HqsPageHead eyebrow="Configurație" title="Setări admin" body="Setări pentru brand, notificări, reguli de publicare, roluri și preferințe operaționale." action={<button type="button" className="btn dark" disabled={saving === "settings"} onClick={() => saveSettings({ ...form, automations })}>Salvează Setări</button>} />
       <div className="settings-grid">
         <section className="panel">
           <div className="panel-head"><div><h2>Brand & companie</h2><p>Informații afișate intern</p></div></div>
@@ -647,11 +654,11 @@ function HqsSettingsView({ modules, saveSettings, saving, showToast }: any) {
         <section className="panel">
           <div className="panel-head"><div><h2>Automatizări</h2><p>Reguli pentru workflow</p></div></div>
           <div className="mini-list">
-            <SwitchRow title="Notifică lead-uri fierbinți" text="Când un client revine de 3+ ori pe o listare." enabled={toggles.hotLeads} onClick={() => setToggles((prev) => ({ ...prev, hotLeads: !prev.hotLeads }))} />
-            <SwitchRow title="Checklist acte obligatoriu" text="Blochează statusul Ofertă fără documente." enabled={toggles.documents} onClick={() => setToggles((prev) => ({ ...prev, documents: !prev.documents }))} />
-            <SwitchRow title="Reminder vizionare" text="Trimite reminder agentului cu 2 ore înainte." enabled={toggles.reminders} onClick={() => setToggles((prev) => ({ ...prev, reminders: !prev.reminders }))} />
-            <SwitchRow title="Publicare automată" text="Publică listări doar după scor de completitudine 90%+." enabled={toggles.autopublish} onClick={() => setToggles((prev) => ({ ...prev, autopublish: !prev.autopublish }))} />
-            <button type="button" className="btn primary" onClick={() => showToast("Automatizările au fost actualizate pentru sesiunea curentă.")}>Aplică automatizări</button>
+            <SwitchRow title="Notifică lead-uri fierbinți" text="Când un client revine de 3+ ori pe o listare." enabled={automations.hotLeads} onClick={() => toggleAutomation("hotLeads")} />
+            <SwitchRow title="Checklist acte obligatoriu" text="Blochează statusul Ofertă fără documente." enabled={automations.documents} onClick={() => toggleAutomation("documents")} />
+            <SwitchRow title="Reminder vizionare" text="Trimite reminder agentului cu 2 ore înainte." enabled={automations.reminders} onClick={() => toggleAutomation("reminders")} />
+            <SwitchRow title="Publicare automată" text="Publică listări doar după scor de completitudine 90%+." enabled={automations.autopublish} onClick={() => toggleAutomation("autopublish")} />
+            <button type="button" className="btn primary" disabled={saving === "settings"} onClick={() => { void saveSettings({ ...form, automations }).then(() => showToast("Automatizările au fost salvate.")) }}>Aplică automatizări</button>
           </div>
         </section>
       </div>
@@ -873,32 +880,149 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
   )
 }
 
+function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  const titleId = useId()
+  const modalRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const previousActive = (document.activeElement as HTMLElement | null)
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      event.preventDefault()
+      onClose()
+    }
+
+    document.addEventListener("keydown", onKeyDown)
+
+    const focusTimer = window.setTimeout(() => {
+      const el = modalRef.current?.querySelector<HTMLElement>(
+        'input, select, textarea, button, [href], [tabindex]:not([tabindex="-1"])',
+      )
+      el?.focus()
+    }, 0)
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown)
+      window.clearTimeout(focusTimer)
+      previousActive?.focus?.()
+    }
+  }, [onClose])
+
+  return (
+    <div
+      className="modal-backdrop open"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div className="modal" ref={modalRef}>
+        <div className="modal-head">
+          <h2 id={titleId}>{title}</h2>
+          <button type="button" className="close-btn" onClick={onClose} aria-label="Închide">x</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function PropertyModal({ property, saving, onClose, onSubmit }: { property: Row | null; saving: boolean; onClose: () => void; onSubmit: (payload: Row) => Promise<void> }) {
   const [form, setForm] = useState<Row>(() => ({ title: property?.title || "", city: propertyZone(property || {}), type: property?.type || "APARTMENT", status: property?.status || "DRAFT", price: property?.price || "", area_sqm: property?.area_sqm || "", rooms: property?.rooms || "", score: propertyScore(property || {}), description: property?.description || "" }))
   const update = (key: string, value: string | number) => setForm((prev) => ({ ...prev, [key]: value }))
   const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); await onSubmit({ ...form, price: Number(form.price || 0), area_sqm: Number(form.area_sqm || 0), rooms: Number(form.rooms || 0) }) }
-  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>{property ? "Editează proprietate" : "Adaugă proprietate"}</h2><button type="button" className="close-btn" onClick={onClose} aria-label="Închide">x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Titlu</label><input value={form.title} onChange={(event) => update("title", event.target.value)} required placeholder="Ex: Apartament premium Floreasca" /></div><div className="form-row"><label>Zonă</label><input value={form.city} onChange={(event) => update("city", event.target.value)} required placeholder="Ex: Floreasca" /></div><div className="form-row"><label>Tip</label><select value={form.type} onChange={(event) => update("type", event.target.value)}><option value="APARTMENT">Apartament</option><option value="HOUSE">Casă</option><option value="VILLA">Vilă</option><option value="LAND">Teren</option><option value="COMMERCIAL">Comercial</option></select></div><div className="form-row"><label>Status</label><select value={form.status} onChange={(event) => update("status", event.target.value)}><option value="PUBLISHED">Activ</option><option value="DRAFT">Draft</option><option value="SOLD">Vândut</option><option value="RENTED">Închiriat</option></select></div><div className="form-row"><label>Preț EUR</label><input value={form.price} onChange={(event) => update("price", event.target.value)} type="number" min="0" placeholder="450000" /></div><div className="form-row"><label>Suprafață mp</label><input value={form.area_sqm} onChange={(event) => update("area_sqm", event.target.value)} type="number" min="0" placeholder="120" /></div><div className="form-row"><label>Camere</label><input value={form.rooms} onChange={(event) => update("rooms", event.target.value)} type="number" min="0" placeholder="3" /></div><div className="form-row"><label>Scor potrivire</label><input value={form.score} onChange={(event) => update("score", event.target.value)} type="number" min="0" max="100" placeholder="82" /></div></div><div className="form-row"><label>Descriere scurtă</label><textarea value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Descriere internă pentru echipă..." /></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează proprietatea"}</button></div></form></div></div>
+  return (
+    <ModalShell title={property ? "Editează proprietate" : "Adaugă proprietate"} onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <div className="modal-grid">
+          <div className="form-row"><label>Titlu</label><input value={form.title} onChange={(event) => update("title", event.target.value)} required placeholder="Ex: Apartament premium Floreasca" /></div>
+          <div className="form-row"><label>Zonă</label><input value={form.city} onChange={(event) => update("city", event.target.value)} required placeholder="Ex: Floreasca" /></div>
+          <div className="form-row"><label>Tip</label><select value={form.type} onChange={(event) => update("type", event.target.value)}><option value="APARTMENT">Apartament</option><option value="HOUSE">Casă</option><option value="VILLA">Vilă</option><option value="LAND">Teren</option><option value="COMMERCIAL">Comercial</option></select></div>
+          <div className="form-row"><label>Status</label><select value={form.status} onChange={(event) => update("status", event.target.value)}><option value="PUBLISHED">Activ</option><option value="DRAFT">Draft</option><option value="SOLD">Vândut</option><option value="RENTED">Închiriat</option></select></div>
+          <div className="form-row"><label>Preț EUR</label><input value={form.price} onChange={(event) => update("price", event.target.value)} type="number" min="0" placeholder="450000" /></div>
+          <div className="form-row"><label>Suprafață mp</label><input value={form.area_sqm} onChange={(event) => update("area_sqm", event.target.value)} type="number" min="0" placeholder="120" /></div>
+          <div className="form-row"><label>Camere</label><input value={form.rooms} onChange={(event) => update("rooms", event.target.value)} type="number" min="0" placeholder="3" /></div>
+          <div className="form-row"><label>Scor potrivire</label><input value={form.score} onChange={(event) => update("score", event.target.value)} type="number" min="0" max="100" placeholder="82" /></div>
+        </div>
+        <div className="form-row"><label>Descriere scurtă</label><textarea value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Descriere internă pentru echipă..." /></div>
+        <div className="form-actions">
+          <button type="button" className="btn" onClick={onClose}>Anulează</button>
+          <button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează proprietatea"}</button>
+        </div>
+      </form>
+    </ModalShell>
+  )
 }
 
 function LeadModal({ saving, onClose, onSubmit }: { saving: boolean; onClose: () => void; onSubmit: (payload: Row) => Promise<void> }) {
   const [form, setForm] = useState<Row>({ name: "", phone: "", email: "", message: "", budget: "", status: "NEW", source: "admin" })
   const update = (key: string, value: string | number) => setForm((prev) => ({ ...prev, [key]: value }))
   const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); await onSubmit({ ...form, budget: Number(form.budget || 0) }) }
-  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>Adaugă lead</h2><button type="button" className="close-btn" onClick={onClose} aria-label="Inchide">x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Nume</label><input value={form.name} required onChange={(event) => update("name", event.target.value)} /></div><div className="form-row"><label>Telefon</label><input value={form.phone} onChange={(event) => update("phone", event.target.value)} /></div><div className="form-row"><label>Email</label><input value={form.email} type="email" onChange={(event) => update("email", event.target.value)} /></div><div className="form-row"><label>Buget EUR</label><input value={form.budget} type="number" onChange={(event) => update("budget", event.target.value)} /></div></div><div className="form-row"><label>Interes</label><textarea value={form.message} onChange={(event) => update("message", event.target.value)} /></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează lead"}</button></div></form></div></div>
+  return (
+    <ModalShell title="Adaugă lead" onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <div className="modal-grid">
+          <div className="form-row"><label>Nume</label><input value={form.name} required onChange={(event) => update("name", event.target.value)} /></div>
+          <div className="form-row"><label>Telefon</label><input value={form.phone} onChange={(event) => update("phone", event.target.value)} /></div>
+          <div className="form-row"><label>Email</label><input value={form.email} type="email" onChange={(event) => update("email", event.target.value)} /></div>
+          <div className="form-row"><label>Buget EUR</label><input value={form.budget} type="number" onChange={(event) => update("budget", event.target.value)} /></div>
+        </div>
+        <div className="form-row"><label>Interes</label><textarea value={form.message} onChange={(event) => update("message", event.target.value)} /></div>
+        <div className="form-actions">
+          <button type="button" className="btn" onClick={onClose}>Anulează</button>
+          <button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează lead"}</button>
+        </div>
+      </form>
+    </ModalShell>
+  )
 }
 
 function AppointmentModal({ saving, properties, onClose, onSubmit }: { saving: boolean; properties: Row[]; onClose: () => void; onSubmit: (payload: Row) => Promise<void> }) {
   const [form, setForm] = useState<Row>({ client_name: "", client_email: "", client_phone: "", property_id: "", starts_at: "", notes: "", status: "REQUESTED" })
   const update = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
   const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); await onSubmit({ ...form, requested_at: form.starts_at ? new Date(form.starts_at).toISOString() : undefined }) }
-  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>Programează vizionare</h2><button type="button" className="close-btn" onClick={onClose} aria-label="Inchide">x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Client</label><input value={form.client_name} required onChange={(event) => update("client_name", event.target.value)} /></div><div className="form-row"><label>Email client</label><input value={form.client_email} type="email" onChange={(event) => update("client_email", event.target.value)} /></div><div className="form-row"><label>Telefon</label><input value={form.client_phone} onChange={(event) => update("client_phone", event.target.value)} /></div><div className="form-row"><label>Data și ora</label><input value={form.starts_at} type="datetime-local" required onChange={(event) => update("starts_at", event.target.value)} /></div><div className="form-row"><label>Proprietate</label><select value={form.property_id} onChange={(event) => update("property_id", event.target.value)}><option value="">Fără proprietate</option>{properties.map((property) => property.id && <option key={property.id} value={property.id}>{property.title}</option>)}</select></div></div><div className="form-row"><label>Note</label><textarea value={form.notes} onChange={(event) => update("notes", event.target.value)} /></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează vizionarea"}</button></div></form></div></div>
+  return (
+    <ModalShell title="Programează vizionare" onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <div className="modal-grid">
+          <div className="form-row"><label>Client</label><input value={form.client_name} required onChange={(event) => update("client_name", event.target.value)} /></div>
+          <div className="form-row"><label>Email client</label><input value={form.client_email} type="email" onChange={(event) => update("client_email", event.target.value)} /></div>
+          <div className="form-row"><label>Telefon</label><input value={form.client_phone} onChange={(event) => update("client_phone", event.target.value)} /></div>
+          <div className="form-row"><label>Data și ora</label><input value={form.starts_at} type="datetime-local" required onChange={(event) => update("starts_at", event.target.value)} /></div>
+          <div className="form-row"><label>Proprietate</label><select value={form.property_id} onChange={(event) => update("property_id", event.target.value)}><option value="">Fără proprietate</option>{properties.map((property) => property.id && <option key={property.id} value={property.id}>{property.title}</option>)}</select></div>
+        </div>
+        <div className="form-row"><label>Note</label><textarea value={form.notes} onChange={(event) => update("notes", event.target.value)} /></div>
+        <div className="form-actions">
+          <button type="button" className="btn" onClick={onClose}>Anulează</button>
+          <button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Salvează vizionarea"}</button>
+        </div>
+      </form>
+    </ModalShell>
+  )
 }
 
 function AgentModal({ saving, onClose, onSubmit }: { saving: boolean; onClose: () => void; onSubmit: (payload: Row) => Promise<void> }) {
   const [form, setForm] = useState<Row>({ name: "", email: "", role: "agent", status: "ACTIVE" })
   const update = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
   const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); await onSubmit(form) }
-  return <div className="modal-backdrop open" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h2>Invită agent</h2><button type="button" className="close-btn" onClick={onClose} aria-label="Inchide">x</button></div><form className="form" onSubmit={submit}><div className="modal-grid"><div className="form-row"><label>Nume</label><input value={form.name} required onChange={(event) => update("name", event.target.value)} /></div><div className="form-row"><label>Email</label><input value={form.email} type="email" required onChange={(event) => update("email", event.target.value)} /></div><div className="form-row"><label>Rol</label><select value={form.role} onChange={(event) => update("role", event.target.value)}><option value="agent">Agent</option><option value="manager">Manager</option><option value="admin">Admin</option></select></div></div><div className="form-actions"><button type="button" className="btn" onClick={onClose}>Anulează</button><button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Trimite invitația"}</button></div></form></div></div>
+  return (
+    <ModalShell title="Invită agent" onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <div className="modal-grid">
+          <div className="form-row"><label>Nume</label><input value={form.name} required onChange={(event) => update("name", event.target.value)} /></div>
+          <div className="form-row"><label>Email</label><input value={form.email} type="email" required onChange={(event) => update("email", event.target.value)} /></div>
+          <div className="form-row"><label>Rol</label><select value={form.role} onChange={(event) => update("role", event.target.value)}><option value="agent">Agent</option><option value="manager">Manager</option><option value="admin">Admin</option></select></div>
+        </div>
+        <div className="form-actions">
+          <button type="button" className="btn" onClick={onClose}>Anulează</button>
+          <button type="submit" className="btn primary" disabled={saving}>{saving ? "Se salvează..." : "Trimite invitația"}</button>
+        </div>
+      </form>
+    </ModalShell>
+  )
 }
 
 function LeadDetailsModal({ lead, saving, onClose, onFollowUp }: { lead: Row; saving: boolean; onClose: () => void; onFollowUp: () => void }) {
@@ -906,49 +1030,37 @@ function LeadDetailsModal({ lead, saving, onClose, onFollowUp }: { lead: Row; sa
   const status = String(lead.status || "NEW")
   const budget = lead.budget || lead.max_budget || lead.price
   return (
-    <div className="modal-backdrop open" role="dialog" aria-modal="true">
-      <div className="modal">
-        <div className="modal-head">
-          <h2>Lead: {name}</h2>
-          <button type="button" className="close-btn" onClick={onClose} aria-label="Inchide">x</button>
-        </div>
-        <div className="mini-list">
-          <div className="mini-item"><span>Status</span><strong>{statusLabel(status)}</strong></div>
-          <div className="mini-item"><span>Buget</span><strong>{budget ? money(budget) : "-"}</strong></div>
-          <div className="mini-item"><span>Telefon</span><strong>{lead.phone || "-"}</strong></div>
-          <div className="mini-item"><span>Email</span><strong>{lead.email || "-"}</strong></div>
-          <div className="mini-item"><span>Interes</span><strong>{lead.interest || lead.message || lead.property_title || "-"}</strong></div>
-        </div>
-        <div className="form-actions" style={{ marginTop: 14 }}>
-          <button type="button" className="btn" onClick={onClose}>Închide</button>
-          <button type="button" className="btn primary" disabled={saving} onClick={onFollowUp}>{saving ? "Se salvează..." : "Marchează follow-up"}</button>
-        </div>
+    <ModalShell title={`Lead: ${name}`} onClose={onClose}>
+      <div className="mini-list">
+        <div className="mini-item"><span>Status</span><strong>{statusLabel(status)}</strong></div>
+        <div className="mini-item"><span>Buget</span><strong>{budget ? money(budget) : "-"}</strong></div>
+        <div className="mini-item"><span>Telefon</span><strong>{lead.phone || "-"}</strong></div>
+        <div className="mini-item"><span>Email</span><strong>{lead.email || "-"}</strong></div>
+        <div className="mini-item"><span>Interes</span><strong>{lead.interest || lead.message || lead.property_title || "-"}</strong></div>
       </div>
-    </div>
+      <div className="form-actions" style={{ marginTop: 14 }}>
+        <button type="button" className="btn" onClick={onClose}>Închide</button>
+        <button type="button" className="btn primary" disabled={saving} onClick={onFollowUp}>{saving ? "Se salvează..." : "Marchează follow-up"}</button>
+      </div>
+    </ModalShell>
   )
 }
 
 function AgentDetailsModal({ agent, onClose }: { agent: Row; onClose: () => void }) {
   const name = agent.name || agent.full_name || agent.email || "Agent"
   return (
-    <div className="modal-backdrop open" role="dialog" aria-modal="true">
-      <div className="modal">
-        <div className="modal-head">
-          <h2>Agent: {name}</h2>
-          <button type="button" className="close-btn" onClick={onClose} aria-label="Inchide">x</button>
-        </div>
-        <div className="mini-list">
-          <div className="mini-item"><span>Email</span><strong>{agent.email || "-"}</strong></div>
-          <div className="mini-item"><span>Rol</span><strong>{agent.role || "agent"}</strong></div>
-          <div className="mini-item"><span>Listări</span><strong>{agent._computed_listings ?? agent.listings ?? "-"}</strong></div>
-          <div className="mini-item"><span>Lead-uri</span><strong>{agent._computed_leads ?? agent.leads ?? "-"}</strong></div>
-          <div className="mini-item"><span>Conversie</span><strong>{agent.conversion || "-"}</strong></div>
-        </div>
-        <div className="form-actions" style={{ marginTop: 14 }}>
-          <button type="button" className="btn primary" onClick={onClose}>Închide</button>
-        </div>
+    <ModalShell title={`Agent: ${name}`} onClose={onClose}>
+      <div className="mini-list">
+        <div className="mini-item"><span>Email</span><strong>{agent.email || "-"}</strong></div>
+        <div className="mini-item"><span>Rol</span><strong>{agent.role || "agent"}</strong></div>
+        <div className="mini-item"><span>Listări</span><strong>{agent._computed_listings ?? agent.listings ?? "-"}</strong></div>
+        <div className="mini-item"><span>Lead-uri</span><strong>{agent._computed_leads ?? agent.leads ?? "-"}</strong></div>
+        <div className="mini-item"><span>Conversie</span><strong>{agent.conversion || "-"}</strong></div>
       </div>
-    </div>
+      <div className="form-actions" style={{ marginTop: 14 }}>
+        <button type="button" className="btn primary" onClick={onClose}>Închide</button>
+      </div>
+    </ModalShell>
   )
 }
 

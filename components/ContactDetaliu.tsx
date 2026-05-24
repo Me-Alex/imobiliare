@@ -8,6 +8,8 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [slots, setSlots] = useState<any[]>([])
+  const [suggestedSlots, setSuggestedSlots] = useState<any[]>([])
+  const [slotsLive, setSlotsLive] = useState(false)
   const [mode, setMode] = useState<"slot" | "manual">("slot")
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
   const [form, setForm] = useState({ name: "", phone: "", email: "", requested_at: tomorrow, slot_id: "", notes: "" })
@@ -20,8 +22,12 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
     fetch(`/api/calendar-slots?property_id=${encodeURIComponent(propertyId)}`)
       .then((res) => res.ok ? res.json() : null)
       .then((body) => {
-        const next = Array.isArray(body?.slots) ? body.slots : []
+        const live = Boolean(body?.live)
+        const next = live && Array.isArray(body?.slots) ? body.slots : []
+        const suggestions = !live && Array.isArray(body?.suggestedSlots) ? body.suggestedSlots : []
+        setSlotsLive(live)
         setSlots(next)
+        setSuggestedSlots(suggestions)
         if (!next.length) setMode("manual")
         else setForm((prev) => ({ ...prev, slot_id: prev.slot_id || String(next[0]?.id || ""), requested_at: prev.requested_at }))
       })
@@ -31,6 +37,15 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
   }, [propertyId])
 
   const selectedSlot = useMemo(() => slots.find((slot) => String(slot.id) === String(form.slot_id)), [slots, form.slot_id])
+
+  const pickSuggested = (value: string) => {
+    const d = new Date(value)
+    const pad = (n: number) => String(n).padStart(2, "0")
+    const next = Number.isNaN(d.getTime())
+      ? value.slice(0, 16)
+      : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    setForm((prev) => ({ ...prev, requested_at: next }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -90,7 +105,7 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
           </div>
         ))}
 
-        {slots.length > 0 && (
+        {slotsLive && slots.length > 0 && (
           <div className="rounded-2xl border border-bg-surface bg-bg-secondary p-4">
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs font-black uppercase tracking-wider text-text-muted">Sloturi reale</p>
@@ -116,6 +131,23 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
 
         {mode === "manual" && (
           <div>
+            {!!suggestedSlots.length && (
+              <div className="mb-3 rounded-2xl border border-bg-surface bg-bg-secondary p-4">
+                <p className="text-xs font-black uppercase tracking-wider text-text-muted">Intervale recomandate (de confirmat)</p>
+                <div className="mt-3 grid gap-2">
+                  {suggestedSlots.slice(0, 4).map((slot) => (
+                    <button
+                      key={slot.value || slot.iso || slot.label}
+                      type="button"
+                      className="rounded-lg border border-bg-surface bg-bg-card px-3 py-2 text-left text-xs font-black text-text-primary hover:border-accent"
+                      onClick={() => pickSuggested(String(slot.value || slot.iso || ""))}
+                    >
+                      {slot.label || "Interval propus"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <label className="text-xs font-medium text-text-muted mb-1 block uppercase tracking-wider">Data preferata *</label>
             <input
               type="datetime-local"

@@ -8,12 +8,24 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
   const [offerPrice, setOfferPrice] = useState(Math.round(listPrice * 0.96))
   const [closingDays, setClosingDays] = useState(30)
   const [message, setMessage] = useState("")
+  const [nextPath, setNextPath] = useState("")
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setToken(data.session?.access_token || ""))
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setToken(session?.access_token || ""))
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    // Preserve the current page so /login can return the client back here.
+    try {
+      setNextPath(window.location.pathname + window.location.search + window.location.hash)
+    } catch {
+      setNextPath("")
+    }
+  }, [])
+
+  const loginHref = `/login?next=${encodeURIComponent(nextPath || "/portal")}`
 
   useEffect(() => {
     if (!token) return
@@ -32,7 +44,7 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
   async function submitOffer() {
     setMessage("")
     if (!token) {
-      setMessage("Autentifica-te in Portal pentru a trimite oferta in contul tau.")
+      window.location.href = loginHref
       return
     }
     const res = await fetch("/api/client/offers", {
@@ -63,7 +75,14 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
         <option value={30}>30 zile</option>
         <option value={45}>45 zile</option>
       </select>
-      <button onClick={submitOffer} className="mt-4 w-full rounded-xl bg-accent px-4 py-3 text-sm font-black text-bg-primary">Trimite oferta</button>
+      {token ? (
+        <button onClick={submitOffer} className="mt-4 w-full rounded-xl bg-accent px-4 py-3 text-sm font-black text-bg-primary">Trimite oferta</button>
+      ) : (
+        <a href={loginHref} className="mt-4 block w-full rounded-xl bg-accent px-4 py-3 text-center text-sm font-black text-bg-primary">
+          Autentifica-te pentru oferta
+        </a>
+      )}
+      {!token && <p className="mt-3 text-sm text-text-muted">Dupa autentificare revii automat pe aceasta pagina si poti trimite oferta.</p>}
       {message && <p className="mt-3 text-sm text-text-muted">{message}</p>}
     </div>
   )

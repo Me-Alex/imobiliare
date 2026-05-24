@@ -18,6 +18,8 @@ type Slot = {
   ends_at?: string
   agent_email?: string | null
   property?: { title?: string; city?: string } | null
+  kind?: "live" | "suggested"
+  score?: number
 }
 
 type Appointment = {
@@ -34,6 +36,8 @@ type Appointment = {
 export default function PortalAppointmentsConsole({ properties = [] }: { properties?: Property[] }) {
   const [token, setToken] = useState("")
   const [slots, setSlots] = useState<Slot[]>([])
+  const [suggestedSlots, setSuggestedSlots] = useState<Slot[]>([])
+  const [slotsLive, setSlotsLive] = useState(false)
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [selectedSlot, setSelectedSlot] = useState("")
   const [shortlistIds, setShortlistIds] = useState<string[]>([])
@@ -42,7 +46,8 @@ export default function PortalAppointmentsConsole({ properties = [] }: { propert
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const selected = useMemo(() => slots.find((slot) => slot.id === selectedSlot || slot.value === selectedSlot), [slots, selectedSlot])
+  const selectableSlots = useMemo(() => (slotsLive ? slots : suggestedSlots), [slotsLive, slots, suggestedSlots])
+  const selected = useMemo(() => selectableSlots.find((slot) => slot.id === selectedSlot || slot.value === selectedSlot), [selectableSlots, selectedSlot])
   const targetProperty = useMemo(() => properties.find((property) => property.id === targetPropertyId), [properties, targetPropertyId])
   const propertyOptions = useMemo(() => {
     const preferred = shortlistIds
@@ -90,10 +95,18 @@ export default function PortalAppointmentsConsole({ properties = [] }: { propert
         : Promise.resolve({})
 
       const [slotData, appointmentData] = await Promise.all([slotRequest, appointmentRequest])
-      const nextSlots = slotData.slots || []
-      setSlots(nextSlots)
+      const live = Boolean(slotData?.live)
+      const nextLiveSlots = Array.isArray(slotData?.slots) ? slotData.slots.map((slot: Slot) => ({ ...slot, kind: "live" as const })) : []
+      const nextSuggested = Array.isArray(slotData?.suggestedSlots)
+        ? slotData.suggestedSlots.map((slot: any) => ({ value: String(slot.value || ""), label: String(slot.label || ""), score: Number(slot.score || 0), kind: "suggested" as const } satisfies Slot))
+        : []
+
+      setSlotsLive(live)
+      setSlots(nextLiveSlots)
+      setSuggestedSlots(nextSuggested)
       setAppointments(appointmentData.appointments || [])
-      setSelectedSlot((current) => current || nextSlots[0]?.id || nextSlots[0]?.value || "")
+      const initial = live ? (nextLiveSlots[0]?.id || nextLiveSlots[0]?.value) : nextSuggested[0]?.value
+      setSelectedSlot((current) => current || initial || "")
     } finally {
       setLoading(false)
     }
@@ -112,7 +125,7 @@ export default function PortalAppointmentsConsole({ properties = [] }: { propert
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          slot_id: selected.id || null,
+          slot_id: selected.kind === "live" ? (selected.id || null) : null,
           property_id: targetProperty?.id || null,
           requested_at: selected.starts_at || selected.value,
           notes: [targetProperty ? `Proprietate: ${targetProperty.title}` : "", notes].filter(Boolean).join("\n"),
@@ -144,10 +157,12 @@ export default function PortalAppointmentsConsole({ properties = [] }: { propert
           <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h3 className="font-black text-text-primary">Sloturi pentru vizionari</h3>
-              <span className="text-xs font-bold uppercase text-text-muted">{slots.length} disponibile</span>
+              <span className="text-xs font-bold uppercase text-text-muted">
+                {slotsLive ? `${slots.length} reale` : `${suggestedSlots.length} recomandate`}
+              </span>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
-              {slots.slice(0, 8).map((slot) => {
+              {selectableSlots.slice(0, 8).map((slot) => {
                 const value = slot.id || slot.value || ""
                 const active = value === selectedSlot
                 return (
@@ -157,18 +172,31 @@ export default function PortalAppointmentsConsole({ properties = [] }: { propert
                     className={`rounded-lg border p-4 text-left transition ${active ? "border-accent bg-accent/10" : "border-bg-surface bg-bg-secondary hover:border-accent"}`}
                   >
                     <p className="font-black text-text-primary">{slot.label || formatDate(slot.starts_at || slot.value)}</p>
-                    <p className="mt-1 text-sm text-text-muted">{slot.property?.title || "Vizionare HQS"}{slot.property?.city ? `, ${slot.property.city}` : ""}</p>
-                    <p className="mt-3 text-xs font-bold uppercase text-accent">{slot.agent_email || "agent disponibil"}</p>
+                    <p className="mt-1 text-sm text-text-muted">
+                      {slot.kind === "suggested"
+                        ? "Interval recomandat (confirmare necesara)"
+                        : `${slot.property?.title || "Vizionare HQS"}${slot.property?.city ? `, ${slot.property.city}` : ""}`}
+                    </p>
+                    <p className="mt-3 text-xs font-bold uppercase text-accent">
+                      {slot.kind === "suggested" ? `scor ${slot.score || 0}/100` : (slot.agent_email || "agent disponibil")}
+                    </p>
                   </button>
                 )
               })}
             </div>
-            {!slots.length && <p className="text-sm text-text-muted">Nu exista sloturi disponibile momentan.</p>}
+            {slotsLive && !slots.length && <p className="text-sm text-text-muted">Nu exista sloturi reale disponibile momentan.</p>}
+            {!slotsLive && !suggestedSlots.length && <p className="text-sm text-text-muted">Nu exista sloturi disponibile momentan.</p>}
           </div>
 
           <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
             <h3 className="font-black text-text-primary">Solicita vizionare</h3>
-            <p className="mt-2 text-sm text-text-muted">{selected ? `${selected.label || formatDate(selected.starts_at || selected.value)} - ${selected.agent_email || "agent disponibil"}` : "Alege un slot disponibil."}</p>
+            <p className="mt-2 text-sm text-text-muted">
+              {selected
+                ? `${selected.label || formatDate(selected.starts_at || selected.value)}${selected.kind === "live" ? ` - ${selected.agent_email || "agent disponibil"}` : ""}`
+                : slotsLive
+                  ? "Alege un slot real disponibil."
+                  : "Alege un interval recomandat, apoi trimite cererea. Echipa HQS confirma ulterior."}
+            </p>
             {propertyOptions.length > 0 && (
               <>
                 <label className="mt-4 block text-xs font-bold uppercase text-text-muted">Proprietate</label>

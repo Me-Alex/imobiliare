@@ -1,8 +1,6 @@
 import Header from "@/components/Header"
 import Footer from "@/components/Footer"
-import ClientPropertyWorkspace from "@/components/ClientPropertyWorkspace"
-import PortalAppointmentsConsole from "@/components/PortalAppointmentsConsole"
-import ScaledClientPortal from "@/components/ScaledClientPortal"
+import ClientPortalShell from "@/components/ClientPortalShell"
 import { PUBLIC_PROPERTY_SELECT, supabase } from "@/lib/supabase"
 
 
@@ -36,5 +34,5 @@ async function getPortalProperties() {
 
 export default async function PortalPage() {
   const properties = await getPortalProperties()
-  return <main id="continut"><Header /><ScaledClientPortal /><PortalAppointmentsConsole properties={properties} /><ClientPropertyWorkspace properties={properties} mode="portal" /><Footer /></main>
+  return <main id="continut"><Header /><ClientPortalShell properties={properties} /><Footer /></main>
 }
