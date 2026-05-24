@@ -85,6 +85,7 @@ export default function ProprietatiSection({
   const [suggestions, setSuggestions] = useState<{ type: string; value: string }[]>([])
   const [suggestOpen, setSuggestOpen] = useState(false)
   const [queryFocused, setQueryFocused] = useState(false)
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
   const [sort, setSort] = useState<SortKey>(initialSort)
   const [filtruTip, setFiltruTip] = useState(TIPURI[initialType] ? initialType : "toate")
   const [zones, setZones] = useState(["Toate zonele", ...Array.from(new Set([initialZone, ...(initialZones || []), ...DEFAULT_ZONES])).filter((zone) => zone && zone !== "Toate zonele")])
@@ -117,6 +118,7 @@ export default function ProprietatiSection({
     if (term.length < 2) {
       setSuggestions([])
       setSuggestOpen(false)
+      setActiveSuggestionIndex(-1)
       return
     }
 
@@ -133,6 +135,7 @@ export default function ProprietatiSection({
             : []
           setSuggestions(next)
           setSuggestOpen(queryFocused && Boolean(next.length))
+          setActiveSuggestionIndex(next.length ? 0 : -1)
         })
         .catch(() => undefined)
     }, 200)
@@ -215,6 +218,13 @@ export default function ProprietatiSection({
     setSuprafataMin(0)
     setDoarFeatured(false)
     setSort("newest")
+  }
+
+  const applySuggestion = (item: { type: string; value: string }) => {
+    if (item.type === "zone") setFiltruZona(item.value)
+    else setQuery(item.value)
+    setSuggestOpen(false)
+    setActiveSuggestionIndex(-1)
   }
 
   const fetchProperties = async (nextPage: number, signal?: AbortSignal) => {
@@ -333,23 +343,43 @@ export default function ProprietatiSection({
                 }}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") setSuggestOpen(false)
+                  if (event.key === "ArrowDown" && suggestions.length) {
+                    event.preventDefault()
+                    setSuggestOpen(true)
+                    setActiveSuggestionIndex((index) => (index + 1) % suggestions.length)
+                  }
+                  if (event.key === "ArrowUp" && suggestions.length) {
+                    event.preventDefault()
+                    setSuggestOpen(true)
+                    setActiveSuggestionIndex((index) => (index <= 0 ? suggestions.length - 1 : index - 1))
+                  }
+                  if (event.key === "Enter" && suggestOpen && activeSuggestionIndex >= 0 && suggestions[activeSuggestionIndex]) {
+                    event.preventDefault()
+                    applySuggestion(suggestions[activeSuggestionIndex])
+                  }
                 }}
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={queryFocused && suggestOpen && suggestions.length > 0}
+                aria-controls="property-search-suggestions"
+                aria-activedescendant={activeSuggestionIndex >= 0 ? `property-suggestion-${activeSuggestionIndex}` : undefined}
                 className="h-12 w-full border border-bg-surface bg-bg-primary pl-11 pr-4 text-sm font-semibold text-text-primary placeholder:text-text-muted/70 focus:border-accent focus:outline-none"
                 placeholder="Cauta dupa zona, adresa sau descriere"
               />
               {queryFocused && suggestOpen && suggestions.length > 0 && (
-                <div className="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-md border border-bg-surface bg-bg-primary shadow-card">
-                  {suggestions.slice(0, 12).map((item) => (
+                <div id="property-search-suggestions" role="listbox" className="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-md border border-bg-surface bg-bg-primary shadow-card">
+                  {suggestions.slice(0, 12).map((item, index) => (
                     <button
                       key={`${item.type}:${item.value}`}
+                      id={`property-suggestion-${index}`}
+                      role="option"
+                      aria-selected={activeSuggestionIndex === index}
                       type="button"
                       onMouseDown={(event) => {
                         event.preventDefault()
-                        if (item.type === "zone") setFiltruZona(item.value)
-                        else setQuery(item.value)
-                        setSuggestOpen(false)
+                        applySuggestion(item)
                       }}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm font-semibold text-text-primary transition hover:bg-bg-secondary"
+                      className={`flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm font-semibold text-text-primary transition hover:bg-bg-secondary ${activeSuggestionIndex === index ? "bg-bg-secondary" : ""}`}
                     >
                       <span className="min-w-0 truncate">{item.value}</span>
                       <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.18em] text-text-muted">{item.type}</span>
@@ -366,6 +396,8 @@ export default function ProprietatiSection({
             </select>
             <button
               onClick={() => setShowFiltre(!showFiltre)}
+              aria-expanded={showFiltre}
+              aria-controls="property-advanced-filters"
               className={`inline-flex h-12 items-center justify-center gap-2 rounded-md border px-4 text-sm font-black transition ${showFiltre ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-primary text-text-primary hover:border-accent hover:text-accent"}`}
             >
               <SlidersHorizontal className="h-4 w-4" aria-hidden />
@@ -405,7 +437,7 @@ export default function ProprietatiSection({
           </div>
 
           {showFiltre && (
-            <div className="mt-5 grid gap-5 border-t border-bg-surface pt-5 md:grid-cols-3">
+            <div id="property-advanced-filters" className="mt-5 grid gap-5 border-t border-bg-surface pt-5 md:grid-cols-3">
               <Range label="Camere" value={filtruCamere === 0 ? "orice" : `${filtruCamere}+`} minLabel="Orice" maxLabel="6+" min={0} max={6} step={1} valueNumber={filtruCamere} onChange={setFiltruCamere} />
               <div>
                 <Range label="Buget maxim" value={pretMax === 0 ? "fara limita" : formatCurrency(pretMax)} minLabel="EUR 50k" maxLabel="EUR 1M+" min={50000} max={PRICE_CEILING} step={10000} valueNumber={pretMax || PRICE_CEILING} onChange={setPretMax} />

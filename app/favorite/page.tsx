@@ -8,6 +8,7 @@ export const metadata = {
   title: "Favorite | HQS Imobiliare",
   description: "Proprietatile salvate de tine intr-o lista scurta.",
   alternates: { canonical: "/favorite" },
+  robots: { index: false, follow: true },
 }
 
 export default async function FavoritePage() {

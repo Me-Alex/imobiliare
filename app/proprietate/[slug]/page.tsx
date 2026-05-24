@@ -31,11 +31,35 @@ type PropertyPageProps = { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: PropertyPageProps): Promise<Metadata> {
   const { slug } = await params
-  const { data } = await supabase.from("properties").select("title,description,city").eq("slug", slug).single()
-  if (!data) return { title: "Proprietate negasita" }
+  const { data } = await supabase
+    .from("properties")
+    .select("title,description,city,slug,status,cover_image_url,gallery_urls")
+    .eq("slug", slug)
+    .maybeSingle()
+  if (!data || data.status !== "PUBLISHED") {
+    return {
+      title: "Proprietate negasita",
+      robots: { index: false, follow: false },
+    }
+  }
+  const image = data.cover_image_url || (Array.isArray(data.gallery_urls) ? data.gallery_urls[0] : null) || "/images/hqs-hero.png"
+  const description = data.description?.slice(0, 160) || `Proprietate in ${data.city}`
   return {
     title: `${data.title} | HQS Imobiliare`,
-    description: data.description?.slice(0, 160) || `Proprietate in ${data.city}`,
+    description,
+    alternates: { canonical: `/proprietate/${data.slug}` },
+    openGraph: {
+      title: `${data.title} | HQS Imobiliare`,
+      description,
+      url: `/proprietate/${data.slug}`,
+      images: [{ url: image, width: 1200, height: 630, alt: data.title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${data.title} | HQS Imobiliare`,
+      description,
+      images: [image],
+    },
   }
 }
 

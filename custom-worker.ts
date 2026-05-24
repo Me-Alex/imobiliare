@@ -11,7 +11,10 @@ function setCloudflareRequestContext(env: Record<string, any>) {
 }
 
 export default {
-  fetch: handler.fetch,
+  async fetch(request: Request, env: Record<string, any>, ctx: any) {
+    setCloudflareRequestContext(env)
+    return handler.fetch(request, env, ctx)
+  },
   async scheduled(_event: any, env: Record<string, any>, ctx: any) {
     setCloudflareRequestContext(env)
     ctx.waitUntil(
@@ -25,4 +28,3 @@ export default {
 // Re-export is only required when using DO Queue / DO Tag Cache in the adapter.
 // @ts-ignore `.open-next/worker.js` is generated at build time.
 export { DOQueueHandler, DOShardedTagCache } from "./.open-next/worker.js"
-

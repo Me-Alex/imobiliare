@@ -6,6 +6,7 @@ import { zoneProfiles } from "@/lib/experience"
 export const metadata = {
   title: "Zone imobiliare | HQS Imobiliare",
   description: "Ghiduri locale pentru cele mai cautate zone din portofoliul HQS Imobiliare.",
+  alternates: { canonical: "/zone" },
 }
 
 export default function ZonePage() {

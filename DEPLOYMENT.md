@@ -3,7 +3,8 @@
 - Runtime target: Cloudflare Workers through OpenNext (`@opennextjs/cloudflare`).
 - Worker build: `npm run worker:build`.
 - Worker deploy: `npm run worker:deploy`.
-- Cloudflare config: `wrangler.jsonc` uses `main: .open-next/worker.js` and `assets.directory: .open-next/assets`.
+- Cloudflare config: `wrangler.jsonc` uses `main: custom-worker.ts` and `assets.directory: .open-next/assets`.
+- `custom-worker.ts` imports OpenNext's generated `.open-next/worker.js`, sets Cloudflare env bindings for every `fetch` request, and adds the scheduled queue processor. Do not point Wrangler directly at `.open-next/worker.js` unless the scheduled queue/runtime context wrapper is intentionally removed.
 - Legacy Pages build compatibility: `npm run cloudflare:build` / `npm run pages:build` builds OpenNext and prepares fallback static assets for the existing Pages project while production traffic is intended to run through the Worker.
 - Production builds use `next build --webpack`; this avoids Next 16 Turbopack server chunk loading failures in the Worker runtime.
 - Data/auth: Supabase. Admin access uses Supabase Auth Bearer tokens and `admin_roles` RBAC, not Basic Auth.

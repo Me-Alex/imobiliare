@@ -121,6 +121,8 @@ export default function Header() {
             className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-bg-surface bg-bg-card text-text-primary"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label={menuOpen ? "Inchide meniul" : "Deschide meniul"}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-nav"
           >
             {menuOpen ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
           </button>
@@ -128,7 +130,7 @@ export default function Header() {
       </div>
 
       {menuOpen && (
-        <div className="border-t border-bg-surface bg-bg-card px-4 py-4 text-sm lg:hidden">
+        <div id="mobile-nav" className="border-t border-bg-surface bg-bg-card px-4 py-4 text-sm lg:hidden">
           <nav className="grid gap-2">
             {[...links, { href: "/comparare", label: "Comparare" }, { href: "/favorite", label: "Favorite" }].map((link) => (
               <Link

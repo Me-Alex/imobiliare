@@ -23,6 +23,13 @@ export async function generateMetadata({ params }: ZonePageProps) {
   return {
     title: cms?.seo?.title || `${zone.name} | Ghid imobiliar HQS`,
     description: cms?.seo?.description || cms?.content?.body || zone.description,
+    alternates: { canonical: `/zone/${zone.slug}` },
+    openGraph: {
+      title: cms?.seo?.title || `${zone.name} | Ghid imobiliar HQS`,
+      description: cms?.seo?.description || cms?.content?.body || zone.description,
+      url: `/zone/${zone.slug}`,
+      images: [{ url: "/images/hqs-hero.png", width: 1200, height: 630, alt: zone.name }],
+    },
   }
 }
 

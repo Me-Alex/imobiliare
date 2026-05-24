@@ -67,6 +67,14 @@ async function hmacSha256Hex(secret: string, payload: string) {
   return Array.from(new Uint8Array(signature)).map((byte) => byte.toString(16).padStart(2, "0")).join("")
 }
 
+function timingSafeEqualHex(a: string, b: string) {
+  if (!/^[a-f0-9]+$/i.test(a) || !/^[a-f0-9]+$/i.test(b)) return false
+  if (a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
+}
+
 async function parseJsonResponse(response: Response) {
   const text = await response.text()
   const body = text ? JSON.parse(text) : {}
@@ -254,11 +262,16 @@ export async function createStripeInvoice(input: { clientEmail: string; clientNa
 export async function verifyStripeSignature(payload: string, header: string | null) {
   requireEnv(["STRIPE_WEBHOOK_SECRET"])
   if (!header) return false
-  const parts = Object.fromEntries(header.split(",").map((part) => {
+  const entries = header.split(",").map((part) => {
     const [key, ...rest] = part.split("=")
-    return [key, rest.join("=")]
-  }))
-  if (!parts.t || !parts.v1) return false
-  const expected = await hmacSha256Hex(getEnv("STRIPE_WEBHOOK_SECRET")!, `${parts.t}.${payload}`)
-  return expected === parts.v1
+    return [key, rest.join("=")] as const
+  })
+  const timestamp = entries.find(([key]) => key === "t")?.[1]
+  const signatures = entries.filter(([key]) => key === "v1").map(([, value]) => value)
+  if (!timestamp || !signatures.length) return false
+  const timestampSeconds = Number(timestamp)
+  if (!Number.isFinite(timestampSeconds)) return false
+  if (Math.abs(Math.floor(Date.now() / 1000) - timestampSeconds) > 300) return false
+  const expected = await hmacSha256Hex(getEnv("STRIPE_WEBHOOK_SECRET")!, `${timestamp}.${payload}`)
+  return signatures.some((signature) => timingSafeEqualHex(expected, signature))
 }
