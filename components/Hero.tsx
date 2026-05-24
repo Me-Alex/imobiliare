@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowRight, BadgeCheck, Building2, MapPin, Search, ShieldCheck } from "lucide-react"
 import type { Property } from "@/lib/supabase"
 import { formatCurrency } from "@/lib/format"
@@ -13,7 +14,7 @@ type CmsEntry = {
   }
 }
 
-const heroImage = "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=2200&q=88"
+const heroImage = "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1600&q=78"
 
 const zones = ["Toate zonele", "Bucuresti", "Floreasca", "Baneasa", "Pipera", "Dorobanti", "Aviatorilor", "Corbeanca"]
 const propertyTypes = [
@@ -37,7 +38,15 @@ export default function Hero({ entry, properties = [] }: { entry?: CmsEntry | nu
     <section className="relative isolate overflow-hidden bg-bg-primary">
       <div className="relative min-h-[760px] px-4 pb-12 pt-14 md:pt-20">
         <div className="absolute inset-0">
-          <img src={heroImage} alt="" className="h-full w-full object-cover" loading="eager" decoding="async" />
+          <Image
+            src={heroImage}
+            alt=""
+            fill
+            priority
+            fetchPriority="high"
+            sizes="100vw"
+            className="object-cover"
+          />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,12,10,0.9),rgba(8,12,10,0.7)_34%,rgba(8,12,10,0.18)_72%)]" />
           <div className="absolute inset-x-0 bottom-0 h-52 bg-gradient-to-t from-bg-primary via-bg-primary/70 to-transparent" />
         </div>
@@ -74,10 +83,10 @@ export default function Hero({ entry, properties = [] }: { entry?: CmsEntry | nu
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
               <Link
-                href="/login"
+                href="/contact"
                 className="inline-flex min-h-12 items-center justify-center rounded-md border border-white/28 bg-white/10 px-6 py-3 text-sm font-black text-white backdrop-blur transition hover:bg-white hover:text-text-primary"
               >
-                {entry?.content?.secondary_cta || "Cont client"}
+                {entry?.content?.secondary_cta || "Vorbeste cu un consultant"}
               </Link>
             </div>
           </div>

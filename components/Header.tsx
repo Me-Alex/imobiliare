@@ -84,6 +84,7 @@ export default function Header() {
                 key={link.href}
                 href={link.href}
                 prefetch={false}
+                aria-current={active ? "page" : undefined}
                 className={`rounded-md px-3 py-2 transition-colors ${active ? "bg-bg-secondary text-text-primary" : "hover:bg-bg-secondary hover:text-text-primary"}`}
               >
                 {link.label}
@@ -132,17 +133,21 @@ export default function Header() {
       {menuOpen && (
         <div id="mobile-nav" className="border-t border-bg-surface bg-bg-card px-4 py-4 text-sm lg:hidden">
           <nav className="grid gap-2">
-            {[...links, { href: "/comparare", label: "Comparare" }, { href: "/favorite", label: "Favorite" }].map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                prefetch={false}
-                className="rounded-md px-3 py-2 font-bold text-text-muted hover:bg-bg-secondary hover:text-text-primary"
-                onClick={() => setMenuOpen(false)}
-              >
-                {labelWithCount(link.href, link.label, favoriteCount, compareCount)}
-              </Link>
-            ))}
+            {[...links, { href: "/comparare", label: "Comparare" }, { href: "/favorite", label: "Favorite" }].map((link) => {
+              const active = pathname === link.href
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  prefetch={false}
+                  aria-current={active ? "page" : undefined}
+                  className={`rounded-md px-3 py-2 font-bold ${active ? "bg-bg-secondary text-text-primary" : "text-text-muted hover:bg-bg-secondary hover:text-text-primary"}`}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {labelWithCount(link.href, link.label, favoriteCount, compareCount)}
+                </Link>
+              )
+            })}
           </nav>
           <div className="mt-4 grid grid-cols-2 gap-2">
             <Link

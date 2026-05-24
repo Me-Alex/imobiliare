@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Mail, MapPin, Phone } from "lucide-react"
+import { siteConfig } from "@/lib/site-config"
 
 const nav = [
   { href: "/proprietati", label: "Proprietati" },
@@ -33,13 +34,13 @@ export default function Footer() {
         </nav>
 
         <div className="grid gap-3 text-sm text-text-muted">
-          <a href="tel:+40711993512" className="inline-flex items-center gap-3 font-bold hover:text-accent">
+          <a href={siteConfig.contact.phoneHref} className="inline-flex items-center gap-3 font-bold hover:text-accent">
             <Phone className="h-4 w-4 text-accent" aria-hidden />
-            +40711993512
+            {siteConfig.contact.phoneLabel}
           </a>
-          <a href="mailto:hqs.imobiliare@gmail.com" className="inline-flex items-center gap-3 font-bold hover:text-accent">
+          <a href={`mailto:${siteConfig.contact.email}`} className="inline-flex items-center gap-3 font-bold hover:text-accent">
             <Mail className="h-4 w-4 text-accent" aria-hidden />
-            hqs.imobiliare@gmail.com
+            {siteConfig.contact.email}
           </a>
           <p className="inline-flex items-center gap-3 font-bold">
             <MapPin className="h-4 w-4 text-accent" aria-hidden />
@@ -50,7 +51,7 @@ export default function Footer() {
 
       <div className="mx-auto mt-10 flex max-w-7xl flex-col gap-3 border-t border-bg-surface pt-5 text-xs font-semibold uppercase tracking-[0.16em] text-text-muted md:flex-row md:items-center md:justify-between">
         <p>&copy; {new Date().getFullYear()} HQS Imobiliare. Toate drepturile rezervate.</p>
-        <a href="https://wa.me/40711993512" className="hover:text-accent">WhatsApp</a>
+        <a href={siteConfig.contact.phoneHref.startsWith("tel:+") ? `https://wa.me/${siteConfig.contact.phoneHref.replace("tel:+", "")}` : siteConfig.contact.phoneHref} className="hover:text-accent">WhatsApp</a>
       </div>
     </footer>
   )

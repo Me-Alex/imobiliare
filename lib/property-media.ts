@@ -59,7 +59,10 @@ function normalizeGallery(value: Property['gallery_urls']) {
 }
 
 function isPublicImageUrl(value: unknown): value is string {
-  return typeof value === 'string' && /^https?:\/\//.test(value.trim())
+  if (typeof value !== 'string') return false
+  const next = value.trim()
+  if (/^https?:\/\//.test(next)) return true
+  return /^\/(?:images|uploads)\//.test(next)
 }
 
 function makeInlineVisual(title: string, accent: string, lineOne: string, lineTwo: string) {

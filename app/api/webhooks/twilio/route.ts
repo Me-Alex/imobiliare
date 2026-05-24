@@ -1,10 +1,14 @@
 import { getAdminClient, jsonError } from "@/lib/admin-api"
+import { requireTwilioWebhookSignature } from "@/lib/webhook-security"
 import { NextResponse } from "next/server"
 
 
 export async function POST(request: Request) {
   try {
-    const form = await request.formData()
+    const rawBody = await request.text()
+    const signatureError = await requireTwilioWebhookSignature(request, rawBody)
+    if (signatureError) return signatureError
+    const form = new URLSearchParams(rawBody)
     const sid = String(form.get("MessageSid") || form.get("SmsSid") || crypto.randomUUID())
     const status = String(form.get("MessageStatus") || form.get("SmsStatus") || "received")
     const payload = Object.fromEntries(form.entries())

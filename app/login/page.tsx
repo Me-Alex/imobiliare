@@ -6,6 +6,7 @@ export const metadata = {
   title: "Cont client | HQS Imobiliare",
   description: "Autentificare client HQS Imobiliare cu email, parola si resetare parola.",
   alternates: { canonical: "/login" },
+  robots: { index: false, follow: true },
 }
 
 export default function LoginPage() {

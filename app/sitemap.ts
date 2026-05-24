@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase"
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteConfig.url.replace(/\/$/, "")
   // /comparare si /favorite sunt pagini de stare locala (localStorage) — nu au continut indexabil
-  const routes = ['/', '/proprietati', '/zone', '/despre', '/contact', '/portal']
+  const routes = ['/', '/proprietati', '/zone', '/despre', '/contact']
   const now = new Date()
 
   const { data: properties } = await supabase

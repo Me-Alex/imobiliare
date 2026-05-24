@@ -7,8 +7,8 @@ import { siteConfig } from "@/lib/site-config"
 
 const info = [
   { icon: Building2, title: "Birou", val: siteConfig.contact.office },
-  { icon: Phone, title: "Telefon", val: siteConfig.contact.phoneLabel },
-  { icon: Mail, title: "Email", val: siteConfig.contact.email },
+  { icon: Phone, title: "Telefon", val: siteConfig.contact.phoneLabel, href: siteConfig.contact.phoneHref },
+  { icon: Mail, title: "Email", val: siteConfig.contact.email, href: `mailto:${siteConfig.contact.email}` },
   { icon: Clock3, title: "Program", val: siteConfig.contact.hours },
 ]
 
@@ -100,7 +100,11 @@ export default function Contact({ headingLevel = "h1" }: { headingLevel?: "h1" |
                   </div>
                   <div>
                     <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-accent">{item.title}</div>
-                    <div className="text-sm text-text-primary">{item.val}</div>
+                    {item.href ? (
+                      <a href={item.href} className="text-sm font-bold text-text-primary transition-colors hover:text-accent">{item.val}</a>
+                    ) : (
+                      <div className="text-sm text-text-primary">{item.val}</div>
+                    )}
                   </div>
                 </div>
               )})}
@@ -120,35 +124,35 @@ export default function Contact({ headingLevel = "h1" }: { headingLevel?: "h1" |
               <form onSubmit={handleSubmit} className="grid gap-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <Field label="Nume complet" required>
-                    <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    <input required name="name" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                       className="form-input" placeholder="Numele tau" />
                   </Field>
                   <Field label="Telefon" required>
-                    <input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    <input required name="tel" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
                       className="form-input" placeholder="07XX XXX XXX" />
                   </Field>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <Field label="Email">
-                    <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    <input name="email" type="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
                       className="form-input" placeholder="email@exemplu.ro" />
                   </Field>
                   <Field label="Interes">
-                    <select value={form.intent} onChange={(e) => setForm({ ...form, intent: e.target.value })} className="form-input">
+                    <select name="intent" value={form.intent} onChange={(e) => setForm({ ...form, intent: e.target.value })} className="form-input">
                       {intentOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                     </select>
                   </Field>
                 </div>
                 <Field label="Buget sau valoare estimata">
-                  <input value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })}
+                  <input name="budget" autoComplete="off" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })}
                     className="form-input" placeholder="Ex: 180.000 EUR sau 900 EUR/luna" />
                 </Field>
                 <Field label="Detalii utile">
-                  <textarea rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })}
+                  <textarea name="message" rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })}
                     className="form-input resize-none" placeholder="Zona, camere, termen, preferinte sau adresa proprietatii." />
                 </Field>
 
-                {error && <p className="text-sm text-red-500">{error}</p>}
+                {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
 
                 <button type="submit" disabled={loading}
                   className="inline-flex items-center justify-center gap-2 rounded-md bg-accent py-3 font-bold text-bg-primary shadow-lg shadow-accent/20 transition-opacity hover:opacity-90 disabled:opacity-60">

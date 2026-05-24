@@ -10,7 +10,7 @@ import { NextResponse } from "next/server"
 type Row = Record<string, any>
 
 export async function GET(request: Request) {
-  const auth = await requireAdminPermissionAsync(request, "leads")
+  const auth = await requireAdminPermissionAsync(request, "reports")
   if ("error" in auth) return auth.error
 
   try {
@@ -225,18 +225,40 @@ function permissionForAction(type: string) {
 }
 
 function filterPlatformData(data: Record<string, any>, session: any) {
-  const next: Record<string, any> = { ...data }
-  if (!hasAdminPermission(session, "clients")) next.client_profiles = []
-  if (!hasAdminPermission(session, "documents")) next.client_documents = []
-  if (!hasAdminPermission(session, "offers")) next.property_offers = []
-  if (!hasAdminPermission(session, "cms")) next.cms_entries = []
-  if (!hasAdminPermission(session, "zones")) next.zone_poi = []
-  if (!hasAdminPermission(session, "roles")) next.admin_roles = []
-  if (!hasAdminPermission(session, "audit")) next.admin_audit_log = []
-  if (!hasAdminPermission(session, "analytics")) next.market_data = []
-  if (!hasAdminPermission(session, "notifications")) {
-    next.client_notifications = []
-    next.admin_notification_outbox = []
+  const next: Record<string, any> = {
+    runtime_health: data.runtime_health,
+    _redacted: [] as string[],
   }
+  const allow = (key: string, permission: string) => {
+    if (hasAdminPermission(session, permission)) next[key] = data[key] || []
+    else {
+      next[key] = []
+      next._redacted.push(key)
+    }
+  }
+  allow("client_profiles", "clients")
+  allow("client_favorites", "clients")
+  allow("client_activity", "clients")
+  allow("client_notifications", "notifications")
+  allow("client_documents", "documents")
+  allow("admin_document_templates", "documents")
+  allow("admin_document_versions", "documents")
+  allow("property_offers", "offers")
+  allow("appointment_slots", "appointments")
+  allow("cms_entries", "cms")
+  allow("zone_poi", "zones")
+  allow("admin_roles", "roles")
+  allow("admin_audit_log", "audit")
+  allow("admin_notification_outbox", "notifications")
+  allow("property_media", "media")
+  allow("admin_provider_jobs", "integrations")
+  allow("admin_provider_events", "integrations")
+  allow("admin_invoices", "accounting")
+  allow("admin_commissions", "accounting")
+  allow("owner_reports", "owners")
+  allow("analytics_attribution", "analytics")
+  allow("market_data", "analytics")
+  allow("admin_bulk_imports", "bulk")
+  allow("calendar_sync_events", "appointments")
   return next
 }

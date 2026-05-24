@@ -10,15 +10,15 @@ interface PropertyGalleryProps {
   fallbackCover: string
   gallery: string[]
   title: string
-  totalCount?: number
+  priorityCover?: boolean
 }
 
-export default function PropertyGallery({ cover, fallbackCover, gallery, title, totalCount }: PropertyGalleryProps) {
+export default function PropertyGallery({ cover, fallbackCover, gallery, title, priorityCover = false }: PropertyGalleryProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   // toate imaginile: cover + gallery (deduplicat)
   const allImages = [cover, ...gallery.filter((img) => img !== cover)].filter(Boolean)
   const thumbnails = gallery.slice(0, 3)
-  const extraCount = (totalCount ?? allImages.length) - 1 - thumbnails.length
+  const extraCount = allImages.length - 1 - thumbnails.length
 
   const openLightbox = useCallback((index: number) => setLightboxIndex(index), [])
   const closeLightbox = useCallback(() => setLightboxIndex(null), [])
@@ -40,6 +40,8 @@ export default function PropertyGallery({ cover, fallbackCover, gallery, title, 
             fallbackSrc={fallbackCover}
             alt={title}
             fill
+            priority={priorityCover}
+            fetchPriority={priorityCover ? "high" : undefined}
             sizes="(min-width: 1024px) 760px, 100vw"
             className="object-cover transition duration-500 group-hover:scale-[1.02]"
           />

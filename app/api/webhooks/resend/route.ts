@@ -1,9 +1,12 @@
 import { getAdminClient, jsonError } from "@/lib/admin-api"
+import { requireSharedWebhookSecret } from "@/lib/webhook-security"
 import { NextResponse } from "next/server"
 
 
 export async function POST(request: Request) {
   try {
+    const signatureError = await requireSharedWebhookSecret(request, "RESEND_WEBHOOK_SECRET")
+    if (signatureError) return signatureError
     const payload = await request.json().catch(() => ({}))
     const eventId = String(payload.id || payload.data?.id || crypto.randomUUID())
     const eventType = String(payload.type || payload.event || "resend_event")

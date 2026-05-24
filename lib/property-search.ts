@@ -1,4 +1,4 @@
-import { supabase, type Property, type PropertyType } from "@/lib/supabase"
+import { PUBLIC_PROPERTY_SELECT, supabase, type Property, type PropertyType } from "@/lib/supabase"
 
 export const PROPERTY_SORTS = ["newest", "match", "priceAsc", "priceDesc", "areaDesc"] as const
 export type PropertySort = typeof PROPERTY_SORTS[number]
@@ -58,7 +58,7 @@ function sortParam(value: string | string[] | undefined | null): PropertySort {
 export function propertyFiltersFromSearchParams(searchParams?: Record<string, string | string[] | undefined>): PropertySearchFilters {
   return {
     q: String(first(searchParams?.q) || "").trim().slice(0, 120),
-    zone: String(first(searchParams?.zone) || "Toate zonele").trim() || "Toate zonele",
+    zone: String(first(searchParams?.zone) || first(searchParams?.zona) || "Toate zonele").trim() || "Toate zonele",
     type: String(first(searchParams?.tip) || first(searchParams?.type) || "toate").trim() || "toate",
     rooms: numberParam(searchParams?.rooms || searchParams?.camere),
     maxPrice: numberParam(searchParams?.budget || searchParams?.maxPrice || searchParams?.pretMax),
@@ -93,10 +93,7 @@ function normalizeTextSearch(value: string) {
 export async function searchPublishedProperties(filters: PropertySearchFilters): Promise<PropertySearchResult> {
   let query = supabase
     .from("properties")
-    .select(
-    "id,slug,title,description,price,currency,type,status,city,county,address,area_sqm,rooms,bathrooms,parking_spots,featured,cover_image_url,gallery_urls,published_at,created_at",
-    { count: "exact" }
-  )
+    .select(PUBLIC_PROPERTY_SELECT, { count: "exact" })
     .eq("status", "PUBLISHED")
 
   if (filters.type !== "toate") query = query.eq("type", filters.type as PropertyType)

@@ -44,6 +44,7 @@ export async function generateMetadata({ searchParams }: { searchParams?: Search
     title,
     description,
     alternates: { canonical: "/proprietati" },
+    robots: hasFilters ? { index: false, follow: true } : undefined,
   }
 }
 

@@ -47,6 +47,17 @@ function hqsImageLoader({ src, width, quality }: ImageLoaderProps) {
   }
 }
 
+function shouldUseCustomLoader(src: string) {
+  const trimmed = String(src || "").trim()
+  if (!trimmed || trimmed.startsWith("/") || trimmed.startsWith("data:")) return false
+  try {
+    const url = new URL(trimmed)
+    return url.hostname === "images.unsplash.com" || url.hostname.endsWith(".supabase.co")
+  } catch {
+    return false
+  }
+}
+
 export default function SmartPropertyImage({ src, fallbackSrc = "", ...props }: SmartPropertyImageProps) {
   const [currentSrc, setCurrentSrc] = useState(src)
 
@@ -57,7 +68,7 @@ export default function SmartPropertyImage({ src, fallbackSrc = "", ...props }: 
   return (
     <Image
       {...props}
-      loader={hqsImageLoader}
+      loader={shouldUseCustomLoader(currentSrc) ? hqsImageLoader : undefined}
       src={currentSrc}
       onError={() => {
         if (fallbackSrc && currentSrc !== fallbackSrc) setCurrentSrc(fallbackSrc)
@@ -65,4 +76,3 @@ export default function SmartPropertyImage({ src, fallbackSrc = "", ...props }: 
     />
   )
 }
-

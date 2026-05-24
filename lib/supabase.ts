@@ -61,6 +61,8 @@ export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
 export type PropertyType = 'APARTMENT' | 'HOUSE' | 'VILLA' | 'LAND' | 'COMMERCIAL'
 export type PropertyStatus = 'PUBLISHED' | 'DRAFT' | 'SOLD' | 'RENTED'
 
+export const PUBLIC_PROPERTY_SELECT = 'id,title,slug,description,price,currency,type,status,city,county,address,area_sqm,rooms,bathrooms,parking_spots,featured,cover_image_url,gallery_urls,published_at,created_at'
+
 export interface Property {
   id: string
   title: string

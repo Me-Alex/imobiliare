@@ -36,6 +36,9 @@ export async function POST(request: Request) {
   const parsed = await parseJsonBody(request, clientDocumentSchema)
   if ("error" in parsed) return parsed.error
   const body = parsed.data
+  if (body.url && /^https?:\/\//i.test(body.url)) {
+    return NextResponse.json({ error: "Linkurile externe nu sunt acceptate pentru documente client. Incarca documentul in bucketul securizat." }, { status: 400 })
+  }
   const checklist = body.checklist || [
     { label: "Fisier incarcat sau link document", done: Boolean(body.url) },
     { label: "Verificare identitate", done: false },

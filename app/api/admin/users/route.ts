@@ -17,6 +17,12 @@ function normalizePermissions(value: unknown): string[] {
   return []
 }
 
+const rolePermissions: Record<string, string[]> = {
+  admin: ["all"],
+  manager: ["properties", "leads", "appointments", "reports", "media", "documents", "accounting"],
+  agent: ["properties", "leads", "appointments"],
+}
+
 export async function POST(request: Request) {
   const auth = await requireAdminPermissionAsync(request, "roles")
   if ("error" in auth) return auth.error
@@ -25,12 +31,14 @@ export async function POST(request: Request) {
   const email = String(body.email || "").trim().toLowerCase()
   const password = String(body.password || "").trim()
   const role = String(body.role || "agent").trim().toLowerCase()
-  const permissions = normalizePermissions(body.permissions)
+  const requestedPermissions = normalizePermissions(body.permissions)
   const status = String(body.status || "ACTIVE").trim().toUpperCase()
 
   if (!email || !email.includes("@")) return jsonError("Email invalid", 400)
   if (password.length < 8) return jsonError("Parola trebuie sa aiba minim 8 caractere.", 400)
   if (!["admin", "manager", "agent"].includes(role)) return jsonError("Rol invalid (admin/manager/agent).", 400)
+  if (requestedPermissions.includes("all") && role !== "admin") return jsonError("Permisiunea all este permisa doar pentru rolul admin.", 403)
+  const permissions = requestedPermissions.length ? requestedPermissions : rolePermissions[role]
 
   try {
     const supabase = getAdminClient()
@@ -76,4 +84,3 @@ export async function POST(request: Request) {
     return jsonError(error.message || "Admin user creation failed")
   }
 }
-

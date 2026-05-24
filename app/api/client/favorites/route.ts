@@ -1,6 +1,7 @@
 import { favoriteRequestSchema, parseJsonBody } from "@/lib/api-validation"
 import { requireClient } from "@/lib/client-api"
 import { rateLimit } from "@/lib/rate-limit"
+import { PUBLIC_PROPERTY_SELECT } from "@/lib/supabase"
 import { NextResponse } from "next/server"
 
 
@@ -10,7 +11,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await session.supabase
     .from("client_favorites")
-    .select("*, property:properties(*)")
+    .select(`*, property:properties(${PUBLIC_PROPERTY_SELECT})`)
     .eq("user_id", session.user.id)
     .order("created_at", { ascending: false })
 

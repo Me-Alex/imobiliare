@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdminPermissionAsync(request, "reports")
+  const auth = await requireAdminPermissionAsync(request, "settings")
   if ("error" in auth) return auth.error
 
   try {
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = await requireAdminPermissionAsync(request, "reports")
+  const auth = await requireAdminPermissionAsync(request, "settings")
   if ("error" in auth) return auth.error
 
   try {
@@ -79,8 +79,9 @@ export async function DELETE(request: Request) {
     const type = url.searchParams.get("type") || ""
     const id = url.searchParams.get("id") || ""
     if (!id || !moduleTypes.has(type)) return jsonError("Parametri invalidi", 400)
-    const { error } = await auth.supabase.from("admin_modules").delete().eq("type", type).eq("id", id)
+    const { data, error } = await auth.supabase.from("admin_modules").delete().eq("type", type).eq("id", id).select("id,type").maybeSingle()
     if (error) return jsonError(error.message, 400)
+    if (!data) return jsonError("Intrarea nu exista sau a fost deja stearsa.", 404)
     return NextResponse.json({ deleted: true, type, id })
   } catch (error: any) {
     return jsonError(error.message || "Admin module delete failed")

@@ -12,7 +12,7 @@ import PropertyDecisionPanel from "@/components/PropertyDecisionPanel"
 import ProprietateCard from "@/components/ProprietateCard"
 import SmartPropertyImage from "@/components/SmartPropertyImage"
 import PropertyGallery from "@/components/PropertyGallery"
-import { supabase, type Property } from "@/lib/supabase"
+import { PUBLIC_PROPERTY_SELECT, supabase, type Property } from "@/lib/supabase"
 import { documentChecklist, estimateMonthlyPayment, zoneProfiles } from "@/lib/experience"
 import { buildOfferDraft, buildViewingSlots, calculateValuation } from "@/lib/complexity"
 import { getPropertyMedia } from "@/lib/property-media"
@@ -35,8 +35,9 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
     .from("properties")
     .select("title,description,city,slug,status,cover_image_url,gallery_urls")
     .eq("slug", slug)
+    .eq("status", "PUBLISHED")
     .maybeSingle()
-  if (!data || data.status !== "PUBLISHED") {
+  if (!data) {
     return {
       title: "Proprietate negasita",
       robots: { index: false, follow: false },
@@ -65,13 +66,18 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
 
 export default async function PaginaProprietate({ params }: PropertyPageProps) {
   const { slug } = await params
-  const { data } = await supabase.from("properties").select("*").eq("slug", slug).single()
+  const { data } = await supabase
+    .from("properties")
+    .select(PUBLIC_PROPERTY_SELECT)
+    .eq("slug", slug)
+    .eq("status", "PUBLISHED")
+    .maybeSingle()
   if (!data) notFound()
 
   const p = data as Property
   const { data: similare } = await supabase
     .from("properties")
-    .select("*")
+    .select(PUBLIC_PROPERTY_SELECT)
     .eq("status", "PUBLISHED")
     .eq("city", p.city)
     .neq("id", p.id)
@@ -180,7 +186,7 @@ export default async function PaginaProprietate({ params }: PropertyPageProps) {
               fallbackCover={media.fallbackCover}
               gallery={galerie}
               title={p.title}
-              totalCount={galerie.length + 1}
+              priorityCover
             />
 
             <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">

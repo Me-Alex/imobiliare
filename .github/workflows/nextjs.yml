@@ -3,6 +3,8 @@ name: Build Next.js for Cloudflare
 on:
   push:
     branches: ["main"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -66,3 +68,7 @@ jobs:
         run: npm run audit:prod
       - name: Build and validate Cloudflare Pages output
         run: npm run verify:cloudflare
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: E2E smoke tests
+        run: npm run test:e2e

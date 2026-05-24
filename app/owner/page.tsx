@@ -6,8 +6,9 @@ export const metadata = {
   title: "Portal proprietar | HQS Imobiliare",
   description: "Portal proprietar cu proprietati, rapoarte, documente si mandate filtrate pe emailul autentificat.",
   alternates: { canonical: "/owner" },
+  robots: { index: false, follow: true },
 }
 
 export default function OwnerPage() {
-  return <main><Header /><OwnerPortal /><Footer /></main>
+  return <main id="continut"><Header /><OwnerPortal /><Footer /></main>
 }

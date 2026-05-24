@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { scoreProperty, type BuyerProfile } from "@/lib/experience"
-import { supabase } from "@/lib/supabase"
+import { PUBLIC_PROPERTY_SELECT, supabase } from "@/lib/supabase"
 import { getClientSupabase, getClientToken } from "@/lib/client-api"
 import { rateLimit } from "@/lib/rate-limit"
 
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       if (viewedZone && profile.area === "orice") profile.area = viewedZone
     }
 
-    const { data, error } = await supabase.from("properties").select("*").eq("status", "PUBLISHED").limit(30)
+    const { data, error } = await supabase.from("properties").select(PUBLIC_PROPERTY_SELECT).eq("status", "PUBLISHED").limit(30)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
     const recommendations = (data || [])

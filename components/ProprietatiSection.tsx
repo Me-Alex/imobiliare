@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import type { ReactNode } from "react"
 import { BookmarkPlus, Heart, RotateCcw, Search, SlidersHorizontal, Target } from "lucide-react"
 import type { Property } from "@/lib/supabase"
@@ -75,6 +76,7 @@ export default function ProprietatiSection({
   initialSort = "newest",
   initialZones = [],
 }: Props) {
+  const router = useRouter()
   const [proprietati, setProprietati] = useState<Property[]>(initialProperties)
   const [loading, setLoading] = useState(initialProperties.length === 0)
   const [error, setError] = useState("")
@@ -100,6 +102,7 @@ export default function ProprietatiSection({
   const [buyerIntent, setBuyerIntent] = useState<BuyerIntent>(DEFAULT_BUYER_INTENT)
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([])
   const didHydrate = useRef(false)
+  const visibleSuggestions = suggestions.slice(0, 12)
 
   useEffect(() => {
     fetch("/api/search/suggestions")
@@ -166,6 +169,8 @@ export default function ProprietatiSection({
 
     const controller = new AbortController()
     const timeout = window.setTimeout(async () => {
+      const params = buildSearchParams(1)
+      router.replace(params.toString() ? `/proprietati?${params.toString()}` : "/proprietati", { scroll: false })
       setLoading(true)
       setError("")
       setPage(1)
@@ -185,7 +190,7 @@ export default function ProprietatiSection({
       window.clearTimeout(timeout)
       controller.abort()
     }
-  }, [query, sort, filtruTip, filtruZona, filtruCamere, pretMax, suprafataMin, doarFeatured])
+  }, [query, sort, filtruTip, filtruZona, filtruCamere, pretMax, suprafataMin, doarFeatured, router])
 
   const filtered = useMemo(() => {
     return [...proprietati]
@@ -227,19 +232,23 @@ export default function ProprietatiSection({
     setActiveSuggestionIndex(-1)
   }
 
+  const buildSearchParams = (nextPage: number) => {
+    const params = new URLSearchParams()
+    if (query.trim()) params.set("q", query.trim())
+    if (sort !== "newest") params.set("sort", sort)
+    if (filtruTip !== "toate") params.set("tip", filtruTip)
+    if (filtruZona && filtruZona !== "Toate zonele") params.set("zone", filtruZona)
+    if (filtruCamere > 0) params.set("rooms", String(filtruCamere))
+    if (pretMax > 0) params.set("maxPrice", String(pretMax))
+    if (suprafataMin > 0) params.set("minArea", String(suprafataMin))
+    if (doarFeatured) params.set("featured", "1")
+    if (nextPage > 1) params.set("page", String(nextPage))
+    params.set("pageSize", String(initialPageSize))
+    return params
+  }
+
   const fetchProperties = async (nextPage: number, signal?: AbortSignal) => {
-    const params = new URLSearchParams({
-      q: query,
-      sort,
-      tip: filtruTip,
-      zone: filtruZona,
-      rooms: String(filtruCamere),
-      maxPrice: String(pretMax),
-      minArea: String(suprafataMin),
-      featured: doarFeatured ? "1" : "0",
-      page: String(nextPage),
-      pageSize: String(initialPageSize),
-    })
+    const params = buildSearchParams(nextPage)
     const res = await fetch(`/api/properties/search?${params.toString()}`, { signal })
     const body = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(body?.error || "Cautarea proprietatilor a esuat.")
@@ -343,19 +352,19 @@ export default function ProprietatiSection({
                 }}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") setSuggestOpen(false)
-                  if (event.key === "ArrowDown" && suggestions.length) {
+                  if (event.key === "ArrowDown" && visibleSuggestions.length) {
                     event.preventDefault()
                     setSuggestOpen(true)
-                    setActiveSuggestionIndex((index) => (index + 1) % suggestions.length)
+                    setActiveSuggestionIndex((index) => (index + 1) % visibleSuggestions.length)
                   }
-                  if (event.key === "ArrowUp" && suggestions.length) {
+                  if (event.key === "ArrowUp" && visibleSuggestions.length) {
                     event.preventDefault()
                     setSuggestOpen(true)
-                    setActiveSuggestionIndex((index) => (index <= 0 ? suggestions.length - 1 : index - 1))
+                    setActiveSuggestionIndex((index) => (index <= 0 ? visibleSuggestions.length - 1 : index - 1))
                   }
-                  if (event.key === "Enter" && suggestOpen && activeSuggestionIndex >= 0 && suggestions[activeSuggestionIndex]) {
+                  if (event.key === "Enter" && suggestOpen && activeSuggestionIndex >= 0 && visibleSuggestions[activeSuggestionIndex]) {
                     event.preventDefault()
-                    applySuggestion(suggestions[activeSuggestionIndex])
+                    applySuggestion(visibleSuggestions[activeSuggestionIndex])
                   }
                 }}
                 role="combobox"
@@ -368,7 +377,7 @@ export default function ProprietatiSection({
               />
               {queryFocused && suggestOpen && suggestions.length > 0 && (
                 <div id="property-search-suggestions" role="listbox" className="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-md border border-bg-surface bg-bg-primary shadow-card">
-                  {suggestions.slice(0, 12).map((item, index) => (
+                  {visibleSuggestions.map((item, index) => (
                     <button
                       key={`${item.type}:${item.value}`}
                       id={`property-suggestion-${index}`}
@@ -423,6 +432,7 @@ export default function ProprietatiSection({
               <button
                 key={value}
                 onClick={() => setFiltruTip(value)}
+                aria-pressed={filtruTip === value}
                 className={`shrink-0 rounded-md border px-3.5 py-2 text-sm font-black transition ${filtruTip === value ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-primary text-text-muted hover:border-accent hover:text-accent"}`}
               >
                 {label}
@@ -430,6 +440,7 @@ export default function ProprietatiSection({
             ))}
             <button
               onClick={() => setDoarFeatured(!doarFeatured)}
+              aria-pressed={doarFeatured}
               className={`shrink-0 rounded-md border px-3.5 py-2 text-sm font-black transition ${doarFeatured ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-primary text-text-muted hover:border-accent hover:text-accent"}`}
             >
               Selectate HQS
