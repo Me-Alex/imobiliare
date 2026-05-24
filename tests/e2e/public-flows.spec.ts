@@ -21,3 +21,12 @@ test("admin login page accepts username alias", async ({ page }) => {
   await expect(page).toHaveURL(/\/admin\/dashboard/)
   await expect(page.getByText("1@2.com")).toBeVisible()
 })
+
+test("admin login form submits with Enter from password field", async ({ page }) => {
+  await page.goto("/admin/login")
+  await page.getByRole("textbox", { name: "Email sau username admin" }).fill("admin")
+  await page.getByRole("textbox", { name: "Parola" }).fill("1234")
+  await page.getByRole("textbox", { name: "Parola" }).press("Enter")
+  await expect(page).toHaveURL(/\/admin\/dashboard/)
+  await expect(page.getByText("1@2.com")).toBeVisible()
+})

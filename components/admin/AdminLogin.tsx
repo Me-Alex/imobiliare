@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { supabase } from "@/lib/supabase"
 
 const loginAliases: Record<string, string> = {
@@ -26,7 +26,9 @@ export default function AdminLogin() {
     })
   }, [])
 
-  const submit = async () => {
+  const submit = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault()
+    if (busy || !email.trim() || (mode === "login" && password.length < 1)) return
     setBusy(true)
     setError("")
     setMessage("")
@@ -65,15 +67,17 @@ export default function AdminLogin() {
           </div>
         </section>
         <section className="rounded-2xl border border-bg-surface bg-bg-card p-6 shadow-card">
-          <div className="mb-6 flex gap-2">
-            <button onClick={() => setMode("login")} className={`rounded-lg px-4 py-2 text-sm font-black ${mode === "login" ? "bg-accent text-bg-primary" : "bg-bg-secondary text-text-muted"}`}>Login</button>
-            <button onClick={() => setMode("reset")} className={`rounded-lg px-4 py-2 text-sm font-black ${mode === "reset" ? "bg-accent text-bg-primary" : "bg-bg-secondary text-text-muted"}`}>Reset</button>
-          </div>
-          <label className="block"><span className="mb-2 block text-xs font-black uppercase text-text-muted">Email sau username admin</span><input className="form-input" type="text" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin" /></label>
-          {mode === "login" && <label className="mt-4 block"><span className="mb-2 block text-xs font-black uppercase text-text-muted">Parola</span><input className="form-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="parola admin" /></label>}
-          <button disabled={busy || !email.trim() || (mode === "login" && password.length < 1)} onClick={submit} className="mt-6 h-12 w-full rounded-lg bg-accent px-4 text-sm font-black text-bg-primary disabled:opacity-50">{busy ? "Se proceseaza..." : mode === "login" ? "Intra in admin" : "Trimite resetare"}</button>
-          {error && <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm font-bold text-rose-500">{error}</p>}
-          {message && <p className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm font-bold text-emerald-500">{message}</p>}
+          <form onSubmit={submit}>
+            <div className="mb-6 flex gap-2">
+              <button type="button" onClick={() => setMode("login")} className={`rounded-lg px-4 py-2 text-sm font-black ${mode === "login" ? "bg-accent text-bg-primary" : "bg-bg-secondary text-text-muted"}`}>Login</button>
+              <button type="button" onClick={() => setMode("reset")} className={`rounded-lg px-4 py-2 text-sm font-black ${mode === "reset" ? "bg-accent text-bg-primary" : "bg-bg-secondary text-text-muted"}`}>Reset</button>
+            </div>
+            <label className="block"><span className="mb-2 block text-xs font-black uppercase text-text-muted">Email sau username admin</span><input className="form-input" name="email" type="text" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin" /></label>
+            {mode === "login" && <label className="mt-4 block"><span className="mb-2 block text-xs font-black uppercase text-text-muted">Parola</span><input className="form-input" name="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="parola admin" /></label>}
+            <button type="submit" disabled={busy || !email.trim() || (mode === "login" && password.length < 1)} className="mt-6 h-12 w-full rounded-lg bg-accent px-4 text-sm font-black text-bg-primary disabled:opacity-50">{busy ? "Se proceseaza..." : mode === "login" ? "Intra in admin" : "Trimite resetare"}</button>
+            {error && <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm font-bold text-rose-500">{error}</p>}
+            {message && <p className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm font-bold text-emerald-500">{message}</p>}
+          </form>
         </section>
       </div>
     </main>
