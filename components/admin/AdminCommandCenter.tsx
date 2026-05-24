@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
@@ -11,6 +11,7 @@ import { apiJson, confirmRisk, csv, date, defaultCore, defaultModules, matches, 
 
 const allNavItems = nav.flatMap((group) => group.items.map((item) => ({ ...item, group: group.group })))
 const viewIds = new Set(allNavItems.map((item) => item.id))
+const ADMIN_DEMO_MODE = process.env.NEXT_PUBLIC_ADMIN_DEMO_MODE === "true"
 const hqsNavGroups: Array<{ group: string; items: Array<{ id: View; label: string; mark: string }> }> = [
   {
     group: "Workspace",
@@ -360,7 +361,7 @@ export default function AdminCommandCenter() {
 
           <div className="sidebar-card">
             <h4>Scor HQS AI</h4>
-            <p>Primești sugestii despre proprietățile cu șanse mari de conversie și lead-urile care trebuie sunate azi.</p>
+            <p>Primești sugestii despre Proprietățile cu șanse mari de conversie și lead-urile care trebuie sunate azi.</p>
             <button type="button" className="btn primary small" onClick={() => navigateView("overview", "")}>Generează sumar</button>
           </div>
         </aside>
@@ -373,14 +374,14 @@ export default function AdminCommandCenter() {
 
             <label className="searchbar" aria-label="Caută în admin">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-              <input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="Caută proprietăți, clienți, zone..." />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="Caută Proprietăți, clienți, zone..." />
             </label>
 
             <div className="top-actions">
               <button type="button" className="icon-btn" title="Schimbă tema" onClick={() => setDarkMode((enabled) => !enabled)}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg>
               </button>
-              <button type="button" className="icon-btn" title="Notificări" onClick={() => showToast("Ai notificări operaționale: lead-uri noi, vizionări și listări incomplete.")}>
+              <button type="button" className="icon-btn" title="Notificări" onClick={() => showToast("Ai notificări operaționale: lead-uri noi, Vizionări și listări incomplete.")}>
                 <span className="dot" />
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 7-3 7h18s-3 0-3-7" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
               </button>
@@ -425,7 +426,7 @@ function HqsPropertiesView({ filtered, query, saving, createProperty, patchPrope
   const [zone, setZone] = useState("all")
   const [type, setType] = useState("all")
   const [modal, setModal] = useState<Row | null | false>(false)
-  const source = filtered.properties.length ? filtered.properties : (query ? [] : demoProperties)
+  const source = filtered.properties
   const zones = Array.from(new Set<string>(source.map(propertyZone).filter(Boolean))).sort()
   const visible = source.filter((property: Row) => {
     const text = [property.title, property.city, property.zone, property.type, property.description, property.address].join(" ").toLowerCase()
@@ -479,7 +480,7 @@ function HqsPropertiesView({ filtered, query, saving, createProperty, patchPrope
                 </div>
               </div>
             </article>
-          )) : <div className="empty">Nu există proprietăți pentru filtrele alese.</div>}
+          )) : <div className="empty">Nu există Proprietăți pentru filtrele alese.</div>}
         </div>
       </section>
       {modal !== false && <PropertyModal property={modal} saving={saving === "create-property" || Boolean(modal?.id && saving === `property-${modal.id}`)} onClose={() => setModal(false)} onSubmit={saveProperty} />}
@@ -492,7 +493,7 @@ function HqsLeadsView({ filtered, query, saving, followUp, createLead, showToast
   const [status, setStatus] = useState("all")
   const [modalOpen, setModalOpen] = useState(false)
   const [selected, setSelected] = useState<Row | null>(null)
-  const source = filtered.leads.length ? filtered.leads : (query ? [] : demoPriorityLeads)
+  const source = filtered.leads
   const visible = source.filter((lead: Row) => Object.values(lead).join(" ").toLowerCase().includes(search.toLowerCase().trim()) && (status === "all" || String(lead.status || "").toUpperCase() === status))
   return (
     <>
@@ -524,7 +525,7 @@ function HqsLeadsView({ filtered, query, saving, followUp, createLead, showToast
 }
 
 function HqsPipelineView({ filtered, platformAction, saving, showToast, reload }: any) {
-  const offers = filtered.offers.length ? filtered.offers : demoOffers
+  const offers = filtered.offers
   const stages = [
     { name: "Shortlist", statuses: ["SHORTLIST", "NEW", "SUBMITTED", "PENDING"] },
     { name: "Vizionare", statuses: ["VIEWING", "REQUESTED", "CONFIRMED"] },
@@ -551,12 +552,12 @@ function HqsPipelineView({ filtered, platformAction, saving, showToast, reload }
 
 function HqsCalendarView({ filtered, platform, patchAppointment, createAppointment, saving, showToast }: any) {
   const [modalOpen, setModalOpen] = useState(false)
-  const tours = filtered.appointments.length ? filtered.appointments : demoTours
+  const tours = filtered.appointments
   const calendarItems = calendarCells(new Date(), [...tours, ...adminRows(platform.appointment_slots)])
   const monthLabel = capitalize(new Date().toLocaleDateString("ro-RO", { month: "long", year: "numeric" }))
   return (
     <>
-      <HqsPageHead eyebrow="Programări" title="Vizionări" body="Calendar pentru vizionări, evaluări, întâlniri la notar și follow-up-uri." action={<button type="button" className="btn dark" onClick={() => setModalOpen(true)}>Programează vizionare</button>} />
+      <HqsPageHead eyebrow="Programări" title="Vizionări" body="Calendar pentru Vizionări, evaluări, întâlniri la notar și follow-up-uri." action={<button type="button" className="btn dark" onClick={() => setModalOpen(true)}>Programează vizionare</button>} />
       <div className="calendar-grid">
         <section className="panel">
           <div className="panel-head"><div><h2>{monthLabel}</h2><p>Program operațional HQS</p></div><span className="tag info">Europe/Bucharest</span></div>
@@ -579,7 +580,7 @@ function HqsCalendarView({ filtered, platform, patchAppointment, createAppointme
 function HqsAgentsView({ filtered, core, saveModule, saving, showToast }: any) {
   const [modalOpen, setModalOpen] = useState(false)
   const [selected, setSelected] = useState<Row | null>(null)
-  const agents = filtered.teamUsers.length ? filtered.teamUsers : (filtered.roles.length ? filtered.roles : demoAgents)
+  const agents = filtered.teamUsers.length ? filtered.teamUsers : filtered.roles
   return (
     <>
       <HqsPageHead eyebrow="Echipă" title="Agenți HQS" body="Monitorizează portofoliu, lead-uri active, conversii și încărcarea fiecărui agent." action={<button type="button" className="btn dark" onClick={() => setModalOpen(true)}>Invită agent</button>} />
@@ -599,18 +600,18 @@ function HqsAgentsView({ filtered, core, saveModule, saving, showToast }: any) {
 
 function HqsReportsView({ core, modules, platform, metrics, report, exportServer }: any) {
   const attribution = adminRows(platform.analytics_attribution)
-  const views = Number(report.views || attribution.length || 8700)
-  const contacts = core.leads.length || 326
-  const conversion = core.leads.length ? Math.round((metrics.scheduledTours.length / Math.max(core.leads.length, 1)) * 100) : 28
-  const commission = Math.round(Number(metrics.pipeline || metrics.portfolio || 410000) * 0.03)
+  const views = Number(report.views || attribution.length || 0)
+  const contacts = core.leads.length
+  const conversion = core.leads.length ? Math.round((metrics.scheduledTours.length / Math.max(core.leads.length, 1)) * 100) : 0
+  const commission = Math.round(Number(metrics.pipeline || metrics.portfolio || 0) * 0.03)
   const sources = grouped(attribution, "source")
   const zones = grouped(core.properties, "city")
   const sourceItems = Object.keys(sources).length ? Object.entries(sources).map(([name, value]) => [name, `${value}`]) : [["Website hqsimobiliare.ro", "44%"], ["Recomandări", "24%"], ["Social media", "18%"], ["Portaluri imobiliare", "14%"]]
-  const zoneItems = Object.keys(zones).length ? Object.entries(zones).map(([name, value]) => [name, `${value} proprietăți`]) : [["Aviatorilor", "92 lead-uri"], ["Floreasca", "76 lead-uri"], ["Pipera", "64 lead-uri"], ["Dorobanți", "51 lead-uri"]]
+  const zoneItems = Object.keys(zones).length ? Object.entries(zones).map(([name, value]) => [name, `${value} Proprietăți`]) : [["Aviatorilor", "92 lead-uri"], ["Floreasca", "76 lead-uri"], ["Pipera", "64 lead-uri"], ["Dorobanți", "51 lead-uri"]]
   return (
     <>
       <HqsPageHead eyebrow="Analytics" title="Rapoarte" body="Indicatori pentru listări, conversii, canale de lead și valoare estimată a pipeline-ului." action={<button type="button" className="btn dark" onClick={() => exportServer("json")}>Descarcă raport</button>} />
-      <div className="kpi-grid"><HqsKpi marker="CH" trend="+31%" label="Vizualizări listări" value={compact(views)} /><HqsKpi marker="CALL" trend="+16%" label="Contacte primite" value={contacts} /><HqsKpi marker="OK" trend="+12%" label="Rată conversie vizionări" value={`${conversion}%`} /><HqsKpi marker="EUR" trend="+7%" label="Comision estimat" value={money(commission)} /></div>
+      <div className="kpi-grid"><HqsKpi marker="CH" trend="+31%" label="Vizualizări listări" value={compact(views)} /><HqsKpi marker="CALL" trend="+16%" label="Contacte primite" value={contacts} /><HqsKpi marker="OK" trend="+12%" label="Rată conversie Vizionări" value={`${conversion}%`} /><HqsKpi marker="EUR" trend="+7%" label="Comision estimat" value={money(commission)} /></div>
       <div className="grid-2">
         <section className="panel"><div className="panel-head"><div><h2>Canale lead</h2><p>Distribuție ultimele 30 zile</p></div></div><div className="mini-list">{sourceItems.slice(0, 5).map(([name, value]) => <div className="mini-item" key={name}><span>{name}</span><strong>{value}</strong></div>)}</div></section>
         <section className="panel"><div className="panel-head"><div><h2>Top zone după interes</h2><p>Proprietăți, lead-uri și cerere activă</p></div></div><div className="mini-list">{zoneItems.slice(0, 5).map(([name, value]) => <div className="mini-item" key={name}><span>{name}</span><strong>{value}</strong></div>)}</div></section>
@@ -631,7 +632,7 @@ function HqsSettingsView({ modules, saveSettings, saving, showToast }: any) {
   const update = (key: string, value: string | number) => setForm((prev) => ({ ...prev, [key]: value }))
   return (
     <>
-      <HqsPageHead eyebrow="Configurație" title="Setări admin" body="Setări pentru brand, notificări, reguli de publicare, roluri și preferințe operaționale." action={<button type="button" className="btn dark" disabled={saving === "settings"} onClick={() => saveSettings(form)}>Salvează setări</button>} />
+      <HqsPageHead eyebrow="Configurație" title="Setări admin" body="Setări pentru brand, notificări, reguli de publicare, roluri și preferințe operaționale." action={<button type="button" className="btn dark" disabled={saving === "settings"} onClick={() => saveSettings(form)}>Salvează Setări</button>} />
       <div className="settings-grid">
         <section className="panel">
           <div className="panel-head"><div><h2>Brand & companie</h2><p>Informații afișate intern</p></div></div>
@@ -640,7 +641,7 @@ function HqsSettingsView({ modules, saveSettings, saving, showToast }: any) {
             <div className="form-row"><label>Website</label><input value={form.website || "https://hqsimobiliare.ro"} onChange={(event) => update("website", event.target.value)} /></div>
             <div className="form-row"><label>Focus comercial</label><select value={form.focus || "Proprietăți premium în București"} onChange={(event) => update("focus", event.target.value)}><option>Proprietăți premium în București</option><option>Închirieri corporate</option><option>Vânzări rezidențiale</option><option>Investiții imobiliare</option></select></div>
             <div className="form-row"><label>Comision standard (%)</label><input type="number" value={form.commission || 3} onChange={(event) => update("commission", Number(event.target.value))} /></div>
-            <div className="form-row"><label>Notă internă</label><textarea value={form.notes || "Prioritate pe proprietăți verificate, comparații clare și vizionări fără presiune inutilă."} onChange={(event) => update("notes", event.target.value)} /></div>
+            <div className="form-row"><label>Notă internă</label><textarea value={form.notes || "Prioritate pe Proprietăți verificate, comparații clare și Vizionări fără presiune inutilă."} onChange={(event) => update("notes", event.target.value)} /></div>
           </div>
         </section>
         <section className="panel">
@@ -665,7 +666,7 @@ function HqsLoadingState() {
         <div className="loading-spinner" />
         <p className="eyebrow">HQS Admin</p>
         <h1>Se încarcă panoul operațional</h1>
-        <p style={{ marginTop: 8, color: "var(--hqs-muted)" }}>Citim simultan CRM, proprietăți, programări, module și rapoarte.</p>
+        <p style={{ marginTop: 8, color: "var(--hqs-muted)" }}>Citim simultan CRM, Proprietăți, programări, module și rapoarte.</p>
       </div>
     </section>
   )
@@ -674,20 +675,20 @@ function HqsLoadingState() {
 function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, setView, exportServer, exportLocalCsv, reload, followUp, patchAppointment, patchProperty, createProperty, showToast }: any) {
   const [quickPropertyOpen, setQuickPropertyOpen] = useState(false)
   const docs = [...modules.documents, ...((platform.client_documents || []) as Row[])]
-  const publishedRate = core.properties.length ? Math.round((metrics.published.length / core.properties.length) * 100) : 77
-  const contactedRate = core.leads.length ? Math.round((core.leads.filter((lead: Row) => !["NEW", "LOST"].includes(String(lead.status || ""))).length / core.leads.length) * 100) : 84
-  const score = clamp(Math.round((publishedRate + contactedRate + clamp(metrics.scheduledTours.length * 12, 40, 100)) / 3), 45, 98)
+  const publishedRate = core.properties.length ? Math.round((metrics.published.length / core.properties.length) * 100) : 0
+  const contactedRate = core.leads.length ? Math.round((core.leads.filter((lead: Row) => !["NEW", "LOST"].includes(String(lead.status || ""))).length / core.leads.length) * 100) : 0
+  const score = core.properties.length || core.leads.length || metrics.scheduledTours.length ? clamp(Math.round((publishedRate + contactedRate + clamp(metrics.scheduledTours.length * 12, 0, 100)) / 3), 0, 98) : 0
   const scoreStyle = { "--hqs-score": `${score}%` } as CSSProperties
   const chartData = weeklyChart(core.leads, core.appointments)
-  const priorityLeads = core.leads.length ? core.leads.slice(0, 4) : demoPriorityLeads
-  const publishedLabel = core.properties.length ? `${metrics.published.length} / ${core.properties.length}` : "12 / 15"
-  const activeLeadCount = metrics.activeLeads.length || priorityLeads.length
-  const scheduledTours = metrics.scheduledTours.length || 9
-  const pipelineValue = Number(metrics.pipeline || metrics.portfolio || 2450000)
-  const attentionProperties = (core.properties.length ? core.properties : demoProperties)
+  const priorityLeads = core.leads.slice(0, 4)
+  const publishedLabel = `${metrics.published.length} / ${core.properties.length}`
+  const activeLeadCount = metrics.activeLeads.length
+  const scheduledTours = metrics.scheduledTours.length
+  const pipelineValue = Number(metrics.pipeline || metrics.portfolio || 0)
+  const attentionProperties = core.properties
     .filter((property: Row) => String(property.status || "DRAFT").toUpperCase() !== "SOLD")
     .slice(0, 4)
-  const tours = core.appointments.length ? core.appointments.slice(0, 4) : demoTours
+  const tours = core.appointments.slice(0, 4)
   const providerJobs = ((platform.admin_provider_jobs || []) as Row[]).slice(0, 4)
   const notificationCount = modules.notifications.length + ((platform.admin_notification_outbox || []) as Row[]).length
 
@@ -696,8 +697,8 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
       <div className="page-head">
         <div>
           <p className="eyebrow">Bun venit în HQS Admin</p>
-          <h1>Control complet pentru proprietăți premium.</h1>
-          <p>Admin page pentru listări, lead-uri, vizionări, agenți, rapoarte și setări. UI-ul este conectat la datele live când API-urile admin răspund și rămâne utilizabil cu fallback sigur când lipsesc credențiale.</p>
+          <h1>Control complet pentru Proprietăți premium.</h1>
+          <p>Admin page pentru listări, lead-uri, Vizionări, Agenți, rapoarte și Setări. UI-ul este conectat la datele live când API-urile admin răspund și rămâne utilizabil cu fallback sigur când lipsesc credențiale.</p>
         </div>
         <button type="button" className="btn dark" onClick={() => setQuickPropertyOpen(true)}>Adaugă rapid</button>
       </div>
@@ -706,7 +707,7 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
         <section className="hero-card">
           <p className="eyebrow">HQS Smart Focus</p>
           <h2>{activeLeadCount} lead-uri active și {metrics.published.length || 2} listări merită verificate azi.</h2>
-          <p>Prioritizează lead-urile cu buget validat, proprietățile nepublicate și vizionările confirmate. Ultima sincronizare: {lastLoadedAt || "în curs"}.</p>
+          <p>Prioritizează lead-urile cu buget validat, Proprietățile nepublicate și Vizionările confirmate. Ultima sincronizare: {lastLoadedAt || "în curs"}.</p>
           <div className="hero-actions">
             <button type="button" className="btn primary" onClick={() => setView("crm")}>Vezi lead-uri</button>
             <button type="button" className="btn ghost" onClick={() => setView("reports")}>Deschide raport</button>
@@ -715,7 +716,7 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
 
         <aside className="ai-card">
           <h3>Scor portofoliu</h3>
-          <p style={{ margin: 0, color: "var(--hqs-muted)", lineHeight: 1.5 }}>Calcul după status, lead-uri contactate, vizionări și completitudinea proprietăților.</p>
+          <p style={{ margin: 0, color: "var(--hqs-muted)", lineHeight: 1.5 }}>Calcul după status, lead-uri contactate, Vizionări și completitudinea Proprietăților.</p>
           <div className="score-ring" style={scoreStyle}><strong>{score}<span>%</span></strong></div>
           <div className="mini-list">
             <div className="mini-item"><span>Listări verificate</span><strong>{publishedLabel}</strong></div>
@@ -737,7 +738,7 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
           <div className="panel-head">
             <div>
               <h2>Performanță săptămânală</h2>
-              <p>Lead-uri și vizionări pe ultimele 7 zile</p>
+              <p>Lead-uri și Vizionări pe ultimele 7 zile</p>
             </div>
             <span className="tag success">Live</span>
           </div>
@@ -781,7 +782,7 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
           </div>
         </section>
         <section className="panel">
-          <div className="panel-head"><div><h3>Top proprietăți</h3><p>Portofoliu activ</p></div><button type="button" className="btn small" onClick={() => setView("properties")}>Editor</button></div>
+          <div className="panel-head"><div><h3>Top Proprietăți</h3><p>Portofoliu activ</p></div><button type="button" className="btn small" onClick={() => setView("properties")}>Editor</button></div>
           <div className="mini-list">
             {attentionProperties.map((property: Row, index: number) => (
               <button
@@ -822,7 +823,7 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
                   <div className="lead-avatar">{String(index + 1).padStart(2, "0")}</div>
                   <div>
                     <h4>{date(tour.requested_at || tour.starts_at, true)}</h4>
-                    <p>{tour.property_title || tour.title || "Vizionare"} · {tour.client_name || tour.client_email || tour.client_phone || "client"}</p>
+                    <p>{tour.property_title || tour.title || "Vizionare"} Â· {tour.client_name || tour.client_email || tour.client_phone || "client"}</p>
                   </div>
                   <button
                     type="button"
@@ -846,7 +847,7 @@ function HqsOverview({ core, modules, platform, metrics, saving, lastLoadedAt, s
           <div className="mini-list">
             <div className="mini-item"><span>Notificări / outbox</span><strong>{notificationCount}</strong></div>
             <div className="mini-item"><span>Joburi provider</span><strong>{providerJobs.length}</strong></div>
-            <div className="mini-item"><span>Media proprietăți</span><strong>{((platform.property_media || []) as Row[]).length}</strong></div>
+            <div className="mini-item"><span>Media Proprietăți</span><strong>{((platform.property_media || []) as Row[]).length}</strong></div>
             <div className="mini-item"><span>Facturi admin</span><strong>{((platform.admin_invoices || []) as Row[]).length}</strong></div>
             {providerJobs.map((job: Row, index: number) => (
               <button type="button" className="mini-item" key={job.id || index} onClick={() => setView("integrations")}>
@@ -975,7 +976,7 @@ function HqsLeadCard({ lead, saving, onFollow }: { lead: Row; saving: boolean; o
       <div className="lead-avatar">{initials(name)}</div>
       <div>
         <h4>{name}</h4>
-        <p>{meta}{budget ? ` • ${money(budget)}` : ""}</p>
+        <p>{meta}{budget ? ` â€˘ ${money(budget)}` : ""}</p>
       </div>
       <button type="button" className={`tag ${statusTone(status)}`} disabled={saving} onClick={onFollow}>{saving ? "..." : statusLabel(status)}</button>
     </article>
@@ -983,7 +984,7 @@ function HqsLeadCard({ lead, saving, onFollow }: { lead: Row; saving: boolean; o
 }
 
 function weeklyChart(leads: Row[], appointments: Row[]) {
-  const fallback = [62, 48, 86, 72, 94, 57, 40]
+  const fallback = [0, 0, 0, 0, 0, 0, 0]
   const labels = ["Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum"]
   const counts = new Array(7).fill(0)
   for (const row of [...leads, ...appointments]) {
@@ -1121,3 +1122,4 @@ function riskPromptForPlatformAction(body: Row) {
   if (body.type === "admin_role" && String(payload.status || "").toUpperCase() === "INACTIVE") return "Dezactivezi rolul admin? Utilizatorul poate pierde accesul imediat."
   return ""
 }
+
