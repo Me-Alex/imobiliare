@@ -25,6 +25,8 @@ export default function ClientAccountPanel() {
   const [documents, setDocuments] = useState<ClientDocument[]>([])
   const [offers, setOffers] = useState<ClientOffer[]>([])
   const [docTitle, setDocTitle] = useState("Carte identitate")
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [isAddingDoc, setIsAddingDoc] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -59,18 +61,22 @@ export default function ClientAccountPanel() {
 
   async function saveProfile() {
     if (!token) return
+    setIsSavingProfile(true)
     const res = await fetch("/api/client/account", { method: "POST", headers: authHeaders(), body: JSON.stringify(profile) })
     const data = await res.json().catch(() => ({}))
     setMessage(res.ok ? "Profilul a fost salvat in Supabase." : data.error || "Nu am putut salva profilul.")
+    setIsSavingProfile(false)
     load()
   }
 
   async function addDocument() {
     if (!token || !docTitle.trim()) return
+    setIsAddingDoc(true)
     const res = await fetch("/api/client/documents", { method: "POST", headers: authHeaders(), body: JSON.stringify({ title: docTitle, type: "dosar client", status: "PENDING" }) })
     const data = await res.json().catch(() => ({}))
     setMessage(res.ok ? "Document adaugat in dosarul clientului." : data.error || "Nu am putut adauga documentul.")
     setDocTitle("")
+    setIsAddingDoc(false)
     load()
   }
 
@@ -97,15 +103,19 @@ export default function ClientAccountPanel() {
             <p className="mt-2 text-2xl font-black text-accent">EUR {Number(profile.budget).toLocaleString("ro-RO")}</p>
             <label className="mt-3 block text-xs font-bold uppercase text-text-muted">Zone preferate</label>
             <input className="form-input mt-2" value={profile.preferred_zones.join(", ")} onChange={(event) => setProfile({ ...profile, preferred_zones: event.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
-            <button onClick={saveProfile} className="mt-4 w-full rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary">Salveaza profil</button>
+            <button onClick={saveProfile} disabled={isSavingProfile} className="mt-4 w-full rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary disabled:opacity-70 transition-opacity">
+              {isSavingProfile ? "Se salveaza..." : "Salveaza profil"}
+            </button>
             {message && <p className="mt-3 text-sm text-text-muted">{message}</p>}
           </div>
           <div className="grid gap-5">
             <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
               <h3 className="font-black text-text-primary">Documente client</h3>
               <div className="mt-4 flex gap-2">
-                <input className="form-input" value={docTitle} onChange={(event) => setDocTitle(event.target.value)} placeholder="Nume document" />
-                <button onClick={addDocument} className="rounded-lg bg-accent px-4 py-2 text-sm font-black text-bg-primary">Adauga</button>
+                <input className="form-input" value={docTitle} onChange={(event) => setDocTitle(event.target.value)} placeholder="Nume document" disabled={isAddingDoc} />
+                <button onClick={addDocument} disabled={isAddingDoc || !docTitle.trim()} className="rounded-lg bg-accent px-4 py-2 text-sm font-black text-bg-primary disabled:opacity-70 transition-opacity">
+                  {isAddingDoc ? "Se adauga..." : "Adauga"}
+                </button>
               </div>
               <div className="mt-4 grid gap-3 md:grid-cols-2">{documents.map((doc) => <Mini key={doc.id} title={doc.title} meta={doc.type} value={doc.status} />)}</div>
             </div>
