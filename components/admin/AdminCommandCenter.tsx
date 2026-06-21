@@ -391,10 +391,10 @@ export default function AdminCommandCenter() {
             </label>
 
             <div className="top-actions">
-              <button type="button" className="icon-btn" title="Schimbă tema" onClick={() => setDarkMode((enabled) => !enabled)}>
+              <button type="button" className="icon-btn" title="Schimbă tema" aria-label="Schimbă tema" onClick={() => setDarkMode((enabled) => !enabled)}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg>
               </button>
-              <button type="button" className="icon-btn" title="Notificări" onClick={() => showToast("Ai notificări operaționale: lead-uri noi, Vizionări și listări incomplete.")}>
+              <button type="button" className="icon-btn" title="Notificări" aria-label="Notificări" onClick={() => showToast("Ai notificări operaționale: lead-uri noi, Vizionări și listări incomplete.")}>
                 <span className="dot" />
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 7-3 7h18s-3 0-3-7" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
               </button>
