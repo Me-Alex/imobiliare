@@ -1,0 +1,3 @@
+## 2024-03-24 - Mobile Menu Accessibility
+**Learning:** Mobile menus often lack basic keyboard navigation support, such as the ability to be closed using the 'Escape' key. This can be frustrating for keyboard users who find themselves trapped in an open menu.
+**Action:** Always add a global 'Escape' key listener to modal-like elements, dropdowns, and mobile menus to ensure users can dismiss them easily using their keyboard.
