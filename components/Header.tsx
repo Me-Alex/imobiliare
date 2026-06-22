@@ -41,6 +41,16 @@ export default function Header() {
   }, [])
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && menuOpen) {
+        setMenuOpen(false)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [menuOpen])
+
+  useEffect(() => {
     let cancelled = false
 
     const load = async (accessToken = "") => {
