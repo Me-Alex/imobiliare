@@ -10,6 +10,7 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
   const [closingDays, setClosingDays] = useState(30)
   const [message, setMessage] = useState("")
   const [nextPath, setNextPath] = useState("")
+  const [loading, setLoading] = useState(false)
   const formId = useId()
   const knownPrice = hasKnownPrice(listPrice)
 
@@ -58,20 +59,25 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
       window.location.href = loginHref
       return
     }
-    const res = await fetch("/api/client/offers", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        property_id: propertyId,
-        property_title: propertyTitle,
-        list_price: listPrice,
-        offer_price: offerPrice,
-        closing_days: closingDays,
-        risk_level: "mediu",
-      }),
-    })
-    const data = await res.json().catch(() => ({}))
-    setMessage(res.ok ? "Oferta a fost trimisa in admin si in contul tau." : data.error || "Nu am putut trimite oferta.")
+    setLoading(true)
+    try {
+      const res = await fetch("/api/client/offers", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          property_id: propertyId,
+          property_title: propertyTitle,
+          list_price: listPrice,
+          offer_price: offerPrice,
+          closing_days: closingDays,
+          risk_level: "mediu",
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      setMessage(res.ok ? "Oferta a fost trimisa in admin si in contul tau." : data.error || "Nu am putut trimite oferta.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -87,14 +93,18 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
         <option value={45}>45 zile</option>
       </select>
       {token ? (
-        <button onClick={submitOffer} className="mt-4 w-full rounded-xl bg-accent px-4 py-3 text-sm font-black text-bg-primary">Trimite oferta</button>
+        <button onClick={submitOffer} disabled={loading || !knownPrice} className="mt-4 w-full rounded-xl bg-accent px-4 py-3 text-sm font-black text-bg-primary disabled:cursor-not-allowed disabled:opacity-50">
+          {loading ? "Se trimite..." : "Trimite oferta"}
+        </button>
       ) : (
         <a href={loginHref} className="mt-4 block w-full rounded-xl bg-accent px-4 py-3 text-center text-sm font-black text-bg-primary">
           Autentifica-te pentru oferta
         </a>
       )}
       {!token && <p className="mt-3 text-sm text-text-muted">Dupa autentificare revii automat pe aceasta pagina si poti trimite oferta.</p>}
-      {message && <p className="mt-3 text-sm text-text-muted">{message}</p>}
+      <div aria-live="polite" aria-atomic="true">
+        {message && <p className="mt-3 text-sm text-text-muted">{message}</p>}
+      </div>
     </div>
   )
 }
