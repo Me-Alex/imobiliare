@@ -1,0 +1,3 @@
+## 2024-05-24 - Consistent Keyboard Focus using Tailwind Rings
+**Learning:** While `focus-visible:outline-2` provides basic accessibility, it lacks spacing and consistency with the rest of the application's interactive elements. Using a standardized `focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2` pattern ensures clear, accessible, and aesthetically pleasing focus indicators for all custom interactive elements, especially icon-only buttons.
+**Action:** When adding interactive elements without standard focus states, always apply the `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2` pattern to maintain accessibility and visual consistency.
