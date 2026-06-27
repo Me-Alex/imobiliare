@@ -32,7 +32,7 @@ export default function PropertyGallery({ cover, fallbackCover, gallery, title, 
         <button
           type="button"
           onClick={() => openLightbox(0)}
-          className="group relative aspect-[16/10] overflow-hidden rounded-3xl border border-bg-surface bg-bg-card shadow-[var(--shadow-card)] focus-visible:outline-2 focus-visible:outline-accent"
+          className="group relative aspect-[16/10] overflow-hidden rounded-3xl border border-bg-surface bg-bg-card shadow-[var(--shadow-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label={`Deschide galeria foto pentru ${title}`}
         >
           <SmartPropertyImage
@@ -60,7 +60,7 @@ export default function PropertyGallery({ cover, fallbackCover, gallery, title, 
               key={img}
               type="button"
               onClick={() => openLightbox(i + 1)}
-              className="group relative aspect-[4/3] overflow-hidden rounded-2xl border border-bg-surface bg-bg-card focus-visible:outline-2 focus-visible:outline-accent"
+              className="group relative aspect-[4/3] overflow-hidden rounded-2xl border border-bg-surface bg-bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               aria-label={`Foto ${i + 2} din ${allImages.length}`}
             >
               <SmartPropertyImage

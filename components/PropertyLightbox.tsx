@@ -76,7 +76,7 @@ export default function PropertyLightbox({
         {/* Buton inchidere */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+          className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           aria-label="Inchide galeria"
         >
           <X className="h-5 w-5" aria-hidden />
@@ -103,7 +103,7 @@ export default function PropertyLightbox({
         {images.length > 1 && (
           <button
             onClick={onPrev}
-            className="absolute left-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/25"
+            className="absolute left-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             aria-label="Poza anterioara"
           >
             <ChevronLeft className="h-6 w-6" aria-hidden />
@@ -114,7 +114,7 @@ export default function PropertyLightbox({
         {images.length > 1 && (
           <button
             onClick={onNext}
-            className="absolute right-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/25"
+            className="absolute right-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             aria-label="Poza urmatoare"
           >
             <ChevronRight className="h-6 w-6" aria-hidden />
@@ -133,7 +133,7 @@ export default function PropertyLightbox({
                   if (diff > 0) for (let j = 0; j < diff; j++) onNext()
                   else if (diff < 0) for (let j = 0; j < -diff; j++) onPrev()
                 }}
-                className={`relative h-14 w-20 shrink-0 overflow-hidden rounded border-2 transition ${i === currentIndex ? "border-white" : "border-transparent opacity-60 hover:opacity-100"}`}
+                className={`relative h-14 w-20 shrink-0 overflow-hidden rounded border-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${i === currentIndex ? "border-white" : "border-transparent opacity-60 hover:opacity-100"}`}
                 aria-label={`Mergi la foto ${i + 1}`}
                 aria-current={i === currentIndex ? "true" : undefined}
               >
