@@ -94,25 +94,25 @@ export default function Hero({ entry, properties = [] }: { entry?: CmsEntry | nu
           <div className="grid gap-5">
             <form action="/proprietati" className="border border-bg-surface bg-bg-card p-4 shadow-card md:p-5">
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_190px_190px_170px_180px]">
-                <label className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-text-muted">
+                <label htmlFor="hero-search" className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-text-muted">
                   Cauta dupa zona
-                  <input name="q" className="h-12 border border-bg-surface bg-bg-primary px-3 text-sm font-semibold normal-case tracking-normal text-text-primary outline-none focus:border-accent" placeholder="Herestrau, Pipera, Dorobanti..." />
+                  <input id="hero-search" name="q" className="h-12 border border-bg-surface bg-bg-primary px-3 text-sm font-semibold normal-case tracking-normal text-text-primary outline-none focus:border-accent" placeholder="Herestrau, Pipera, Dorobanti..." />
                 </label>
-                <label className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-text-muted">
+                <label htmlFor="hero-zone" className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-text-muted">
                   Zona
-                  <select name="zone" className="h-12 border border-bg-surface bg-bg-primary px-3 text-sm font-semibold normal-case tracking-normal text-text-primary outline-none focus:border-accent">
+                  <select id="hero-zone" name="zone" className="h-12 border border-bg-surface bg-bg-primary px-3 text-sm font-semibold normal-case tracking-normal text-text-primary outline-none focus:border-accent">
                     {zones.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
                   </select>
                 </label>
-                <label className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-text-muted">
+                <label htmlFor="hero-type" className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-text-muted">
                   Tip
-                  <select name="tip" className="h-12 border border-bg-surface bg-bg-primary px-3 text-sm font-semibold normal-case tracking-normal text-text-primary outline-none focus:border-accent">
+                  <select id="hero-type" name="tip" className="h-12 border border-bg-surface bg-bg-primary px-3 text-sm font-semibold normal-case tracking-normal text-text-primary outline-none focus:border-accent">
                     {propertyTypes.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
                   </select>
                 </label>
-                <label className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-text-muted">
+                <label htmlFor="hero-budget" className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-text-muted">
                   Buget
-                  <select name="budget" className="h-12 border border-bg-surface bg-bg-primary px-3 text-sm font-semibold normal-case tracking-normal text-text-primary outline-none focus:border-accent">
+                  <select id="hero-budget" name="budget" className="h-12 border border-bg-surface bg-bg-primary px-3 text-sm font-semibold normal-case tracking-normal text-text-primary outline-none focus:border-accent">
                     <option value="">Fara limita</option>
                     <option value="150000">sub 150k</option>
                     <option value="250000">sub 250k</option>

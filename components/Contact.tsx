@@ -133,36 +133,38 @@ export default function Contact({ headingLevel = "h1" }: { headingLevel?: "h1" |
             ) : (
               <form onSubmit={handleSubmit} className="grid gap-4" noValidate>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <Field label="Nume complet" required error={fieldErrors.name}>
-                    <input required name="name" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      className="form-input" placeholder="Numele tau" aria-invalid={Boolean(fieldErrors.name)} />
+                  <Field label="Nume complet" required fieldId="contact-name" error={fieldErrors.name}>
+                    <input id="contact-name" required name="name" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      className="form-input" placeholder="Numele tau" aria-invalid={Boolean(fieldErrors.name)} aria-describedby={fieldErrors.name ? "contact-name-error" : undefined} />
                   </Field>
-                  <Field label="Telefon" required error={fieldErrors.phone}>
-                    <input required name="tel" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className="form-input" placeholder="07XX XXX XXX" aria-invalid={Boolean(fieldErrors.phone)} />
+                  <Field label="Telefon" required fieldId="contact-phone" error={fieldErrors.phone}>
+                    <input id="contact-phone" required name="tel" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      className="form-input" placeholder="07XX XXX XXX" aria-invalid={Boolean(fieldErrors.phone)} aria-describedby={fieldErrors.phone ? "contact-phone-error" : undefined} />
                   </Field>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <Field label="Email" error={fieldErrors.email}>
-                    <input name="email" type="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      className="form-input" placeholder="email@exemplu.ro" aria-invalid={Boolean(fieldErrors.email)} />
+                  <Field label="Email" fieldId="contact-email" error={fieldErrors.email}>
+                    <input id="contact-email" name="email" type="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      className="form-input" placeholder="email@exemplu.ro" aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "contact-email-error" : undefined} />
                   </Field>
-                  <Field label="Interes">
-                    <select name="intent" value={form.intent} onChange={(e) => setForm({ ...form, intent: e.target.value })} className="form-input">
+                  <Field label="Interes" fieldId="contact-intent">
+                    <select id="contact-intent" name="intent" value={form.intent} onChange={(e) => setForm({ ...form, intent: e.target.value })} className="form-input">
                       {intentOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                     </select>
                   </Field>
                 </div>
-                <Field label="Buget sau valoare estimata">
-                  <input name="budget" autoComplete="off" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })}
+                <Field label="Buget sau valoare estimata" fieldId="contact-budget">
+                  <input id="contact-budget" name="budget" autoComplete="off" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })}
                     className="form-input" placeholder="Ex: 180.000 EUR sau 900 EUR/luna" />
                 </Field>
-                <Field label="Detalii utile">
-                  <textarea name="message" rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })}
+                <Field label="Detalii utile" fieldId="contact-message">
+                  <textarea id="contact-message" name="message" rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })}
                     className="form-input resize-none" placeholder="Zona, camere, termen, preferinte sau adresa proprietatii." />
                 </Field>
 
-                {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
+                <div aria-live="assertive">
+                  {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
+                </div>
 
                 <button type="submit" disabled={loading}
                   className="inline-flex items-center justify-center gap-2 rounded-md bg-accent py-3 font-bold text-bg-primary shadow-lg shadow-accent/20 transition-opacity hover:opacity-90 disabled:opacity-60">
@@ -178,14 +180,14 @@ export default function Contact({ headingLevel = "h1" }: { headingLevel?: "h1" |
   )
 }
 
-function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
+function Field({ label, required, error, fieldId, children }: { label: string; required?: boolean; error?: string; fieldId?: string; children: React.ReactNode }) {
   return (
-    <label className="block">
+    <label htmlFor={fieldId} className="block">
       <span className="text-xs font-medium text-text-muted mb-1.5 block uppercase tracking-wider">
         {label}{required ? " *" : ""}
       </span>
       {children}
-      {error && <span className="mt-1 block text-xs font-bold text-red-500">{error}</span>}
+      {error && <span id={fieldId ? `${fieldId}-error` : undefined} role="alert" className="mt-1 block text-xs font-bold text-red-500">{error}</span>}
     </label>
   )
 }
