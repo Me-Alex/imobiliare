@@ -66,7 +66,7 @@ export default function PropertyGallery({ cover, fallbackCover, gallery, title, 
               <SmartPropertyImage
                 src={img}
                 fallbackSrc={fallbackCover}
-                alt=""
+                alt={`${title} - miniatura foto ${i + 2}`}
                 fill
                 sizes="180px"
                 className="object-cover transition duration-500 group-hover:scale-105"
