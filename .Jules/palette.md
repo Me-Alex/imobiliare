@@ -1,0 +1,3 @@
+## 2024-05-15 - Accessible Async Loading States and Dynamic Announcements
+**Learning:** Adding a disabled visual state to buttons during async operations is only half the battle. If a loading state doesn't have an ARIA-live region for its resulting success/error messages, screen reader users might not know the operation completed or failed.
+**Action:** When implementing async forms (like `OfferSubmissionPanel`), always wrap the resulting status message in `<div aria-live="assertive">` and use `role="alert"` for the error/success paragraph to ensure dynamic announcements are made. Include a spinning icon + disabled state on the trigger button.
