@@ -51,7 +51,8 @@ export async function processAdminQueues(options?: { outboxLimit?: number; jobLi
   const outboxClaim = await supabase.rpc("claim_admin_notification_outbox", { p_limit: outboxLimit })
   const outboxRows = asRows(outboxClaim.data)
   summary.outbox.claimed = outboxRows.length
-  for (const row of outboxRows) {
+
+  await Promise.allSettled(outboxRows.map(async (row) => {
     const channel = String(row.channel || "EMAIL").toUpperCase()
     const target = String(row.target || "").trim()
     try {
@@ -122,13 +123,14 @@ export async function processAdminQueues(options?: { outboxLimit?: number; jobLi
       ])
       summary.outbox.failed += 1
     }
-  }
+  }))
 
   // 2) Provider job retries (RETRYING/QUEUED)
   const jobClaim = await supabase.rpc("claim_admin_provider_jobs", { p_limit: jobLimit })
   const jobs = asRows(jobClaim.data)
   summary.jobs.claimed = jobs.length
-  for (const job of jobs) {
+
+  await Promise.allSettled(jobs.map(async (job) => {
     const provider = String(job.provider || "").toLowerCase()
     const action = String(job.action || "")
     try {
@@ -181,7 +183,7 @@ export async function processAdminQueues(options?: { outboxLimit?: number; jobLi
           .from("admin_provider_jobs")
           .update({ status: "CANCELLED", error: `Provider retry nesuportat: ${provider}`, updated_at: nowIso() })
           .eq("id", job.id)
-        continue
+        return
       }
 
       await supabase
@@ -228,8 +230,7 @@ export async function processAdminQueues(options?: { outboxLimit?: number; jobLi
         .eq("id", job.id)
       summary.jobs.failed += 1
     }
-  }
+  }))
 
   return summary
 }
-
