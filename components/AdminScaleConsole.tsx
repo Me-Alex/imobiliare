@@ -65,15 +65,15 @@ export default function AdminScaleConsole() {
     }
   }, [admin, platform])
 
-  async function save(type: string, payload: any, label = "Salvat") {
+  async function save(type: string, payload: unknown, label = "Salvat") {
     setBusy(type)
     setError("")
     try {
       await api("/api/admin/platform", { method: "POST", body: JSON.stringify({ type, payload }) })
       setMessage(label)
       await load()
-    } catch (err: any) {
-      setError(err.message || "Actiunea a esuat")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Actiunea a esuat")
     } finally {
       setBusy("")
     }
