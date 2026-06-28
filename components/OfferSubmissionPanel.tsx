@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useId, useState } from "react"
+import { Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { hasKnownPrice } from "@/lib/property-display"
 
@@ -9,6 +10,7 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
   const [offerPrice, setOfferPrice] = useState(Math.round(listPrice * 0.96))
   const [closingDays, setClosingDays] = useState(30)
   const [message, setMessage] = useState("")
+  const [loading, setLoading] = useState(false)
   const [nextPath, setNextPath] = useState("")
   const formId = useId()
   const knownPrice = hasKnownPrice(listPrice)
@@ -58,6 +60,7 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
       window.location.href = loginHref
       return
     }
+    setLoading(true)
     const res = await fetch("/api/client/offers", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -72,6 +75,7 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
     })
     const data = await res.json().catch(() => ({}))
     setMessage(res.ok ? "Oferta a fost trimisa in admin si in contul tau." : data.error || "Nu am putut trimite oferta.")
+    setLoading(false)
   }
 
   return (
@@ -87,14 +91,29 @@ export default function OfferSubmissionPanel({ propertyId, propertyTitle, listPr
         <option value={45}>45 zile</option>
       </select>
       {token ? (
-        <button onClick={submitOffer} className="mt-4 w-full rounded-xl bg-accent px-4 py-3 text-sm font-black text-bg-primary">Trimite oferta</button>
+        <button
+          onClick={submitOffer}
+          disabled={loading}
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-black text-bg-primary transition-opacity hover:opacity-90 disabled:opacity-60"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              Se trimite...
+            </>
+          ) : (
+            "Trimite oferta"
+          )}
+        </button>
       ) : (
         <a href={loginHref} className="mt-4 block w-full rounded-xl bg-accent px-4 py-3 text-center text-sm font-black text-bg-primary">
           Autentifica-te pentru oferta
         </a>
       )}
       {!token && <p className="mt-3 text-sm text-text-muted">Dupa autentificare revii automat pe aceasta pagina si poti trimite oferta.</p>}
-      {message && <p className="mt-3 text-sm text-text-muted">{message}</p>}
+      <div aria-live="assertive">
+        {message && <p role="alert" className="mt-3 text-sm text-text-muted">{message}</p>}
+      </div>
     </div>
   )
 }
