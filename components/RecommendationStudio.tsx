@@ -99,7 +99,7 @@ export default function RecommendationStudio({ properties }: { properties: Prope
             <label className="mt-5 block text-xs font-bold uppercase text-text-muted">Scop</label>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {Object.entries(purposeLabels).map(([key, label]) => (
-                <button key={key} onClick={() => updateProfile({ ...profile, purpose: key as BuyerProfile["purpose"] })} className={`rounded-lg border px-3 py-2 text-sm font-bold ${profile.purpose === key ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-secondary text-text-muted"}`}>
+                <button key={key} aria-pressed={profile.purpose === key} onClick={() => updateProfile({ ...profile, purpose: key as BuyerProfile["purpose"] })} className={`rounded-lg border px-3 py-2 text-sm font-bold ${profile.purpose === key ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-secondary text-text-muted"}`}>
                   {label}
                 </button>
               ))}
@@ -130,6 +130,7 @@ export default function RecommendationStudio({ properties }: { properties: Prope
                       className={`grid h-9 w-9 place-items-center rounded-lg border transition ${favoriteIds.includes(property.id) ? "border-accent bg-accent text-bg-primary" : "border-bg-surface text-text-muted hover:border-accent hover:text-accent"}`}
                       aria-label={favoriteIds.includes(property.id) ? "Scoate de la favorite" : "Adauga la favorite"}
                       title={favoriteIds.includes(property.id) ? "Scoate de la favorite" : "Adauga la favorite"}
+                      aria-pressed={favoriteIds.includes(property.id)}
                     >
                       <Heart className={`h-4 w-4 ${favoriteIds.includes(property.id) ? "fill-current" : ""}`} aria-hidden />
                     </button>
@@ -139,6 +140,7 @@ export default function RecommendationStudio({ properties }: { properties: Prope
                       className={`grid h-9 w-9 place-items-center rounded-lg border transition ${compareIds.includes(property.id) ? "border-accent bg-accent text-bg-primary" : "border-bg-surface text-text-muted hover:border-accent hover:text-accent"}`}
                       aria-label={compareIds.includes(property.id) ? "Scoate din comparatie" : "Compara proprietatea"}
                       title={compareIds.includes(property.id) ? "Scoate din comparatie" : "Compara proprietatea"}
+                      aria-pressed={compareIds.includes(property.id)}
                     >
                       <Scale className="h-4 w-4" aria-hidden />
                     </button>
