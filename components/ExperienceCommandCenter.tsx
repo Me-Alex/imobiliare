@@ -101,14 +101,14 @@ export default function ExperienceCommandCenter({ properties }: { properties: Pr
               <Input label="Suprafata evaluata" value={String(area)} onChange={(value) => setArea(Number(value || 0))} type="number" />
               <Input label="Camere" value={String(rooms)} onChange={(value) => setRooms(Number(value || 0))} type="number" />
               <label className="text-xs font-bold uppercase text-text-muted">Stare</label>
-              <select value={condition} onChange={(event) => setCondition(event.target.value as any)} className="form-input">
+              <select value={condition} onChange={(event) => setCondition(event.target.value as "renovat" | "bun" | "de-renovat" | "premium")} className="form-input">
                 <option value="premium">premium</option>
                 <option value="renovat">renovat</option>
                 <option value="bun">bun</option>
                 <option value="de-renovat">de renovat</option>
               </select>
               <label className="text-xs font-bold uppercase text-text-muted">Urgenta</label>
-              <select value={urgency} onChange={(event) => setUrgency(event.target.value as any)} className="form-input">
+              <select value={urgency} onChange={(event) => setUrgency(event.target.value as "rapid" | "normal" | "flexibil")} className="form-input">
                 <option value="rapid">rapid</option>
                 <option value="normal">normal</option>
                 <option value="flexibil">flexibil</option>
