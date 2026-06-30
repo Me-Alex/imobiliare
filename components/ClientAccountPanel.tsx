@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useId, useState } from "react"
+import { Loader2 } from "lucide-react"
 import PortalAuthGateway from "@/components/PortalAuthGateway"
 import { supabase } from "@/lib/supabase"
 
@@ -19,12 +20,16 @@ const emptyProfile: Profile = {
 }
 
 export default function ClientAccountPanel() {
+  const formId = useId()
+  const docFormId = useId()
   const [message, setMessage] = useState("")
   const [token, setToken] = useState("")
   const [profile, setProfile] = useState<Profile>(emptyProfile)
   const [documents, setDocuments] = useState<ClientDocument[]>([])
   const [offers, setOffers] = useState<ClientOffer[]>([])
   const [docTitle, setDocTitle] = useState("Carte identitate")
+  const [isSaving, setIsSaving] = useState(false)
+  const [isAdding, setIsAdding] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -59,19 +64,23 @@ export default function ClientAccountPanel() {
 
   async function saveProfile() {
     if (!token) return
+    setIsSaving(true)
     const res = await fetch("/api/client/account", { method: "POST", headers: authHeaders(), body: JSON.stringify(profile) })
     const data = await res.json().catch(() => ({}))
     setMessage(res.ok ? "Profilul a fost salvat in Supabase." : data.error || "Nu am putut salva profilul.")
-    load()
+    await load()
+    setIsSaving(false)
   }
 
   async function addDocument() {
     if (!token || !docTitle.trim()) return
+    setIsAdding(true)
     const res = await fetch("/api/client/documents", { method: "POST", headers: authHeaders(), body: JSON.stringify({ title: docTitle, type: "dosar client", status: "PENDING" }) })
     const data = await res.json().catch(() => ({}))
     setMessage(res.ok ? "Document adaugat in dosarul clientului." : data.error || "Nu am putut adauga documentul.")
     setDocTitle("")
-    load()
+    await load()
+    setIsAdding(false)
   }
 
   if (!token) return <PortalAuthGateway onAuthenticated={(accessToken) => { setToken(accessToken); load(accessToken) }} />
@@ -88,24 +97,33 @@ export default function ClientAccountPanel() {
         </div>
         <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
           <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
-            <label className="text-xs font-bold uppercase text-text-muted">Nume</label>
-            <input className="form-input mt-2" value={profile.full_name} onChange={(event) => setProfile({ ...profile, full_name: event.target.value })} />
-            <label className="mt-3 block text-xs font-bold uppercase text-text-muted">Telefon</label>
-            <input className="form-input mt-2" value={profile.phone || ""} onChange={(event) => setProfile({ ...profile, phone: event.target.value })} />
-            <label className="mt-3 block text-xs font-bold uppercase text-text-muted">Buget</label>
-            <input className="mt-3 w-full accent-accent" type="range" min={75000} max={1000000} step={25000} value={profile.budget} onChange={(event) => setProfile({ ...profile, budget: Number(event.target.value) })} />
+            <label htmlFor={`${formId}-name`} className="text-xs font-bold uppercase text-text-muted">Nume</label>
+            <input id={`${formId}-name`} className="form-input mt-2" value={profile.full_name} onChange={(event) => setProfile({ ...profile, full_name: event.target.value })} />
+            <label htmlFor={`${formId}-phone`} className="mt-3 block text-xs font-bold uppercase text-text-muted">Telefon</label>
+            <input id={`${formId}-phone`} className="form-input mt-2" value={profile.phone || ""} onChange={(event) => setProfile({ ...profile, phone: event.target.value })} />
+            <label htmlFor={`${formId}-budget`} className="mt-3 block text-xs font-bold uppercase text-text-muted">Buget</label>
+            <input id={`${formId}-budget`} className="mt-3 w-full accent-accent" type="range" min={75000} max={1000000} step={25000} value={profile.budget} onChange={(event) => setProfile({ ...profile, budget: Number(event.target.value) })} />
             <p className="mt-2 text-2xl font-black text-accent">EUR {Number(profile.budget).toLocaleString("ro-RO")}</p>
-            <label className="mt-3 block text-xs font-bold uppercase text-text-muted">Zone preferate</label>
-            <input className="form-input mt-2" value={profile.preferred_zones.join(", ")} onChange={(event) => setProfile({ ...profile, preferred_zones: event.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
-            <button onClick={saveProfile} className="mt-4 w-full rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary">Salveaza profil</button>
-            {message && <p className="mt-3 text-sm text-text-muted">{message}</p>}
+            <label htmlFor={`${formId}-zones`} className="mt-3 block text-xs font-bold uppercase text-text-muted">Zone preferate</label>
+            <input id={`${formId}-zones`} className="form-input mt-2" value={profile.preferred_zones.join(", ")} onChange={(event) => setProfile({ ...profile, preferred_zones: event.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
+            <button onClick={saveProfile} disabled={isSaving} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-black text-bg-primary transition-opacity hover:opacity-90 disabled:opacity-60">
+              {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Se salveaza...</> : "Salveaza profil"}
+            </button>
+            <div aria-live="assertive">
+              {message && <p role="alert" className="mt-3 text-sm text-text-muted">{message}</p>}
+            </div>
           </div>
           <div className="grid gap-5">
             <div className="rounded-lg border border-bg-surface bg-bg-card p-5">
               <h3 className="font-black text-text-primary">Documente client</h3>
-              <div className="mt-4 flex gap-2">
-                <input className="form-input" value={docTitle} onChange={(event) => setDocTitle(event.target.value)} placeholder="Nume document" />
-                <button onClick={addDocument} className="rounded-lg bg-accent px-4 py-2 text-sm font-black text-bg-primary">Adauga</button>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="flex-1">
+                  <label htmlFor={`${docFormId}-title`} className="sr-only">Nume document</label>
+                  <input id={`${docFormId}-title`} className="form-input" value={docTitle} onChange={(event) => setDocTitle(event.target.value)} placeholder="Nume document" />
+                </div>
+                <button onClick={addDocument} disabled={isAdding || !docTitle.trim()} className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-black text-bg-primary transition-opacity hover:opacity-90 disabled:opacity-60">
+                  {isAdding ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Se adauga...</> : "Adauga"}
+                </button>
               </div>
               <div className="mt-4 grid gap-3 md:grid-cols-2">{documents.map((doc) => <Mini key={doc.id} title={doc.title} meta={doc.type} value={doc.status} />)}</div>
             </div>
