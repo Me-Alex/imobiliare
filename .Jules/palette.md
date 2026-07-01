@@ -1,3 +1,6 @@
 ## 2024-05-15 - Accessible Async Loading States and Dynamic Announcements
 **Learning:** Adding a disabled visual state to buttons during async operations is only half the battle. If a loading state doesn't have an ARIA-live region for its resulting success/error messages, screen reader users might not know the operation completed or failed.
 **Action:** When implementing async forms (like `OfferSubmissionPanel`), always wrap the resulting status message in `<div aria-live="assertive">` and use `role="alert"` for the error/success paragraph to ensure dynamic announcements are made. Include a spinning icon + disabled state on the trigger button.
+## 2024-05-16 - Accessible Async Loading States in Auth Forms
+**Learning:** Adding `aria-live="assertive"` on containers wrapped around conditional rendering variables (such as `{message && ...}`) inside React auth forms ensures that when these variables evaluate to true (i.e., when an error or success string is set after an async network request), the newly added DOM elements will be automatically announced to screen readers.
+**Action:** When implementing authentication or reset forms, wrap the error and success feedback messages in `<div aria-live="assertive">` to guarantee they are immediately vocalized upon rendering.
