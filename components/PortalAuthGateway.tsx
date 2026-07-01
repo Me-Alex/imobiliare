@@ -177,8 +177,10 @@ export default function PortalAuthGateway({ onAuthenticated, redirectTo }: Porta
             {mode === "reset" && "Trimite resetare"}
           </button>
 
-          {message && <p className="mt-4 rounded-lg border border-accent/20 bg-accent/10 p-3 text-sm font-bold text-accent">{message}</p>}
-          {error && <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm font-bold text-red-500">{error}</p>}
+          <div aria-live="assertive">
+            {message && <p role="alert" className="mt-4 rounded-lg border border-accent/20 bg-accent/10 p-3 text-sm font-bold text-accent">{message}</p>}
+            {error && <p role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm font-bold text-red-500">{error}</p>}
+          </div>
         </form>
       </div>
     </section>
