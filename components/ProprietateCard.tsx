@@ -147,6 +147,7 @@ function CardButton({ active, label, onClick, children }: { active: boolean; lab
       className={`grid h-9 w-9 place-items-center rounded-md border border-white/24 backdrop-blur transition ${active ? "bg-accent text-bg-primary" : "bg-black/48 text-white hover:bg-white hover:text-text-primary"}`}
       title={label}
       aria-label={label}
+      aria-pressed={active}
     >
       {children}
     </button>
