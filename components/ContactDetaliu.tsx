@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useId, useMemo, useState, type FormEvent } from "react"
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle2, Loader2, Send } from "lucide-react"
 
 export default function ContactDetaliu({ proprietate, propertyId }: { proprietate: string; propertyId?: string }) {
   const [sent, setSent] = useState(false)
@@ -129,8 +129,8 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs font-black uppercase tracking-wider text-text-muted">Sloturi reale</p>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setMode("slot")} className={`rounded-lg border px-3 py-1 text-xs font-black ${mode === "slot" ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-card text-text-muted"}`}>Slot</button>
-                <button type="button" onClick={() => setMode("manual")} className={`rounded-lg border px-3 py-1 text-xs font-black ${mode === "manual" ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-card text-text-muted"}`}>Manual</button>
+                <button type="button" aria-pressed={mode === "slot"} onClick={() => setMode("slot")} className={`rounded-lg border px-3 py-1 text-xs font-black ${mode === "slot" ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-card text-text-muted"}`}>Slot</button>
+                <button type="button" aria-pressed={mode === "manual"} onClick={() => setMode("manual")} className={`rounded-lg border px-3 py-1 text-xs font-black ${mode === "manual" ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-card text-text-muted"}`}>Manual</button>
               </div>
             </div>
             {mode === "slot" && (
@@ -189,9 +189,12 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
           <textarea id={`${formId}-notes`} rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
             className="form-input resize-none" placeholder="Ex: prefer dupa ora 18:00 sau vreau detalii despre acte." />
         </div>
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        <div aria-live="assertive">
+          {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
+        </div>
         <button type="submit" disabled={loading}
-          className="mt-1 rounded-xl bg-accent py-3 font-black text-bg-primary shadow-lg shadow-accent/20 transition-opacity hover:opacity-90 disabled:opacity-60">
+          className="mt-1 inline-flex items-center justify-center gap-2 rounded-xl bg-accent py-3 font-black text-bg-primary shadow-lg shadow-accent/20 transition-opacity hover:opacity-90 disabled:opacity-60">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
           {loading ? "Se trimite..." : "Trimite cererea de vizionare"}
         </button>
       </form>
