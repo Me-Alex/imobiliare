@@ -217,6 +217,7 @@ export default function ProfileTab() {
                 <Select
                   value={form.purpose}
                   onChange={(e) => update("purpose", e.target.value)}
+                  className="w-full"
                 >
                   {PURPOSE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -232,6 +233,7 @@ export default function ProfileTab() {
                 <Select
                   value={form.financing_status}
                   onChange={(e) => update("financing_status", e.target.value)}
+                  className="w-full"
                 >
                   {FINANCING_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>

@@ -88,6 +88,7 @@ export type PortalData = {
   activity: ActivityItem[]
   notifications: ClientNotification[]
   appointments: Appointment[]
+  loading: boolean
   message: string
   setMessage: (msg: string) => void
   refresh: () => Promise<void>
@@ -222,11 +223,11 @@ export function PortalProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<PortalData>(
     () => ({
-      token, user, profile, documents, offers, favorites,
+      token, user, profile, documents, offers, favorites, loading,
       recommendations, activity, notifications, appointments,
       message, setMessage, refresh, headers,
     }),
-    [token, user, profile, documents, offers, favorites, recommendations, activity, notifications, appointments, message, refresh, headers],
+    [token, user, profile, documents, offers, favorites, loading, recommendations, activity, notifications, appointments, message, refresh, headers],
   )
 
   return (

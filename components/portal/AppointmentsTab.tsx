@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Card, Button, Badge, Input, Select, EmptyState, LoadingState } from "@/components/admin/ui"
+import { Card, Button, Badge, Input, Select, EmptyState } from "@/components/admin/ui"
 import { usePortal } from "./PortalContext"
 
 /* ─────────────────── helpers ─────────────────── */
@@ -35,7 +35,6 @@ export default function AppointmentsTab() {
   const [propertyId, setPropertyId] = useState("")
   const [notes, setNotes] = useState("")
   const [booking, setBooking] = useState(false)
-  const [loading, setLoading] = useState(false)
 
   /* Load available properties from favorites */
   const availableProperties = favorites?.map((f) => ({
@@ -66,8 +65,6 @@ export default function AppointmentsTab() {
       setBooking(false)
     }
   }
-
-  if (loading) return <LoadingState message="Se încarcă programările..." />
 
   return (
     <div className="space-y-6">

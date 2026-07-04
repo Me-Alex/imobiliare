@@ -29,7 +29,7 @@ function scoreVariant(score: number): "success" | "warning" | "danger" | "defaul
 /* ─────────────────── component ─────────────────── */
 
 export default function RecommendationsTab() {
-  const { recommendations, setMessage, headers, refresh } = usePortal()
+  const { recommendations, profile, setMessage, headers, refresh } = usePortal()
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState<string | null>(null)
 
@@ -39,6 +39,7 @@ export default function RecommendationsTab() {
       const res = await fetch("/api/recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers() },
+        body: JSON.stringify(profile),
       })
       if (!res.ok) throw new Error()
       await refresh()

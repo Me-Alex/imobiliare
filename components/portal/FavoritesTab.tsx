@@ -83,7 +83,7 @@ export default function FavoritesTab() {
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {favorites.map((fav) => {
           const p = fav.property ?? {}
-          const slug = p.slug ?? fav.id
+          const slug = p.slug || p.id || fav.property_id || ""
           const isSelected = selected.has(fav.id)
 
           return (

@@ -103,7 +103,7 @@ export default function ActivityTab() {
         ) : (
           <div className="space-y-3">
             {notifications.map((n) => {
-              const isRead = n.status === "read"
+              const isRead = (n.status ?? "").toUpperCase() === "READ"
               return (
                 <div
                   key={n.id}
