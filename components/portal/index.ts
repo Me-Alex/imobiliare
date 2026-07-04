@@ -1,0 +1,8 @@
+export { default as ProfileTab } from "./ProfileTab"
+export { default as FavoritesTab } from "./FavoritesTab"
+export { default as RecommendationsTab } from "./RecommendationsTab"
+export { default as DocumentsTab } from "./DocumentsTab"
+export { default as OffersTab } from "./OffersTab"
+export { default as ActivityTab } from "./ActivityTab"
+export { default as AppointmentsTab } from "./AppointmentsTab"
+export { default as SecurityTab } from "./SecurityTab"
