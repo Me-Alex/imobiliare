@@ -40,7 +40,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
 
   const segment = pathname?.split("/").filter(Boolean)[1] || ""
   const activeTab = routeToTab[String(segment).toLowerCase()] || "profil"
-  const score = Math.min(100, 35 + favorites.length * 8 + documents.length * 10 + offers.length * 12)
+
 
   const firstName = user?.email
     ? user.email.split("@")[0].charAt(0).toUpperCase() + user.email.split("@")[0].slice(1)
@@ -108,30 +108,25 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* ── Stats row ── */}
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-          <StatCard label="Scor pregătire" value={`${score}/100`} tabKey={null} />
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard
             label="Favorite"
             value={favorites.length}
-            tabKey="favorite"
             href="/portal/favorites"
           />
           <StatCard
             label="Documente"
             value={documents.length}
-            tabKey="documente"
             href="/portal/documents"
           />
           <StatCard
             label="Oferte"
             value={offers.length}
-            tabKey="oferte"
             href="/portal/offers"
           />
           <StatCard
             label="Programări"
             value={appointments.length}
-            tabKey="programari"
             href="/portal/appointments"
           />
         </div>
@@ -177,7 +172,6 @@ function StatCard({
 }: {
   label: string
   value: string | number
-  tabKey: string | null
   href?: string
 }) {
   const inner = (

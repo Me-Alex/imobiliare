@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Card, Badge, Button, Input, Select, StatCard } from "@/components/admin/ui"
+import { Card, Button, Input, Select } from "@/components/admin/ui"
 import { usePortal } from "./PortalContext"
 
 /* ─────────────────── helpers ─────────────────── */
@@ -12,17 +12,6 @@ function formatBudget(val: number) {
   return String(val)
 }
 
-function calcScore(p: Record<string, any>): number {
-  let s = 0
-  if (p.full_name) s += 20
-  if (p.phone) s += 20
-  if (p.budget && p.budget > 0) s += 15
-  if (p.preferred_zones?.length) s += 15
-  if (p.rooms) s += 10
-  if (p.purpose) s += 10
-  if (p.financing_status) s += 10
-  return s
-}
 
 const PURPOSE_OPTIONS = [
   { value: "", label: "Selectează..." },
@@ -104,22 +93,9 @@ export default function ProfileTab() {
     }
   }, [form, headers, refresh, setMessage])
 
-  const score = calcScore(form)
-
-  const scoreColor =
-    score >= 80 ? "text-emerald-500" : score >= 50 ? "text-amber-500" : "text-rose-500"
-
-  const scoreLabel =
-    score >= 80 ? "Pregătire excelentă" : score >= 50 ? "Pregătire medie" : "Necesită completare"
 
   return (
     <div className="space-y-6">
-      {/* ── Score ── */}
-      <StatCard
-        label="Scor de pregătire"
-        value={<span className={scoreColor}>{score}%</span>}
-        hint={scoreLabel}
-      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* ── Personal Info ── */}
