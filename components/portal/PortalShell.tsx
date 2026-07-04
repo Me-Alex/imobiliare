@@ -15,6 +15,7 @@ import {
   Shield,
   Menu,
   X,
+  ArrowLeft,
 } from "lucide-react"
 import { usePortal } from "@/components/portal/PortalContext"
 import { LoadingState } from "@/components/admin/ui"
@@ -51,17 +52,18 @@ export const routeToTab: Record<string, PortalTabKey> = {
 export default function PortalShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, documents, favorites, offers, appointments, loading, message } = usePortal()
+  const { user, profile, documents, favorites, offers, appointments, notifications, loading, message } = usePortal()
   const [toastVisible, setToastVisible] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const segment = pathname?.split("/").filter(Boolean)[1] || ""
   const activeTab = routeToTab[String(segment).toLowerCase()] || "profil"
 
-  const firstName = user?.email
-    ? user.email.split("@")[0].charAt(0).toUpperCase() + user.email.split("@")[0].slice(1)
-    : null
-  const displayName = firstName || user?.email || ""
+  const displayName = profile?.full_name && profile.full_name !== "Client HQS"
+    ? profile.full_name
+    : user?.email
+      ? user.email.split("@")[0].charAt(0).toUpperCase() + user.email.split("@")[0].slice(1)
+      : ""
 
   async function logout() {
     const { supabase } = await import("@/lib/supabase")
@@ -97,6 +99,13 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         </Link>
       </div>
 
+      {/* Back to site link */}
+      <div className="px-3 pb-1">
+        <Link href="/" className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-muted hover:text-accent transition">
+          <ArrowLeft className="h-3 w-3" /> Înapoi pe site
+        </Link>
+      </div>
+
       {/* Nav items */}
       <nav className="flex-1 space-y-1 px-3" aria-label="Portal navigare">
         {PORTAL_TABS.map((tab) => {
@@ -128,20 +137,26 @@ export default function PortalShell({ children }: { children: ReactNode }) {
                 aria-hidden
               />
               <span>{tab.label}</span>
+              {/* Notification badge for Activitate */}
+              {tab.key === "activitate" && notifications?.some((n) => n.status !== "READ" && n.status !== "read") && (
+                <span className="ml-auto h-2.5 w-2.5 shrink-0 rounded-full bg-rose-500" />
+              )}
             </Link>
           )
         })}
       </nav>
 
-      {/* Bottom: email + logout */}
+      {/* Bottom: avatar + email + logout */}
       <div className="shrink-0 border-t border-bg-surface px-3 py-4">
         {user?.email && (
-          <p
-            className="mb-2 truncate px-2 text-xs text-text-muted"
-            title={user.email}
-          >
-            {user.email}
-          </p>
+          <div className="mb-2 flex items-center gap-2.5 px-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/20 text-sm font-bold text-accent">
+              {user.email.charAt(0).toUpperCase() || "C"}
+            </div>
+            <p className="min-w-0 truncate text-xs text-text-muted" title={user.email}>
+              {user.email}
+            </p>
+          </div>
         )}
         <button
           onClick={logout}
@@ -226,7 +241,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
               Cont client
             </span>
             <h1 className="mt-2 text-2xl font-black text-text-primary sm:text-3xl">
-              Bun venit, {displayName}!
+              Bun venit{(displayName ? `, ${displayName}` : "")}!
             </h1>
             <p className="mt-1 text-sm text-text-muted">
               Workspace-ul tău personal HQS

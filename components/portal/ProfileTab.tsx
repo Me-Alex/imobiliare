@@ -43,6 +43,7 @@ export default function ProfileTab() {
     financing_status: "",
   })
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     if (profile) {
@@ -85,6 +86,8 @@ export default function ProfileTab() {
       })
       if (!res.ok) throw new Error(await res.text())
       await refresh()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
       setMessage("Profilul a fost salvat cu succes.")
     } catch (e) {
       setMessage("Eroare la salvarea profilului.")
@@ -153,7 +156,7 @@ export default function ProfileTab() {
                 step={5_000}
                 value={form.budget}
                 onChange={(e) => update("budget", Number(e.target.value))}
-                className="w-full accent-accent"
+                className="w-full h-2 rounded-full bg-bg-surface appearance-none cursor-pointer accent-accent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:shadow-md"
               />
               <div className="mt-1 flex justify-between text-xs text-text-muted">
                 <span>75K</span>
@@ -225,8 +228,8 @@ export default function ProfileTab() {
 
       {/* ── Save ── */}
       <div className="flex justify-end">
-        <Button variant="primary" onClick={handleSave} disabled={saving}>
-          {saving ? "Se salvează..." : "Salvează profilul"}
+        <Button variant="primary" onClick={handleSave} disabled={saving || saved} className={saved ? "bg-emerald-600 hover:bg-emerald-600" : ""}>
+          {saved ? "✓ Salvat!" : saving ? "Se salvează..." : "Salvează profilul"}
         </Button>
       </div>
     </div>
