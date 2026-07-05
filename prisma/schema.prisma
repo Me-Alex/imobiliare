@@ -30,3 +30,74 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Property {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String
+  type        String
+  transaction String
+  price       Float
+  currency    String   @default("EUR")
+  areaSqm     Float
+  rooms       Int
+  bathrooms   Int
+  floor       Int?
+  yearBuilt   Int?
+  address     String
+  zone        String
+  sector      String?
+  city        String   @default("Bucuresti")
+  lat         Float?
+  lng         Float?
+  status      String   @default("PUBLISHED")
+  featured    Boolean  @default(false)
+  coverUrl    String?
+  galleryUrls String   @default("[]")
+  pricePerSqm Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  analytics PropertyAnalytics[]
+}
+
+model PropertyAnalytics {
+  id          String   @id @default(cuid())
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id])
+  views       Int      @default(0)
+  inquiries   Int      @default(0)
+  saves       Int      @default(0)
+  week        String
+  recordedAt  DateTime @default(now())
+
+  @@unique([propertyId, week])
+}
+
+model MarketData {
+  id          String   @id @default(cuid())
+  zone        String
+  type        String
+  avgPriceSqm Float
+  avgAreaSqm  Float
+  totalListed Int      @default(0)
+  soldCount   Int      @default(0)
+  week        String
+  recordedAt  DateTime @default(now())
+
+  @@unique([zone, type, week])
+}
+
+model Zone {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  sector      String?
+  description String?
+  avgPriceSqm Float?
+  demand      String   @default("Moderata")
+  popularFor  String   @default("[]")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+}
