@@ -32,7 +32,7 @@ interface PropertyDetailDialogProps {
 }
 
 export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
-  const { selectedPropertySlug, setSelectedPropertySlug, favorites, compareList, toggleFavorite, toggleCompare } = useAppStore()
+  const { selectedPropertySlug, setSelectedPropertySlug, favorites, compareList, toggleFavorite, toggleCompare, setLightbox } = useAppStore()
   const [copied, setCopied] = useState(false)
   const { data: property, isLoading } = useProperty(selectedPropertySlug)
 
@@ -69,7 +69,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 sm:p-0 gap-0">
         {/* Image Gallery - key resets state on property change */}
-        <ImageGallery key={property.id} images={images} title={property.title} />
+        <ImageGallery key={property.id} images={images} title={property.title} onExpand={(idx) => setLightbox(images, idx)} />
 
         {/* Content */}
         <div className="p-6 space-y-6">
@@ -202,7 +202,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
   )
 }
 
-function ImageGallery({ images, title }: { images: string[]; title: string }) {
+function ImageGallery({ images, title, onExpand }: { images: string[]; title: string; onExpand: (index: number) => void }) {
   const [currentImage, setCurrentImage] = useState(0)
   const coverImage = images[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80'
 
@@ -216,12 +216,27 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
 
   return (
     <div className="relative bg-muted">
-      <div className="aspect-video sm:aspect-[16/9] relative overflow-hidden">
+      <div
+        className="aspect-video sm:aspect-[16/9] relative overflow-hidden cursor-zoom-in"
+        onClick={() => onExpand(currentImage)}
+        role="button"
+        tabIndex={0}
+        aria-label="Expandeaza galeria"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExpand(currentImage) } }}
+      >
         <img
           src={images[currentImage] || coverImage}
           alt={`${title} - Imaginea ${currentImage + 1}`}
           className="w-full h-full object-cover transition-opacity duration-300"
         />
+        {/* Expand button */}
+        <button
+          className="absolute bottom-3 left-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 dark:bg-black/60 backdrop-blur-sm border-0 hover:bg-white dark:hover:bg-black/80 transition-colors shadow-sm"
+          onClick={(e) => { e.stopPropagation(); onExpand(currentImage) }}
+          aria-label="Expandeaza"
+        >
+          <Maximize2 className="h-4 w-4" />
+        </button>
         {images.length > 1 && (
           <>
             <Button

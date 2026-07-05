@@ -697,3 +697,154 @@ textarea:focus-visible {
 .dark textarea:focus-visible {
   outline-color: oklch(0.65 0.17 160);
 }
+
+/* ===== TASK 3-B: Enhanced Styling Additions ===== */
+
+/* Enhanced section header with decorative elements */
+.section-header {
+  position: relative;
+  text-align: center;
+  margin-bottom: 3rem;
+}
+.section-header h2 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+.section-header p {
+  margin-top: 0.75rem;
+  max-width: 32rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+.section-header::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, oklch(0.527 0.14 160), oklch(0.65 0.17 140));
+}
+
+/* Glassmorphism Card System */
+.glass-card {
+  background: oklch(1 0 0 / 70%);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid oklch(0.527 0.14 160 / 10%);
+  box-shadow: 0 8px 32px -8px oklch(0.2 0.03 160 / 10%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card:hover {
+  box-shadow: 0 16px 48px -12px oklch(0.2 0.03 160 / 15%);
+  border-color: oklch(0.527 0.14 160 / 20%);
+  transform: translateY(-2px);
+}
+.dark .glass-card {
+  background: oklch(0.19 0.015 60 / 80%);
+  border-color: oklch(0.65 0.17 160 / 12%);
+  box-shadow: 0 8px 32px -8px oklch(0 0 0 / 20%);
+}
+.dark .glass-card:hover {
+  box-shadow: 0 16px 48px -12px oklch(0 0 0 / 30%);
+  border-color: oklch(0.65 0.17 160 / 20%);
+}
+
+/* Floating Decorative Blobs */
+.floating-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+.dark .floating-blob {
+  opacity: 0.08;
+}
+
+/* Enhanced Badge Styles */
+.badge-glow {
+  box-shadow: 0 0 12px -2px currentColor;
+}
+.badge-shine {
+  position: relative;
+  overflow: hidden;
+}
+.badge-shine::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255,255,255,0.3) 50%,
+    transparent 70%
+  );
+  transform: rotate(45deg) translateX(-100%);
+  transition: transform 0.6s ease;
+}
+.badge-shine:hover::after {
+  transform: rotate(45deg) translateX(100%);
+}
+
+/* Marquee/Infinite Scroll */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}
+
+/* Text Gradient Utility (extended) */
+.gradient-text-warm {
+  background: linear-gradient(135deg, oklch(0.65 0.17 60), oklch(0.70 0.15 85));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Number counter styling */
+.counter-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Subtle floating animation for decorative elements */
+@keyframes gentleFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-8px) rotate(1deg); }
+  66% { transform: translateY(-4px) rotate(-1deg); }
+}
+.animate-gentle-float {
+  animation: gentleFloat 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-gentle-float {
+    animation: none;
+  }
+}
+
+/* Interactive hover lift effect */
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px -12px oklch(0.2 0.03 160 / 20%);
+}

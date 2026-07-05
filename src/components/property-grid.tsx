@@ -88,8 +88,12 @@ export function PropertyGrid({ onSelectProperty }: { onSelectProperty: (slug: st
   return (
     <div>
       {/* Results count */}
-      <div className="mb-4 text-sm text-muted-foreground">
-        Se incarca {properties.length} din {total} proprietati
+      <div className="mb-4 flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{properties.length}</span>{' '}
+          din <span className="font-medium text-foreground">{total}</span> proprietati
+        </div>
+        <span className="text-xs text-muted-foreground/70">Aratand {properties.length} din {total} proprietati</span>
       </div>
 
       <motion.div
@@ -141,8 +145,19 @@ export function PropertyGrid({ onSelectProperty }: { onSelectProperty: (slug: st
 
       {/* All loaded indicator */}
       {!hasNextPage && hasResults && properties.length >= total && (
-        <div className="mt-8 text-center text-sm text-muted-foreground">
-          Toate {total} proprietatile sunt incarcate
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <div className="text-center text-sm text-muted-foreground">
+            Toate {total} proprietatile sunt incarcate
+          </div>
+          <div className="cta-gradient-border">
+            <Button
+              size="lg"
+              className="gap-2 bg-card text-foreground hover:bg-card/80 rounded-[var(--radius)]"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            >
+              Vezi Toate Proprietatile
+            </Button>
+          </div>
         </div>
       )}
     </div>

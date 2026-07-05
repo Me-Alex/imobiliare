@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import { Building2, Mail, Phone, MapPin, Facebook, Instagram, Linkedin, Send, ArrowUp, Loader2 } from 'lucide-react'
+import { Building2, Mail, Phone, MapPin, Facebook, Instagram, Linkedin, Send, ArrowUp, Loader2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
@@ -59,13 +59,17 @@ export function SiteFooter() {
 
   return (
     <footer id="contact" className="mt-auto border-t bg-muted/30 relative overflow-hidden">
+      {/* Decorative gradient line at the very top */}
+      <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
+        background: 'linear-gradient(90deg, transparent 0%, oklch(0.527 0.14 160 / 40%) 30%, oklch(0.65 0.17 140 / 40%) 50%, oklch(0.527 0.14 160 / 40%) 70%, transparent 100%)',
+      }} />
       {/* Watermark text */}
       <span className="footer-watermark select-none" aria-hidden="true">
         propmarket
       </span>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:py-16 relative">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10">
           {/* Company info */}
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
@@ -101,12 +105,31 @@ export function SiteFooter() {
             <ul className="space-y-2.5">
               {['Acasa', 'Proprietati', 'Analiza Piata', 'Zone', 'Despre Noi', 'Contact'].map((link) => (
                 <li key={link}>
-                  <a href="#" className="link-underline text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <a href="#" className="link-underline text-sm text-muted-foreground hover:text-foreground transition-all duration-200 hover:pl-1">
                     {link}
                   </a>
                 </li>
               ))}
             </ul>
+          </div>
+
+          {/* Cautare Rapida - popular search terms */}
+          <div className="transition-colors duration-300">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Search className="h-4 w-4 text-primary" />
+              Cautare Rapida
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {['Apartamente 2 camere', 'Garsoniere Pipera', 'Case Militari', 'Vile Nord', 'Terenuri Pipera', 'Inchiriere Floreasca', 'Apartamente 3 camere', 'Spatii Comerciale', 'Vanzare Dorobanti'].map((term) => (
+                <button
+                  key={term}
+                  type="button"
+                  className="text-xs px-3 py-1.5 rounded-full border border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 hover:pl-4"
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Property types */}
@@ -115,7 +138,7 @@ export function SiteFooter() {
             <ul className="space-y-2.5">
               {['Apartamente', 'Case', 'Vile', 'Terenuri', 'Spatii Comerciale', 'Garsoniere'].map((link) => (
                 <li key={link}>
-                  <a href="#" className="link-underline text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <a href="#" className="link-underline text-sm text-muted-foreground hover:text-foreground transition-all duration-200 hover:pl-1">
                     {link}
                   </a>
                 </li>
@@ -173,7 +196,7 @@ export function SiteFooter() {
         <Separator className="my-8" />
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} PropMarket. Toate drepturile rezervate.</p>
+          <p className="animate-[fadeInUp_0.6s_ease-out_forwards]">&copy; {new Date().getFullYear()} PropMarket. Toate drepturile rezervate.</p>
           <div className="flex items-center gap-4">
             <a href="#" className="link-underline hover:text-foreground transition-colors">Termeni si conditii</a>
             <a href="#" className="link-underline hover:text-foreground transition-colors">Politica de confidentialitate</a>

@@ -64,8 +64,17 @@ function StatCard({
       initial={{ opacity: 0, y: 30 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.6, delay: index * 0.1 }}
-      className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5"
+      className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 group"
     >
+      {/* Subtle inner glow on hover */}
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" style={{
+        boxShadow: 'inset 0 0 30px oklch(0.527 0.14 160 / 6%)',
+      }} />
+      {/* Decorative corner dots */}
+      <div className="absolute top-3 right-3 flex gap-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-current opacity-10" style={{ color: theme.border }} />
+        <span className="h-1.5 w-1.5 rounded-full bg-current opacity-10" style={{ color: theme.border }} />
+      </div>
       {/* Colored left border accent */}
       <div
         className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl"
@@ -82,7 +91,7 @@ function StatCard({
             style={{ color: theme.icon }}
           />
         </div>
-        <div className="text-3xl font-bold tracking-tight mb-1">
+        <div className="text-3xl font-bold tracking-tight mb-1 counter-value">
           {prefix}{count.toLocaleString('ro-RO')}{suffix}
         </div>
         <div className="font-medium text-sm mb-0.5">{label}</div>
@@ -129,7 +138,12 @@ export function StatsSection() {
 
         <hr className="section-divider mb-8" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Subtle animated gradient orb behind the stats grid */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full pointer-events-none animate-gentle-float" style={{
+          background: 'radial-gradient(circle, oklch(0.527 0.14 160 / 8%) 0%, transparent 70%)',
+        }} />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative">
           <StatCard
             icon={Building2}
             value={totalProperties}

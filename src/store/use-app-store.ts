@@ -3,6 +3,8 @@ import { create } from 'zustand'
 interface AppState {
   favorites: string[]
   compareList: string[]
+  priceAlertsOpen: boolean
+  setPriceAlertsOpen: (open: boolean) => void
   toggleFavorite: (id: string) => void
   toggleCompare: (id: string) => void
   searchQuery: string
@@ -29,11 +31,17 @@ interface AppState {
   setMinArea: (v: string) => void
   maxArea: string
   setMaxArea: (v: string) => void
+  lightboxImages: string[]
+  lightboxIndex: number
+  setLightbox: (images: string[], index?: number) => void
+  clearLightbox: () => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
   favorites: [],
   compareList: [],
+  priceAlertsOpen: false,
+  setPriceAlertsOpen: (open) => set({ priceAlertsOpen: open }),
   toggleFavorite: (id) =>
     set((state) => ({
       favorites: state.favorites.includes(id)
@@ -74,4 +82,8 @@ export const useAppStore = create<AppState>((set) => ({
   setMinArea: (v) => set({ minArea: v }),
   maxArea: '',
   setMaxArea: (v) => set({ maxArea: v }),
+  lightboxImages: [],
+  lightboxIndex: 0,
+  setLightbox: (images, index = 0) => set({ lightboxImages: images, lightboxIndex: index }),
+  clearLightbox: () => set({ lightboxImages: [], lightboxIndex: 0 }),
 }))

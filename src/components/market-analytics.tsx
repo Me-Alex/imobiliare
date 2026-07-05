@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { TrendingUp, Minus, BarChart3, PieChartIcon, DollarSign, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { TrendingUp, Minus, BarChart3, PieChartIcon, DollarSign, ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react'
 import { Area, AreaChart, Bar, BarChart, Pie, PieChart, Cell, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -179,17 +179,27 @@ export function MarketAnalytics() {
   }
 
   return (
-    <section id="analiza" className="py-16 scroll-mt-20">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section id="analiza" className="py-16 scroll-mt-20 relative overflow-hidden">
+      {/* Subtle animated gradient orbs in the background */}
+      <div className="floating-blob w-[400px] h-[400px] top-10 -left-32" style={{ background: 'oklch(0.527 0.14 160)' }} />
+      <div className="floating-blob w-[350px] h-[350px] bottom-10 -right-24" style={{ background: 'oklch(0.65 0.17 140)' }} />
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-100px' }}
           transition={{ duration: 0.5 }}
         >
-          <div className="mb-10">
-            <h2 className="text-3xl font-bold tracking-tight">Analiza de Piata</h2>
-            <p className="text-muted-foreground mt-2">Tendinte si statistici imobiliare in timp real pentru Bucuresti.</p>
+          <div className="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">Analiza de Piata</h2>
+              <p className="text-muted-foreground mt-2">Tendinte si statistici imobiliare in timp real pentru Bucuresti.</p>
+            </div>
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary shrink-0 badge-glow">
+              <Clock className="h-3.5 w-3.5" />
+              Perioada: Ultimele 8 saptamani
+            </span>
           </div>
 
           <hr className="section-divider mb-8" />
@@ -229,8 +239,7 @@ export function MarketAnalytics() {
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Area chart - Price trend */}
-            <Card className="py-0 gap-0 rounded-2xl border-border/60 overflow-hidden relative">
-              <div className="chart-card-pattern absolute inset-0 pointer-events-none" />
+            <Card className="glass-card py-0 gap-0 rounded-2xl overflow-hidden relative">
               <CardHeader className="pb-2 relative z-10">
                 <CardTitle className="text-base">Evolutie Pret mediu/m²</CardTitle>
                 <CardDescription>Tendinta saptamanala a pretului mediu per metru patrat</CardDescription>
@@ -262,8 +271,7 @@ export function MarketAnalytics() {
             </Card>
 
             {/* Bar chart - Listed vs Sold */}
-            <Card className="py-0 gap-0 rounded-2xl border-border/60 overflow-hidden relative">
-              <div className="chart-card-pattern absolute inset-0 pointer-events-none" />
+            <Card className="glass-card py-0 gap-0 rounded-2xl overflow-hidden relative">
               <CardHeader className="pb-2 relative z-10">
                 <CardTitle className="text-base">Listate vs Vandute</CardTitle>
                 <CardDescription>Comparatie proprietati listate si vandute pe zone</CardDescription>
@@ -291,8 +299,7 @@ export function MarketAnalytics() {
 
             {/* Pie chart - Type distribution */}
             {typeDistribution.length > 0 && (
-              <Card className="py-0 gap-0 lg:col-span-2 rounded-2xl border-border/60 overflow-hidden relative">
-                <div className="chart-card-pattern absolute inset-0 pointer-events-none" />
+              <Card className="glass-card py-0 gap-0 lg:col-span-2 rounded-2xl overflow-hidden relative">
                 <CardHeader className="pb-2 relative z-10">
                   <CardTitle className="text-base">Distributia pe Tip de Proprietate</CardTitle>
                   <CardDescription>Proportia fiecarui tip de proprietate din piata</CardDescription>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useTheme } from 'next-themes'
-import { Building2, Heart, Menu, Moon, Sun } from 'lucide-react'
+import { Bell, Building2, Heart, Menu, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -25,9 +25,10 @@ const navItems = [
 
 interface SiteHeaderProps {
   onOpenFavorites?: () => void
+  onOpenPriceAlerts?: () => void
 }
 
-export function SiteHeader({ onOpenFavorites }: SiteHeaderProps) {
+export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderProps) {
   const { setTheme, resolvedTheme } = useTheme()
   const favorites = useAppStore((s) => s.favorites)
 
@@ -67,6 +68,11 @@ export function SiteHeader({ onOpenFavorites }: SiteHeaderProps) {
                 {favorites.length}
               </Badge>
             )}
+          </Button>
+
+          {/* Price Alerts */}
+          <Button variant="ghost" size="icon" className="relative" aria-label="Alerte pret" onClick={onOpenPriceAlerts}>
+            <Bell className="h-5 w-5" />
           </Button>
 
           {/* Theme toggle */}
@@ -110,6 +116,16 @@ export function SiteHeader({ onOpenFavorites }: SiteHeaderProps) {
                 <span className="text-sm text-muted-foreground">Favorite</span>
                 <Badge variant="secondary">{favorites.length} proprietati</Badge>
               </div>
+              <button
+                type="button"
+                className="flex items-center justify-between w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
+                onClick={onOpenPriceAlerts}
+              >
+                <span className="flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Alerte Pret
+                </span>
+              </button>
             </SheetContent>
           </Sheet>
         </div>
