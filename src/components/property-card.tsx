@@ -147,7 +147,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
 
   return (
     <Card
-      className="card-hover overflow-hidden cursor-pointer group py-0 gap-0"
+      className="card-hover overflow-hidden cursor-pointer group py-0 gap-0 relative"
       onClick={() => onSelect(property.slug)}
     >
       {/* Image */}

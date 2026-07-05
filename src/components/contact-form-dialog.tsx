@@ -80,7 +80,7 @@ function ContactFormDialog({ open, onOpenChange, propertyTitle }: ContactFormDia
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, propertyTitle }),
       })
 
       if (!res.ok) {

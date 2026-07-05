@@ -1,172 +1,91 @@
 ---
-Task ID: 5
+Task ID: 9 (Round 6 — Main Coordinator)
 Agent: main
-Task: Add interactive mortgage calculator component
+Task: Add new features, improve styling, persist data, enhance UX
 
 Work Log:
-- Created `/src/components/mortgage-calculator.tsx` — 'use client' component with full mortgage calculation logic
-- Implemented 4 slider+input controls: Pret proprietate (€50k-€1M), Avans (5-50%), Perioada (5-35 ani), Dobanda anuala (2-10%)
-- Calculated and displayed: Avansul, Suma imprumutata, Rata lunara (annuity formula), Dobanda totala, Cost total
-- Built SVG donut chart showing principal vs interest breakdown with animated transitions
-- Added amortization preview table (first 12 months) in a tabbed view with Grafic/Amortizare tabs
-- Used project UI components: Card, Slider, Label, Input, Badge, Tabs/TabsContent/TabsList/TabsTrigger
-- Used lucide-react icons: Calculator, Euro, Percent, Clock, TrendingUp
-- Added framer-motion animations (stagger children, scale pulse on metric changes, viewport reveal)
-- Applied emerald green theme (text-primary, bg-primary/10, bg-primary/5, border-primary/20)
-- Used formatPrice from @/lib/api for all euro formatting
-- All labels in Romanian
-- Responsive layout: mobile stacked, desktop 2-column grid (inputs left, results right)
-- Section with id="calculator" and scroll-mt-20 for anchor navigation
-- Updated `src/app/page.tsx` to import and place MortgageCalculator between ZoneCards and CtaSection
-- Lint passes (only pre-existing error in property-compare.tsx, no new issues)
+- **DB SCHEMA**: Added `ContactSubmission` and `NewsletterSubscription` models to Prisma schema, ran `db:push`
+- **API PERSISTENCE**: Updated `/api/contact` route to save submissions to SQLite via Prisma (name, email, phone, message, propertyTitle)
+- **NEW API — Newsletter**: Created `/api/newsletter/route.ts` — POST endpoint with email validation, unique constraint handling, SQLite persistence
+- **FOOTER NEWSLETTER**: Updated `site-footer.tsx` to call `/api/newsletter` API instead of just showing toast; added loading state (Loader2 spinner on submit button)
+- **CONTACT FORM**: Updated `contact-form-dialog.tsx` to send `propertyTitle` to the API for tracking which property the inquiry is about
+- **NEW FEATURE — Trust Section**: Created `/src/components/trust-section.tsx` — "De Ce PropMarket?" with 6 feature cards (Date Verificate, Analiza in Timp Real, Suport Dedicat, Compara Usor, Alerte de Pret, Tranzactii Securizate), colored left borders, dots pattern bg, framer-motion stagger animations, 3-column responsive grid
+- **NEW FEATURE — Testimonials**: Created `/src/components/testimonials-section.tsx` — 6 realistic Romanian testimonials with star ratings, colored avatar initials, Quote icon, framer-motion stagger, 3-column responsive grid
+- **NEW FEATURE — Recently Viewed**: Created `/src/components/recently-viewed.tsx` — localStorage-based (key: `pm-recently-viewed`, max 4), horizontal scrollable mini-cards, auto-tracks viewed properties from detail dialog, clear history button, scroll-horizontal custom scrollbar
+- **NEW FEATURE — Announcement Banner**: Created `/src/components/announcement-banner.tsx` — dismissable promo banner at top (localStorage key: `pm-announcement-dismissed`), emerald gradient, Framer Motion slide animation, CTA scroll to #contact
+- **NEW FEATURE — Cookie Consent**: Created `/src/components/cookie-consent.tsx` — fixed-bottom glassmorphism banner, Framer Motion slide-up, localStorage persistence (key: `pm-cookies-accepted`), "Accepta toate" / "Doar necesare" buttons, responsive layout
+- **ENHANCED — Gallery Dots**: Added dot indicators (active pill expands to w-6) + enhanced thumbnail strip with ring highlight on active image in property detail dialog
+- **ENHANCED — Header Nav**: Added "De Ce Noi" nav item linking to #de-ce-noi section
+- **STYLING — Smooth Scroll**: Added `scroll-behavior: smooth` and `scroll-padding-top: 5rem` to html for proper anchor offset
+- **STYLING — Section Title Accent**: Added `.section-title-accent` CSS class (gradient underline pseudo-element)
+- **STYLING — Horizontal Scrollbar**: Added `.scroll-horizontal` class with custom thin scrollbar styling for light/dark modes
+- **STYLING — Noise Overlay**: Added `.noise-overlay` CSS with SVG turbulence pattern for subtle texture depth on hero section
+- **STYLING — Announcement Shimmer**: Added `.announcement-shimmer` keyframe animation for potential banner effects
+- **STYLING — Enhanced Focus**: Added explicit focus-visible styles for buttons, links, inputs, selects, textareas with emerald ring in both light and dark modes
+- **STYLING — Hero Noise**: Applied `noise-overlay` class to hero section for subtle texture depth
+- **INTEGRATION**: Updated `page.tsx` with new section order: AnnouncementBanner→Header→Hero→Stats→RecentlyViewed→Properties→Analytics→Zones→Trust→Testimonials→Calculator→CTA→Footer→CookieConsent
 
 Stage Summary:
-- Mortgage Calculator fully functional with real-time calculations
-- Visual donut chart + amortization table in tabbed layout
-- Consistent emerald green theme matching rest of PropMarket dashboard
-- Responsive design with smooth framer-motion animations
-
----
-Task ID: 4
-Agent: main (QA + fixes + feature development coordination)
-Task: Fix bugs, add comparison view, search autocomplete, pagination, contact form, styling polish
-
-Work Log:
-- Fixed "Sector Sector 6" duplication bug in property cards and detail dialog
-- Fixed comparison view: replaced TanStack Query hook with manual useEffect + fetch for reliable data fetching
-- Added comparison API route and fixed rendering conditions to show data only when not loading
-- Verified search autocomplete works (dropdown with zone/property suggestions, keyboard navigation)
-- Verified "Incarca mai multe" pagination button loads all 24 properties correctly
-- Verified contact form dialog opens from property detail dialog
-- Confirmed zero console errors, clean ESLint, all APIs returning 200
-- Added styling: section dividers, card shimmer effects, parallax hero, glassmorphism search, animated CTA buttons, demand-based zone card colors, chart card patterns, footer watermark, hover animations, stat card borders, mobile responsiveness
-
-Stage Summary:
-- All known bugs fixed (sector duplication, comparison not loading)
-- 3 major new features: Property Comparison Sheet, Search Autocomplete, Load More Pagination, Contact Form Dialog
-- Styling polish across all 11+ components with micro-interactions and visual refinements
-- Full QA verified: zero errors, all features functional
-
----
-Task ID: 7
-Agent: main
-Task: Create Favorites Panel component + Add sharing buttons to property detail dialog
-
-Work Log:
-- Created `/src/components/favorites-panel.tsx`: Sheet-based favorites panel with scrollable property list
-  - Fetches full property data by IDs using getPropertiesByIds API
-  - Each property shows cover image, title, zone, price, rooms, area
-  - "Vezi detalii" button opens property detail dialog, "Sterge" button removes from favorites
-  - Empty state with Heart icon, loading skeletons during fetch
-  - Uses ScrollArea, Skeleton, Separator, Badge, Button from shadcn/ui
-- Added sharing buttons to `/src/components/property-detail-dialog.tsx`
-  - WhatsApp button: opens wa.me link with property title, price, origin
-  - Copy Link button: copies URL to clipboard with toast feedback, Check icon for copied state
-  - "Distribuie" label with Share2 icon
-- Updated `/src/components/site-header.tsx`: Added optional `onOpenFavorites` prop, Heart button triggers callback
-- Updated `/src/app/page.tsx`: Added `favoritesOpen` state, passed callback to SiteHeader, rendered FavoritesPanel
-
-Stage Summary:
-- New Favorites Panel: Sheet sliding from right, shows favorited properties with detail/remove actions
-- New Sharing Buttons: WhatsApp + Copy Link in property detail dialog with toast feedback
-- Header Heart button now opens favorites panel
-
----
-Task ID: 2-a
-Agent: main
-Task: Create error.tsx error boundary + Back-to-Top button component
-
-Work Log:
-- Created `src/app/error.tsx` — 'use client' error boundary with emerald green theme
-- Created `src/components/back-to-top.tsx` — floating button with framer-motion animation
-
-Stage Summary:
-- Error boundary provides graceful error handling with Romanian UI
-- Back-to-Top button appears on scroll with smooth animation
-
----
-Task ID: 8
-Agent: main
-Task: Create CTA Section component + Enhance Footer
-
-Work Log:
-- Created `src/components/cta-section.tsx` — dark emerald gradient CTA with scroll-triggered animations
-- Enhanced `src/components/site-footer.tsx` — working newsletter form, social hover effects, back-to-top link
-
-Stage Summary:
-- CTA section with trust indicators and animated gradient border
-- Newsletter form now functional with email validation and toast feedback
-
----
-Task ID: 6 (Round 5 — Main Coordinator)
-Agent: main
-Task: Fix critical 500 error, add 6 new features, styling polish, QA verification
-
-Work Log:
-- **CRITICAL BUG FIX**: Fixed 500 error on homepage caused by missing `getServerSnapshot` parameter in `property-compare.tsx` `useSyncExternalStore` call. Added `() => true` as third argument for server-side rendering.
-- **LINT FIX**: Refactored `property-compare.tsx` data fetching to eliminate `react-hooks/set-state-in-effect` lint error. Replaced synchronous `setIsLoading(true)` with derived loading state using `fetchedVersion` tracking pattern. All `properties` references updated to `displayProperties`.
-- **NEW FEATURE — Error Boundary**: Created `src/app/error.tsx` with Romanian error messages, emerald theme, retry/home buttons
-- **NEW FEATURE — Back to Top**: Created `src/components/back-to-top.tsx` with framer-motion fade animation, rAF-throttled scroll, appears >400px
-- **NEW FEATURE — Mortgage Calculator**: Created `src/components/mortgage-calculator.tsx` with 4 slider+input controls, annuity formula, SVG donut chart, 12-month amortization table, tabs
-- **NEW FEATURE — Favorites Panel**: Created `src/components/favorites-panel.tsx` as Sheet with property cards, view details, remove actions, empty state
-- **NEW FEATURE — Property Sharing**: Added WhatsApp + Copy Link buttons to property detail dialog with toast feedback
-- **NEW FEATURE — CTA Section**: Created `src/components/cta-section.tsx` with dark emerald gradient, animated border, trust indicators, scroll animations
-- **ENHANCED — Footer**: Working newsletter with email validation + toast, social hover brand colors, back-to-top link
-- **ENHANCED — Header**: Added `onOpenFavorites` prop, Heart button opens favorites panel, added "Calculator" nav item
-- **STYLING — Section dividers**: Added `<hr className="section-divider" />` between all major sections (Stats→Properties→Analytics→Zones→Calculator)
-- **STYLING — New CSS**: Added `.tabular-nums`, `.amortization-table`, `.favorites-item-enter` animation, `.card-glow` hover effect, `.back-to-top-pulse` animation, smooth theme transition
-- **INTEGRATION**: Updated `page.tsx` to include all new components in proper order: Hero→Stats→Properties→Analytics→Zones→Calculator→CTA→Footer
-
-Stage Summary:
-- **7 new features added**: Error boundary, Back to Top, Mortgage Calculator, Favorites Panel, Property Sharing, CTA Section, Enhanced Newsletter
-- **1 critical bug fixed**: 500 error from missing getServerSnapshot
-- **1 lint error fixed**: set-state-in-effect in property-compare.tsx
+- **6 new components created**: TrustSection, TestimonialsSection, RecentlyViewed, AnnouncementBanner, CookieConsent (all new files)
+- **2 DB models added**: ContactSubmission, NewsletterSubscription (with db push)
+- **2 API routes created/updated**: /api/newsletter (new), /api/contact (now persists to DB)
+- **3 features persisted to DB**: Contact submissions, Newsletter subscriptions, propertyTitle tracking
+- **Gallery enhanced**: Dot indicators + ring-highlighted thumbnails in property detail dialog
 - **ESLint**: 0 errors, 0 warnings
 - **Dev server**: All routes return 200, zero compilation errors
-- **All components integrated** in page.tsx with proper section flow
+- **Total sections on page**: Hero, Stats, Recently Viewed, Properties (with filters/grid), Analytics, Zones, Trust, Testimonials, Calculator, CTA, Footer
 
 ## Current Project Status
 
 ### Assessment
-PropMarket is a comprehensive Real Estate Analytics Dashboard with 15+ features, emerald green theme, and production-quality code:
-- **Data**: 24 properties, 10 zones, 600 market data points in SQLite
+PropMarket is a comprehensive Real Estate Analytics Dashboard with 20+ features, emerald green theme, and production-quality code:
+- **Data**: 24 properties, 10 zones, 600 market data points in SQLite (Prisma ORM)
+- **Persistence**: Contact submissions and newsletter subscriptions now saved to SQLite
 - **Search**: Autocomplete with zone/property suggestions, keyboard navigation, debounced input
 - **Listings**: Full-featured grid/list with 12+ filters, sort options, load more pagination
+- **Recently Viewed**: localStorage-based horizontal scroll, auto-tracking, max 4, clear history
 - **Comparison**: Floating bar → side-by-side sheet with best-value highlighting (2-3 properties)
-- **Detail**: Image gallery, metrics, contact form, sharing (WhatsApp/clipboard), similar properties
+- **Detail**: Image gallery with dot indicators, metrics, contact form (persists to DB), sharing (WhatsApp/clipboard), similar properties
 - **Analytics**: 3 interactive Recharts (price trend, listed vs sold, type distribution)
 - **Zones**: Demand indicators, pricing, property counts, color-coded demand bars
+- **Trust Section**: 6 feature cards with colored accents, stagger animations
+- **Testimonials**: 6 realistic Romanian reviews with star ratings, avatar initials
 - **Mortgage Calculator**: 4 interactive sliders, annuity formula, SVG donut chart, amortization table
 - **Favorites**: Header heart icon opens panel, property cards with view/remove actions
+- **Announcement Banner**: Dismissable promo at top, emerald gradient, localStorage
+- **Cookie Consent**: Fixed-bottom glassmorphism, localStorage persistence
 - **CTA Section**: Dark gradient, animated border, trust indicators, scroll-triggered animations
 - **Error Handling**: error.tsx boundary with Romanian messages and retry
 - **Back to Top**: Floating button with framer-motion animation
-- **Newsletter**: Working email form with validation and toast feedback
-- **Styling**: Emerald green theme, dark/light mode, shimmer, parallax, glassmorphism, micro-animations, section dividers, card glow, tabular numbers
+- **Newsletter**: Persisted to DB via API, loading state, email validation
+- **Styling**: Emerald green theme, dark/light mode, shimmer, parallax, glassmorphism, micro-animations, section dividers, card glow, tabular numbers, noise overlay, custom scrollbars, enhanced focus styles, smooth scroll
 - **Responsive**: Mobile-first with Sheet/drawer, collapsible filters, responsive grid layouts
-- **Accessibility**: Skip link, ARIA labels, keyboard navigation, prefers-reduced-motion support
+- **Accessibility**: Skip link, ARIA labels, keyboard navigation, prefers-reduced-motion, focus-visible styles
 
 ### Verification Results
 - ESLint: 0 errors, 0 warnings
 - Dev server: all routes return 200, zero compilation errors
 - No console errors in any component
-- All features functional and integrated
+- All 20+ features functional and integrated
+- DB schema in sync (ContactSubmission + NewsletterSubscription tables created)
 
 ### Unresolved Issues / Risks
-1. Contact form submissions are not persisted to database (just toast feedback)
-2. Newsletter subscriptions not persisted (just UI feedback)
-3. Property images use Unsplash URLs that require internet
-4. No authentication system — no protected routes
-5. No property image upload capability
-6. No map view for zone/property exploration
-7. No breadcrumb navigation for multi-level browsing
+1. Property images use Unsplash URLs that require internet access
+2. No authentication system — no protected routes or user accounts
+3. No property image upload capability
+4. No interactive map view for zone/property exploration
+5. No breadcrumb navigation for multi-level browsing
+6. No loading.tsx skeleton files for async routes
+7. Recently Viewed fetches properties individually (N+1 queries) — could batch
 
 ### Priority Recommendations for Next Phase
-1. Persist contact form submissions and newsletter signups to SQLite via Prisma
-2. Add NextAuth.js authentication for user accounts and saved preferences
-3. Add interactive map view (Leaflet/MapLibre) for zone exploration
-4. Add property image upload to local storage or cloud
+1. Add NextAuth.js authentication for user accounts and saved preferences
+2. Add interactive map view (Leaflet/MapLibre) for zone/property exploration
+3. Add property image upload to local storage or cloud
+4. Add loading.tsx skeleton files for all async routes
 5. Add breadcrumb navigation component
-6. Add loading.tsx skeleton files for all async routes
-7. Add property saved search / alerts feature
+6. Optimize Recently Viewed to batch-fetch properties
+7. Add saved search / price alerts feature (backend + UI)
 8. Add API rate limiting and input sanitization
+9. Add "Despre Noi" (About Us) page with team info
+10. Add property inquiry tracking in admin view (query ContactSubmission table)

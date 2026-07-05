@@ -593,6 +593,8 @@
 /* Smooth transition for theme changes */
 html {
   transition: color-scheme 0.3s ease;
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
 }
 
 /* Back to top button pulse on appear */
@@ -603,4 +605,95 @@ html {
 }
 .back-to-top-pulse {
   animation: backToTopPulse 0.6s ease-out;
+}
+
+/* Section header decorative underline */
+.section-title-accent {
+  position: relative;
+  display: inline-block;
+}
+.section-title-accent::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, oklch(0.527 0.14 160), oklch(0.65 0.17 140));
+  border-radius: 2px;
+}
+
+/* Enhanced horizontal scroll container */
+.scroll-horizontal {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.7 0.02 60) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-horizontal::-webkit-scrollbar {
+  height: 6px;
+}
+.scroll-horizontal::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-horizontal::-webkit-scrollbar-thumb {
+  background: oklch(0.8 0.01 60);
+  border-radius: 3px;
+}
+.scroll-horizontal::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0.02 60);
+}
+.dark .scroll-horizontal::-webkit-scrollbar-thumb {
+  background: oklch(0.35 0.02 60);
+}
+.dark .scroll-horizontal::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.45 0.02 60);
+}
+
+/* Property card grid transition */
+@property --card-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Subtle noise texture overlay for depth */
+.noise-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Announcement banner shimmer */
+@keyframes announcementShimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.announcement-shimmer {
+  background-size: 200% 100%;
+  animation: announcementShimmer 8s linear infinite;
+}
+
+/* Enhanced focus visible for better accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid oklch(0.527 0.14 160);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.dark button:focus-visible,
+.dark a:focus-visible,
+.dark input:focus-visible,
+.dark select:focus-visible,
+.dark textarea:focus-visible {
+  outline-color: oklch(0.65 0.17 160);
 }

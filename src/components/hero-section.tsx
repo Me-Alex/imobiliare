@@ -218,7 +218,7 @@ export function HeroSection() {
   }, [isOpen, allItems, activeIndex, handleSelectSuggestion, scrollToProperties])
 
   return (
-    <section className="relative min-h-[600px] lg:min-h-[700px] flex items-center overflow-hidden">
+    <section className="relative min-h-[600px] lg:min-h-[700px] flex items-center overflow-hidden noise-overlay">
       {/* Background image with parallax */}
       <div
         ref={bgRef}

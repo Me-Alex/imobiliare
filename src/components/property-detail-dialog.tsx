@@ -219,42 +219,61 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
       <div className="aspect-video sm:aspect-[16/9] relative overflow-hidden">
         <img
           src={images[currentImage] || coverImage}
-          alt={title}
-          className="w-full h-full object-cover"
+          alt={`${title} - Imaginea ${currentImage + 1}`}
+          className="w-full h-full object-cover transition-opacity duration-300"
         />
         {images.length > 1 && (
           <>
             <Button
               variant="secondary"
               size="icon"
-              className="absolute left-3 top-1/2 -translate-y-1/2 h-10 w-10 bg-white/80 dark:bg-black/60 backdrop-blur-sm rounded-full border-0"
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-10 w-10 bg-white/80 dark:bg-black/60 backdrop-blur-sm rounded-full border-0 hover:bg-white dark:hover:bg-black/80 transition-colors"
               onClick={prevImage}
+              aria-label="Imaginea anterioara"
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <Button
               variant="secondary"
               size="icon"
-              className="absolute right-3 top-1/2 -translate-y-1/2 h-10 w-10 bg-white/80 dark:bg-black/60 backdrop-blur-sm rounded-full border-0"
+              className="absolute right-3 top-1/2 -translate-y-1/2 h-10 w-10 bg-white/80 dark:bg-black/60 backdrop-blur-sm rounded-full border-0 hover:bg-white dark:hover:bg-black/80 transition-colors"
               onClick={nextImage}
+              aria-label="Imaginea urmatoare"
             >
               <ChevronRight className="h-5 w-5" />
             </Button>
           </>
         )}
         {images.length > 1 && (
-          <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+          <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm">
             {currentImage + 1} / {images.length}
           </div>
         )}
       </div>
+      {/* Gallery dot indicators */}
       {images.length > 1 && (
-        <div className="flex gap-2 p-3 overflow-x-auto scrollbar-thin">
+        <div className="flex items-center justify-center gap-1.5 py-3">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentImage(i)}
+              className={`transition-all duration-300 rounded-full ${
+                i === currentImage
+                  ? 'w-6 h-2 bg-primary'
+                  : 'w-2 h-2 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+              }`}
+              aria-label={`Imaginea ${i + 1}`}
+            />
+          ))}
+        </div>
+      )}
+      {images.length > 1 && (
+        <div className="flex gap-2 px-3 pb-3 overflow-x-auto scrollbar-thin">
           {images.map((img, i) => (
             <button
               key={i}
               onClick={() => setCurrentImage(i)}
-              className={`shrink-0 w-16 h-12 rounded-md overflow-hidden border-2 transition-colors ${i === currentImage ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100'}`}
+              className={`shrink-0 w-16 h-12 rounded-md overflow-hidden border-2 transition-all duration-200 ${i === currentImage ? 'border-primary ring-2 ring-primary/20' : 'border-transparent opacity-70 hover:opacity-100'}`}
             >
               <img src={img} alt="" className="w-full h-full object-cover" />
             </button>

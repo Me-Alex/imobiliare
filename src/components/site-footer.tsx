@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import { Building2, Mail, Phone, MapPin, Facebook, Instagram, Linkedin, Send, ArrowUp } from 'lucide-react'
+import { Building2, Mail, Phone, MapPin, Facebook, Instagram, Linkedin, Send, ArrowUp, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
@@ -15,7 +15,9 @@ export function SiteFooter() {
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState('')
 
-  const handleNewsletterSubmit = (e: FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleNewsletterSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!email.trim()) {
       setEmailError('Te rog introdu o adresa de email.')
@@ -26,10 +28,29 @@ export function SiteFooter() {
       return
     }
     setEmailError('')
-    toast.success('Multumim pentru abonare!', {
-      description: 'Vei primi noutatile pe ' + email,
-    })
-    setEmail('')
+    setIsSubmitting(true)
+    try {
+      const res = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Eroare la abonare.')
+      }
+      const data = await res.json()
+      toast.success(data.message || 'Multumim pentru abonare!', {
+        description: 'Vei primi noutatile pe ' + email,
+      })
+      setEmail('')
+    } catch (error) {
+      toast.error('Eroare', {
+        description: error instanceof Error ? error.message : 'Va rugam incercati din nou.',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const scrollToTop = () => {
@@ -126,8 +147,9 @@ export function SiteFooter() {
                   size="icon"
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 shrink-0 rounded-lg"
                   aria-label="Aboneaza-te"
+                  disabled={isSubmitting}
                 >
-                  <Send className="h-3.5 w-3.5" />
+                  {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                 </Button>
               </div>
               {emailError && (

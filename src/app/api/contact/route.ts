@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, email, phone, message } = body as {
+    const { name, email, phone, message, propertyTitle } = body as {
       name?: string
       email?: string
       phone?: string
       message?: string
+      propertyTitle?: string
     }
 
     // Validate required fields
     if (!name || typeof name !== 'string' || name.trim().length < 2) {
       return NextResponse.json(
-        { error: 'Numele este obligatoriu și trebuie să aibă cel puțin 2 caractere.' },
+        { error: 'Numele este obligatoriu si trebuie sa aiba cel putin 2 caractere.' },
         { status: 400 }
       )
     }
@@ -21,38 +23,41 @@ export async function POST(request: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!email || !emailRegex.test(email)) {
       return NextResponse.json(
-        { error: 'Adresa de email nu este validă.' },
+        { error: 'Adresa de email nu este valida.' },
         { status: 400 }
       )
     }
 
     if (!phone || typeof phone !== 'string' || phone.trim().length < 10) {
       return NextResponse.json(
-        { error: 'Numărul de telefon este obligatoriu (minim 10 caractere).' },
+        { error: 'Numarul de telefon este obligatoriu (minim 10 caractere).' },
         { status: 400 }
       )
     }
 
     if (!message || typeof message !== 'string' || message.trim().length < 10) {
       return NextResponse.json(
-        { error: 'Mesajul este obligatoriu și trebuie să aibă cel puțin 10 caractere.' },
+        { error: 'Mesajul este obligatoriu si trebuie sa aiba cel putin 10 caractere.' },
         { status: 400 }
       )
     }
 
-    // Log the submission (no email sending needed)
-    console.log('=== Nouă cerere de contact ===')
-    console.log(`Nume: ${name.trim()}`)
-    console.log(`Email: ${email.trim()}`)
-    console.log(`Telefon: ${phone.trim()}`)
-    console.log(`Mesaj: ${message.trim()}`)
-    console.log('================================')
+    // Persist to database
+    await db.contactSubmission.create({
+      data: {
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        message: message.trim(),
+        propertyTitle: propertyTitle?.trim() || null,
+      },
+    })
 
     return NextResponse.json({ success: true, message: 'Mesajul a fost trimis cu succes!' })
   } catch (error) {
     console.error('Eroare la trimiterea formularului de contact:', error)
     return NextResponse.json(
-      { error: 'A apărut o eroare la trimiterea mesajului. Vă rugăm încercați din nou.' },
+      { error: 'A aparut o eroare la trimiterea mesajului. Va rugam incercati din nou.' },
       { status: 500 }
     )
   }

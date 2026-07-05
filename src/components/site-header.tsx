@@ -19,6 +19,7 @@ const navItems = [
   { label: 'Proprietati', href: '#proprietati' },
   { label: 'Analiza', href: '#analiza' },
   { label: 'Zone', href: '#zone' },
+  { label: 'De Ce Noi', href: '#de-ce-noi' },
   { label: 'Calculator', href: '#calculator' },
 ]
 
