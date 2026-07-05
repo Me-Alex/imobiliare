@@ -303,4 +303,59 @@ PropMarket is a comprehensive Real Estate Analytics Dashboard with **28+ feature
 7. Add API rate limiting and input sanitization
 8. Add property inquiry tracking in admin view
 9. Add neighborhood guide pages (per-zone detail pages)
-10. Add multilingual support (EN/RO toggle)
+10. Add multilingual support (EN/RO toggle)---
+Task ID: 12 (Round 9 — Page Navigation System)
+Agent: main
+Task: Convert single-page anchor navigation to multi-page client-side routing
+
+Work Log:
+- **ARCHITECTURE — Client-side SPA routing**: Added `currentPage` state (`PageKey` type: `'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator'`) and `navigateTo()` action to Zustand store with scroll-to-top on navigation
+- **NEW — 6 page components** created in `src/views/`:
+  - `acasa-page.tsx`: Hero + Stats + RecentlyViewed + Property preview + Partners + CTA
+  - `proprietati-page.tsx`: Page hero with breadcrumb, property type quick-tags, full filters + grid
+  - `analiza-page.tsx`: Page hero with stat pills (trend, transactions, demand, avg price), MarketAnalytics + ZoneCards + ZoneMap + NeighborhoodInsights
+  - `zone-page.tsx`: Page hero with zone stats, ZoneMap + ZoneCards + NeighborhoodInsights
+  - `de-ce-noi-page.tsx`: Page hero with trust badges, AboutUs + Trust + HowItWorks + Testimonials + Partners + FAQ
+  - `calculator-page.tsx`: Page hero with mortgage info cards, Calculator + 3 info cards about DAE/advance/documents
+- **UPDATED — page.tsx**: Refactored from monolithic section list to AnimatePresence-based page router shell, renders correct page component based on `currentPage` state, all overlays (dialogs, panels, toasts, AI chat) remain global
+- **UPDATED — site-header.tsx**: Nav items changed from `<a href="#anchor">` to `<button onClick={navigateTo}>`, active page indicator (bottom bar + bg highlight), logo navigates to acasa, mobile Sheet now controlled (`open`/`onOpenChange`) with auto-close on navigation
+- **UPDATED — site-footer.tsx**: Quick links, property type links, and search term tags now use `navigateTo()`, logo navigates to acasa, "Sus" button scrolls to top
+- **UPDATED — hero-section.tsx**: Search "Cauta" button and zone suggestion clicks now navigate to proprietati page instead of scrolling to #proprietati anchor
+- **UPDATED — zone-map.tsx**: Sector click navigates to proprietati page with selected zone
+- **UPDATED — neighborhood-insights.tsx**: "Vezi proprietatile" button navigates to proprietati page with selected zone
+- **UPDATED — cta-section.tsx**: "Explora Proprietati" button navigates to proprietati page, "Contacteaza-ne" is now a plain button
+- **BUG FIX**: `src/pages/` conflicted with Next.js Pages Router — renamed to `src/views/` to avoid Turbopack treating files as Pages Router pages
+
+Stage Summary:
+- **6 page components created** with dedicated page heroes, breadcrumbs, and contextual content
+- **6 files updated** for navigation refactoring (page.tsx, site-header, site-footer, hero, zone-map, neighborhood-insights, cta)
+- **Client-side SPA routing** with AnimatePresence page transitions, active state indicators
+- **Mobile menu auto-close** on navigation via controlled Sheet state
+- **ESLint**: 0 errors, 0 warnings
+- **QA (agent-browser)**: All 6 pages render correctly (desktop + mobile), 0 console errors, navigation flows work end-to-end
+- **Screenshots**: nav-test-home.png, nav-test-proprietati.png saved
+
+## Current Project Status
+
+### Assessment
+PropMarket now has a proper multi-page SPA architecture with 6 distinct pages, client-side routing via Zustand, and smooth page transitions. Each nav button has its own dedicated page with a page hero, breadcrumb navigation, and contextual content. The site still runs on a single `/` route (no server-side routing needed).
+
+### Verification Results
+- ESLint: 0 errors, 0 warnings
+- Dev server: 200 on /, zero compilation errors
+- Agent-browser QA: All 6 pages render correctly, navigation works on desktop and mobile, 0 console errors
+- Mobile menu: Auto-closes on navigation
+
+### Unresolved Issues / Risks
+1. No browser back/forward support (Zustand state only, no URL sync)
+2. No page-specific meta tags / SEO (single URL)
+3. Property images use Unsplash URLs requiring internet access
+4. No authentication system
+5. No loading.tsx skeleton files
+
+### Priority Recommendations for Next Phase
+1. Add URL hash sync (e.g., `#proprietati`) for browser back/forward support
+2. Add NextAuth.js authentication
+3. Add property image upload
+4. Add loading.tsx skeleton files
+5. Add breadcrumb component for sub-navigation within pages

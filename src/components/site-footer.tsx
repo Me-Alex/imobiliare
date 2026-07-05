@@ -6,16 +6,30 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
+import { useAppStore, type PageKey } from '@/store/use-app-store'
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
+const quickLinks: { label: string; page: PageKey }[] = [
+  { label: 'Acasa', page: 'acasa' },
+  { label: 'Proprietati', page: 'proprietati' },
+  { label: 'Analiza Piata', page: 'analiza' },
+  { label: 'Zone', page: 'zone' },
+  { label: 'Despre Noi', page: 'de-ce-noi' },
+  { label: 'Contact', page: 'acasa' },
+]
+
+const propertyTypes = ['Apartamente', 'Case', 'Vile', 'Terenuri', 'Spatii Comerciale', 'Garsoniere']
+
+const searchTerms = ['Apartamente 2 camere', 'Garsoniere Pipera', 'Case Militari', 'Vile Nord', 'Terenuri Pipera', 'Inchiriere Floreasca', 'Apartamente 3 camere', 'Spatii Comerciale', 'Vanzare Dorobanti']
+
 export function SiteFooter() {
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState('')
-
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { navigateTo, setSelectedType } = useAppStore()
 
   const handleNewsletterSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -53,8 +67,24 @@ export function SiteFooter() {
     }
   }
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  const handlePropertyTypeClick = (type: string) => {
+    const typeMap: Record<string, string> = {
+      'Apartamente': 'APARTMENT',
+      'Case': 'HOUSE',
+      'Vile': 'VILLA',
+      'Terenuri': 'LAND',
+      'Spatii Comerciale': 'COMMERCIAL',
+      'Garsoniere': 'APARTMENT',
+    }
+    const mappedType = typeMap[type] || ''
+    if (mappedType) {
+      setSelectedType(mappedType)
+    }
+    navigateTo('proprietati')
+  }
+
+  const handleSearchTermClick = (term: string) => {
+    navigateTo('proprietati')
   }
 
   return (
@@ -72,14 +102,17 @@ export function SiteFooter() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10">
           {/* Company info */}
           <div className="sm:col-span-2 lg:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
+            <button
+              onClick={() => navigateTo('acasa')}
+              className="flex items-center gap-2 mb-4 group"
+            >
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Building2 className="h-5 w-5" />
               </div>
               <span className="text-xl font-bold tracking-tight">
                 Prop<span className="gradient-text">Market</span>
               </span>
-            </div>
+            </button>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
               Platforma de analiza imobiliara pentru Bucuresti. Date verificate, tendinte de piata si proprietati premium intr-un singur loc.
             </p>
@@ -103,11 +136,14 @@ export function SiteFooter() {
           <div className="transition-colors duration-300">
             <h3 className="font-semibold mb-4">Legaturi Rapide</h3>
             <ul className="space-y-2.5">
-              {['Acasa', 'Proprietati', 'Analiza Piata', 'Zone', 'Despre Noi', 'Contact'].map((link) => (
-                <li key={link}>
-                  <a href="#" className="link-underline text-sm text-muted-foreground hover:text-foreground transition-all duration-200 hover:pl-1">
-                    {link}
-                  </a>
+              {quickLinks.map((link) => (
+                <li key={link.label}>
+                  <button
+                    onClick={() => navigateTo(link.page)}
+                    className="link-underline text-sm text-muted-foreground hover:text-foreground transition-all duration-200 hover:pl-1 text-left"
+                  >
+                    {link.label}
+                  </button>
                 </li>
               ))}
             </ul>
@@ -120,10 +156,11 @@ export function SiteFooter() {
               Cautare Rapida
             </h3>
             <div className="flex flex-wrap gap-2">
-              {['Apartamente 2 camere', 'Garsoniere Pipera', 'Case Militari', 'Vile Nord', 'Terenuri Pipera', 'Inchiriere Floreasca', 'Apartamente 3 camere', 'Spatii Comerciale', 'Vanzare Dorobanti'].map((term) => (
+              {searchTerms.map((term) => (
                 <button
                   key={term}
                   type="button"
+                  onClick={() => handleSearchTermClick(term)}
                   className="text-xs px-3 py-1.5 rounded-full border border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 hover:pl-4"
                 >
                   {term}
@@ -136,11 +173,14 @@ export function SiteFooter() {
           <div className="transition-colors duration-300">
             <h3 className="font-semibold mb-4">Tipuri Proprietati</h3>
             <ul className="space-y-2.5">
-              {['Apartamente', 'Case', 'Vile', 'Terenuri', 'Spatii Comerciale', 'Garsoniere'].map((link) => (
+              {propertyTypes.map((link) => (
                 <li key={link}>
-                  <a href="#" className="link-underline text-sm text-muted-foreground hover:text-foreground transition-all duration-200 hover:pl-1">
+                  <button
+                    onClick={() => handlePropertyTypeClick(link)}
+                    className="link-underline text-sm text-muted-foreground hover:text-foreground transition-all duration-200 hover:pl-1 text-left"
+                  >
                     {link}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -204,7 +244,9 @@ export function SiteFooter() {
             <Separator orientation="vertical" className="hidden sm:block h-4" />
             <button
               type="button"
-              onClick={scrollToTop}
+              onClick={() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
               className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Inapoi sus"
             >

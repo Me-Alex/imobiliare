@@ -159,7 +159,7 @@ function formatEur(value: number): string {
 
 // ── Component ───────────────────────────────────────────────────────────
 export function ZoneMap() {
-  const { selectedZone, setSelectedZone } = useAppStore()
+  const { selectedZone, setSelectedZone, navigateTo } = useAppStore()
   const [hoveredSector, setHoveredSector] = useState<number | null>(null)
 
   const activeSectorId = useMemo(() => {
@@ -175,10 +175,9 @@ export function ZoneMap() {
       } else {
         setSelectedZone(sector.name)
       }
-      // Scroll to properties
-      document.getElementById('proprietati')?.scrollIntoView({ behavior: 'smooth' })
+      navigateTo('proprietati')
     },
-    [selectedZone, setSelectedZone]
+    [selectedZone, setSelectedZone, navigateTo]
   )
 
   const handleReset = useCallback(() => {

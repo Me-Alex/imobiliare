@@ -84,6 +84,7 @@ function getZoneDescription(zone: Zone): string {
 
 function ZoneProfileCard({ zone }: { zone: Zone }) {
   const setSelectedZone = useAppStore((s) => s.setSelectedZone)
+  const navigateTo = useAppStore((s) => s.navigateTo)
   const popularFor: string[] = zone.popularFor ? JSON.parse(zone.popularFor) : []
   const { pros, contra } = getDefaultProsCons(zone.name)
   const description = getZoneDescription(zone)
@@ -92,9 +93,7 @@ function ZoneProfileCard({ zone }: { zone: Zone }) {
 
   const handleViewProperties = () => {
     setSelectedZone(zone.name)
-    setTimeout(() => {
-      document.getElementById('proprietati')?.scrollIntoView({ behavior: 'smooth' })
-    }, 100)
+    navigateTo('proprietati')
   }
 
   return (

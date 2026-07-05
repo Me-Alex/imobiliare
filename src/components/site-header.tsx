@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Bell, Building2, Heart, Menu, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,15 +13,16 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
-import { useAppStore } from '@/store/use-app-store'
+import { useAppStore, type PageKey } from '@/store/use-app-store'
+import { cn } from '@/lib/utils'
 
-const navItems = [
-  { label: 'Acasa', href: '#' },
-  { label: 'Proprietati', href: '#proprietati' },
-  { label: 'Analiza', href: '#analiza' },
-  { label: 'Zone', href: '#zone' },
-  { label: 'De Ce Noi', href: '#de-ce-noi' },
-  { label: 'Calculator', href: '#calculator' },
+const navItems: { label: string; page: PageKey }[] = [
+  { label: 'Acasa', page: 'acasa' },
+  { label: 'Proprietati', page: 'proprietati' },
+  { label: 'Analiza', page: 'analiza' },
+  { label: 'Zone', page: 'zone' },
+  { label: 'De Ce Noi', page: 'de-ce-noi' },
+  { label: 'Calculator', page: 'calculator' },
 ]
 
 interface SiteHeaderProps {
@@ -30,32 +32,52 @@ interface SiteHeaderProps {
 
 export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderProps) {
   const { setTheme, resolvedTheme } = useTheme()
-  const favorites = useAppStore((s) => s.favorites)
+  const { favorites, currentPage, navigateTo } = useAppStore()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const handleMobileNav = (page: PageKey) => {
+    navigateTo(page)
+    setMobileMenuOpen(false)
+  }
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/80 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <a href="#" className="flex items-center gap-2 group">
+        <button
+          onClick={() => navigateTo('acasa')}
+          className="flex items-center gap-2 group"
+        >
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
             <Building2 className="h-5 w-5" />
           </div>
           <span className="text-xl font-bold tracking-tight">
             Prop<span className="gradient-text">Market</span>
           </span>
-        </a>
+        </button>
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-1" aria-label="Navigare principala">
-          {navItems.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              className="px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground rounded-md hover:bg-accent"
-            >
-              {item.label}
-            </a>
-          ))}
+          {navItems.map((item) => {
+            const isActive = currentPage === item.page
+            return (
+              <button
+                key={item.page}
+                onClick={() => navigateTo(item.page)}
+                className={cn(
+                  'px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 relative',
+                  isActive
+                    ? 'text-foreground bg-accent'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                )}
+              >
+                {item.label}
+                {isActive && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full bg-primary" />
+                )}
+              </button>
+            )
+          })}
         </nav>
 
         {/* Right side */}
@@ -87,7 +109,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
           </Button>
 
           {/* Mobile Menu */}
-          <Sheet>
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden" aria-label="Meniu">
                 <Menu className="h-5 w-5" />
@@ -101,15 +123,26 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-1 mt-4" aria-label="Navigare mobila">
-                {navItems.map((item) => (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    className="flex items-center rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  >
-                    {item.label}
-                  </a>
-                ))}
+                {navItems.map((item) => {
+                  const isActive = currentPage === item.page
+                  return (
+                    <button
+                      key={item.page}
+                      onClick={() => handleMobileNav(item.page)}
+                      className={cn(
+                        'flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-accent text-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      )}
+                    >
+                      {item.label}
+                      {isActive && (
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                      )}
+                    </button>
+                  )
+                })}
               </nav>
               <Separator className="my-4" />
               <div className="flex items-center justify-between px-3">
@@ -119,7 +152,10 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
               <button
                 type="button"
                 className="flex items-center justify-between w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
-                onClick={onOpenPriceAlerts}
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  onOpenPriceAlerts?.()
+                }}
               >
                 <span className="flex items-center gap-2">
                   <Bell className="h-4 w-4" />

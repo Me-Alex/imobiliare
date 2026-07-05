@@ -100,6 +100,7 @@ export function HeroSection() {
     selectedType,
     setSelectedType,
     setSelectedPropertySlug,
+    navigateTo,
   } = useAppStore()
   const { data: zones } = useZones()
   const bgRef = useRef<HTMLDivElement>(null)
@@ -168,8 +169,8 @@ export function HeroSection() {
 
   const scrollToProperties = useCallback(() => {
     setSearchQuery(localQuery)
-    document.getElementById('proprietati')?.scrollIntoView({ behavior: 'smooth' })
-  }, [localQuery, setSearchQuery])
+    navigateTo('proprietati')
+  }, [localQuery, setSearchQuery, navigateTo])
 
   const handleSelectSuggestion = useCallback((suggestion: SearchSuggestion) => {
     if (suggestion.type === 'zone') {
@@ -177,12 +178,12 @@ export function HeroSection() {
       setLocalQuery('')
       setSearchQuery('')
       setIsOpen(false)
-      document.getElementById('proprietati')?.scrollIntoView({ behavior: 'smooth' })
+      navigateTo('proprietati')
     } else {
       setSelectedPropertySlug(suggestion.slug)
       setIsOpen(false)
     }
-  }, [setSelectedZone, setSelectedPropertySlug, setSearchQuery])
+  }, [setSelectedZone, setSelectedPropertySlug, setSearchQuery, navigateTo])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isOpen || allItems.length === 0) {

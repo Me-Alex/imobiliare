@@ -1,6 +1,10 @@
 import { create } from 'zustand'
 
+export type PageKey = 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator'
+
 interface AppState {
+  currentPage: PageKey
+  navigateTo: (page: PageKey) => void
   favorites: string[]
   compareList: string[]
   priceAlertsOpen: boolean
@@ -40,6 +44,11 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
+  currentPage: 'acasa' as PageKey,
+  navigateTo: (page) => {
+    set({ currentPage: page })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  },
   favorites: [],
   compareList: [],
   priceAlertsOpen: false,

@@ -1,39 +1,29 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { AnnouncementBanner } from '@/components/announcement-banner'
 import { SiteHeader } from '@/components/site-header'
 import { FavoritesPanel } from '@/components/favorites-panel'
 import { PriceAlertsPanel } from '@/components/price-alerts-panel'
-import { HeroSection } from '@/components/hero-section'
-import { StatsSection } from '@/components/stats-section'
-import { PropertyFilters } from '@/components/property-filters'
-import { PropertyGrid } from '@/components/property-grid'
-import { RecentlyViewed } from '@/components/recently-viewed'
-import { MarketAnalytics } from '@/components/market-analytics'
-import { ZoneCards } from '@/components/zone-cards'
-import { ZoneMap } from '@/components/zone-map'
-import { NeighborhoodInsights } from '@/components/neighborhood-insights'
-import { TrustSection } from '@/components/trust-section'
-import { HowItWorks } from '@/components/how-it-works'
-import { TestimonialsSection } from '@/components/testimonials-section'
-import { PartnersSection } from '@/components/partners-section'
-import { MortgageCalculator } from '@/components/mortgage-calculator'
-import { FaqSection } from '@/components/faq-section'
-import { AboutUsSection } from '@/components/about-us-section'
-import { CtaSection } from '@/components/cta-section'
 import { SiteFooter } from '@/components/site-footer'
 import { PropertyDetailDialog } from '@/components/property-detail-dialog'
 import { PropertyCompare } from '@/components/property-compare'
 import { ContactFormDialog } from '@/components/contact-form-dialog'
 import { CookieConsent } from '@/components/cookie-consent'
 import { GalleryLightbox } from '@/components/gallery-lightbox'
-import { useAppStore } from '@/store/use-app-store'
-import { Toaster } from 'sonner'
 import { BackToTop } from '@/components/back-to-top'
 import { AIChatWidget } from '@/components/ai-chat-widget'
+import { useAppStore } from '@/store/use-app-store'
+import { Toaster } from 'sonner'
+import { AcasaPage } from '@/views/acasa-page'
+import { ProprietatiPage } from '@/views/proprietati-page'
+import { AnalizaPage } from '@/views/analiza-page'
+import { ZonePage } from '@/views/zone-page'
+import { DeCeNoiPage } from '@/views/de-ce-noi-page'
+import { CalculatorPage } from '@/views/calculator-page'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,21 +34,36 @@ const queryClient = new QueryClient({
   },
 })
 
+const pageComponents: Record<string, React.ComponentType> = {
+  acasa: AcasaPage,
+  proprietati: ProprietatiPage,
+  analiza: AnalizaPage,
+  zone: ZonePage,
+  'de-ce-noi': DeCeNoiPage,
+  calculator: CalculatorPage,
+}
+
 function AppContent() {
-  const { setSelectedPropertySlug, lightboxImages, lightboxIndex, clearLightbox, chatOpen, setChatOpen } = useAppStore()
+  const {
+    currentPage,
+    setSelectedPropertySlug,
+    lightboxImages,
+    lightboxIndex,
+    clearLightbox,
+    chatOpen,
+    setChatOpen,
+  } = useAppStore()
   const [contactOpen, setContactOpen] = useState(false)
   const [contactPropertyTitle, setContactPropertyTitle] = useState('')
   const [favoritesOpen, setFavoritesOpen] = useState(false)
   const [priceAlertsOpen, setPriceAlertsOpen] = useState(false)
 
-  const handleSelectProperty = useCallback((slug: string) => {
-    setSelectedPropertySlug(slug)
-  }, [setSelectedPropertySlug])
-
   const handleContact = useCallback((propertyTitle: string) => {
     setContactPropertyTitle(propertyTitle)
     setContactOpen(true)
   }, [])
+
+  const PageComponent = pageComponents[currentPage]
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -68,50 +73,17 @@ function AppContent() {
       <AnnouncementBanner />
       <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} />
       <main id="main-content" className="flex-1">
-        <HeroSection />
-        <StatsSection />
-        <hr className="section-divider" />
-        <RecentlyViewed />
-        <div id="proprietati" className="py-16">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="section-header mb-8 text-center sm:text-left">
-              <h2 className="text-3xl font-bold tracking-tight">Proprietati Disponibile</h2>
-              <p className="text-muted-foreground mt-2 sm:max-w-none sm:ml-0">
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
-                  Exploreaza cele mai bune oferte din Bucuresti.
-                </span>
-              </p>
-            </div>
-            <PropertyFilters />
-            <div className="mt-6">
-              <PropertyGrid onSelectProperty={handleSelectProperty} />
-            </div>
-          </div>
-        </div>
-        <hr className="section-divider" />
-        <MarketAnalytics />
-        <hr className="section-divider" />
-        <ZoneCards />
-        <hr className="section-divider" />
-        <ZoneMap />
-        <hr className="section-divider" />
-        <NeighborhoodInsights />
-        <hr className="section-divider" />
-        <TrustSection />
-        <hr className="section-divider" />
-        <HowItWorks />
-        <hr className="section-divider" />
-        <TestimonialsSection />
-        <hr className="section-divider" />
-        <PartnersSection />
-        <hr className="section-divider" />
-        <MortgageCalculator />
-        <hr className="section-divider" />
-        <FaqSection />
-        <hr className="section-divider" />
-        <AboutUsSection />
-        <CtaSection />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentPage}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            {PageComponent && <PageComponent />}
+          </motion.div>
+        </AnimatePresence>
       </main>
       <SiteFooter />
       <PropertyDetailDialog onContact={handleContact} />

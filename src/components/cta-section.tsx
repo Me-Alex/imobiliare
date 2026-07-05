@@ -4,6 +4,7 @@ import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
 import { ArrowRight, Building2, MapPin, Users, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useAppStore } from '@/store/use-app-store'
 
 const trustItems = [
   { icon: Building2, label: '248+ Proprietati' },
@@ -14,6 +15,7 @@ const trustItems = [
 export function CtaSection() {
   const ref = useRef<HTMLDivElement>(null)
   const isInView = useInView(ref, { once: true, margin: '-80px' })
+  const navigateTo = useAppStore((s) => s.navigateTo)
 
   return (
     <section
@@ -85,23 +87,18 @@ export function CtaSection() {
             >
               <Button
                 size="lg"
-                asChild
+                onClick={() => navigateTo('proprietati')}
                 className="bg-white text-emerald-900 hover:bg-emerald-50 font-semibold h-12 px-8 text-base gap-2 shadow-lg shadow-black/10 transition-all hover:shadow-xl hover:shadow-black/15"
               >
-                <a href="#proprietati">
-                  Explora Proprietati
-                  <ArrowRight className="h-4 w-4" />
-                </a>
+                Explora Proprietati
+                <ArrowRight className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
                 size="lg"
-                asChild
                 className="border-emerald-400/40 text-white hover:bg-emerald-800/60 hover:text-white hover:border-emerald-300/60 font-semibold h-12 px-8 text-base transition-all"
               >
-                <a href="#contact">
-                  Contacteaza-ne
-                </a>
+                Contacteaza-ne
               </Button>
             </motion.div>
 
