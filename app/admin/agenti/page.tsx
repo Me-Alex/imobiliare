@@ -227,10 +227,11 @@ export default function AdminAgentiPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
-                      {(user.permissions || []).map((perm) => (
-                        <Badge key={perm} variant="default">{perm}</Badge>
-                      ))}
-                      {(!user.permissions || user.permissions.length === 0) && (
+                      {Array.isArray(user.permissions) && user.permissions.length > 0 ? (
+                        user.permissions.map((perm) => (
+                          <Badge key={perm} variant="default">{perm}</Badge>
+                        ))
+                      ) : (
                         <span className="text-xs text-text-muted">Fara permisiuni</span>
                       )}
                     </div>
