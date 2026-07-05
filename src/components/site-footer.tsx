@@ -7,8 +7,13 @@ import { Separator } from '@/components/ui/separator'
 
 export function SiteFooter() {
   return (
-    <footer className="mt-auto border-t bg-muted/30">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+    <footer className="mt-auto border-t bg-muted/30 relative overflow-hidden">
+      {/* Watermark text */}
+      <span className="footer-watermark select-none" aria-hidden="true">
+        propmarket
+      </span>
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:py-16 relative">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Company info */}
           <div className="sm:col-span-2 lg:col-span-1">
@@ -45,7 +50,7 @@ export function SiteFooter() {
             <ul className="space-y-2.5">
               {['Acasa', 'Proprietati', 'Analiza Piata', 'Zone', 'Despre Noi', 'Contact'].map((link) => (
                 <li key={link}>
-                  <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <a href="#" className="link-underline text-sm text-muted-foreground hover:text-foreground transition-colors">
                     {link}
                   </a>
                 </li>
@@ -59,7 +64,7 @@ export function SiteFooter() {
             <ul className="space-y-2.5">
               {['Apartamente', 'Case', 'Vile', 'Terenuri', 'Spatii Comerciale', 'Garsoniere'].map((link) => (
                 <li key={link}>
-                  <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <a href="#" className="link-underline text-sm text-muted-foreground hover:text-foreground transition-colors">
                     {link}
                   </a>
                 </li>
@@ -73,10 +78,11 @@ export function SiteFooter() {
             <p className="text-sm text-muted-foreground mb-4">
               Primeste cele mai noi tendinte si oferte direct in inbox-ul tau.
             </p>
-            <div className="flex gap-2">
-              <Input placeholder="adresa@email.ro" className="h-10" />
-              <Button size="icon" className="h-10 w-10 shrink-0">
-                <Send className="h-4 w-4" />
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input placeholder="adresa@email.ro" className="h-10 pl-10 pr-4" />
+              <Button size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 shrink-0 rounded-lg">
+                <Send className="h-3.5 w-3.5" />
               </Button>
             </div>
             <div className="flex gap-3 mt-6">
@@ -98,9 +104,9 @@ export function SiteFooter() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} PropMarket. Toate drepturile rezervate.</p>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-foreground transition-colors">Termeni si conditii</a>
-            <a href="#" className="hover:text-foreground transition-colors">Politica de confidentialitate</a>
-            <a href="#" className="hover:text-foreground transition-colors">Cookies</a>
+            <a href="#" className="link-underline hover:text-foreground transition-colors">Termeni si conditii</a>
+            <a href="#" className="link-underline hover:text-foreground transition-colors">Politica de confidentialitate</a>
+            <a href="#" className="link-underline hover:text-foreground transition-colors">Cookies</a>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Heart, Scale, Maximize2, Bath, BedDouble, MapPin, Star } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +29,31 @@ const typeColors: Record<string, string> = {
   COMMERCIAL: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/20',
 }
 
+const transactionLabels: Record<string, string> = {
+  SALE: 'Vanzare',
+  RENT: 'Inchiriere',
+}
+
+function FavoriteButton({ isFav }: { isFav: boolean }) {
+  return (
+    <span className="inline-flex">
+      <Heart className={`h-4 w-4 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
+    </span>
+  )
+}
+
+function MetricPill({ icon: Icon, value, label }: { icon: React.ElementType; value: string | number; label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5 min-w-[42px]">
+      <div className="flex items-center gap-1 text-sm font-medium">
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+        <span>{value}</span>
+      </div>
+      <span className="text-[10px] text-muted-foreground leading-none">{label}</span>
+    </div>
+  )
+}
+
 export function PropertyCard({ property, onSelect, viewMode = 'grid' }: PropertyCardProps) {
   const { favorites, compareList, toggleFavorite, toggleCompare } = useAppStore()
   const isFav = favorites.includes(property.id)
@@ -43,13 +69,17 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
       >
         <div className="flex flex-col sm:flex-row">
           {/* Image */}
-          <div className="relative sm:w-72 h-48 sm:h-auto overflow-hidden shrink-0">
+          <div className="relative sm:w-72 h-48 sm:h-auto overflow-hidden shrink-0 card-shimmer">
             <div
               className="absolute inset-0 bg-cover bg-center img-zoom"
               style={{ backgroundImage: `url(${coverImage})` }}
             />
-            <div className="absolute top-3 left-3 flex gap-2">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+            <div className="absolute top-3 left-3 flex gap-2 z-10">
               <Badge className={typeColors[property.type] || 'bg-secondary'}>{typeLabels[property.type] || property.type}</Badge>
+              <Badge className="bg-white/90 dark:bg-black/70 text-foreground backdrop-blur-sm border-0">
+                {transactionLabels[property.transaction] || property.transaction}
+              </Badge>
               {property.featured && (
                 <Badge className="bg-amber-500 text-white border-0 gap-1">
                   <Star className="h-3 w-3" /> Popular
@@ -67,21 +97,26 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
                   </h3>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
                     <MapPin className="h-3.5 w-3.5" />
-                    {property.zone}, {property.sector && `Sector ${property.sector}, `}Bucuresti
+                    {property.zone}{property.sector ? `, Sector ${property.sector}` : ''}, Bucuresti
                   </div>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 pl-4 border-l-2 border-primary/30">
                   <div className="text-xl font-bold text-primary">{formatPrice(property.price)}</div>
                   {property.pricePerSqm && (
                     <div className="text-xs text-muted-foreground">{formatPricePerSqm(property.pricePerSqm)}</div>
                   )}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5"><BedDouble className="h-4 w-4" />{property.rooms} camere</span>
-                <span className="flex items-center gap-1.5"><Maximize2 className="h-4 w-4" />{property.areaSqm} m²</span>
-                <span className="flex items-center gap-1.5"><Bath className="h-4 w-4" />{property.bathrooms} bai</span>
-                {property.floor && <span>Etaj {property.floor}</span>}
+              <div className="flex flex-wrap gap-4 mt-2">
+                <MetricPill icon={BedDouble} value={property.rooms} label="camere" />
+                <MetricPill icon={Maximize2} value={`${property.areaSqm} m²`} label="suprafata" />
+                <MetricPill icon={Bath} value={property.bathrooms} label="bai" />
+                {property.floor && (
+                  <div className="flex flex-col items-center gap-0.5 min-w-[42px]">
+                    <span className="text-sm font-medium">Et.{property.floor}</span>
+                    <span className="text-[10px] text-muted-foreground leading-none">etaj</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2 mt-4">
@@ -91,8 +126,8 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
                 className="h-8"
                 onClick={(e) => { e.stopPropagation(); toggleFavorite(property.id) }}
               >
-                <Heart className={`h-4 w-4 mr-1 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
-                {isFav ? 'Salvat' : 'Salveaza'}
+                <FavoriteButton isFav={isFav} />
+                <span className="ml-1">{isFav ? 'Salvat' : 'Salveaza'}</span>
               </Button>
               <Button
                 variant="outline"
@@ -116,7 +151,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
       onClick={() => onSelect(property.slug)}
     >
       {/* Image */}
-      <div className="relative h-52 overflow-hidden">
+      <div className="relative h-52 overflow-hidden card-shimmer">
         <div
           className="absolute inset-0 bg-cover bg-center img-zoom"
           style={{ backgroundImage: `url(${coverImage})` }}
@@ -124,8 +159,11 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
         {/* Badges */}
-        <div className="absolute top-3 left-3 flex gap-2">
+        <div className="absolute top-3 left-3 flex gap-2 z-10">
           <Badge className={typeColors[property.type] || 'bg-secondary'}>{typeLabels[property.type] || property.type}</Badge>
+          <Badge className="bg-white/90 dark:bg-black/70 text-foreground backdrop-blur-sm border-0">
+            {transactionLabels[property.transaction] || property.transaction}
+          </Badge>
           {property.featured && (
             <Badge className="bg-amber-500 text-white border-0 gap-1">
               <Star className="h-3 w-3" /> Popular
@@ -134,7 +172,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
         </div>
 
         {/* Action buttons */}
-        <div className="absolute top-3 right-3 flex gap-1.5">
+        <div className="absolute top-3 right-3 flex gap-1.5 z-10">
           <Button
             variant="secondary"
             size="icon"
@@ -142,7 +180,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
             onClick={(e) => { e.stopPropagation(); toggleFavorite(property.id) }}
             aria-label={isFav ? 'Sterge de la favorite' : 'Adauga la favorite'}
           >
-            <Heart className={`h-4 w-4 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
+            <FavoriteButton isFav={isFav} />
           </Button>
           <Button
             variant="secondary"
@@ -156,7 +194,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
         </div>
 
         {/* Price */}
-        <div className="absolute bottom-3 left-3">
+        <div className="absolute bottom-3 left-3 z-10">
           <div className="text-xl font-bold text-white drop-shadow-lg">{formatPrice(property.price)}</div>
           {property.pricePerSqm && (
             <div className="text-xs text-white/80 drop-shadow">{formatPricePerSqm(property.pricePerSqm)}</div>
@@ -171,12 +209,12 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
         </h3>
         <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
           <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="line-clamp-1">{property.zone}, {property.sector && `Sector ${property.sector}, `}Bucuresti</span>
+          <span className="line-clamp-1">{property.zone}{property.sector ? `, Sector ${property.sector}` : ''}, Bucuresti</span>
         </div>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground pt-3 border-t border-border/50">
-          <span className="flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" />{property.rooms}</span>
-          <span className="flex items-center gap-1"><Maximize2 className="h-3.5 w-3.5" />{property.areaSqm} m²</span>
-          <span className="flex items-center gap-1"><Bath className="h-3.5 w-3.5" />{property.bathrooms}</span>
+        <div className="flex items-center gap-4 pt-3 border-t border-border/50">
+          <MetricPill icon={BedDouble} value={property.rooms} label="camere" />
+          <MetricPill icon={Maximize2} value={`${property.areaSqm} m²`} label="suprafata" />
+          <MetricPill icon={Bath} value={property.bathrooms} label="bai" />
         </div>
       </CardContent>
     </Card>

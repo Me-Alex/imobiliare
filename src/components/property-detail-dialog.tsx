@@ -21,7 +21,15 @@ import { useProperty, useProperties } from '@/hooks/use-properties'
 import { formatPrice, formatPricePerSqm, type Property } from '@/lib/api'
 import { PropertyCard } from '@/components/property-card'
 
-export function PropertyDetailDialog() {
+const typeLabels: Record<string, string> = {
+  APARTMENT: 'Apartament', HOUSE: 'Casa', VILLA: 'Vila', LAND: 'Teren', COMMERCIAL: 'Comercial',
+}
+
+interface PropertyDetailDialogProps {
+  onContact?: (propertyTitle: string) => void
+}
+
+export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
   const { selectedPropertySlug, setSelectedPropertySlug, favorites, compareList, toggleFavorite, toggleCompare } = useAppStore()
   const { data: property, isLoading } = useProperty(selectedPropertySlug)
 
@@ -64,14 +72,14 @@ export function PropertyDetailDialog() {
         <div className="p-6 space-y-6">
           <DialogHeader className="text-left space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">{property.type === 'APARTMENT' ? 'Apartament' : property.type === 'HOUSE' ? 'Casa' : property.type === 'VILLA' ? 'Vila' : property.type === 'LAND' ? 'Teren' : property.type === 'COMMERCIAL' ? 'Comercial' : property.type}</Badge>
+              <Badge variant="secondary">{typeLabels[property.type] || property.type}</Badge>
               <Badge variant="secondary">{property.transaction === 'SALE' ? 'Vanzare' : 'Inchiriere'}</Badge>
               {property.featured && <Badge className="bg-amber-500 text-white border-0">Popular</Badge>}
             </div>
             <DialogTitle className="text-2xl">{property.title}</DialogTitle>
             <DialogDescription className="flex items-center gap-1.5 text-base">
               <MapPin className="h-4 w-4" />
-              {property.address}, {property.zone}, {property.sector && `Sector ${property.sector}, `}Bucuresti
+              {property.address}, {property.zone}{property.sector ? `, Sector ${property.sector}` : ''}, Bucuresti
             </DialogDescription>
           </DialogHeader>
 
@@ -126,7 +134,10 @@ export function PropertyDetailDialog() {
               <Scale className="h-4 w-4" />
               {isCompare ? 'In comparatie' : 'Compara'}
             </Button>
-            <Button className="gap-2 ml-auto">
+            <Button
+              className="gap-2 ml-auto"
+              onClick={() => onContact?.(property.title)}
+            >
               <Phone className="h-4 w-4" />
               Contacteaza
             </Button>

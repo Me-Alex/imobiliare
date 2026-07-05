@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import {
   getProperties,
+  getPropertiesPaginated,
   getPropertyBySlug,
   getMarketData,
   getZones,
@@ -12,6 +13,16 @@ export function useProperties(filters: PropertyFilters = {}) {
   return useQuery({
     queryKey: ['properties', filters],
     queryFn: () => getProperties(filters),
+    staleTime: 30_000,
+  })
+}
+
+export function usePropertiesPaginated(filters: PropertyFilters = {}) {
+  return useInfiniteQuery({
+    queryKey: ['properties-paginated', filters],
+    queryFn: ({ pageParam }) => getPropertiesPaginated(filters, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
     staleTime: 30_000,
   })
 }
@@ -47,5 +58,15 @@ export function useSearchSuggestions(q: string) {
     queryFn: () => getSearchSuggestions(q),
     enabled: q.length >= 2,
     staleTime: 10_000,
+  })
+}
+
+export function usePropertiesByIds(ids: string[]) {
+  return useQuery({
+    queryKey: ['properties-compare', ids],
+    queryFn: () => getPropertiesByIds(ids),
+    enabled: ids.length >= 2,
+    staleTime: 30_000,
+    retry: 1,
   })
 }

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { TrendingUp, BarChart3, PieChartIcon, DollarSign } from 'lucide-react'
+import { TrendingUp, Minus, BarChart3, PieChartIcon, DollarSign, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import { Area, AreaChart, Bar, BarChart, Pie, PieChart, Cell, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -50,6 +50,60 @@ const PIE_COLORS = [
   'oklch(0.60 0.15 25)',
   'oklch(0.55 0.10 290)',
 ]
+
+const typeLabels: Record<string, string> = {
+  APARTMENT: 'Apartament',
+  HOUSE: 'Casa',
+  VILLA: 'Vila',
+  LAND: 'Teren',
+  COMMERCIAL: 'Comercial',
+}
+
+function StatPill({
+  icon: Icon,
+  label,
+  value,
+  description,
+  trend,
+}: {
+  icon: React.ElementType
+  label: string
+  value: string
+  description: string
+  trend?: 'up' | 'down' | 'stable'
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 transition-all duration-200 hover:shadow-md hover:shadow-primary/5">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+        <Icon className="h-5 w-5 text-primary" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground truncate">{label}</p>
+        <div className="flex items-center gap-1.5">
+          <span className="text-lg font-bold tracking-tight truncate">{value}</span>
+          {trend === 'up' && (
+            <span className="flex items-center text-xs text-emerald-600 dark:text-emerald-400">
+              <ArrowUpRight className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">+12%</span>
+            </span>
+          )}
+          {trend === 'down' && (
+            <span className="flex items-center text-xs text-red-500">
+              <ArrowDownRight className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">-3%</span>
+            </span>
+          )}
+          {trend === 'stable' && (
+            <span className="flex items-center text-xs text-amber-500">
+              <Minus className="h-3.5 w-3.5" />
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground truncate">{description}</p>
+      </div>
+    </div>
+  )
+}
 
 export function MarketAnalytics() {
   const { data: marketData, isLoading } = useMarketData()
@@ -105,33 +159,6 @@ export function MarketAnalytics() {
     return Math.round(properties.reduce((sum, p) => sum + p.price, 0) / properties.length)
   }, [properties])
 
-  const stats = [
-    {
-      icon: DollarSign,
-      label: 'Volum total piata',
-      value: formatPrice(totalVolume),
-      description: 'Valoarea totala a proprietatilor',
-    },
-    {
-      icon: TrendingUp,
-      label: 'Pret mediu',
-      value: formatPrice(avgPrice),
-      description: 'Pretul mediu per proprietate',
-    },
-    {
-      icon: BarChart3,
-      label: 'Zone active',
-      value: listingSoldData.length?.toString() || '0',
-      description: 'Zone cu tranzactii active',
-    },
-    {
-      icon: PieChartIcon,
-      label: 'Tip cel mai popular',
-      value: typeDistribution[0]?.name || '-',
-      description: `${typeDistribution[0]?.value || 0} proprietati`,
-    },
-  ]
-
   if (isLoading) {
     return (
       <section id="analiza" className="py-16 scroll-mt-20">
@@ -139,12 +166,12 @@ export function MarketAnalytics() {
           <Skeleton className="h-8 w-64 mb-8" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 rounded-xl" />
+              <Skeleton key={i} className="h-28 rounded-2xl" />
             ))}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Skeleton className="h-80 rounded-xl" />
-            <Skeleton className="h-80 rounded-xl" />
+            <Skeleton className="h-80 rounded-2xl" />
+            <Skeleton className="h-80 rounded-2xl" />
           </div>
         </div>
       </section>
@@ -165,33 +192,50 @@ export function MarketAnalytics() {
             <p className="text-muted-foreground mt-2">Tendinte si statistici imobiliare in timp real pentru Bucuresti.</p>
           </div>
 
-          {/* Stats cards */}
+          <hr className="section-divider mb-8" />
+
+          {/* Rounded stat pills with icons and trend arrows */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {stats.map((stat) => (
-              <Card key={stat.label} className="py-0 gap-0">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <stat.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <span className="text-sm text-muted-foreground">{stat.label}</span>
-                  </div>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-                </CardContent>
-              </Card>
-            ))}
+            <StatPill
+              icon={DollarSign}
+              label="Volum total piata"
+              value={formatPrice(totalVolume)}
+              description="Valoarea totala a proprietatilor"
+              trend="up"
+            />
+            <StatPill
+              icon={TrendingUp}
+              label="Pret mediu"
+              value={formatPrice(avgPrice)}
+              description="Pretul mediu per proprietate"
+              trend="up"
+            />
+            <StatPill
+              icon={BarChart3}
+              label="Zone active"
+              value={listingSoldData.length?.toString() || '0'}
+              description="Zone cu tranzactii active"
+              trend="stable"
+            />
+            <StatPill
+              icon={PieChartIcon}
+              label="Tip cel mai popular"
+              value={typeLabels[typeDistribution[0]?.name] || '-'}
+              description={`${typeDistribution[0]?.value || 0} proprietati`}
+              trend="up"
+            />
           </div>
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Area chart - Price trend */}
-            <Card className="py-0 gap-0">
-              <CardHeader className="pb-2">
+            <Card className="py-0 gap-0 rounded-2xl border-border/60 overflow-hidden relative">
+              <div className="chart-card-pattern absolute inset-0 pointer-events-none" />
+              <CardHeader className="pb-2 relative z-10">
                 <CardTitle className="text-base">Evolutie Pret mediu/m²</CardTitle>
                 <CardDescription>Tendinta saptamanala a pretului mediu per metru patrat</CardDescription>
               </CardHeader>
-              <CardContent className="pb-6">
+              <CardContent className="pb-6 relative z-10">
                 {priceTrendData.length > 0 ? (
                   <ChartContainer config={priceTrendConfig} className="h-[280px] w-full">
                     <AreaChart data={priceTrendData}>
@@ -218,12 +262,13 @@ export function MarketAnalytics() {
             </Card>
 
             {/* Bar chart - Listed vs Sold */}
-            <Card className="py-0 gap-0">
-              <CardHeader className="pb-2">
+            <Card className="py-0 gap-0 rounded-2xl border-border/60 overflow-hidden relative">
+              <div className="chart-card-pattern absolute inset-0 pointer-events-none" />
+              <CardHeader className="pb-2 relative z-10">
                 <CardTitle className="text-base">Listate vs Vandute</CardTitle>
                 <CardDescription>Comparatie proprietati listate si vandute pe zone</CardDescription>
               </CardHeader>
-              <CardContent className="pb-6">
+              <CardContent className="pb-6 relative z-10">
                 {listingSoldData.length > 0 ? (
                   <ChartContainer config={listingSoldConfig} className="h-[280px] w-full">
                     <BarChart data={listingSoldData}>
@@ -246,12 +291,13 @@ export function MarketAnalytics() {
 
             {/* Pie chart - Type distribution */}
             {typeDistribution.length > 0 && (
-              <Card className="py-0 gap-0 lg:col-span-2">
-                <CardHeader className="pb-2">
+              <Card className="py-0 gap-0 lg:col-span-2 rounded-2xl border-border/60 overflow-hidden relative">
+                <div className="chart-card-pattern absolute inset-0 pointer-events-none" />
+                <CardHeader className="pb-2 relative z-10">
                   <CardTitle className="text-base">Distributia pe Tip de Proprietate</CardTitle>
                   <CardDescription>Proportia fiecarui tip de proprietate din piata</CardDescription>
                 </CardHeader>
-                <CardContent className="pb-6">
+                <CardContent className="pb-6 relative z-10">
                   <ChartContainer config={typeConfig} className="h-[320px] w-full max-w-md mx-auto">
                     <PieChart>
                       <ChartTooltip content={<ChartTooltipContent />} />

@@ -274,3 +274,256 @@
 .dark .scrollbar-thin {
   scrollbar-color: oklch(0.35 0.02 60) transparent;
 }
+
+/* Section divider — subtle gradient line */
+.section-divider {
+  height: 2px;
+  border: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(0.527 0.14 160 / 30%) 50%,
+    transparent 100%
+  );
+  margin: 0;
+}
+
+.dark .section-divider {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(0.65 0.17 160 / 25%) 50%,
+    transparent 100%
+  );
+}
+
+/* Section fade in — fade + slide up 30px with 0.6s ease-out */
+@keyframes sectionFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.section-fade-in {
+  opacity: 0;
+  animation: sectionFadeIn 0.6s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-fade-in {
+    opacity: 1;
+    animation: none;
+  }
+  .section-fade-in > * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Card image shimmer effect on hover */
+.card-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.card-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.15) 45%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.15) 55%,
+    transparent 60%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease-in-out;
+  z-index: 1;
+  pointer-events: none;
+}
+.card-shimmer:hover::after {
+  transform: translateX(100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-shimmer::after {
+    display: none;
+  }
+}
+
+/* Animated gradient border for CTA */
+@keyframes gradientBorderSpin {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Favorite pulse animation */
+@keyframes favPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.fav-pulse {
+  animation: favPulse 0.3s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fav-pulse {
+    animation: none;
+  }
+}
+
+/* Floating badge pulse dot */
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.8); }
+}
+.pulse-dot {
+  animation: pulseDot 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot {
+    animation: none;
+  }
+}
+
+/* Gradient shift animation for backgrounds */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.gradient-shift {
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gradient-shift {
+    animation: none;
+  }
+}
+
+/* Dots pattern background */
+.dots-pattern {
+  background-image: radial-gradient(
+    oklch(0.527 0.14 160 / 8%) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+.dark .dots-pattern {
+  background-image: radial-gradient(
+    oklch(0.65 0.17 160 / 6%) 1px,
+    transparent 1px
+  );
+}
+
+/* Footer watermark text */
+.footer-watermark {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  font-size: 8rem;
+  font-weight: 900;
+  line-height: 1;
+  color: oklch(0.527 0.14 160 / 4%);
+  user-select: none;
+  pointer-events: none;
+  letter-spacing: -0.05em;
+}
+.dark .footer-watermark {
+  color: oklch(0.65 0.17 160 / 3%);
+}
+
+/* Link hover underline animation */
+.link-underline {
+  position: relative;
+  text-decoration: none;
+}
+.link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1.5px;
+  background: currentColor;
+  transition: width 0.3s ease;
+}
+.link-underline:hover::after {
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link-underline::after {
+    transition: none;
+  }
+}
+
+/* Chart card subtle pattern */
+.chart-card-pattern {
+  background-image:
+    radial-gradient(oklch(0.527 0.14 160 / 3%) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.dark .chart-card-pattern {
+  background-image:
+    radial-gradient(oklch(0.65 0.17 160 / 4%) 1px, transparent 1px);
+}
+
+/* Animated demand bar fill */
+@keyframes demandBarFill {
+  from { width: 0%; }
+}
+.demand-bar-animated {
+  animation: demandBarFill 1s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demand-bar-animated {
+    animation: none;
+  }
+}
+
+/* CTA animated gradient border wrapper */
+.cta-gradient-border {
+  position: relative;
+  border-radius: var(--radius);
+  z-index: 0;
+}
+.cta-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: calc(var(--radius) + 2px);
+  background: linear-gradient(
+    135deg,
+    oklch(0.527 0.14 160),
+    oklch(0.65 0.17 140),
+    oklch(0.45 0.10 145),
+    oklch(0.527 0.14 160)
+  );
+  background-size: 300% 300%;
+  animation: gradientBorderSpin 3s ease infinite;
+  z-index: -1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-gradient-border::before {
+    animation: none;
+  }
+}

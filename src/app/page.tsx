@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { SiteHeader } from '@/components/site-header'
@@ -12,6 +12,8 @@ import { MarketAnalytics } from '@/components/market-analytics'
 import { ZoneCards } from '@/components/zone-cards'
 import { SiteFooter } from '@/components/site-footer'
 import { PropertyDetailDialog } from '@/components/property-detail-dialog'
+import { PropertyCompare } from '@/components/property-compare'
+import { ContactFormDialog } from '@/components/contact-form-dialog'
 import { useAppStore } from '@/store/use-app-store'
 import { Toaster } from 'sonner'
 
@@ -26,10 +28,17 @@ const queryClient = new QueryClient({
 
 function AppContent() {
   const { setSelectedPropertySlug } = useAppStore()
+  const [contactOpen, setContactOpen] = useState(false)
+  const [contactPropertyTitle, setContactPropertyTitle] = useState('')
 
   const handleSelectProperty = useCallback((slug: string) => {
     setSelectedPropertySlug(slug)
   }, [setSelectedPropertySlug])
+
+  const handleContact = useCallback((propertyTitle: string) => {
+    setContactPropertyTitle(propertyTitle)
+    setContactOpen(true)
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -56,7 +65,13 @@ function AppContent() {
         <ZoneCards />
       </main>
       <SiteFooter />
-      <PropertyDetailDialog />
+      <PropertyDetailDialog onContact={handleContact} />
+      <PropertyCompare />
+      <ContactFormDialog
+        open={contactOpen}
+        onOpenChange={setContactOpen}
+        propertyTitle={contactPropertyTitle}
+      />
       <Toaster richColors position="bottom-right" />
     </div>
   )

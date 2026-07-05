@@ -1,10 +1,11 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { SearchX } from 'lucide-react'
+import { SearchX, Loader2, ChevronDown } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/use-app-store'
-import { useProperties, type PropertyFilters } from '@/hooks/use-properties'
+import { usePropertiesPaginated, type PropertyFilters } from '@/hooks/use-properties'
 import { PropertyCard } from '@/components/property-card'
 
 export function PropertyGrid({ onSelectProperty }: { onSelectProperty: (slug: string) => void }) {
@@ -26,7 +27,19 @@ export function PropertyGrid({ onSelectProperty }: { onSelectProperty: (slug: st
   if (minArea) filters.minArea = Number(minArea)
   if (maxArea) filters.maxArea = Number(maxArea)
 
-  const { data: properties, isLoading, isError } = useProperties(filters)
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = usePropertiesPaginated(filters)
+
+  // Flatten all pages
+  const properties = data?.pages.flatMap((page) => page.properties) ?? []
+  const total = data?.pages[0]?.total ?? 0
+  const hasResults = !isLoading && !isError && properties.length > 0
 
   if (isLoading) {
     return (
@@ -52,7 +65,7 @@ export function PropertyGrid({ onSelectProperty }: { onSelectProperty: (slug: st
     )
   }
 
-  if (isError || !properties) {
+  if (isError || !data) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <SearchX className="h-12 w-12 text-muted-foreground/40 mb-4" />
@@ -73,24 +86,65 @@ export function PropertyGrid({ onSelectProperty }: { onSelectProperty: (slug: st
   }
 
   return (
-    <motion.div
-      key={`${selectedType}-${selectedZone}-${searchQuery}-${sort}-${rooms}-${transaction}`}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={viewMode === 'grid'
-        ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'
-        : 'flex flex-col gap-4'
-      }
-    >
-      {properties.map((property) => (
-        <PropertyCard
-          key={property.id}
-          property={property}
-          onSelect={onSelectProperty}
-          viewMode={viewMode}
-        />
-      ))}
-    </motion.div>
+    <div>
+      {/* Results count */}
+      <div className="mb-4 text-sm text-muted-foreground">
+        Se incarca {properties.length} din {total} proprietati
+      </div>
+
+      <motion.div
+        key={`${selectedType}-${selectedZone}-${searchQuery}-${sort}-${rooms}-${transaction}`}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className={viewMode === 'grid'
+          ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'
+          : 'flex flex-col gap-4'
+        }
+      >
+        {properties.map((property) => (
+          <PropertyCard
+            key={property.id}
+            property={property}
+            onSelect={onSelectProperty}
+            viewMode={viewMode}
+          />
+        ))}
+      </motion.div>
+
+      {/* Load More Button */}
+      {hasNextPage && (
+        <div className="mt-8 flex justify-center">
+          <motion.div whileTap={{ scale: 0.98 }}>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full sm:w-auto min-w-[220px] h-12 text-base gap-2"
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+            >
+              {isFetchingNextPage ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Se incarca...
+                </>
+              ) : (
+                <>
+                  Incarca mai multe
+                  <ChevronDown className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* All loaded indicator */}
+      {!hasNextPage && hasResults && properties.length >= total && (
+        <div className="mt-8 text-center text-sm text-muted-foreground">
+          Toate {total} proprietatile sunt incarcate
+        </div>
+      )}
+    </div>
   )
 }

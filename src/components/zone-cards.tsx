@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { MapPin, Home } from 'lucide-react'
+import { MapPin, Home, TrendingUp, TrendingDown } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -15,6 +15,38 @@ const demandColors: Record<string, string> = {
   Moderata: 'bg-amber-500',
   Scăzuta: 'bg-emerald-500',
   Scazuta: 'bg-emerald-500',
+}
+
+const demandBorderColors: Record<string, string> = {
+  Ridicata: '#ef4444',
+  Mare: '#f97316',
+  Moderata: '#f59e0b',
+  'Scăzuta': '#10b981',
+  Scazuta: '#10b981',
+}
+
+const demandBarGradients: Record<string, string> = {
+  Ridicata: 'linear-gradient(90deg, #ef4444, #f87171)',
+  Mare: 'linear-gradient(90deg, #f97316, #fb923c)',
+  Moderata: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+  'Scăzuta': 'linear-gradient(90deg, #10b981, #34d399)',
+  Scazuta: 'linear-gradient(90deg, #10b981, #34d399)',
+}
+
+const demandBgGradients: Record<string, string> = {
+  Ridicata: 'linear-gradient(135deg, oklch(1 0 0) 0%, oklch(0.98 0.01 25 / 50%) 100%)',
+  Mare: 'linear-gradient(135deg, oklch(1 0 0) 0%, oklch(0.98 0.01 50 / 40%) 100%)',
+  Moderata: 'linear-gradient(135deg, oklch(1 0 0) 0%, oklch(0.98 0.01 75 / 30%) 100%)',
+  'Scăzuta': 'linear-gradient(135deg, oklch(1 0 0) 0%, oklch(0.98 0.01 160 / 20%) 100%)',
+  Scazuta: 'linear-gradient(135deg, oklch(1 0 0) 0%, oklch(0.98 0.01 160 / 20%) 100%)',
+}
+
+const demandTrend: Record<string, 'up' | 'down' | 'stable'> = {
+  Ridicata: 'up',
+  Mare: 'up',
+  Moderata: 'stable',
+  'Scăzuta': 'down',
+  Scazuta: 'down',
 }
 
 const demandBadgeVariant: Record<string, 'destructive' | 'secondary' | 'outline'> = {
@@ -62,11 +94,18 @@ export function ZoneCards() {
             <p className="text-muted-foreground mt-2">Exploreaza preturile si cererea pentru fiecare zona in parte.</p>
           </div>
 
+          <hr className="section-divider mb-8" />
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {sortedZones.map((zone, index) => {
               const demandColor = demandColors[zone.demand] || 'bg-muted-foreground'
               const badgeVariant = demandBadgeVariant[zone.demand] || 'outline'
               const popularFor: string[] = zone.popularFor ? JSON.parse(zone.popularFor) : []
+              const borderColor = demandBorderColors[zone.demand] || '#6b7280'
+              const barGradient = demandBarGradients[zone.demand] || 'linear-gradient(90deg, #6b7280, #9ca3af)'
+              const bgGradient = demandBgGradients[zone.demand] || undefined
+              const trend = demandTrend[zone.demand] || 'stable'
+              const barWidth = zone.demand === 'Ridicata' ? '95%' : zone.demand === 'Mare' ? '75%' : zone.demand === 'Moderata' ? '50%' : '25%'
 
               return (
                 <motion.div
@@ -76,8 +115,16 @@ export function ZoneCards() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
                 >
-                  <Card className="card-hover py-0 gap-0 h-full">
-                    <CardContent className="p-5 flex flex-col h-full">
+                  <Card className="card-hover py-0 gap-0 h-full overflow-hidden relative">
+                    {/* Colored left border */}
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-[3px] z-10"
+                      style={{ backgroundColor: borderColor }}
+                    />
+                    <CardContent
+                      className="p-5 flex flex-col h-full pl-6"
+                      style={bgGradient ? { background: bgGradient } : undefined}
+                    >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
@@ -95,14 +142,20 @@ export function ZoneCards() {
                       </div>
 
                       {zone.avgPriceSqm && (
-                        <div className="mb-3">
+                        <div className="mb-3 flex items-center gap-1.5">
                           <div className="text-lg font-bold text-primary">
                             {formatPrice(zone.avgPriceSqm)}<span className="text-xs font-normal text-muted-foreground">/m²</span>
                           </div>
+                          {trend === 'up' && (
+                            <TrendingUp className="h-4 w-4 text-emerald-500" />
+                          )}
+                          {trend === 'down' && (
+                            <TrendingDown className="h-4 w-4 text-red-500" />
+                          )}
                         </div>
                       )}
 
-                      {/* Demand bar */}
+                      {/* Demand bar with gradient fill and animation */}
                       <div className="mb-3">
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                           <span>Nivel cerere</span>
@@ -112,9 +165,10 @@ export function ZoneCards() {
                         </div>
                         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${demandColor} transition-all duration-500`}
+                            className="h-full rounded-full demand-bar-animated"
                             style={{
-                              width: zone.demand === 'Ridicata' ? '95%' : zone.demand === 'Mare' ? '75%' : zone.demand === 'Moderata' ? '50%' : '25%',
+                              width: barWidth,
+                              background: barGradient,
                             }}
                           />
                         </div>

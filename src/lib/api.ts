@@ -51,13 +51,25 @@ export interface Zone {
   _count?: { properties: number }
 }
 
-export interface SearchSuggestion {
-  title: string
+export interface ZoneSuggestion {
+  type: 'zone'
+  name: string
+  sector: string | null
+  avgPriceSqm: number | null
+}
+
+export interface PropertySuggestion {
+  type: 'property'
+  name: string
   slug: string
   zone: string
-  type: string
+  propertyType: string
+  transaction: string
   price: number
+  areaSqm: number
 }
+
+export type SearchSuggestion = ZoneSuggestion | PropertySuggestion
 
 export interface PropertyFilters {
   zone?: string
@@ -86,7 +98,30 @@ async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
   return res.json()
 }
 
+export interface PaginatedPropertiesResponse {
+  properties: Property[]
+  total: number
+  page: number
+  pageSize: number
+  hasMore: boolean
+}
+
 export async function getProperties(filters: PropertyFilters = {}): Promise<Property[]> {
+  const params = buildPropertyParams(filters)
+  const query = params.toString()
+  const data = await fetchApi<PaginatedPropertiesResponse>(`${BASE}/properties${query ? `?${query}` : ''}`)
+  return data.properties
+}
+
+export async function getPropertiesPaginated(filters: PropertyFilters = {}, page: number = 1): Promise<PaginatedPropertiesResponse> {
+  const params = buildPropertyParams(filters)
+  params.set('page', String(page))
+  params.set('pageSize', '12')
+  const query = params.toString()
+  return fetchApi<PaginatedPropertiesResponse>(`${BASE}/properties${query ? `?${query}` : ''}`)
+}
+
+function buildPropertyParams(filters: PropertyFilters): URLSearchParams {
   const params = new URLSearchParams()
   if (filters.zone) params.set('zone', filters.zone)
   if (filters.type) params.set('type', filters.type)
@@ -99,9 +134,7 @@ export async function getProperties(filters: PropertyFilters = {}): Promise<Prop
   if (filters.sort) params.set('sort', filters.sort)
   if (filters.minArea !== undefined && filters.minArea > 0) params.set('minArea', String(filters.minArea))
   if (filters.maxArea !== undefined && filters.maxArea > 0) params.set('maxArea', String(filters.maxArea))
-  const query = params.toString()
-  const data = await fetchApi<{ properties: Property[] }>(`${BASE}/properties${query ? `?${query}` : ''}`)
-  return data.properties
+  return params
 }
 
 export async function getPropertyBySlug(slug: string): Promise<Property> {
@@ -120,7 +153,16 @@ export async function getZones(): Promise<Zone[]> {
 }
 
 export async function getSearchSuggestions(q: string): Promise<SearchSuggestion[]> {
-  return fetchApi<SearchSuggestion[]>(`${BASE}/search/suggestions?q=${encodeURIComponent(q)}`)
+  const data = await fetchApi<{ suggestions: SearchSuggestion[] }>(`${BASE}/search/suggestions?q=${encodeURIComponent(q)}`)
+  return data.suggestions
+}
+
+export async function getPropertiesByIds(ids: string[]): Promise<Property[]> {
+  const data = await fetchApi<{ properties: Property[] }>(`${BASE}/properties/compare`, {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  })
+  return data.properties
 }
 
 export function formatPrice(price: number, currency: string = 'EUR'): string {
