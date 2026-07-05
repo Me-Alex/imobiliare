@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type PageKey = 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator'
+export type PageKey = 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator' | 'login' | 'admin'
 
 interface AppState {
   currentPage: PageKey

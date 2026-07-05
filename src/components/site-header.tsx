@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useTheme } from 'next-themes'
-import { Bell, Building2, Heart, Menu, Moon, Sun } from 'lucide-react'
+import { Bell, Building2, Heart, LogIn, Menu, Moon, Sun, Shield, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import { useAppStore, type PageKey } from '@/store/use-app-store'
+import { useAuth } from '@/contexts/auth-context'
 import { cn } from '@/lib/utils'
 
 const navItems: { label: string; page: PageKey }[] = [
@@ -33,7 +34,16 @@ interface SiteHeaderProps {
 export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderProps) {
   const { setTheme, resolvedTheme } = useTheme()
   const { favorites, currentPage, navigateTo } = useAppStore()
+  const { user } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const handleAuthClick = () => {
+    if (user) {
+      navigateTo('admin')
+    } else {
+      navigateTo('login')
+    }
+  }
 
   const handleMobileNav = (page: PageKey) => {
     navigateTo(page)
@@ -95,6 +105,11 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
           {/* Price Alerts */}
           <Button variant="ghost" size="icon" className="relative" aria-label="Alerte pret" onClick={onOpenPriceAlerts}>
             <Bell className="h-5 w-5" />
+          </Button>
+
+          {/* Auth / Admin */}
+          <Button variant="ghost" size="icon" className="relative" aria-label={user ? 'Admin' : 'Autentificare'} onClick={handleAuthClick}>
+            {user ? <Shield className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
           </Button>
 
           {/* Theme toggle */}
@@ -161,6 +176,22 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
                   <Bell className="h-4 w-4" />
                   Alerte Pret
                 </span>
+              </button>
+              <button
+                type="button"
+                className="flex items-center justify-between w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  handleAuthClick()
+                }}
+              >
+                <span className="flex items-center gap-2">
+                  {user ? <Shield className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
+                  {user ? 'Admin Panel' : 'Autentificare'}
+                </span>
+                {user && (
+                  <span className="text-xs text-muted-foreground truncate max-w-[120px]">{user.email}</span>
+                )}
               </button>
             </SheetContent>
           </Sheet>

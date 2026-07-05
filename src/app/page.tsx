@@ -16,6 +16,7 @@ import { CookieConsent } from '@/components/cookie-consent'
 import { GalleryLightbox } from '@/components/gallery-lightbox'
 import { BackToTop } from '@/components/back-to-top'
 import { AIChatWidget } from '@/components/ai-chat-widget'
+import { AuthProvider } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { Toaster } from 'sonner'
 import { AcasaPage } from '@/views/acasa-page'
@@ -24,6 +25,8 @@ import { AnalizaPage } from '@/views/analiza-page'
 import { ZonePage } from '@/views/zone-page'
 import { DeCeNoiPage } from '@/views/de-ce-noi-page'
 import { CalculatorPage } from '@/views/calculator-page'
+import { LoginPage } from '@/views/login-page'
+import { AdminPage } from '@/views/admin-page'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,12 +44,16 @@ const pageComponents: Record<string, React.ComponentType> = {
   zone: ZonePage,
   'de-ce-noi': DeCeNoiPage,
   calculator: CalculatorPage,
+  login: LoginPage,
+  admin: AdminPage,
 }
+
+// Pages that should NOT show header/footer/overlays
+const fullBleedPages = new Set(['login', 'admin'])
 
 function AppContent() {
   const {
     currentPage,
-    setSelectedPropertySlug,
     lightboxImages,
     lightboxIndex,
     clearLightbox,
@@ -64,6 +71,30 @@ function AppContent() {
   }, [])
 
   const PageComponent = pageComponents[currentPage]
+  const isFullBleed = fullBleedPages.has(currentPage)
+
+  if (isFullBleed) {
+    // Login and Admin pages have their own header/footer
+    return (
+      <div className="min-h-screen flex flex-col">
+        <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} />
+        <main className="flex-1">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentPage}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+            >
+              {PageComponent && <PageComponent />}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+        <Toaster richColors position="bottom-right" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -119,7 +150,9 @@ export default function Home() {
         enableSystem
         disableTransitionOnChange
       >
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   )
