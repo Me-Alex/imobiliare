@@ -129,8 +129,8 @@ export default function ContactDetaliu({ proprietate, propertyId }: { proprietat
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs font-black uppercase tracking-wider text-text-muted">Sloturi reale</p>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setMode("slot")} className={`rounded-lg border px-3 py-1 text-xs font-black ${mode === "slot" ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-card text-text-muted"}`}>Slot</button>
-                <button type="button" onClick={() => setMode("manual")} className={`rounded-lg border px-3 py-1 text-xs font-black ${mode === "manual" ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-card text-text-muted"}`}>Manual</button>
+                <button type="button" aria-pressed={mode === "slot"} onClick={() => setMode("slot")} className={`rounded-lg border px-3 py-1 text-xs font-black ${mode === "slot" ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-card text-text-muted"}`}>Slot</button>
+                <button type="button" aria-pressed={mode === "manual"} onClick={() => setMode("manual")} className={`rounded-lg border px-3 py-1 text-xs font-black ${mode === "manual" ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-card text-text-muted"}`}>Manual</button>
               </div>
             </div>
             {mode === "slot" && (

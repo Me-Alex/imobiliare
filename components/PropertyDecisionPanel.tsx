@@ -98,10 +98,10 @@ export default function PropertyDecisionPanel({ property }: { property: Property
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <button onClick={() => toggleSelection(FAVORITES_KEY)} className={`rounded-xl border px-3 py-3 text-sm font-black ${favorite ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-secondary text-text-primary hover:border-accent"}`}>
+        <button aria-pressed={favorite} onClick={() => toggleSelection(FAVORITES_KEY)} className={`rounded-xl border px-3 py-3 text-sm font-black ${favorite ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-secondary text-text-primary hover:border-accent"}`}>
           {favorite ? "In favorite" : "Adauga favorit"}
         </button>
-        <button onClick={() => toggleSelection(COMPARE_KEY)} className={`rounded-xl border px-3 py-3 text-sm font-black ${compare ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-secondary text-text-primary hover:border-accent"}`}>
+        <button aria-pressed={compare} onClick={() => toggleSelection(COMPARE_KEY)} className={`rounded-xl border px-3 py-3 text-sm font-black ${compare ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-secondary text-text-primary hover:border-accent"}`}>
           {compare ? "In comparare" : "Compara"}
         </button>
       </div>
@@ -158,7 +158,7 @@ export default function PropertyDecisionPanel({ property }: { property: Property
         <p className="text-xs font-bold uppercase text-text-muted">Scop cautare</p>
         <div className="mt-2 grid grid-cols-2 gap-2">
           {Object.entries(purposeLabels).map(([key, label]) => (
-            <button key={key} onClick={() => updateIntent({ ...intent, purpose: key as BuyerProfile["purpose"] })} className={`rounded-xl border px-3 py-2 text-xs font-bold ${intent.purpose === key ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-secondary text-text-muted"}`}>
+            <button key={key} aria-pressed={intent.purpose === key} onClick={() => updateIntent({ ...intent, purpose: key as BuyerProfile["purpose"] })} className={`rounded-xl border px-3 py-2 text-xs font-bold ${intent.purpose === key ? "border-accent bg-accent text-bg-primary" : "border-bg-surface bg-bg-secondary text-text-muted"}`}>
               {label}
             </button>
           ))}
