@@ -27,6 +27,15 @@ export function CtaSection() {
       {/* Dots pattern overlay */}
       <div className="absolute inset-0 dots-pattern opacity-100" />
 
+      {/* Grid lines overlay */}
+      <div className="absolute inset-0 grid-lines opacity-50 pointer-events-none" />
+
+      {/* Floating Particles */}
+      <div className="particle h-2 w-2 bg-emerald-400/15 z-[1]" style={{ top: '20%', left: '15%', '--duration': '6s', '--delay': '0s' } as React.CSSProperties} />
+      <div className="particle h-1.5 w-1.5 bg-emerald-400/15 z-[1]" style={{ top: '35%', left: '80%', '--duration': '5s', '--delay': '1s' } as React.CSSProperties} />
+      <div className="particle h-2.5 w-2.5 bg-emerald-400/15 z-[1]" style={{ top: '70%', left: '25%', '--duration': '7s', '--delay': '2s' } as React.CSSProperties} />
+      <div className="particle h-1.5 w-1.5 bg-emerald-400/15 z-[1]" style={{ top: '60%', left: '70%', '--duration': '5.5s', '--delay': '0.5s' } as React.CSSProperties} />
+
       {/* Decorative glow orbs */}
       <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl" />
       <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-emerald-400/10 blur-3xl" />

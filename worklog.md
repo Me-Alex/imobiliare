@@ -200,3 +200,107 @@ PropMarket is a comprehensive Real Estate Analytics Dashboard with **25+ feature
 8. Add "Despre Noi" (About Us) page with team info
 9. Add property inquiry tracking in admin view (query ContactSubmission/PriceAlert tables)
 10. Add neighborhood guide pages (per-zone detail pages)
+
+---
+Task ID: 11 (Round 8 — Main Coordinator)
+Agent: main
+Task: QA, bug fixes, AI chatbot, neighborhood insights, About Us, major styling overhaul
+
+Work Log:
+- **QA**: Dev server verified (200 on /, all API routes 200, zero compilation errors)
+- **BUG FIX — Price Alerts API**: Converted from raw SQL workaround back to proper Prisma ORM (dev server restarted, Prisma client regenerated, PriceAlert model now available)
+- **BUG FIX — AI Chat API**: Fixed incorrect SDK usage — replaced `generateText` with proper `ZAI.create()` + `zai.chat.completions.create()` pattern from LLM skill docs, added conversation history support, singleton ZAI instance
+- **NEW FEATURE — AI Chat Widget** (`ai-chat-widget.tsx`): Floating MessageCircle button (bottom-right, z-35), animated chat panel with Bot icon, typing indicator (3 bouncing dots), user/AI message styling, Enter key support, mobile full-width, connected to store `chatOpen`/`setChatOpen`
+- **NEW API — AI Chat** (`/api/ai-chat/route.ts`): POST endpoint using z-ai-web-dev-sdk with Romanian system prompt scoped to Bucharest real estate, conversation history support, error handling
+- **NEW FEATURE — Neighborhood Insights** (`neighborhood-insights.tsx`): Tabbed section with top 6 zones, each tab shows: zone profile (name, sector, demand badge), 2x2 metrics grid (price/sqm, property count, demand level, popular for), Pro/Contra lists per zone (6 hardcoded), "Vezi proprietatile" filter button, framer-motion AnimatePresence transitions, glass-card styling
+- **NEW FEATURE — About Us Section** (`about-us-section.tsx`): 2-column layout (gradient placeholder + text), "Despre PropMarket" heading, 2 Romanian mission paragraphs, 2x2 stat cards (5+ Ani, 248+ Proprietati, 12 Zone, 1450+ Clienti), framer-motion scroll-triggered entrance, bg-muted/30
+- **STORE UPDATE**: Added `chatOpen: boolean`, `setChatOpen: (open: boolean) => void`
+- **PAGE INTEGRATION**: Updated section order — Hero→Stats→RecentlyViewed→Properties(section-header)→Analytics→Zones→ZoneMap→NeighborhoodInsights→Trust→HowItWorks→Testimonials→Partners→Calculator→FAQ→AboutUs→CTA→Footer. AIChatWidget added as overlay
+- **STYLING — globals.css**: 8 new CSS systems appended:
+  - `.particle` + `@keyframes float-particle` — animated floating particles with --duration/--delay custom properties
+  - `.price-tag-animated` + `@keyframes priceShine` — gradient sweep on price tags
+  - `.section-dark-overlay` — subtle top/bottom vignette in dark mode
+  - `.card-reveal` + `@keyframes cardReveal` — spring-like entrance animation
+  - `.text-reveal-mask` — CSS mask-image for edge fade effect
+  - `.press-scale` — tactile scale-down on active/press
+  - `.shimmer-load` + `@keyframes shimmerLoad` — loading skeleton shimmer
+  - `.grid-lines` — decorative 60px grid pattern for backgrounds
+- **STYLING — Hero**: Added 7 floating particles (various sizes/positions/durations) for depth
+- **STYLING — CTA**: Added `grid-lines` overlay + 4 emerald floating particles
+- **STYLING — Property Cards**: `press-scale` tactile feedback, `price-tag-animated` overlay on price, 3px left border accent (emerald=SALE, amber=RENT)
+- **STYLING — Property Detail**: `section-dark-overlay` on scrollable content
+- **STYLING — Market Analytics**: `grid-lines` background pattern behind charts
+- **STYLING — Property Section Header**: `.section-header` with decorative gradient bar, emerald dot before subtitle, responsive text-center/text-left
+
+Stage Summary:
+- **3 new components created**: AIChatWidget, NeighborhoodInsights, AboutUsSection
+- **1 new API route**: /api/ai-chat (LLM-powered, Romanian real estate assistant)
+- **2 bugs fixed**: Price alerts API (Prisma ORM restored), AI chat API (correct SDK pattern)
+- **8 new CSS systems** appended to globals.css
+- **6 existing components enhanced** with new styling
+- **Page section order updated**: 19 sections + overlays (PropertyDetail, Compare, ContactForm, Favorites, PriceAlerts, AIChat, CookieConsent, GalleryLightbox, BackToTop, AnnouncementBanner)
+- **Total features on page**: 28+ features
+- **ESLint**: 0 errors, 0 warnings
+
+## Current Project Status
+
+### Assessment
+PropMarket is a comprehensive Real Estate Analytics Dashboard with **28+ features**, emerald green theme, and production-quality code:
+- **Data**: 24 properties, 10 zones, 600 market data points in SQLite (Prisma ORM)
+- **Persistence**: Contact submissions, newsletter subscriptions, price alerts saved to SQLite
+- **AI Assistant**: Floating chat widget with LLM-powered Romanian real estate assistant (z-ai-web-dev-sdk)
+- **Search**: Autocomplete with zone/property suggestions, keyboard navigation, debounced input
+- **Listings**: Full-featured grid/list with 12+ filters, sort, pagination, count display, CTA button
+- **Recently Viewed**: localStorage-based horizontal scroll, auto-tracking, max 4
+- **Comparison**: Floating bar → side-by-side sheet with best-value highlighting (2-3 properties)
+- **Detail**: Image gallery with dot indicators, expand-to-lightbox, metrics, contact form (DB), sharing, similar properties
+- **Gallery Lightbox**: Full-screen overlay, keyboard nav, thumbnail strip, double-click zoom, touch swipe
+- **Analytics**: 3 interactive Recharts with glass-card styling, floating blobs, grid-lines, period badge
+- **Zones**: Demand indicators, pricing, property counts, color-coded demand bars
+- **Zone Map**: Interactive SVG hexagonal map, price-based color coding, click-to-filter, legend
+- **Neighborhood Insights**: Tabbed zone profiles with metrics, Pro/Contra lists, filter-to-zone button
+- **How It Works**: 4-step timeline with animated pulse rings
+- **Trust Section**: 6 feature cards with colored accents
+- **Testimonials**: 6 Romanian reviews with star ratings
+- **Partners**: 9 partner names with marquee animation
+- **FAQ**: 8 Romanian FAQ items with Accordion
+- **About Us**: Mission statement, 2x2 stat cards, gradient placeholder
+- **Mortgage Calculator**: 4 sliders, annuity formula, SVG donut chart, amortization table
+- **Favorites**: Header heart icon panel with view/remove
+- **Price Alerts**: Bell icon panel, create/deactivate alerts (Prisma ORM)
+- **Announcement Banner**: Dismissable promo, emerald gradient, localStorage
+- **Cookie Consent**: Glassmorphism banner, localStorage
+- **CTA Section**: Dark gradient, animated border, grid-lines, particles, trust indicators
+- **Error Handling**: error.tsx boundary
+- **Back to Top**: Floating button with animation
+- **Newsletter**: Persisted to DB, loading state, validation
+- **Styling**: 18+ CSS utility classes, emerald theme, dark/light mode, parallax, glassmorphism, micro-animations, floating particles, grid-lines, press-scale, card-reveal, shimmer-load, price-shine, text-reveal-mask, section-dark-overlay, custom scrollbars, noise overlay
+- **Responsive**: Mobile-first with Sheet/drawer, collapsible filters, responsive grids
+- **Accessibility**: Skip link, ARIA labels, keyboard nav, prefers-reduced-motion, focus-visible
+
+### Verification Results
+- ESLint: 0 errors, 0 warnings
+- Dev server: all routes 200, zero compilation errors
+- All 28+ features functional and integrated
+- DB schema in sync (ContactSubmission + NewsletterSubscription + PriceAlert)
+
+### Unresolved Issues / Risks
+1. Property images use Unsplash URLs that require internet access
+2. No authentication system — no protected routes or user accounts
+3. No property image upload capability
+4. No loading.tsx skeleton files for async routes
+5. No breadcrumb navigation for multi-level browsing
+6. Recently Viewed fetches properties individually (N+1 queries)
+7. AI chat has no conversation persistence (messages lost on refresh)
+
+### Priority Recommendations for Next Phase
+1. Add NextAuth.js authentication for user accounts and saved preferences
+2. Add AI chat conversation persistence (save to DB)
+3. Add property image upload to local storage or cloud
+4. Add loading.tsx skeleton files for all async routes
+5. Add breadcrumb navigation component
+6. Optimize Recently Viewed to batch-fetch properties
+7. Add API rate limiting and input sanitization
+8. Add property inquiry tracking in admin view
+9. Add neighborhood guide pages (per-zone detail pages)
+10. Add multilingual support (EN/RO toggle)

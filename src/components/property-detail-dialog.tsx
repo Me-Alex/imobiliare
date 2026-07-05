@@ -72,7 +72,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
         <ImageGallery key={property.id} images={images} title={property.title} onExpand={(idx) => setLightbox(images, idx)} />
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 section-dark-overlay relative">
           <DialogHeader className="text-left space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">{typeLabels[property.type] || property.type}</Badge>

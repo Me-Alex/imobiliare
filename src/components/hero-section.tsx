@@ -230,6 +230,15 @@ export function HeroSection() {
       />
       <div className="hero-gradient absolute inset-0" />
 
+      {/* Floating Particles */}
+      <div className="particle h-2 w-2 bg-white/20 z-[1]" style={{ top: '15%', left: '10%', '--duration': '5s', '--delay': '0s' } as React.CSSProperties} />
+      <div className="particle h-3 w-3 bg-emerald-400/20 z-[1]" style={{ top: '25%', left: '75%', '--duration': '7s', '--delay': '1s' } as React.CSSProperties} />
+      <div className="particle h-1.5 w-1.5 bg-white/10 z-[1]" style={{ top: '60%', left: '20%', '--duration': '4s', '--delay': '2s' } as React.CSSProperties} />
+      <div className="particle h-2.5 w-2.5 bg-emerald-400/15 z-[1]" style={{ top: '70%', left: '85%', '--duration': '6s', '--delay': '0.5s' } as React.CSSProperties} />
+      <div className="particle h-2 w-2 bg-white/15 z-[1]" style={{ top: '40%', left: '50%', '--duration': '8s', '--delay': '3s' } as React.CSSProperties} />
+      <div className="particle h-1.5 w-1.5 bg-emerald-400/20 z-[1]" style={{ top: '80%', left: '40%', '--duration': '5.5s', '--delay': '1.5s' } as React.CSSProperties} />
+      <div className="particle h-2 w-2 bg-white/10 z-[1]" style={{ top: '10%', left: '90%', '--duration': '6.5s', '--delay': '2.5s' } as React.CSSProperties} />
+
       {/* Floating "Date actualizate" badge */}
       <motion.div
         initial={{ opacity: 0, x: 20 }}

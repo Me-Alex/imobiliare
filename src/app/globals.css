@@ -848,3 +848,112 @@ textarea:focus-visible {
   transform: translateY(-6px);
   box-shadow: 0 20px 40px -12px oklch(0.2 0.03 160 / 20%);
 }
+
+/* ===== TASK 8-6: Major Visual Styling Improvements ===== */
+
+/* 1. Animated Floating Particles */
+@keyframes float-particle {
+  0%, 100% { transform: translateY(0) translateX(0) scale(1); opacity: 0.6; }
+  25% { transform: translateY(-20px) translateX(10px) scale(1.1); opacity: 0.8; }
+  50% { transform: translateY(-35px) translateX(-5px) scale(0.9); opacity: 0.5; }
+  75% { transform: translateY(-15px) translateX(15px) scale(1.05); opacity: 0.7; }
+}
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: float-particle var(--duration, 6s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+@media (prefers-reduced-motion: reduce) {
+  .particle { animation: none; opacity: 0.3; }
+}
+
+/* 2. Price Tag Gradient Animation */
+@keyframes priceShine {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.price-tag-animated {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: priceShine 3s ease-in-out infinite;
+}
+.dark .price-tag-animated {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: priceShine 3s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .price-tag-animated { animation: none; }
+}
+
+/* 3. Enhanced Dark Mode Section Overlays */
+.dark .section-dark-overlay {
+  position: relative;
+}
+.dark .section-dark-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, oklch(0 0 0 / 3%) 0%, transparent 30%, transparent 70%, oklch(0 0 0 / 3%) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 4. Card Reveal Animation */
+@keyframes cardReveal {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.card-reveal {
+  animation: cardReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-reveal { animation: none; opacity: 1; }
+}
+
+/* 5. Text Reveal Gradient Mask */
+.text-reveal-mask {
+  mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+}
+
+/* 6. Interactive Scale on Press */
+.press-scale {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.press-scale:active {
+  transform: scale(0.97);
+}
+
+/* 7. Shimmer Loading (for any future skeletons) */
+@keyframes shimmerLoad {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer-load {
+  background: linear-gradient(90deg, oklch(0.95 0.01 80) 25%, oklch(0.98 0.005 80) 50%, oklch(0.95 0.01 80) 75%);
+  background-size: 200% 100%;
+  animation: shimmerLoad 1.5s ease-in-out infinite;
+}
+.dark .shimmer-load {
+  background: linear-gradient(90deg, oklch(0.22 0.015 60) 25%, oklch(0.26 0.01 60) 50%, oklch(0.22 0.015 60) 75%);
+  background-size: 200% 100%;
+  animation: shimmerLoad 1.5s ease-in-out infinite;
+}
+
+/* 8. Decorative Grid Lines */
+.grid-lines {
+  background-image:
+    linear-gradient(oklch(0.527 0.14 160 / 5%) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.527 0.14 160 / 5%) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+.dark .grid-lines {
+  background-image:
+    linear-gradient(oklch(0.65 0.17 160 / 4%) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.65 0.17 160 / 4%) 1px, transparent 1px);
+  background-size: 60px 60px;
+}

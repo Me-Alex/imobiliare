@@ -184,6 +184,9 @@ export function MarketAnalytics() {
       <div className="floating-blob w-[400px] h-[400px] top-10 -left-32" style={{ background: 'oklch(0.527 0.14 160)' }} />
       <div className="floating-blob w-[350px] h-[350px] bottom-10 -right-24" style={{ background: 'oklch(0.65 0.17 140)' }} />
 
+      {/* Grid lines background pattern */}
+      <div className="absolute inset-0 grid-lines pointer-events-none z-0" />
+
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

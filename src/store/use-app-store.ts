@@ -35,6 +35,8 @@ interface AppState {
   lightboxIndex: number
   setLightbox: (images: string[], index?: number) => void
   clearLightbox: () => void
+  chatOpen: boolean
+  setChatOpen: (open: boolean) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -86,4 +88,6 @@ export const useAppStore = create<AppState>((set) => ({
   lightboxIndex: 0,
   setLightbox: (images, index = 0) => set({ lightboxImages: images, lightboxIndex: index }),
   clearLightbox: () => set({ lightboxImages: [], lightboxIndex: 0 }),
+  chatOpen: false,
+  setChatOpen: (open) => set({ chatOpen: open }),
 }))

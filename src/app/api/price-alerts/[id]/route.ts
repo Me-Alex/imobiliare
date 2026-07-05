@@ -8,21 +8,19 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    // Check existence with raw query
-    const existing = await db.$queryRaw<Array<{ id: string }>>`
-      SELECT id FROM PriceAlert WHERE id = ${id} AND active = true LIMIT 1
-    `
-
-    if (!existing || existing.length === 0) {
+    const alert = await db.priceAlert.findUnique({ where: { id } })
+    if (!alert) {
       return NextResponse.json({ error: 'Alerta nu a fost gasita.' }, { status: 404 })
     }
 
-    await db.$executeRaw`
-      UPDATE PriceAlert SET active = false WHERE id = ${id}
-    `
+    await db.priceAlert.update({
+      where: { id },
+      data: { active: false },
+    })
 
     return NextResponse.json({ success: true })
-  } catch {
+  } catch (error) {
+    console.error('Price alert delete error:', error)
     return NextResponse.json({ error: 'Eroare la dezactivarea alertei.' }, { status: 500 })
   }
 }

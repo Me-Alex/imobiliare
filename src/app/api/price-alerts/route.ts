@@ -13,14 +13,12 @@ const createAlertSchema = z.object({
 
 export async function GET() {
   try {
-    // Use raw query for PriceAlert (table exists but Prisma client is cached pre-schema change)
-    const alerts = await db.$queryRaw<Array<{
-      id: string; email: string; zone: string | null; propertyType: string | null;
-      minPrice: number | null; maxPrice: number | null; minRooms: number | null;
-      active: boolean; createdAt: string;
-    }>>`SELECT * FROM PriceAlert ORDER BY "createdAt" DESC`
+    const alerts = await db.priceAlert.findMany({
+      orderBy: { createdAt: 'desc' },
+    })
     return NextResponse.json(alerts)
-  } catch {
+  } catch (error) {
+    console.error('Price alert list error:', error)
     return NextResponse.json({ error: 'Eroare la incarcarea alertelor.' }, { status: 500 })
   }
 }
@@ -47,14 +45,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use raw query to bypass cached Prisma schema
-    const alert = await db.$queryRaw<Array<{ id: string }>>`
-      INSERT INTO PriceAlert (id, email, zone, "propertyType", "minPrice", "maxPrice", "minRooms", active, "createdAt")
-      VALUES (lower(hex(randomblob(12))), ${email}, ${zone || null}, ${propertyType || null}, ${minPrice ?? null}, ${maxPrice ?? null}, ${minRooms ?? null}, true, datetime('now'))
-      RETURNING id
-    `
+    const alert = await db.priceAlert.create({
+      data: {
+        email,
+        zone: zone || null,
+        propertyType: propertyType || null,
+        minPrice: minPrice ?? null,
+        maxPrice: maxPrice ?? null,
+        minRooms: minRooms ?? null,
+      },
+    })
 
-    return NextResponse.json(alert[0], { status: 201 })
+    return NextResponse.json(alert, { status: 201 })
   } catch (error) {
     console.error('Price alert create error:', error)
     return NextResponse.json({ error: 'Eroare la crearea alertei.' }, { status: 500 })

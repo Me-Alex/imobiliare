@@ -64,7 +64,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
   if (viewMode === 'list') {
     return (
       <Card
-        className="card-hover overflow-hidden cursor-pointer group py-0 gap-0"
+        className={`card-hover overflow-hidden cursor-pointer group py-0 gap-0 press-scale border-l-[3px] ${property.transaction === 'RENT' ? 'border-l-amber-400' : 'border-l-emerald-500'}`}
         onClick={() => onSelect(property.slug)}
       >
         <div className="flex flex-col sm:flex-row">
@@ -147,7 +147,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
 
   return (
     <Card
-      className="card-hover overflow-hidden cursor-pointer group py-0 gap-0 relative"
+      className={`card-hover overflow-hidden cursor-pointer group py-0 gap-0 relative press-scale border-l-[3px] ${property.transaction === 'RENT' ? 'border-l-amber-400' : 'border-l-emerald-500'}`}
       onClick={() => onSelect(property.slug)}
     >
       {/* Image */}
@@ -195,6 +195,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
 
         {/* Price */}
         <div className="absolute bottom-3 left-3 z-10">
+          <div className="price-tag-animated absolute inset-0 rounded-lg -z-10" />
           <div className="text-xl font-bold text-white drop-shadow-lg">{formatPrice(property.price)}</div>
           {property.pricePerSqm && (
             <div className="text-xs text-white/80 drop-shadow">{formatPricePerSqm(property.pricePerSqm)}</div>

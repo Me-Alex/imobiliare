@@ -15,12 +15,14 @@ import { RecentlyViewed } from '@/components/recently-viewed'
 import { MarketAnalytics } from '@/components/market-analytics'
 import { ZoneCards } from '@/components/zone-cards'
 import { ZoneMap } from '@/components/zone-map'
+import { NeighborhoodInsights } from '@/components/neighborhood-insights'
 import { TrustSection } from '@/components/trust-section'
 import { HowItWorks } from '@/components/how-it-works'
 import { TestimonialsSection } from '@/components/testimonials-section'
 import { PartnersSection } from '@/components/partners-section'
 import { MortgageCalculator } from '@/components/mortgage-calculator'
 import { FaqSection } from '@/components/faq-section'
+import { AboutUsSection } from '@/components/about-us-section'
 import { CtaSection } from '@/components/cta-section'
 import { SiteFooter } from '@/components/site-footer'
 import { PropertyDetailDialog } from '@/components/property-detail-dialog'
@@ -31,6 +33,7 @@ import { GalleryLightbox } from '@/components/gallery-lightbox'
 import { useAppStore } from '@/store/use-app-store'
 import { Toaster } from 'sonner'
 import { BackToTop } from '@/components/back-to-top'
+import { AIChatWidget } from '@/components/ai-chat-widget'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,7 +45,7 @@ const queryClient = new QueryClient({
 })
 
 function AppContent() {
-  const { setSelectedPropertySlug, lightboxImages, lightboxIndex, clearLightbox } = useAppStore()
+  const { setSelectedPropertySlug, lightboxImages, lightboxIndex, clearLightbox, chatOpen, setChatOpen } = useAppStore()
   const [contactOpen, setContactOpen] = useState(false)
   const [contactPropertyTitle, setContactPropertyTitle] = useState('')
   const [favoritesOpen, setFavoritesOpen] = useState(false)
@@ -71,9 +74,14 @@ function AppContent() {
         <RecentlyViewed />
         <div id="proprietati" className="py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="mb-8 text-center sm:text-left">
+            <div className="section-header mb-8 text-center sm:text-left">
               <h2 className="text-3xl font-bold tracking-tight">Proprietati Disponibile</h2>
-              <p className="text-muted-foreground mt-2">Exploreaza cele mai bune oferte din Bucuresti.</p>
+              <p className="text-muted-foreground mt-2 sm:max-w-none sm:ml-0">
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                  Exploreaza cele mai bune oferte din Bucuresti.
+                </span>
+              </p>
             </div>
             <PropertyFilters />
             <div className="mt-6">
@@ -88,6 +96,8 @@ function AppContent() {
         <hr className="section-divider" />
         <ZoneMap />
         <hr className="section-divider" />
+        <NeighborhoodInsights />
+        <hr className="section-divider" />
         <TrustSection />
         <hr className="section-divider" />
         <HowItWorks />
@@ -99,6 +109,8 @@ function AppContent() {
         <MortgageCalculator />
         <hr className="section-divider" />
         <FaqSection />
+        <hr className="section-divider" />
+        <AboutUsSection />
         <CtaSection />
       </main>
       <SiteFooter />
@@ -120,6 +132,7 @@ function AppContent() {
         onClose={clearLightbox}
       />
       <Toaster richColors position="bottom-right" />
+      <AIChatWidget open={chatOpen} onOpenChange={setChatOpen} />
       <BackToTop />
     </div>
   )
