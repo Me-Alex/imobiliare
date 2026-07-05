@@ -19,9 +19,14 @@ const navItems = [
   { label: 'Proprietati', href: '#proprietati' },
   { label: 'Analiza', href: '#analiza' },
   { label: 'Zone', href: '#zone' },
+  { label: 'Calculator', href: '#calculator' },
 ]
 
-export function SiteHeader() {
+interface SiteHeaderProps {
+  onOpenFavorites?: () => void
+}
+
+export function SiteHeader({ onOpenFavorites }: SiteHeaderProps) {
   const { setTheme, resolvedTheme } = useTheme()
   const favorites = useAppStore((s) => s.favorites)
 
@@ -54,7 +59,7 @@ export function SiteHeader() {
         {/* Right side */}
         <div className="flex items-center gap-2">
           {/* Favorites */}
-          <Button variant="ghost" size="icon" className="relative" aria-label="Favorite">
+          <Button variant="ghost" size="icon" className="relative" aria-label="Favorite" onClick={onOpenFavorites}>
             <Heart className="h-5 w-5" />
             {favorites.length > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-primary text-primary-foreground border-0">

@@ -104,26 +104,32 @@ function PropertyCompare() {
   const { compareList, toggleCompare } = useAppStore()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [properties, setProperties] = useState<Property[] | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [fetchedVersion, setFetchedVersion] = useState('')
 
-  useEffect(() => {
-    if (compareList.length < 2) {
-      setProperties(null)
-      return
-    }
-    let cancelled = false
-    setIsLoading(true)
-    getPropertiesByIds(compareList)
-      .then((data) => { if (!cancelled) setProperties(data) })
-      .catch(() => { if (!cancelled) setProperties(null) })
-      .finally(() => { if (!cancelled) setIsLoading(false) })
-    return () => { cancelled = true }
+  const currentVersion = compareList.join(',')
+
+  const effectiveProperties = useMemo(() => {
+    if (compareList.length < 2) return null
+    return undefined // signal: needs fetch
   }, [compareList])
 
+  const needsFetch = effectiveProperties === undefined
+  const isLoading = needsFetch && fetchedVersion !== currentVersion
+
+  useEffect(() => {
+    if (!needsFetch) return
+    const ver = currentVersion
+    getPropertiesByIds(compareList)
+      .then((data) => { setProperties(data); setFetchedVersion(ver) })
+      .catch(() => { setProperties([]); setFetchedVersion(ver) })
+  }, [needsFetch, compareList, currentVersion])
+
+  const displayProperties = effectiveProperties === null ? null : properties
+
   const bestIndices = useMemo(() => {
-    if (!properties || properties.length < 2) return {}
-    return getBestIndices(properties)
-  }, [properties])
+    if (!displayProperties || displayProperties.length < 2) return {}
+    return getBestIndices(displayProperties)
+  }, [displayProperties])
 
   const effectiveSheetOpen = sheetOpen && compareList.length >= 2
 
@@ -136,7 +142,8 @@ function PropertyCompare() {
   const mobileMq = typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)') : null
   const isMobile = useSyncExternalStore(
     (cb) => { mobileMq?.addEventListener('change', cb); return () => mobileMq?.removeEventListener('change', cb) },
-    () => mobileMq?.matches ?? true
+    () => mobileMq?.matches ?? true,
+    () => true // getServerSnapshot — always render mobile-first on server
   )
 
   return (
@@ -221,11 +228,11 @@ function PropertyCompare() {
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
-          ) : !isLoading && properties && properties.length >= 2 ? (
+          ) : !isLoading && displayProperties && displayProperties.length >= 2 ? (
             <div className="flex-1 overflow-auto p-4 -mx-4">
               {/* Property Headers */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6 px-2">
-                {properties.map((p) => {
+                {displayProperties.map((p) => {
                   const gallery: string[] = p.galleryUrls ? JSON.parse(p.galleryUrls) : []
                   const coverImage = p.coverUrl || gallery[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=300&q=75'
                   return (
@@ -262,13 +269,13 @@ function PropertyCompare() {
                 <TableBody>
                   <CompareRow
                     label="Pret"
-                    values={properties.map((p) => formatPrice(p.price))}
+                    values={displayProperties.map((p) => formatPrice(p.price))}
                     bestIndex={bestIndices.price}
                     highlight="low"
                   />
                   <CompareRow
                     label="Pret/m²"
-                    values={properties.map((p) =>
+                    values={displayProperties.map((p) =>
                       p.pricePerSqm ? formatPricePerSqm(p.pricePerSqm) : '-'
                     )}
                     bestIndex={bestIndices.pricePerSqm}
@@ -276,39 +283,39 @@ function PropertyCompare() {
                   />
                   <CompareRow
                     label="Camere"
-                    values={properties.map((p) => String(p.rooms))}
+                    values={displayProperties.map((p) => String(p.rooms))}
                     bestIndex={bestIndices.rooms}
                     highlight="high"
                   />
                   <CompareRow
                     label="Suprafata"
-                    values={properties.map((p) => `${p.areaSqm} m²`)}
+                    values={displayProperties.map((p) => `${p.areaSqm} m²`)}
                     bestIndex={bestIndices.areaSqm}
                     highlight="high"
                   />
                   <CompareRow
                     label="Bai"
-                    values={properties.map((p) => String(p.bathrooms))}
+                    values={displayProperties.map((p) => String(p.bathrooms))}
                     bestIndex={bestIndices.bathrooms}
                     highlight="high"
                   />
                   <CompareRow
                     label="Etaj"
-                    values={properties.map((p) => (p.floor ? `Etaj ${p.floor}` : '-'))}
+                    values={displayProperties.map((p) => (p.floor ? `Etaj ${p.floor}` : '-'))}
                   />
                   <CompareRow
                     label="An constructie"
-                    values={properties.map((p) => p.yearBuilt ? String(p.yearBuilt) : '-')}
+                    values={displayProperties.map((p) => p.yearBuilt ? String(p.yearBuilt) : '-')}
                     bestIndex={bestIndices.yearBuilt}
                     highlight="high"
                   />
                   <CompareRow
                     label="Tip"
-                    values={properties.map((p) => typeLabels[p.type] || p.type)}
+                    values={displayProperties.map((p) => typeLabels[p.type] || p.type)}
                   />
                   <CompareRow
                     label="Tranzactie"
-                    values={properties.map((p) =>
+                    values={displayProperties.map((p) =>
                       p.transaction === 'SALE' ? 'Vanzare' : 'Inchiriere'
                     )}
                   />

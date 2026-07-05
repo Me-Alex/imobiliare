@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import {
   Heart, Scale, MapPin, BedDouble, Maximize2, Bath, Building,
   Calendar, Phone, ChevronLeft, ChevronRight,
+  Share2, MessageCircle, Link, Check,
 } from 'lucide-react'
 import {
   Dialog,
@@ -19,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAppStore } from '@/store/use-app-store'
 import { useProperty, useProperties } from '@/hooks/use-properties'
 import { formatPrice, formatPricePerSqm, type Property } from '@/lib/api'
+import { toast } from 'sonner'
 import { PropertyCard } from '@/components/property-card'
 
 const typeLabels: Record<string, string> = {
@@ -31,6 +33,7 @@ interface PropertyDetailDialogProps {
 
 export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
   const { selectedPropertySlug, setSelectedPropertySlug, favorites, compareList, toggleFavorite, toggleCompare } = useAppStore()
+  const [copied, setCopied] = useState(false)
   const { data: property, isLoading } = useProperty(selectedPropertySlug)
 
   const open = !!selectedPropertySlug
@@ -141,6 +144,50 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
               <Phone className="h-4 w-4" />
               Contacteaza
             </Button>
+          </div>
+
+          {/* Share buttons */}
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+              <Share2 className="h-4 w-4" />
+              Distribuie
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                onClick={() => {
+                  const text = `Proprietate: ${property.title} - ${formatPrice(property.price)} - ${window.location.origin}`
+                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+                }}
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                WhatsApp
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                onClick={() => {
+                  const link = `${window.location.origin}?property=${property.slug}`
+                  navigator.clipboard.writeText(link).then(() => {
+                    setCopied(true)
+                    toast.success('Link copiat!', { description: 'Link-ul a fost copiat in clipboard.' })
+                    setTimeout(() => setCopied(false), 2000)
+                  }).catch(() => {
+                    toast.error('Eroare', { description: 'Nu am putut copia link-ul.' })
+                  })
+                }}
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <Link className="h-3.5 w-3.5" />
+                )}
+                {copied ? 'Copiat' : 'Copiaza link'}
+              </Button>
+            </div>
           </div>
 
           {/* Similar properties section */}

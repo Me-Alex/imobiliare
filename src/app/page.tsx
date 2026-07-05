@@ -4,18 +4,22 @@ import { useState, useCallback } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { SiteHeader } from '@/components/site-header'
+import { FavoritesPanel } from '@/components/favorites-panel'
 import { HeroSection } from '@/components/hero-section'
 import { StatsSection } from '@/components/stats-section'
 import { PropertyFilters } from '@/components/property-filters'
 import { PropertyGrid } from '@/components/property-grid'
 import { MarketAnalytics } from '@/components/market-analytics'
 import { ZoneCards } from '@/components/zone-cards'
+import { MortgageCalculator } from '@/components/mortgage-calculator'
+import { CtaSection } from '@/components/cta-section'
 import { SiteFooter } from '@/components/site-footer'
 import { PropertyDetailDialog } from '@/components/property-detail-dialog'
 import { PropertyCompare } from '@/components/property-compare'
 import { ContactFormDialog } from '@/components/contact-form-dialog'
 import { useAppStore } from '@/store/use-app-store'
 import { Toaster } from 'sonner'
+import { BackToTop } from '@/components/back-to-top'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +34,7 @@ function AppContent() {
   const { setSelectedPropertySlug } = useAppStore()
   const [contactOpen, setContactOpen] = useState(false)
   const [contactPropertyTitle, setContactPropertyTitle] = useState('')
+  const [favoritesOpen, setFavoritesOpen] = useState(false)
 
   const handleSelectProperty = useCallback((slug: string) => {
     setSelectedPropertySlug(slug)
@@ -45,11 +50,12 @@ function AppContent() {
       <a href="#main-content" className="skip-link">
         Treci la continutul principal
       </a>
-      <SiteHeader />
+      <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} />
       <main id="main-content" className="flex-1">
         <HeroSection />
         <StatsSection />
-        <div className="py-16">
+        <hr className="section-divider" />
+        <div id="proprietati" className="py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-8">
               <h2 className="text-3xl font-bold tracking-tight">Proprietati Disponibile</h2>
@@ -61,8 +67,13 @@ function AppContent() {
             </div>
           </div>
         </div>
+        <hr className="section-divider" />
         <MarketAnalytics />
+        <hr className="section-divider" />
         <ZoneCards />
+        <hr className="section-divider" />
+        <MortgageCalculator />
+        <CtaSection />
       </main>
       <SiteFooter />
       <PropertyDetailDialog onContact={handleContact} />
@@ -72,7 +83,9 @@ function AppContent() {
         onOpenChange={setContactOpen}
         propertyTitle={contactPropertyTitle}
       />
+      <FavoritesPanel open={favoritesOpen} onOpenChange={setFavoritesOpen} />
       <Toaster richColors position="bottom-right" />
+      <BackToTop />
     </div>
   )
 }

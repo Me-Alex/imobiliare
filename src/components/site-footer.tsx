@@ -1,13 +1,43 @@
 'use client'
 
-import { Building2, Mail, Phone, MapPin, Facebook, Instagram, Linkedin, Send } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
+import { Building2, Mail, Phone, MapPin, Facebook, Instagram, Linkedin, Send, ArrowUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { toast } from 'sonner'
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
 
 export function SiteFooter() {
+  const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState('')
+
+  const handleNewsletterSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) {
+      setEmailError('Te rog introdu o adresa de email.')
+      return
+    }
+    if (!isValidEmail(email)) {
+      setEmailError('Te rog introdu o adresa de email valida.')
+      return
+    }
+    setEmailError('')
+    toast.success('Multumim pentru abonare!', {
+      description: 'Vei primi noutatile pe ' + email,
+    })
+    setEmail('')
+  }
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
-    <footer className="mt-auto border-t bg-muted/30 relative overflow-hidden">
+    <footer id="contact" className="mt-auto border-t bg-muted/30 relative overflow-hidden">
       {/* Watermark text */}
       <span className="footer-watermark select-none" aria-hidden="true">
         propmarket
@@ -45,7 +75,7 @@ export function SiteFooter() {
           </div>
 
           {/* Quick links */}
-          <div>
+          <div className="transition-colors duration-300">
             <h3 className="font-semibold mb-4">Legaturi Rapide</h3>
             <ul className="space-y-2.5">
               {['Acasa', 'Proprietati', 'Analiza Piata', 'Zone', 'Despre Noi', 'Contact'].map((link) => (
@@ -59,7 +89,7 @@ export function SiteFooter() {
           </div>
 
           {/* Property types */}
-          <div>
+          <div className="transition-colors duration-300">
             <h3 className="font-semibold mb-4">Tipuri Proprietati</h3>
             <ul className="space-y-2.5">
               {['Apartamente', 'Case', 'Vile', 'Terenuri', 'Spatii Comerciale', 'Garsoniere'].map((link) => (
@@ -78,21 +108,40 @@ export function SiteFooter() {
             <p className="text-sm text-muted-foreground mb-4">
               Primeste cele mai noi tendinte si oferte direct in inbox-ul tau.
             </p>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input placeholder="adresa@email.ro" className="h-10 pl-10 pr-4" />
-              <Button size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 shrink-0 rounded-lg">
-                <Send className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            <form onSubmit={handleNewsletterSubmit} noValidate>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  type="email"
+                  placeholder="adresa@email.ro"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (emailError) setEmailError('')
+                  }}
+                  className="h-10 pl-10 pr-12"
+                />
+                <Button
+                  type="submit"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 shrink-0 rounded-lg"
+                  aria-label="Aboneaza-te"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              {emailError && (
+                <p className="mt-1.5 text-xs text-destructive">{emailError}</p>
+              )}
+            </form>
             <div className="flex gap-3 mt-6">
-              <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Facebook">
+              <Button variant="ghost" size="icon" className="h-9 w-9 transition-transform hover:scale-110 hover:text-[#1877F2]" aria-label="Facebook">
                 <Facebook className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Instagram">
+              <Button variant="ghost" size="icon" className="h-9 w-9 transition-transform hover:scale-110 hover:text-[#E4405F]" aria-label="Instagram">
                 <Instagram className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="LinkedIn">
+              <Button variant="ghost" size="icon" className="h-9 w-9 transition-transform hover:scale-110 hover:text-[#0A66C2]" aria-label="LinkedIn">
                 <Linkedin className="h-4 w-4" />
               </Button>
             </div>
@@ -103,10 +152,20 @@ export function SiteFooter() {
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} PropMarket. Toate drepturile rezervate.</p>
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4">
             <a href="#" className="link-underline hover:text-foreground transition-colors">Termeni si conditii</a>
             <a href="#" className="link-underline hover:text-foreground transition-colors">Politica de confidentialitate</a>
             <a href="#" className="link-underline hover:text-foreground transition-colors">Cookies</a>
+            <Separator orientation="vertical" className="hidden sm:block h-4" />
+            <button
+              type="button"
+              onClick={scrollToTop}
+              className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Inapoi sus"
+            >
+              <ArrowUp className="h-3.5 w-3.5" />
+              <span className="text-xs font-medium">Sus</span>
+            </button>
           </div>
         </div>
       </div>
