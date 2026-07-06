@@ -2,7 +2,7 @@
 // Handles every /api/* request using D1 + Supabase REST
 
 interface Env {
-  DB: D1Database
+  DB: any
 }
 
 const SB_URL = 'https://spmapzhlcwhzfrxuvgxd.supabase.co'
@@ -375,6 +375,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const method = request.method
 
   try {
+    if (!env.DB) return json({ error: "D1 database not configured" }, 503)
     if (path === 'properties/compare' && method === 'POST') return compareProperties(await request.json(), env)
     if (path === 'properties' && method === 'GET') return getProperties(url, env)
     if (path === 'properties' && method === 'POST') return createProperty(await request.json(), env)
