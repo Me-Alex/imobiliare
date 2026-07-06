@@ -436,3 +436,33 @@ Stage Summary:
 - Static export produces single `/` route with all JS/CSS bundled
 - API routes preserved in repo for local dev, excluded during Cloudflare build
 - User's Cloudflare token has read-only access (can't modify project settings)
+---
+Task ID: 11 (Google Auth + User Property Submission)
+Agent: main
+Task: Add Google authentication and user property listing
+
+Work Log:
+- Created .env.local with Supabase URL and anon key
+- Updated auth-context.tsx: added signInWithGoogle(), signUp with fullName, improved signOut
+- Redesigned login-page.tsx: Google OAuth button with SVG logo, name field on signup, improved layout
+- Created adauga-proprietate-page.tsx (734 lines): comprehensive property submission form
+  - Multi-section: Basic Info, Pricing & Size, Room Details, Location, Images
+  - Live price/m² calculator, image URL manager with thumbnails
+  - Preview mode, auth guard, submits to Supabase user_properties table
+  - Sticky sidebar with summary, featured toggle, submit button, tips
+- Updated site-header.tsx: user avatar dropdown (Add Property, Admin, Sign Out)
+  - Desktop: Add Property button + DropdownMenu with avatar
+  - Mobile: user info + Add Property + Sign Out in Sheet
+- Fixed next.config.ts: conditional output:export via NEXT_PUBLIC_OUTPUT_EXPORT env var
+  - Local dev/build: normal mode (API routes work)
+  - Cloudflare (pages:build): static export mode
+- Added 'adauga-proprietate' to PageKey, pageComponents, fullBleedPages
+- Build verified: next build succeeds in 20s, Cloudflare deploy succeeds
+- Site live at https://imobiliare2.pages.dev (HTTP 200)
+
+Stage Summary:
+- Google auth requires enabling Google provider in Supabase Dashboard
+  (Authentication > Providers > Google > Enable + add Client ID/Secret)
+- user_properties table needs to be created in Supabase for submissions to persist
+- All auth is client-side (works on static Cloudflare deployment)
+- 3 commits pushed: 570e63a (features), 74ed4e5 (config fix)
