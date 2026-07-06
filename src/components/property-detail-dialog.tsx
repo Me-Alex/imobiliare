@@ -124,6 +124,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
             <Button
               variant={isFav ? 'default' : 'outline'}
               onClick={() => toggleFavorite(property.id)}
+              aria-pressed={isFav}
               className="gap-2"
             >
               <Heart className={`h-4 w-4 ${isFav ? 'fill-current' : ''}`} />
@@ -132,6 +133,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
             <Button
               variant={isCompare ? 'default' : 'outline'}
               onClick={() => toggleCompare(property.id)}
+              aria-pressed={isCompare}
               className="gap-2"
             >
               <Scale className="h-4 w-4" />
