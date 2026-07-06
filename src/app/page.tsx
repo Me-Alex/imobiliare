@@ -33,7 +33,7 @@ import { DocumentePage } from '@/views/documente-page'
 import { ProgramareVizionarePage } from '@/views/programare-vizionare-page'
 import { VizionarileMelePage } from '@/views/vizionarile-mele-page'
 import { DashboardPage } from '@/views/dashboard-page'
-// import { NotificationsPanel } from '@/components/notifications-panel'
+import { NotificationsPanel } from '@/components/notifications-panel'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,6 +77,7 @@ function AppContent() {
   const [contactPropertyTitle, setContactPropertyTitle] = useState('')
   const [favoritesOpen, setFavoritesOpen] = useState(false)
   const [priceAlertsOpen, setPriceAlertsOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
 
   const handleContact = useCallback((propertyTitle: string) => {
     setContactPropertyTitle(propertyTitle)
@@ -90,7 +91,7 @@ function AppContent() {
     // Login and Admin pages have their own header/footer
     return (
       <div className="min-h-screen flex flex-col">
-        <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} />
+        <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} />
         <main className="flex-1">
           <AnimatePresence mode="wait">
             <motion.div
@@ -104,6 +105,7 @@ function AppContent() {
             </motion.div>
           </AnimatePresence>
         </main>
+        <NotificationsPanel open={notificationsOpen} onOpenChange={setNotificationsOpen} />
         <Toaster richColors position="bottom-right" />
       </div>
     )
@@ -115,7 +117,7 @@ function AppContent() {
         Treci la continutul principal
       </a>
       <AnnouncementBanner />
-      <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} />
+      <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} />
       <main id="main-content" className="flex-1">
         <AnimatePresence mode="wait">
           <motion.div
@@ -139,6 +141,7 @@ function AppContent() {
       />
       <FavoritesPanel open={favoritesOpen} onOpenChange={setFavoritesOpen} />
       <PriceAlertsPanel open={priceAlertsOpen} onOpenChange={setPriceAlertsOpen} />
+      <NotificationsPanel open={notificationsOpen} onOpenChange={setNotificationsOpen} />
       <CookieConsent />
       <GalleryLightbox
         key={lightboxImages.join(',')}

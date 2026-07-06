@@ -70,7 +70,7 @@ interface SiteHeaderProps {
   onOpenNotifications?: () => void
 }
 
-export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderProps) {
+export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotifications }: SiteHeaderProps) {
   const { setTheme, resolvedTheme } = useTheme()
   const { favorites, currentPage, navigateTo } = useAppStore()
   const { user, signOut } = useAuth()
@@ -146,8 +146,8 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
             )}
           </Button>
 
-          {/* Notifications / Price Alerts */}
-          <Button variant="ghost" size="icon" className="relative" aria-label="Alerte pret" onClick={onOpenPriceAlerts}>
+          {/* Notifications Bell */}
+          <Button variant="ghost" size="icon" className="relative" aria-label="Notificari" onClick={onOpenNotifications}>
             <Bell className="h-5 w-5" />
             <NotificationsBadge />
           </Button>
@@ -276,6 +276,19 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
                 <span className="text-sm text-muted-foreground">Favorite</span>
                 <Badge variant="secondary">{favorites.length} proprietati</Badge>
               </div>
+              <button
+                type="button"
+                className="flex items-center justify-between w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  onOpenNotifications?.()
+                }}
+              >
+                <span className="flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Notificari
+                </span>
+              </button>
               <button
                 type="button"
                 className="flex items-center justify-between w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
