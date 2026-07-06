@@ -397,7 +397,7 @@ export function AdaugaProprietatePage() {
       const urlImages = form.galleryUrls.filter(u => !u.startsWith('data:'))
 
       const newProp = {
-        id: crypto.randomUUID(),
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         title: form.title,
         slug,
         description: form.description,
@@ -418,7 +418,6 @@ export function AdaugaProprietatePage() {
         featured: form.featured,
         cover_url: form.galleryUrls[0] || form.coverUrl || '',
         gallery_urls: JSON.stringify(form.galleryUrls),
-        gallery_url_list: urlImages, // only URL images for Supabase
         price_per_sqm: pricePerSqm ? parseFloat(pricePerSqm) : null,
         status: 'PUBLISHED' as const,
         user_id: user.id,
@@ -428,7 +427,14 @@ export function AdaugaProprietatePage() {
       }
 
       // Save to localStorage FIRST (always works, instant)
-      const stored = JSON.parse(localStorage.getItem('hqs_user_properties') || '[]')
+      let stored: Record<string, unknown>[] = []
+      try {
+        stored = JSON.parse(localStorage.getItem('hqs_user_properties') || '[]')
+        if (!Array.isArray(stored)) stored = []
+      } catch {
+        // Corrupted data — reset
+        stored = []
+      }
       stored.push(newProp)
       try {
         localStorage.setItem('hqs_user_properties', JSON.stringify(stored))
@@ -440,13 +446,10 @@ export function AdaugaProprietatePage() {
         return
       }
 
-      // Try Supabase in background (only URL images, no base64 to avoid payload limits)
-      if (urlImages.length > 0 || base64Images.length === 0) {
-        const supabaseData = {
-          ...newProp,
-          gallery_urls: JSON.stringify(urlImages.length > 0 ? urlImages : form.galleryUrls),
-        }
-        // Fire and forget — don't block the UI
+      // Try Supabase in background (only if configured AND no base64 images to avoid payload limits)
+      const hasSupabaseConfig = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+      if (hasSupabaseConfig && base64Images.length === 0) {
+        const supabaseData = { ...newProp }
         supabase.from('user_properties').insert([supabaseData]).then(({ error }) => {
           if (error) console.warn('Supabase save skipped:', error.message)
         }).catch(() => {
@@ -467,8 +470,9 @@ export function AdaugaProprietatePage() {
         zone: '', sector: '', featured: false, coverUrl: '', galleryUrls: [],
       })
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Eroare necunoscuta'
       console.error('Submit error:', err)
-      toast.error('Eroare la salvare', { description: 'Verifica datele si incearca din nou.' })
+      toast.error('Eroare la salvare', { description: msg })
     } finally {
       setIsSubmitting(false)
     }

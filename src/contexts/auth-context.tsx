@@ -32,31 +32,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s)
       setUser(s?.user ?? null)
       setLoading(false)
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s)
-      setUser(s?.user ?? null)
+    }).catch(() => {
+      // Supabase not configured — treat as logged out
       setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    let subscription: { unsubscribe: () => void } | null = null
+    try {
+      const { data } = supabase.auth.onAuthStateChange((_event, s) => {
+        setSession(s)
+        setUser(s?.user ?? null)
+        setLoading(false)
+      })
+      subscription = data.subscription
+    } catch {
+      // Supabase not configured
+    }
+
+    return () => subscription?.unsubscribe()
   }, [])
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error: error?.message ?? null }
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      return { error: error?.message ?? null }
+    } catch {
+      return { error: 'Nu s-a putut conecta la serviciul de autentificare.' }
+    }
   }, [])
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName || email.split('@')[0] },
-      },
-    })
-    return { error: error?.message ?? null }
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName || email.split('@')[0] },
+        },
+      })
+      return { error: error?.message ?? null }
+    } catch {
+      return { error: 'Nu s-a putut conecta la serviciul de autentificare.' }
+    }
   }, [])
 
   const signInWithGoogle = useCallback(async (): Promise<{ error: GoogleAuthError | null }> => {
@@ -83,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { error: null }
-    } catch (err) {
+    } catch {
       return {
         error: {
           code: 'exception',
@@ -95,7 +112,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut()
+    try {
+      await supabase.auth.signOut()
+    } catch {
+      // Ignore
+    }
   }, [])
 
   return (
