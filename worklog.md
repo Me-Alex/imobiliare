@@ -411,3 +411,28 @@ PropMarket now has 8 pages (6 public + login + admin), Supabase authentication, 
 2. Add CRUD operations in admin (delete contact, toggle alert, update property status)
 3. Add URL hash sync for browser back/forward
 4. Reduce memory footprint or use Webpack for dev server
+---
+Task ID: 10 (Cloudflare Pages Deployment)
+Agent: main
+Task: Fix Cloudflare Pages build for imobiliare2 project
+
+Work Log:
+- Diagnosed build failure: `output: "standalone"` incompatible with Cloudflare Pages
+- Diagnosed: `@cloudflare/next-on-pages` doesn't support Next.js 16 (max 15.5.2)
+- Diagnosed: `@opennextjs/cloudflare` requires Next.js >=16.2.6 (project on 16.1.1)
+- Solution: Use `output: "export"` for fully static site (all pages are client components)
+- Added `images: { unoptimized: true }` to next.config.ts
+- Cloudflare build command was `npm run pages:build` — script was missing
+- Cloudflare output dir was `.vercel/output/static` — needed `out`
+- Added `pages:build` script that: moves API/ out of app/, builds, copies `out/` to `.vercel/output/static/`, restores API/
+- API routes excluded because they use Prisma/SQLite (incompatible with static hosting)
+- Frontend has all data built-in as mock/fallback data
+- Token couldn't update Cloudflare project config (read-only), worked around by outputting to expected dir
+- 4 commits pushed: config fix → force-static → generateStaticParams → final build script fix
+
+Stage Summary:
+- Site live at https://imobiliare2.pages.dev (HTTP 200)
+- Build passes: ~90s total (deps install + Next.js build + copy)
+- Static export produces single `/` route with all JS/CSS bundled
+- API routes preserved in repo for local dev, excluded during Cloudflare build
+- User's Cloudflare token has read-only access (can't modify project settings)
