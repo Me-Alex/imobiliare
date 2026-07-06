@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
-import { Bell, Building2, CalendarCheck, FileText, Heart, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User, Users } from 'lucide-react'
+import { Bell, Building2, CalendarCheck, FileText, Heart, LayoutDashboard, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -34,9 +34,40 @@ const navItems: { label: string; page: PageKey }[] = [
   { label: 'Calculator', page: 'calculator' },
 ]
 
+function NotificationsBadge() {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    const update = () => {
+      try {
+        const raw = localStorage.getItem('hqs_notifications')
+        const notifs = raw ? JSON.parse(raw) : []
+        setCount(Array.isArray(notifs) ? notifs.filter((n: { read: boolean }) => !n.read).length : 0)
+      } catch {
+        setCount(0)
+      }
+    }
+    update()
+    window.addEventListener('hqs-notifications-updated', update)
+    window.addEventListener('storage', update)
+    return () => {
+      window.removeEventListener('hqs-notifications-updated', update)
+      window.removeEventListener('storage', update)
+    }
+  }, [])
+
+  if (count === 0) return null
+  return (
+    <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-red-500 text-white border-0 animate-pulse">
+      {count > 9 ? '9+' : count}
+    </Badge>
+  )
+}
+
 interface SiteHeaderProps {
   onOpenFavorites?: () => void
   onOpenPriceAlerts?: () => void
+  onOpenNotifications?: () => void
 }
 
 export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderProps) {
@@ -115,9 +146,10 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
             )}
           </Button>
 
-          {/* Price Alerts */}
+          {/* Notifications / Price Alerts */}
           <Button variant="ghost" size="icon" className="relative" aria-label="Alerte pret" onClick={onOpenPriceAlerts}>
             <Bell className="h-5 w-5" />
+            <NotificationsBadge />
           </Button>
 
           {/* Add Property button (logged in) */}
@@ -151,6 +183,10 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigateTo('dashboard')} className="gap-2">
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigateTo('adauga-proprietate')} className="gap-2">
                   <Plus className="h-4 w-4" />
                   Adauga Proprietate
@@ -278,6 +314,14 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
               </button>
               {user && (
                 <>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
+                    onClick={() => { setMobileMenuOpen(false); navigateTo('dashboard') }}
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    Dashboard
+                  </button>
                   <button
                     type="button"
                     className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"

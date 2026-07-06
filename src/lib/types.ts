@@ -37,6 +37,10 @@ export interface Vizionare {
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
   notes: string
   createdAt: string
+  rating?: number
+  feedback?: string
+  wouldProceed?: boolean
+  completedAt?: string
 }
 
 // Uploaded Document

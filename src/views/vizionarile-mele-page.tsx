@@ -6,6 +6,7 @@ import {
   CalendarDays, Clock, User, FileText,
   Upload, XCircle, ArrowLeft, CalendarCheck, CalendarX2,
   Download, Eye, File, Trash2, Inbox,
+  Star, CalendarClock, MessageSquarePlus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +20,7 @@ import {
   type Vizionare, type UploadedDocument, type AvailabilitySlot,
   DOC_TYPE_LABELS,
 } from '@/lib/types'
+import { VizionareFeedbackDialog, StarRating } from '@/components/vizionare-feedback-dialog'
 import { toast } from 'sonner'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -159,14 +161,21 @@ function DocumentList({ vizionareId }: { vizionareId: string }) {
 function VizionareCard({
   vizionare,
   onCancel,
+  onAddFeedback,
+  onReschedule,
 }: {
   vizionare: Vizionare
   onCancel: (id: string) => void
+  onAddFeedback: (v: Vizionare) => void
+  onReschedule: (v: Vizionare) => void
 }) {
   const { navigateTo } = useAppStore()
   const staff = getStaffById(vizionare.staffId)
   const statusCfg = STATUS_CONFIG[vizionare.status]
   const isPast = vizionare.status === 'completed' || vizionare.status === 'cancelled'
+  const isActive = vizionare.status === 'pending' || vizionare.status === 'confirmed'
+  const isCompleted = vizionare.status === 'completed'
+  const hasFeedback = typeof vizionare.rating === 'number' && vizionare.rating > 0
 
   const handleUploadDocs = () => {
     saveToLS('hqs_selected_vizionare_id', vizionare.id)
@@ -198,9 +207,32 @@ function VizionareCard({
                 <p className="text-xs text-muted-foreground">{vizionare.staffName}</p>
               </div>
             </div>
-            <Badge className={statusCfg.className} variant={statusCfg.variant}>
-              {statusCfg.label}
-            </Badge>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {isCompleted && hasFeedback && (
+                <Badge
+                  variant="outline"
+                  className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
+                >
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400 mr-1" />
+                  {vizionare.rating}
+                </Badge>
+              )}
+              {isCompleted && typeof vizionare.wouldProceed === 'boolean' && (
+                <Badge
+                  variant="outline"
+                  className={
+                    vizionare.wouldProceed
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
+                      : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-700'
+                  }
+                >
+                  {vizionare.wouldProceed ? 'Doreste sa continue' : 'Nu este interesat'}
+                </Badge>
+              )}
+              <Badge className={statusCfg.className} variant={statusCfg.variant}>
+                {statusCfg.label}
+              </Badge>
+            </div>
           </div>
 
           {/* Date & Time */}
@@ -215,8 +247,29 @@ function VizionareCard({
             </div>
           </div>
 
+          {/* Completed vizionare with feedback — show read-only stars + feedback text */}
+          {isCompleted && hasFeedback && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="mb-3 space-y-2"
+            >
+              <div className="flex items-center gap-2">
+                <StarRating value={vizionare.rating!} readonly />
+                <span className="text-xs text-muted-foreground">
+                  {vizionare.rating}/5
+                </span>
+              </div>
+              {vizionare.feedback && (
+                <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2.5 line-clamp-3">
+                  {vizionare.feedback}
+                </p>
+              )}
+            </motion.div>
+          )}
+
           {/* Notes */}
-          {vizionare.notes && (
+          {vizionare.notes && !isCompleted && (
             <p className="text-xs text-muted-foreground mb-3 line-clamp-2 bg-muted/50 rounded-lg p-2.5">
               {vizionare.notes}
             </p>
@@ -226,7 +279,7 @@ function VizionareCard({
           <DocumentList vizionareId={vizionare.id} />
 
           {/* Actions */}
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50 flex-wrap">
             <Button
               variant="outline"
               size="sm"
@@ -237,6 +290,46 @@ function VizionareCard({
               Incarca Documente
             </Button>
 
+            {/* Add Feedback button — completed vizionari without rating */}
+            {isCompleted && !hasFeedback && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs h-8 text-amber-700 border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-900/20"
+                onClick={() => onAddFeedback(vizionare)}
+              >
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+                Adauga Feedback
+              </Button>
+            )}
+
+            {/* Edit Feedback button — completed vizionari with rating */}
+            {isCompleted && hasFeedback && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs h-8 text-muted-foreground"
+                onClick={() => onAddFeedback(vizionare)}
+              >
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+                Editeaza Feedback
+              </Button>
+            )}
+
+            {/* Reschedule button — active vizionari */}
+            {isActive && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs h-8 text-primary border-primary/30 hover:bg-primary/5 dark:border-primary/50"
+                onClick={() => onReschedule(vizionare)}
+              >
+                <CalendarClock className="h-3.5 w-3.5" />
+                Reprogramare
+              </Button>
+            )}
+
+            {/* Cancel button — pending vizionari */}
             {vizionare.status === 'pending' && (
               <Button
                 variant="ghost"
@@ -288,9 +381,13 @@ function TimelineDot({ status }: { status: Vizionare['status'] }) {
 
 export function VizionarileMelePage() {
   const { user, loading: authLoading } = useAuth()
-  const { navigateTo } = useAppStore()
+  const { navigateTo, setVizionareProperty } = useAppStore()
   const [refreshKey, setRefreshKey] = useState(0)
   const [activeTab, setActiveTab] = useState('active')
+
+  // Feedback dialog state
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackVizionare, setFeedbackVizionare] = useState<Vizionare | null>(null)
 
   const vizionari = useMemo(() => {
     if (!user) return []
@@ -335,6 +432,48 @@ export function VizionarileMelePage() {
       toast.success('Vizionare anulata', { description: 'Programarea a fost anulata cu succes.' })
     }
   }, [])
+
+  const handleAddFeedback = useCallback((v: Vizionare) => {
+    setFeedbackVizionare(v)
+    setFeedbackOpen(true)
+  }, [])
+
+  const handleFeedbackSaved = useCallback(() => {
+    setRefreshKey(k => k + 1)
+  }, [])
+
+  const handleReschedule = useCallback((v: Vizionare) => {
+    // Cancel the existing vizionare
+    const all = loadFromLS<Vizionare[]>('hqs_vizionari', [])
+    const idx = all.findIndex(item => item.id === v.id)
+    if (idx !== -1) {
+      all[idx].status = 'cancelled'
+      saveToLS('hqs_vizionari', all)
+
+      // Free the availability slot
+      const slots = loadFromLS<AvailabilitySlot[]>('hqs_staff_availability', [])
+      const slotIdx = slots.findIndex(
+        (s: AvailabilitySlot) =>
+          s.staffId === all[idx].staffId &&
+          s.date === all[idx].date &&
+          s.startTime === all[idx].startTime &&
+          s.isBooked
+      )
+      if (slotIdx !== -1) {
+        slots[slotIdx].isBooked = false
+        slots[slotIdx].bookedBy = null
+        slots[slotIdx].bookedByName = null
+        saveToLS('hqs_staff_availability', slots)
+      }
+    }
+
+    // Pre-select the property and navigate
+    setVizionareProperty(v.propertyId, v.propertyTitle)
+    navigateTo('programare-vizionare')
+    toast.info('Reprogramare', {
+      description: 'Vizionarea anterioara a fost anulata. Alege o noua data.',
+    })
+  }, [setVizionareProperty, navigateTo])
 
   if (authLoading) {
     return (
@@ -435,7 +574,13 @@ export function VizionarileMelePage() {
               {activeVizionari.length > 0 ? (
                 <div className="space-y-3">
                   {activeVizionari.map((v) => (
-                    <VizionareCard key={v.id} vizionare={v} onCancel={handleCancel} />
+                    <VizionareCard
+                      key={v.id}
+                      vizionare={v}
+                      onCancel={handleCancel}
+                      onAddFeedback={handleAddFeedback}
+                      onReschedule={handleReschedule}
+                    />
                   ))}
                 </div>
               ) : (
@@ -472,7 +617,12 @@ export function VizionarileMelePage() {
                     {historyVizionari.map((v) => (
                       <div key={v.id} className="relative">
                         <TimelineDot status={v.status} />
-                        <VizionareCard vizionare={v} onCancel={handleCancel} />
+                        <VizionareCard
+                          vizionare={v}
+                          onCancel={handleCancel}
+                          onAddFeedback={handleAddFeedback}
+                          onReschedule={handleReschedule}
+                        />
                       </div>
                     ))}
                   </div>
@@ -487,6 +637,14 @@ export function VizionarileMelePage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Feedback Dialog */}
+      <VizionareFeedbackDialog
+        open={feedbackOpen}
+        onOpenChange={setFeedbackOpen}
+        vizionare={feedbackVizionare}
+        onSaved={handleFeedbackSaved}
+      />
     </div>
   )
 }

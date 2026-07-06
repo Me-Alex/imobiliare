@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, ChevronRight, Plus, Loader2, MapPin, Building2, Ruler,
   BedDouble, Bath, Calendar, Euro, Tag, ImagePlus, X, Check,
-  ArrowLeft, Eye, EyeOff, Upload, User, Trash2, Clock, List, Camera
+  ArrowLeft, Eye, EyeOff, Upload, User, Trash2, Clock, List, Camera, Pencil
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +25,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { EditPropertyDialog } from '@/components/edit-property-dialog'
 
 const PROPERTY_TYPES = [
   'Apartament', 'Garsoniera', 'Casa', 'Vila', 'Teren', 'Spatiu Comercial',
@@ -352,6 +353,8 @@ export function AdaugaProprietatePage() {
   const [submittedCount, setSubmittedCount] = useState(0)
   const [myProperties, setMyProperties] = useState<Array<Record<string, unknown>>>([])
   const [showMyProps, setShowMyProps] = useState(false)
+  const [editProperty, setEditProperty] = useState<Record<string, unknown> | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
 
   const [form, setForm] = useState<PropertyFormData>({
     title: '', description: '', type: '', transaction: 'VANZARE',
@@ -661,12 +664,15 @@ export function AdaugaProprietatePage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         <Badge variant="outline" className="text-[10px]">{prop.type as string}</Badge>
                         <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {new Date(prop.created_at as string).toLocaleDateString('ro-RO')}
                         </span>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary" onClick={() => { setEditProperty(prop); setEditOpen(true) }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => deleteProperty(prop.id as string)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -1038,6 +1044,12 @@ export function AdaugaProprietatePage() {
           </div>
         </form>
       </div>
+      <EditPropertyDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        property={editProperty}
+        onSaved={() => { loadMyProperties(); setEditProperty(null) }}
+      />
     </div>
   )
 }
