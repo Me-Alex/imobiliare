@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
-    "build": "next build",
+    "build": "pnpm run pages:build",
     "pages:build": "mv src/app/api src/app/_api_disabled && next build && mkdir -p .vercel/output/static && cp -r out/* .vercel/output/static/ && mv src/app/_api_disabled src/app/api || { mv src/app/_api_disabled src/app/api 2>/dev/null; exit 1; }",
     "start": "npx serve out",
     "lint": "eslint .",
