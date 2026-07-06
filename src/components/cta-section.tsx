@@ -75,7 +75,7 @@ export function CtaSection() {
               transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
               className="mt-4 max-w-2xl mx-auto text-base sm:text-lg text-emerald-100/80 leading-relaxed"
             >
-              Alatura-te miilor de clienti care si-au gasit casa visurilor prin PropMarket.
+              Alatura-te miilor de clienti care si-au gasit casa visurilor prin HQS Imobiliare.
             </motion.p>
 
             {/* CTA Buttons */}

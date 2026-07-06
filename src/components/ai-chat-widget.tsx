@@ -16,7 +16,7 @@ const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'ai',
   content:
-    'Salut! Sunt asistentul tau PropMarket. Poti sa ma intrebi despre proprietati, zone, preturi sau orice altceva legat de piata imobiliara din Bucuresti.',
+    'Salut! Sunt asistentul tau HQS Imobiliare. Poti sa ma intrebi despre proprietati, zone, preturi sau orice altceva legat de piata imobiliara din Bucuresti.',
 }
 
 interface AIChatWidgetProps {
@@ -126,7 +126,7 @@ export function AIChatWidget({ open, onOpenChange }: AIChatWidgetProps) {
                   <Bot className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold leading-tight">Asistent PropMarket</h3>
+                  <h3 className="text-sm font-semibold leading-tight">Asistent HQS Imobiliare</h3>
                   <p className="text-[11px] text-muted-foreground">Online • Răspunde rapid</p>
                 </div>
               </div>

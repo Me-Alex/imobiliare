@@ -108,7 +108,7 @@ export function TrustSection() {
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-10">
-          <h2 className="text-3xl font-bold tracking-tight gradient-text">De Ce PropMarket?</h2>
+          <h2 className="text-3xl font-bold tracking-tight gradient-text">De Ce HQS Imobiliare?</h2>
           <p className="text-muted-foreground mt-2">
             Motivele pentru care mii de cumparatori si investitori ne aleg
           </p>

@@ -62,7 +62,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
             <Building2 className="h-5 w-5" />
           </div>
           <span className="text-xl font-bold tracking-tight">
-            Prop<span className="gradient-text">Market</span>
+            HQS <span className="gradient-text">Imobiliare</span>
           </span>
         </button>
 
@@ -134,7 +134,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
                   <Building2 className="h-5 w-5 text-primary" />
-                  PropMarket
+                  HQS Imobiliare
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-1 mt-4" aria-label="Navigare mobila">

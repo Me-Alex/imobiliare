@@ -89,7 +89,7 @@ export function LoginPage() {
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
               {isLogin
-                ? 'Acceseaza panoul de administrare PropMarket'
+                ? 'Acceseaza panoul de administrare HQS Imobiliare'
                 : 'Inregistreaza-te pentru a gestiona proprietatile'}
             </p>
           </div>
@@ -105,7 +105,7 @@ export function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@propmarket.ro"
+                  placeholder="admin@hqsimobiliare.ro"
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); if (error) setError('') }}
                   className="pl-10 h-11"
@@ -190,7 +190,7 @@ export function LoginPage() {
           {/* Branding */}
           <div className="flex items-center justify-center gap-2 mt-6 text-xs text-muted-foreground">
             <Building2 className="h-3.5 w-3.5" />
-            <span>PropMarket Admin</span>
+            <span>HQS Imobiliare Admin</span>
           </div>
         </div>
       </motion.div>

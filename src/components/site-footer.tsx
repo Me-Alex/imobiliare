@@ -95,7 +95,7 @@ export function SiteFooter() {
       }} />
       {/* Watermark text */}
       <span className="footer-watermark select-none" aria-hidden="true">
-        propmarket
+        hqsimobiliare
       </span>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:py-16 relative">
@@ -110,7 +110,7 @@ export function SiteFooter() {
                 <Building2 className="h-5 w-5" />
               </div>
               <span className="text-xl font-bold tracking-tight">
-                Prop<span className="gradient-text">Market</span>
+                HQS <span className="gradient-text">Imobiliare</span>
               </span>
             </button>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
@@ -123,7 +123,7 @@ export function SiteFooter() {
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Mail className="h-4 w-4" />
-                <span>contact@propmarket.ro</span>
+                <span>contact@hqsimobiliare.ro</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4" />
@@ -236,7 +236,7 @@ export function SiteFooter() {
         <Separator className="my-8" />
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <p className="animate-[fadeInUp_0.6s_ease-out_forwards]">&copy; {new Date().getFullYear()} PropMarket. Toate drepturile rezervate.</p>
+          <p className="animate-[fadeInUp_0.6s_ease-out_forwards]">&copy; {new Date().getFullYear()} HQS Imobiliare. Toate drepturile rezervate.</p>
           <div className="flex items-center gap-4">
             <a href="#" className="link-underline hover:text-foreground transition-colors">Termeni si conditii</a>
             <a href="#" className="link-underline hover:text-foreground transition-colors">Politica de confidentialitate</a>

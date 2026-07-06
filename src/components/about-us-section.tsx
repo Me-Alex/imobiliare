@@ -68,7 +68,7 @@ export function AboutUsSection() {
               transition={{ duration: 0.5, ease: 'easeOut' }}
             >
               <h2 className="section-header text-3xl font-bold tracking-tight">
-                Despre PropMarket
+                Despre HQS Imobiliare
               </h2>
             </motion.div>
 
@@ -80,7 +80,7 @@ export function AboutUsSection() {
               className="mt-6 space-y-4 text-muted-foreground leading-relaxed"
             >
               <p>
-                PropMarket s-a născut din dorința de a aduce transparența totală în piața imobiliară din
+                HQS Imobiliare s-a născut din dorința de a aduce transparența totală în piața imobiliară din
                 București. Ne propunem să transformăm experiența de căutare a proprietăților printr-o
                 platformă bazată exclusiv pe date verificate și analize de piață în timp real. Fiecare
                 proprietate din portofoliul nostru este atent evaluată pentru a te ajuta să iei cele mai

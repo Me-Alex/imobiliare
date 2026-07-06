@@ -36,7 +36,7 @@ export function DeCeNoiPage() {
                 <Shield className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">De Ce PropMarket?</h1>
+                <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">De Ce HQS Imobiliare?</h1>
                 <p className="text-muted-foreground mt-1">Incredere, transparenta si rezultate pentru clientii nostri</p>
               </div>
             </div>

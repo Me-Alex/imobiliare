@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PropMarket | Analiza Imobiliara Bucuresti",
+  title: "HQS Imobiliare | Analiza Imobiliara Bucuresti",
   description:
     "Platforma de analiza imobiliara pentru Bucuresti. Descopera proprietati verificate, tendinte de pret si statistici de piata in timp real.",
   keywords: [
@@ -26,9 +26,9 @@ export const metadata: Metadata = {
     "case",
     "vile",
   ],
-  authors: [{ name: "PropMarket" }],
+  authors: [{ name: "HQS Imobiliare" }],
   openGraph: {
-    title: "PropMarket | Analiza Imobiliara Bucuresti",
+    title: "HQS Imobiliare | Analiza Imobiliara Bucuresti",
     description:
       "Descopera proprietati verificate si tendinte de piata pentru Bucuresti.",
     type: "website",

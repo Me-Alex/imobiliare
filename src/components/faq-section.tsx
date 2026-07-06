@@ -23,7 +23,7 @@ const faqItems = [
   {
     question: 'Ce inseamna pretul pe metru patrat si de ce este important?',
     answer:
-      'Pretul pe metru patrat este indicatorul principal pentru evaluarea proprietatilor imobiliare, obtinut prin impartirea pretului total la suprafata utila. Acesta permite compararea obiectiva a proprietatilor cu dimensiuni diferite si urmarirea evolutiei preturilor pe o anumita zona. Pe PropMarket, afisam pretul/mp actualizat zilnic pentru fiecare proprietate si zona.',
+      'Pretul pe metru patrat este indicatorul principal pentru evaluarea proprietatilor imobiliare, obtinut prin impartirea pretului total la suprafata utila. Acesta permite compararea obiectiva a proprietatilor cu dimensiuni diferite si urmarirea evolutiei preturilor pe o anumita zona. Pe HQS Imobiliare, afisam pretul/mp actualizat zilnic pentru fiecare proprietate si zona.',
   },
   {
     question: 'Care sunt cele mai cautate zone din Bucuresti in 2024?',
