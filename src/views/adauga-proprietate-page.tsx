@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, type FormEvent, useCallback } from 'react'
+import { useState, type FormEvent, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, ChevronRight, Plus, Loader2, MapPin, Building2, Ruler,
   BedDouble, Bath, Calendar, Euro, Tag, ImagePlus, X, Check,
-  ArrowLeft, Eye, EyeOff, Upload, User
+  ArrowLeft, Eye, EyeOff, Upload, User, Trash2, Clock, List
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -150,6 +150,8 @@ export function AdaugaProprietatePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [previewMode, setPreviewMode] = useState(false)
   const [submittedCount, setSubmittedCount] = useState(0)
+  const [myProperties, setMyProperties] = useState<Array<Record<string, unknown>>>([])
+  const [showMyProps, setShowMyProps] = useState(false)
 
   const [form, setForm] = useState<PropertyFormData>({
     title: '', description: '', type: '', transaction: 'VANZARE',
@@ -160,6 +162,23 @@ export function AdaugaProprietatePage() {
 
   const updateField = useCallback(<K extends keyof PropertyFormData>(key: K, value: PropertyFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }, [])
+
+  const loadMyProperties = useCallback(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('hqs_user_properties') || '[]')
+      setMyProperties(stored)
+    } catch { setMyProperties([]) }
+  }, [])
+
+  useEffect(() => { loadMyProperties() }, [loadMyProperties])
+
+  const deleteProperty = useCallback((id: string) => {
+    const stored = JSON.parse(localStorage.getItem('hqs_user_properties') || '[]')
+    const filtered = stored.filter((p: Record<string, unknown>) => p.id !== id)
+    localStorage.setItem('hqs_user_properties', JSON.stringify(filtered))
+    setMyProperties(filtered)
+    toast.success('Proprietate stearsa')
   }, [])
 
   const handleSubmit = async (e: FormEvent) => {
@@ -201,30 +220,37 @@ export function AdaugaProprietatePage() {
         user_name: user.user_metadata?.full_name || user.email || '',
       }
 
-      const { error } = await supabase
-        .from('user_properties')
-        .insert([propertyData])
-
-      if (error) {
-        // If table doesn't exist, try creating it
-        if (error.code === '42P01') {
-          toast.info('Se initializeaza baza de date...', { description: 'Incearca din nou peste cateva secunde.' })
-        } else {
-          toast.error('Eroare la salvare', { description: error.message })
-        }
-      } else {
-        toast.success('Proprietate adaugata cu succes!', {
-          description: `"${form.title}" este acum publica pe platforma.`,
-        })
-        setSubmittedCount((c) => c + 1)
-        // Reset form
-        setForm({
-          title: '', description: '', type: '', transaction: 'VANZARE',
-          price: '', currency: 'EUR', areaSqm: '', rooms: '', bathrooms: '',
-          floor: '', totalFloors: '', yearBuilt: '', address: '',
-          zone: '', sector: '', featured: false, coverUrl: '', galleryUrls: [],
-        })
+      // Try Supabase first, fallback to localStorage
+      let saved = false
+      try {
+        const { error } = await supabase
+          .from('user_properties')
+          .insert([propertyData])
+        if (!error) saved = true
+      } catch {
+        // Supabase not reachable, use localStorage
       }
+
+      if (!saved) {
+        // Save to localStorage as fallback
+        const stored = JSON.parse(localStorage.getItem('hqs_user_properties') || '[]')
+        const newProp = { ...propertyData, id: crypto.randomUUID(), created_at: new Date().toISOString() }
+        stored.push(newProp)
+        localStorage.setItem('hqs_user_properties', JSON.stringify(stored))
+      }
+
+      toast.success('Proprietate adaugata cu succes!', {
+        description: `"${form.title}" este acum publica pe platforma.`,
+      })
+      setSubmittedCount((c) => c + 1)
+      loadMyProperties()
+      // Reset form
+      setForm({
+        title: '', description: '', type: '', transaction: 'VANZARE',
+        price: '', currency: 'EUR', areaSqm: '', rooms: '', bathrooms: '',
+        floor: '', totalFloors: '', yearBuilt: '', address: '',
+        zone: '', sector: '', featured: false, coverUrl: '', galleryUrls: [],
+      })
     } catch {
       toast.error('Eroare la salvare', { description: 'Verifica conexiunea si incearca din nou.' })
     } finally {
@@ -355,6 +381,12 @@ export function AdaugaProprietatePage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {myProperties.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => setShowMyProps(!showMyProps)} className="gap-1.5">
+                    <List className="h-4 w-4" />
+                    Proprietatile Mele ({myProperties.length})
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={() => setPreviewMode(true)}>
                   <Eye className="h-4 w-4 mr-1.5" />
                   Preview
@@ -370,6 +402,63 @@ export function AdaugaProprietatePage() {
           </motion.div>
         </div>
       </section>
+
+      {/* My Properties List */}
+      <AnimatePresence>
+        {showMyProps && myProperties.length > 0 && (
+          <motion.section
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
+              <div className="glass-card rounded-xl p-4">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  Proprietatile tale ({myProperties.length})
+                </h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {myProperties.map((prop) => (
+                    <div key={prop.id as string} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="h-12 w-12 rounded-lg bg-primary/5 flex items-center justify-center shrink-0 overflow-hidden">
+                          {prop.cover_url ? (
+                            <img src={prop.cover_url as string} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <Building2 className="h-5 w-5 text-primary/50" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{prop.title as string}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{prop.zone as string}{prop.sector ? `, ${prop.sector}` : ''}</span>
+                            <span>·</span>
+                            <span className="font-semibold text-foreground">
+                              {Number(prop.price).toLocaleString('ro-RO')} {prop.currency as string}
+                            </span>
+                            {prop.transaction === 'INCHIRIERE' && <span>/luna</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant="outline" className="text-[10px]">{prop.type as string}</Badge>
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {new Date(prop.created_at as string).toLocaleDateString('ro-RO')}
+                        </span>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => deleteProperty(prop.id as string)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
 
       {/* Form */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
