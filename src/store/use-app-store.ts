@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 
-export type PageKey = 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator' | 'login' | 'admin' | 'adauga-proprietate'
+export type PageKey =
+  | 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator'
+  | 'login' | 'admin' | 'adauga-proprietate'
+  | 'programare-vizionare' | 'disponibilitate-staff' | 'vizionarile-mele' | 'documente'
 
 interface AppState {
   currentPage: PageKey
@@ -43,6 +46,10 @@ interface AppState {
   setChatOpen: (open: boolean) => void
   userProperties: Array<Record<string, unknown>>
   setUserProperties: (props: Array<Record<string, unknown>>) => void
+  // Vizionare context - property being scheduled for viewing
+  vizionarePropertyId: string | null
+  vizionarePropertyTitle: string | null
+  setVizionareProperty: (id: string | null, title: string | null) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -103,4 +110,7 @@ export const useAppStore = create<AppState>((set) => ({
   setChatOpen: (open) => set({ chatOpen: open }),
   userProperties: [],
   setUserProperties: (props) => set({ userProperties: props }),
+  vizionarePropertyId: null,
+  vizionarePropertyTitle: null,
+  setVizionareProperty: (id, title) => set({ vizionarePropertyId: id, vizionarePropertyTitle: title }),
 }))

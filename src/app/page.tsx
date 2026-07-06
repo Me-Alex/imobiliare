@@ -28,6 +28,10 @@ import { CalculatorPage } from '@/views/calculator-page'
 import { LoginPage } from '@/views/login-page'
 import { AdminPage } from '@/views/admin-page'
 import { AdaugaProprietatePage } from '@/views/adauga-proprietate-page'
+import { DisponibilitateStaffPage } from '@/views/disponibilitate-staff-page'
+import { DocumentePage } from '@/views/documente-page'
+import { ProgramareVizionarePage } from '@/views/programare-vizionare-page'
+import { VizionarileMelePage } from '@/views/vizionarile-mele-page'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,10 +52,14 @@ const pageComponents: Record<string, React.ComponentType> = {
   login: LoginPage,
   admin: AdminPage,
   'adauga-proprietate': AdaugaProprietatePage,
+  'disponibilitate-staff': DisponibilitateStaffPage,
+  'documente': DocumentePage,
+  'programare-vizionare': ProgramareVizionarePage,
+  'vizionarile-mele': VizionarileMelePage,
 }
 
 // Pages that should NOT show header/footer/overlays
-const fullBleedPages = new Set(['login', 'admin', 'adauga-proprietate'])
+const fullBleedPages = new Set(['login', 'admin', 'adauga-proprietate', 'programare-vizionare', 'disponibilitate-staff', 'vizionarile-mele', 'documente'])
 
 function AppContent() {
   const {

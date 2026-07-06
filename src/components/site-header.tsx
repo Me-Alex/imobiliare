@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useTheme } from 'next-themes'
-import { Bell, Building2, Heart, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User } from 'lucide-react'
+import { Bell, Building2, CalendarCheck, FileText, Heart, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -155,6 +155,22 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
                   <Plus className="h-4 w-4" />
                   Adauga Proprietate
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigateTo('programare-vizionare')} className="gap-2">
+                  <CalendarCheck className="h-4 w-4" />
+                  Programeaza Vizionare
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigateTo('vizionarile-mele')} className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Vizionarile Mele
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigateTo('documente')} className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  Documente
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigateTo('disponibilitate-staff')} className="gap-2">
+                  <CalendarCheck className="h-4 w-4" />
+                  Disponibilitate Staff
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigateTo('admin')} className="gap-2">
                   <Shield className="h-4 w-4" />
                   Panou Admin
@@ -269,6 +285,22 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
                   >
                     <Plus className="h-4 w-4" />
                     Adauga Proprietate
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
+                    onClick={() => { setMobileMenuOpen(false); navigateTo('programare-vizionare') }}
+                  >
+                    <CalendarCheck className="h-4 w-4" />
+                    Programeaza Vizionare
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
+                    onClick={() => { setMobileMenuOpen(false); navigateTo('vizionarile-mele') }}
+                  >
+                    <Users className="h-4 w-4" />
+                    Vizionarile Mele
                   </button>
                   <button
                     type="button"

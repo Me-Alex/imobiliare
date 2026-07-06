@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, type FormEvent, useCallback, useEffect } from 'react'
+import { useState, useRef, type FormEvent, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, ChevronRight, Plus, Loader2, MapPin, Building2, Ruler,
   BedDouble, Bath, Calendar, Euro, Tag, ImagePlus, X, Check,
-  ArrowLeft, Eye, EyeOff, Upload, User, Trash2, Clock, List
+  ArrowLeft, Eye, EyeOff, Upload, User, Trash2, Clock, List, Camera
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -66,14 +66,95 @@ interface PropertyFormData {
   galleryUrls: string[]
 }
 
-function ImageUrlInput({ urls, onChange }: { urls: string[]; onChange: (urls: string[]) => void }) {
-  const [input, setInput] = useState('')
+function ImageUploader({ urls, onChange }: { urls: string[]; onChange: (urls: string[]) => void }) {
+  const [isDragging, setIsDragging] = useState(false)
+  const [isReading, setIsReading] = useState(false)
+  const [showUrlInput, setShowUrlInput] = useState(false)
+  const [urlInput, setUrlInput] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+  const MAX_IMAGES = 15
+
+  const readFilesAsDataUrls = useCallback((files: FileList | File[]) => {
+    const fileArray = Array.from(files)
+    if (urls.length + fileArray.length > MAX_IMAGES) {
+      toast.error(`Maximum ${MAX_IMAGES} imagini permise`)
+      return
+    }
+    for (const file of fileArray) {
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`"${file.name}" depaseste 5MB`)
+        return
+      }
+    }
+    setIsReading(true)
+    const results: string[] = []
+    let completed = 0
+    const total = fileArray.length
+
+    fileArray.forEach((file) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          results.push(reader.result)
+        }
+        completed++
+        if (completed === total) {
+          onChange([...urls, ...results])
+          setIsReading(false)
+        }
+      }
+      reader.onerror = () => {
+        completed++
+        if (completed === total) {
+          onChange([...urls, ...results])
+          setIsReading(false)
+          toast.error(`Eroare la citirea fisierului "${file.name}"`)
+        }
+      }
+      reader.readAsDataURL(file)
+    })
+  }, [urls, onChange])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      readFilesAsDataUrls(files)
+    }
+  }, [readFilesAsDataUrls])
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      readFilesAsDataUrls(files)
+    }
+    e.target.value = ''
+  }, [readFilesAsDataUrls])
 
   const addUrl = () => {
-    const trimmed = input.trim()
+    const trimmed = urlInput.trim()
     if (trimmed && !urls.includes(trimmed)) {
+      if (urls.length >= MAX_IMAGES) {
+        toast.error(`Maximum ${MAX_IMAGES} imagini permise`)
+        return
+      }
       onChange([...urls, trimmed])
-      setInput('')
+      setUrlInput('')
     }
   }
 
@@ -83,49 +164,142 @@ function ImageUrlInput({ urls, onChange }: { urls: string[]; onChange: (urls: st
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <ImagePlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="https://exemplu.ro/imagine.jpg"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addUrl() } }}
-            className="pl-10 h-10"
-          />
-        </div>
-        <Button type="button" variant="outline" size="sm" onClick={addUrl} disabled={!input.trim()}>
-          <Plus className="h-4 w-4" />
-        </Button>
+      {/* Drop zone */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => fileInputRef?.click()}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef?.click() }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 transition-all cursor-pointer select-none
+          ${isDragging
+            ? 'border-primary bg-primary/5 scale-[1.01]'
+            : 'border-border hover:border-primary/50 hover:bg-muted/30'
+          }
+          ${isReading ? 'pointer-events-none opacity-70' : ''}
+        `}
+      >
+        {isReading ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center gap-2"
+          >
+            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+            <span className="text-sm text-muted-foreground">Se proceseaza...</span>
+          </motion.div>
+        ) : (
+          <>
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+              <Camera className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium">Trage fotografii aici</p>
+              <p className="text-xs text-muted-foreground mt-0.5">sau</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" className="pointer-events-none">
+              <Upload className="h-4 w-4 mr-2" />
+              Alege Fotografii
+            </Button>
+            <p className="text-[11px] text-muted-foreground">PNG, JPG, WebP — max 5MB/fisier, {MAX_IMAGES} imagini</p>
+          </>
+        )}
       </div>
-      {urls.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {urls.map((url, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative group"
-            >
-              <div className="h-20 w-20 rounded-lg overflow-hidden border border-border">
-                <img src={url} alt={`Poza ${i + 1}`} className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '' }} />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
+      {/* Thumbnail grid */}
+      <AnimatePresence>
+        {urls.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <div className="flex flex-wrap gap-2">
+              {urls.map((url, i) => (
+                <motion.div
+                  key={`${url.slice(0, 60)}-${i}`}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="relative group"
+                >
+                  <div className="h-20 w-20 rounded-lg overflow-hidden border border-border">
+                    <img
+                      src={url}
+                      alt={`Poza ${i + 1}`}
+                      className="h-full w-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = '' }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeUrl(i)}
+                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label={`Sterge poza ${i + 1}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                  {i === 0 && (
+                    <Badge className="absolute bottom-0.5 left-0.5 text-[8px] px-1 h-3.5 bg-primary">Cover</Badge>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* URL fallback */}
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={() => setShowUrlInput((v) => !v)}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+        >
+          <ImagePlus className="h-3 w-3" />
+          {showUrlInput ? 'Ascunde' : 'sau adauga prin link'}
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {showUrlInput && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <ImagePlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="https://exemplu.ro/imagine.jpg"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addUrl() } }}
+                  className="pl-10 h-10"
+                />
               </div>
-              <button
-                type="button"
-                onClick={() => removeUrl(i)}
-                className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X className="h-3 w-3" />
-              </button>
-              {i === 0 && (
-                <Badge className="absolute bottom-0.5 left-0.5 text-[8px] px-1 h-3.5 bg-primary">Cover</Badge>
-              )}
-            </motion.div>
-          ))}
-        </div>
-      )}
-      <p className="text-xs text-muted-foreground">Adauga link-uri catre imagini. Prima imagine va fi coperta.</p>
+              <Button type="button" variant="outline" size="sm" onClick={addUrl} disabled={!urlInput.trim()}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <p className="text-xs text-muted-foreground">Prima imagine va fi folosita ca coperta.</p>
     </div>
   )
 }
@@ -717,7 +891,7 @@ export function AdaugaProprietatePage() {
                 <Upload className="h-5 w-5 text-primary" />
                 Imagini
               </h2>
-              <ImageUrlInput
+              <ImageUploader
                 urls={form.galleryUrls}
                 onChange={(urls) => updateField('galleryUrls', urls)}
               />
