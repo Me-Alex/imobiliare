@@ -4,13 +4,19 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import { type User, type Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
+export interface GoogleAuthError {
+  code: string
+  isProviderNotEnabled: boolean
+  message: string
+}
+
 interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: string | null }>
-  signInWithGoogle: () => Promise<void>
+  signInWithGoogle: () => Promise<{ error: GoogleAuthError | null }>
   signOut: () => Promise<void>
 }
 
@@ -53,13 +59,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null }
   }, [])
 
-  const signInWithGoogle = useCallback(async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
-      },
-    })
+  const signInWithGoogle = useCallback(async (): Promise<{ error: GoogleAuthError | null }> => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+        },
+      })
+
+      if (error) {
+        const msg = error.message || ''
+        const isProviderNotEnabled = msg.includes('provider is not enabled') || msg.includes('Unsupported provider')
+        return {
+          error: {
+            code: error.code || 'unknown',
+            isProviderNotEnabled,
+            message: isProviderNotEnabled
+              ? 'Autentificarea Google nu este inca configurata. Urmeaza pasii de mai jos.'
+              : msg || 'Eroare la conectarea cu Google.',
+          },
+        }
+      }
+
+      return { error: null }
+    } catch (err) {
+      return {
+        error: {
+          code: 'exception',
+          isProviderNotEnabled: false,
+          message: 'Nu s-a putut conecta cu Google. Incearca din nou.',
+        },
+      }
+    }
   }, [])
 
   const signOut = useCallback(async () => {
