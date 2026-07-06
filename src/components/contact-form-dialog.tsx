@@ -26,6 +26,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { toast } from 'sonner'
+import { submitContactForm } from '@/lib/api'
 
 const contactSchema = z.object({
   name: z.string().min(2, 'Numele trebuie să aibă cel puțin 2 caractere.'),
@@ -77,19 +78,9 @@ function ContactFormDialog({ open, onOpenChange, propertyTitle }: ContactFormDia
   async function onSubmit(data: ContactFormValues) {
     setIsSubmitting(true)
     try {
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, propertyTitle }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'A apărut o eroare.')
-      }
-
+      const result = await submitContactForm({ ...data, propertyTitle })
       setIsSuccess(true)
-      toast.success('Mesaj trimis cu succes!', {
+      toast.success(result.message, {
         description: 'Vă vom contacta în cel mai scurt timp posibil.',
       })
     } catch (error) {

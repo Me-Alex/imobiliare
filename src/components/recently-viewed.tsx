@@ -54,31 +54,20 @@ async function fetchPropertiesBySlugs(
     return
   }
 
-  const results = await Promise.allSettled(
-    slugs.map(async (slug) => {
-      const res = await fetch(
-        `/api/properties/${encodeURIComponent(slug)}`
-      )
-      if (!res.ok) throw new Error('Failed to fetch')
-      const data = await res.json()
-      if (data.property) return data.property as Property
-      if (
-        data.properties &&
-        Array.isArray(data.properties) &&
-        data.properties.length > 0
-      )
-        return data.properties[0] as Property
-      throw new Error('No property found')
-    })
-  )
-
-  const fetched: Property[] = results
-    .filter(
-      (r): r is PromiseFulfilledResult<Property> => r.status === 'fulfilled'
+  try {
+    const { getPropertyBySlug } = await import('@/lib/api')
+    const results = await Promise.allSettled(
+      slugs.map(async (slug) => getPropertyBySlug(slug))
     )
-    .map((r) => r.value)
-
-  setProperties(fetched)
+    const fetched: Property[] = results
+      .filter(
+        (r): r is PromiseFulfilledResult<Property> => r.status === 'fulfilled'
+      )
+      .map((r) => r.value)
+    setProperties(fetched)
+  } catch {
+    setProperties([])
+  }
 }
 
 export function RecentlyViewed() {

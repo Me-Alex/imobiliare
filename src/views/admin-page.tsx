@@ -181,15 +181,22 @@ export function AdminPage() {
   const fetchDashboard = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/dashboard')
-      if (res.ok) {
-        const json = await res.json()
-        setData(json)
-      } else {
-        toast.error('Eroare la incarcarea datelor')
-      }
+      const { getProperties, getZones } = await import('@/lib/api')
+      const [properties, zones] = await Promise.all([
+        getProperties(),
+        getZones(),
+      ])
+      setData({
+        totalProperties: properties.length,
+        publishedCount: properties.filter(p => p.status === 'PUBLISHED').length,
+        totalZones: zones.length,
+        avgPriceSqm: properties.length > 0
+          ? Math.round(properties.reduce((sum, p) => sum + (p.pricePerSqm || 0), 0) / properties.filter(p => p.pricePerSqm).length)
+          : 0,
+        recentProperties: properties.slice(0, 5),
+      } as DashboardData)
     } catch {
-      toast.error('Eroare de conexiune')
+      toast.error('Eroare la incarcarea datelor')
     } finally {
       setLoading(false)
     }

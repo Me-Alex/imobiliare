@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { useAppStore, type PageKey } from '@/store/use-app-store'
+import { subscribeNewsletter } from '@/lib/api'
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -44,17 +45,8 @@ export function SiteFooter() {
     setEmailError('')
     setIsSubmitting(true)
     try {
-      const res = await fetch('/api/newsletter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Eroare la abonare.')
-      }
-      const data = await res.json()
-      toast.success(data.message || 'Multumim pentru abonare!', {
+      const result = await subscribeNewsletter(email.trim())
+      toast.success(result.message, {
         description: 'Vei primi noutatile pe ' + email,
       })
       setEmail('')

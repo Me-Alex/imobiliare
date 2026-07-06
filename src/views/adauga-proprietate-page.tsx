@@ -31,6 +31,20 @@ const PROPERTY_TYPES = [
   'Apartament', 'Garsoniera', 'Casa', 'Vila', 'Teren', 'Spatiu Comercial',
   'Birou', 'Depozit', 'Pensiune', 'Apartament Nou', 'Studio',
 ]
+
+const TYPE_MAP: Record<string, string> = {
+  'Apartament': 'APARTMENT',
+  'Garsoniera': 'APARTMENT',
+  'Casa': 'HOUSE',
+  'Vila': 'VILLA',
+  'Teren': 'LAND',
+  'Spatiu Comercial': 'COMMERCIAL',
+  'Birou': 'COMMERCIAL',
+  'Depozit': 'COMMERCIAL',
+  'Pensiune': 'HOUSE',
+  'Apartament Nou': 'APARTMENT',
+  'Studio': 'APARTMENT',
+}
 const TRANSACTIONS = [
   { value: 'VANZARE', label: 'Vanzare' },
   { value: 'INCHIRIERE', label: 'Inchiriere' },
@@ -395,38 +409,35 @@ export function AdaugaProprietatePage() {
         ? (parseFloat(form.price) / parseFloat(form.areaSqm)).toFixed(0)
         : null
 
+      const mappedType = TYPE_MAP[form.type] || form.type.toUpperCase().replace(/\s+/g, '_')
+      const txType = form.transaction === 'INCHIRIERE' ? 'rent' : 'sale'
+
       // Separate base64 images from URL images
       const base64Images = form.galleryUrls.filter(u => u.startsWith('data:'))
-      const urlImages = form.galleryUrls.filter(u => !u.startsWith('data:'))
 
       const newProp = {
         id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         title: form.title,
         slug,
         description: form.description,
-        type: form.type,
-        transaction: form.transaction,
+        type: mappedType,
+        transaction_type: txType,
         price: parseFloat(form.price) || 0,
         currency: form.currency,
         area_sqm: parseFloat(form.areaSqm) || 0,
         rooms: parseInt(form.rooms) || 0,
         bathrooms: parseInt(form.bathrooms) || 0,
         floor: form.floor ? parseInt(form.floor) : null,
-        total_floors: form.totalFloors ? parseInt(form.totalFloors) : null,
         year_built: form.yearBuilt ? parseInt(form.yearBuilt) : null,
         address: form.address,
-        zone: form.zone,
-        sector: form.sector,
         city: 'Bucuresti',
+        county: 'Bucuresti',
         featured: form.featured,
-        cover_url: form.galleryUrls[0] || form.coverUrl || '',
-        gallery_urls: JSON.stringify(form.galleryUrls),
-        price_per_sqm: pricePerSqm ? parseFloat(pricePerSqm) : null,
+        cover_image_url: form.galleryUrls[0] || form.coverUrl || '',
+        gallery_urls: form.galleryUrls.filter(u => !u.startsWith('data:')),
+        amenities: [],
         status: 'PUBLISHED' as const,
-        user_id: user.id,
-        user_email: user.email || '',
-        user_name: user.user_metadata?.full_name || user.email || '',
-        created_at: new Date().toISOString(),
+        owner_email: user.email || '',
       }
 
       // Save to localStorage FIRST (always works, instant)
@@ -449,11 +460,15 @@ export function AdaugaProprietatePage() {
         return
       }
 
-      // Try Supabase in background (only if configured AND no base64 images to avoid payload limits)
+      // Try Supabase in background (only if configured AND no base64 images)
       const hasSupabaseConfig = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
       if (hasSupabaseConfig && base64Images.length === 0) {
         const supabaseData = { ...newProp }
-        supabase.from('user_properties').insert([supabaseData]).then(({ error }) => {
+        // Remove fields that may not exist in the table yet
+        delete (supabaseData as Record<string, unknown>).zone
+        delete (supabaseData as Record<string, unknown>).sector
+        delete (supabaseData as Record<string, unknown>).price_per_sqm
+        supabase.from('properties').insert([supabaseData]).then(({ error }) => {
           if (error) console.warn('Supabase save skipped:', error.message)
         }).catch(() => {
           // Silently ignore — localStorage already saved

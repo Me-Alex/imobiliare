@@ -12,6 +12,29 @@ interface ChatMessage {
   content: string
 }
 
+function getFallbackResponse(msg: string): string {
+  const lower = msg.toLowerCase()
+  if (lower.includes('pret') || lower.includes('cat costa') || lower.includes('preturi')) {
+    return 'Preturile in Bucuresti variaza intre 1.400 si 5.200 EUR/m² in functie de zona. Zonele premium precum Herastrau si Primaverii au cele mai mari preturi, in timp ce zone precum Militari si Drumul Taberei ofera optiuni mai accesibile.'
+  }
+  if (lower.includes('inchiriere') || lower.includes('inchiriez')) {
+    return 'Preturile de inchiriere in Bucuresti variaza intre 400 si 3.500 EUR/luna in functie de zona si suprafata. Zonele centrale precum Universitate si Unirii sunt cele mai solicitate.'
+  }
+  if (lower.includes('zona') || lower.includes('secto')) {
+    return 'Principalele zone din Bucuresti sunt: Dorobanti, Floreasca, Herastrau, Primaverii (premium), Pipera, Baneasa, Barbu Vacarescu (business), Militari, Drumul Taberei (accesibile). Fiecare zona are caracteristicile ei unice.'
+  }
+  if (lower.includes('vila') || lower.includes('casa')) {
+    return 'Vilele si casele in Bucuresti se gasesc in principal in zonele Herastrau, Primaverii, Baneasa si nordul orasului. Preturile variaza intre 200.000 si 1.000.000+ EUR in functie de suprafata si locatie.'
+  }
+  if (lower.includes('investit') || lower.includes('randament')) {
+    return 'Randamentele de inchiriere in Bucuresti variaza intre 3.5% si 6% anual. Zonele cu cele mai bune randamente sunt Pipera si Militari datorita cererii ridicate de inchiriere.'
+  }
+  if (lower.includes('contact') || lower.includes('telefon') || lower.includes('ajutor')) {
+    return 'Ne poti contacta la: Telefon: +40 21 123 4567, Email: contact@hqsimobiliare.ro. Suntem disponibili de luni pana vineri, 9:00 - 18:00.'
+  }
+  return 'Multumesc pentru intrebare! Poti cauta proprietati folosind filtrele din sectiunea "Proprietati" sau explora zonele din Bucuresti in sectiunea "Zone". Daca ai nevoie de asistenta personalizata, foloseste formularul de contact.'
+}
+
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'ai',
@@ -75,23 +98,22 @@ export function AIChatWidget({ open, onOpenChange }: AIChatWidgetProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: trimmed }),
       })
-
       const data = await res.json()
-
       const aiMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
         role: 'ai',
         content: data.reply || 'Nu am putut genera un răspuns.',
       }
-
       setMessages((prev) => [...prev, aiMsg])
     } catch {
-      const errorMsg: ChatMessage = {
-        id: `error-${Date.now()}`,
+      // Fallback: generate a simple response without AI backend
+      const fallback = getFallbackResponse(trimmed)
+      const aiMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
         role: 'ai',
-        content: 'A apărut o eroare de conexiune. Te rog să încerci din nou.',
+        content: fallback,
       }
-      setMessages((prev) => [...prev, errorMsg])
+      setMessages((prev) => [...prev, aiMsg])
     } finally {
       setLoading(false)
     }

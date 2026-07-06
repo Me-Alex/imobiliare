@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useZones } from '@/hooks/use-properties'
+import { createPriceAlert, getPriceAlerts, deletePriceAlert } from '@/lib/api'
 
 const propertyTypes = [
   { label: 'Apartament', value: 'APARTMENT' },
@@ -75,11 +76,8 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
   const fetchAlerts = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/price-alerts')
-      if (res.ok) {
-        const data = await res.json()
-        setAlerts(data)
-      }
+      const data = await getPriceAlerts()
+      setAlerts(data as PriceAlert[])
     } catch {
       // silently fail
     } finally {
@@ -120,27 +118,15 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
 
     try {
       setSubmitting(true)
-      const res = await fetch('/api/price-alerts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim(),
-          zone: zone || undefined,
-          propertyType: propertyType || undefined,
-          minPrice: minP,
-          maxPrice: maxP,
-          minRooms: minRooms ? parseInt(minRooms) : null,
-        }),
+      const result = await createPriceAlert({
+        email: email.trim(),
+        zone: zone || undefined,
+        propertyType: propertyType || undefined,
+        minPrice: minP,
+        maxPrice: maxP,
+        minRooms: minRooms ? parseInt(minRooms) : null,
       })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        toast.error(data.error || 'Eroare la crearea alertei.')
-        return
-      }
-
-      toast.success('Alerta de pret a fost creata cu succes!')
+      toast.success(result.message)
       resetForm()
       fetchAlerts()
     } catch {
@@ -152,15 +138,11 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
 
   const handleDeactivate = async (id: string) => {
     try {
-      const res = await fetch(`/api/price-alerts/${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast.success('Alerta a fost dezactivata.')
-        setAlerts((prev) => prev.filter((a) => a.id !== id))
-      } else {
-        toast.error('Eroare la dezactivarea alertei.')
-      }
+      await deletePriceAlert(id)
+      toast.success('Alerta a fost dezactivata.')
+      setAlerts((prev) => prev.filter((a) => a.id !== id))
     } catch {
-      toast.error('A aparut o eroare. Te rugam incearca din nou.')
+      toast.error('Eroare la dezactivarea alertei.')
     }
   }
 
