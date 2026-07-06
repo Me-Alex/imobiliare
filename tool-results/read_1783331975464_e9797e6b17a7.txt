@@ -1,0 +1,823 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useState, type FormEvent, useCallback, useEffect } from 'react'
+     4→     4→import { motion, AnimatePresence } from 'framer-motion'
+     5→     5→import {
+     6→     6→  Home, ChevronRight, Plus, Loader2, MapPin, Building2, Ruler,
+     7→     7→  BedDouble, Bath, Calendar, Euro, Tag, ImagePlus, X, Check,
+     8→     8→  ArrowLeft, Eye, EyeOff, Upload, User, Trash2, Clock, List
+     9→     9→} from 'lucide-react'
+    10→    10→import { Button } from '@/components/ui/button'
+    11→    11→import { Input } from '@/components/ui/input'
+    12→    12→import { Label } from '@/components/ui/label'
+    13→    13→import { Textarea } from '@/components/ui/textarea'
+    14→    14→import { Badge } from '@/components/ui/badge'
+    15→    15→import { Separator } from '@/components/ui/separator'
+    16→    16→import {
+    17→    17→  Select,
+    18→    18→  SelectContent,
+    19→    19→  SelectItem,
+    20→    20→  SelectTrigger,
+    21→    21→  SelectValue,
+    22→    22→} from '@/components/ui/select'
+    23→    23→import { Switch } from '@/components/ui/switch'
+    24→    24→import { useAuth } from '@/contexts/auth-context'
+    25→    25→import { useAppStore } from '@/store/use-app-store'
+    26→    26→import { supabase } from '@/lib/supabase'
+    27→    27→import { toast } from 'sonner'
+    28→    28→
+    29→    29→const PROPERTY_TYPES = [
+    30→    30→  'Apartament', 'Garsoniera', 'Casa', 'Vila', 'Teren', 'Spatiu Comercial',
+    31→    31→  'Birou', 'Depozit', 'Pensiune', 'Apartament Nou', 'Studio',
+    32→    32→]
+    33→    33→const TRANSACTIONS = [
+    34→    34→  { value: 'VANZARE', label: 'Vanzare' },
+    35→    35→  { value: 'INCHIRIERE', label: 'Inchiriere' },
+    36→    36→]
+    37→    37→const CURRENCIES = ['EUR', 'RON', 'USD']
+    38→    38→const SECTOARE = ['Sector 1', 'Sector 2', 'Sector 3', 'Sector 4', 'Sector 5', 'Sector 6']
+    39→    39→const ZONES = [
+    40→    40→  'Dorobanti', 'Victoriei', 'Floreasca', 'Aviatorilor', 'Primaverii',
+    41→    41→  'Herastrau', 'Baneasa', 'Pipera', 'Barbu Vacarescu', 'Romană',
+    42→    42→  'Universitate', 'Unirii', 'Centru Civic', 'Parlament',
+    43→    43→  'Vitan', 'Titan', 'Pantelimon', 'Colentina', 'Obor',
+    44→    44→  'Militari', 'Drumul Taberei', 'Ghencea', 'Rahova', 'Crangasi',
+    45→    45→  'Grozavesti', 'Politehnica', 'Iancului', 'Mihai Bravu',
+    46→    46→]
+    47→    47→
+    48→    48→interface PropertyFormData {
+    49→    49→  title: string
+    50→    50→  description: string
+    51→    51→  type: string
+    52→    52→  transaction: string
+    53→    53→  price: string
+    54→    54→  currency: string
+    55→    55→  areaSqm: string
+    56→    56→  rooms: string
+    57→    57→  bathrooms: string
+    58→    58→  floor: string
+    59→    59→  totalFloors: string
+    60→    60→  yearBuilt: string
+    61→    61→  address: string
+    62→    62→  zone: string
+    63→    63→  sector: string
+    64→    64→  featured: boolean
+    65→    65→  coverUrl: string
+    66→    66→  galleryUrls: string[]
+    67→    67→}
+    68→    68→
+    69→    69→function ImageUrlInput({ urls, onChange }: { urls: string[]; onChange: (urls: string[]) => void }) {
+    70→    70→  const [input, setInput] = useState('')
+    71→    71→
+    72→    72→  const addUrl = () => {
+    73→    73→    const trimmed = input.trim()
+    74→    74→    if (trimmed && !urls.includes(trimmed)) {
+    75→    75→      onChange([...urls, trimmed])
+    76→    76→      setInput('')
+    77→    77→    }
+    78→    78→  }
+    79→    79→
+    80→    80→  const removeUrl = (index: number) => {
+    81→    81→    onChange(urls.filter((_, i) => i !== index))
+    82→    82→  }
+    83→    83→
+    84→    84→  return (
+    85→    85→    <div className="space-y-3">
+    86→    86→      <div className="flex gap-2">
+    87→    87→        <div className="relative flex-1">
+    88→    88→          <ImagePlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+    89→    89→          <Input
+    90→    90→            placeholder="https://exemplu.ro/imagine.jpg"
+    91→    91→            value={input}
+    92→    92→            onChange={(e) => setInput(e.target.value)}
+    93→    93→            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addUrl() } }}
+    94→    94→            className="pl-10 h-10"
+    95→    95→          />
+    96→    96→        </div>
+    97→    97→        <Button type="button" variant="outline" size="sm" onClick={addUrl} disabled={!input.trim()}>
+    98→    98→          <Plus className="h-4 w-4" />
+    99→    99→        </Button>
+   100→   100→      </div>
+   101→   101→      {urls.length > 0 && (
+   102→   102→        <div className="flex flex-wrap gap-2">
+   103→   103→          {urls.map((url, i) => (
+   104→   104→            <motion.div
+   105→   105→              key={i}
+   106→   106→              initial={{ opacity: 0, scale: 0.9 }}
+   107→   107→              animate={{ opacity: 1, scale: 1 }}
+   108→   108→              exit={{ opacity: 0, scale: 0.9 }}
+   109→   109→              className="relative group"
+   110→   110→            >
+   111→   111→              <div className="h-20 w-20 rounded-lg overflow-hidden border border-border">
+   112→   112→                <img src={url} alt={`Poza ${i + 1}`} className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '' }} />
+   113→   113→              </div>
+   114→   114→              <button
+   115→   115→                type="button"
+   116→   116→                onClick={() => removeUrl(i)}
+   117→   117→                className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+   118→   118→              >
+   119→   119→                <X className="h-3 w-3" />
+   120→   120→              </button>
+   121→   121→              {i === 0 && (
+   122→   122→                <Badge className="absolute bottom-0.5 left-0.5 text-[8px] px-1 h-3.5 bg-primary">Cover</Badge>
+   123→   123→              )}
+   124→   124→            </motion.div>
+   125→   125→          ))}
+   126→   126→        </div>
+   127→   127→      )}
+   128→   128→      <p className="text-xs text-muted-foreground">Adauga link-uri catre imagini. Prima imagine va fi coperta.</p>
+   129→   129→    </div>
+   130→   130→  )
+   131→   131→}
+   132→   132→
+   133→   133→function generateSlug(title: string): string {
+   134→   134→  const roMap: Record<string, string> = {
+   135→   135→    'ă': 'a', 'â': 'a', 'î': 'i', 'ș': 's', 'ț': 't',
+   136→   136→    'Ă': 'a', 'Â': 'a', 'Î': 'i', 'Ș': 's', 'Ț': 't',
+   137→   137→  }
+   138→   138→  return title
+   139→   139→    .toLowerCase()
+   140→   140→    .split('')
+   141→   141→    .map((c) => roMap[c] || c)
+   142→   142→    .replace(/[^a-z0-9]+/g, '-')
+   143→   143→    .replace(/^-|-$/g, '')
+   144→   144→    + '-' + Date.now().toString(36)
+   145→   145→}
+   146→   146→
+   147→   147→export function AdaugaProprietatePage() {
+   148→   148→  const { user, loading: authLoading } = useAuth()
+   149→   149→  const navigateTo = useAppStore((s) => s.navigateTo)
+   150→   150→  const [isSubmitting, setIsSubmitting] = useState(false)
+   151→   151→  const [previewMode, setPreviewMode] = useState(false)
+   152→   152→  const [submittedCount, setSubmittedCount] = useState(0)
+   153→   153→  const [myProperties, setMyProperties] = useState<Array<Record<string, unknown>>>([])
+   154→   154→  const [showMyProps, setShowMyProps] = useState(false)
+   155→   155→
+   156→   156→  const [form, setForm] = useState<PropertyFormData>({
+   157→   157→    title: '', description: '', type: '', transaction: 'VANZARE',
+   158→   158→    price: '', currency: 'EUR', areaSqm: '', rooms: '', bathrooms: '',
+   159→   159→    floor: '', totalFloors: '', yearBuilt: '', address: '',
+   160→   160→    zone: '', sector: '', featured: false, coverUrl: '', galleryUrls: [],
+   161→   161→  })
+   162→   162→
+   163→   163→  const updateField = useCallback(<K extends keyof PropertyFormData>(key: K, value: PropertyFormData[K]) => {
+   164→   164→    setForm((prev) => ({ ...prev, [key]: value }))
+   165→   165→  }, [])
+   166→   166→
+   167→   167→  const loadMyProperties = useCallback(() => {
+   168→   168→    try {
+   169→   169→      const stored = JSON.parse(localStorage.getItem('hqs_user_properties') || '[]')
+   170→   170→      setMyProperties(stored)
+   171→   171→    } catch { setMyProperties([]) }
+   172→   172→  }, [])
+   173→   173→
+   174→   174→  useEffect(() => { loadMyProperties() }, [loadMyProperties])
+   175→   175→
+   176→   176→  const deleteProperty = useCallback((id: string) => {
+   177→   177→    const stored = JSON.parse(localStorage.getItem('hqs_user_properties') || '[]')
+   178→   178→    const filtered = stored.filter((p: Record<string, unknown>) => p.id !== id)
+   179→   179→    localStorage.setItem('hqs_user_properties', JSON.stringify(filtered))
+   180→   180→    setMyProperties(filtered)
+   181→   181→    toast.success('Proprietate stearsa')
+   182→   182→  }, [])
+   183→   183→
+   184→   184→  const handleSubmit = async (e: FormEvent) => {
+   185→   185→    e.preventDefault()
+   186→   186→    if (!user) return
+   187→   187→
+   188→   188→    setIsSubmitting(true)
+   189→   189→    try {
+   190→   190→      const slug = generateSlug(form.title)
+   191→   191→      const pricePerSqm = form.price && form.areaSqm
+   192→   192→        ? (parseFloat(form.price) / parseFloat(form.areaSqm)).toFixed(0)
+   193→   193→        : null
+   194→   194→
+   195→   195→      const propertyData = {
+   196→   196→        title: form.title,
+   197→   197→        slug,
+   198→   198→        description: form.description,
+   199→   199→        type: form.type,
+   200→   200→        transaction: form.transaction,
+   201→   201→        price: parseFloat(form.price) || 0,
+   202→   202→        currency: form.currency,
+   203→   203→        area_sqm: parseFloat(form.areaSqm) || 0,
+   204→   204→        rooms: parseInt(form.rooms) || 0,
+   205→   205→        bathrooms: parseInt(form.bathrooms) || 0,
+   206→   206→        floor: form.floor ? parseInt(form.floor) : null,
+   207→   207→        total_floors: form.totalFloors ? parseInt(form.totalFloors) : null,
+   208→   208→        year_built: form.yearBuilt ? parseInt(form.yearBuilt) : null,
+   209→   209→        address: form.address,
+   210→   210→        zone: form.zone,
+   211→   211→        sector: form.sector,
+   212→   212→        city: 'Bucuresti',
+   213→   213→        featured: form.featured,
+   214→   214→        cover_url: form.galleryUrls[0] || form.coverUrl || '',
+   215→   215→        gallery_urls: JSON.stringify(form.galleryUrls),
+   216→   216→        price_per_sqm: pricePerSqm ? parseFloat(pricePerSqm) : null,
+   217→   217→        status: 'PUBLISHED',
+   218→   218→        user_id: user.id,
+   219→   219→        user_email: user.email || '',
+   220→   220→        user_name: user.user_metadata?.full_name || user.email || '',
+   221→   221→      }
+   222→   222→
+   223→   223→      // Try Supabase first, fallback to localStorage
+   224→   224→      let saved = false
+   225→   225→      try {
+   226→   226→        const { error } = await supabase
+   227→   227→          .from('user_properties')
+   228→   228→          .insert([propertyData])
+   229→   229→        if (!error) saved = true
+   230→   230→      } catch {
+   231→   231→        // Supabase not reachable, use localStorage
+   232→   232→      }
+   233→   233→
+   234→   234→      if (!saved) {
+   235→   235→        // Save to localStorage as fallback
+   236→   236→        const stored = JSON.parse(localStorage.getItem('hqs_user_properties') || '[]')
+   237→   237→        const newProp = { ...propertyData, id: crypto.randomUUID(), created_at: new Date().toISOString() }
+   238→   238→        stored.push(newProp)
+   239→   239→        localStorage.setItem('hqs_user_properties', JSON.stringify(stored))
+   240→   240→      }
+   241→   241→
+   242→   242→      toast.success('Proprietate adaugata cu succes!', {
+   243→   243→        description: `"${form.title}" este acum publica pe platforma.`,
+   244→   244→      })
+   245→   245→      setSubmittedCount((c) => c + 1)
+   246→   246→      loadMyProperties()
+   247→   247→      // Reset form
+   248→   248→      setForm({
+   249→   249→        title: '', description: '', type: '', transaction: 'VANZARE',
+   250→   250→        price: '', currency: 'EUR', areaSqm: '', rooms: '', bathrooms: '',
+   251→   251→        floor: '', totalFloors: '', yearBuilt: '', address: '',
+   252→   252→        zone: '', sector: '', featured: false, coverUrl: '', galleryUrls: [],
+   253→   253→      })
+   254→   254→    } catch {
+   255→   255→      toast.error('Eroare la salvare', { description: 'Verifica conexiunea si incearca din nou.' })
+   256→   256→    } finally {
+   257→   257→      setIsSubmitting(false)
+   258→   258→    }
+   259→   259→  }
+   260→   260→
+   261→   261→  // Auth guard
+   262→   262→  if (!authLoading && !user) {
+   263→   263→    return (
+   264→   264→      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center py-12 px-4">
+   265→   265→        <motion.div
+   266→   266→          initial={{ opacity: 0, y: 20 }}
+   267→   267→          animate={{ opacity: 1, y: 0 }}
+   268→   268→          className="glass-card rounded-2xl p-8 text-center max-w-md"
+   269→   269→        >
+   270→   270→          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
+   271→   271→            <User className="h-7 w-7" />
+   272→   272→          </div>
+   273→   273→          <h2 className="text-xl font-bold mb-2">Autentifica-te</h2>
+   274→   274→          <p className="text-sm text-muted-foreground mb-6">
+   275→   275→            Trebuie sa fii autentificat pentru a adauga proprietati.
+   276→   276→          </p>
+   277→   277→          <Button onClick={() => navigateTo('login')} className="gap-2">
+   278→   278→            Autentifica-te
+   279→   279→            <ArrowLeft className="h-4 w-4 rotate-180" />
+   280→   280→          </Button>
+   281→   281→        </motion.div>
+   282→   282→      </div>
+   283→   283→    )
+   284→   284→  }
+   285→   285→
+   286→   286→  if (authLoading) {
+   287→   287→    return (
+   288→   288→      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
+   289→   289→        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+   290→   290→      </div>
+   291→   291→    )
+   292→   292→  }
+   293→   293→
+   294→   294→  if (previewMode) {
+   295→   295→    return (
+   296→   296→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+   297→   297→        <div className="flex items-center justify-between mb-6">
+   298→   298→          <button onClick={() => setPreviewMode(false)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+   299→   299→            <ArrowLeft className="h-4 w-4" />
+   300→   300→            Inapoi la formular
+   301→   301→          </button>
+   302→   302→          <Button variant="outline" size="sm" onClick={() => setPreviewMode(false)}>
+   303→   303→            <EyeOff className="h-4 w-4 mr-1.5" />
+   304→   304→            Ascunde Preview
+   305→   305→          </Button>
+   306→   306→        </div>
+   307→   307→        <motion.div
+   308→   308→          initial={{ opacity: 0, y: 10 }}
+   309→   309→          animate={{ opacity: 1, y: 0 }}
+   310→   310→          className="glass-card rounded-2xl overflow-hidden"
+   311→   311→        >
+   312→   312→          {form.galleryUrls.length > 0 ? (
+   313→   313→            <div className="h-64 sm:h-80 bg-muted">
+   314→   314→              <img src={form.galleryUrls[0]} alt={form.title} className="h-full w-full object-cover" />
+   315→   315→            </div>
+   316→   316→          ) : (
+   317→   317→            <div className="h-48 bg-muted/50 flex items-center justify-center">
+   318→   318→              <p className="text-muted-foreground text-sm">Nicio imagine adaugata</p>
+   319→   319→            </div>
+   320→   320→          )}
+   321→   321→          <div className="p-6 space-y-4">
+   322→   322→            <div className="flex items-start justify-between gap-4">
+   323→   323→              <div>
+   324→   324→                <div className="flex gap-2 mb-2">
+   325→   325→                  <Badge variant="outline">{form.type || 'Tip ne_specificat'}</Badge>
+   326→   326→                  <Badge>{form.transaction === 'INCHIRIERE' ? 'Inchiriere' : 'Vanzare'}</Badge>
+   327→   327→                  {form.featured && <Badge className="bg-amber-500 text-white border-0">Featured</Badge>}
+   328→   328→                </div>
+   329→   329→                <h2 className="text-xl font-bold">{form.title || 'Titlu proprietate'}</h2>
+   330→   330→              </div>
+   331→   331→              <p className="text-2xl font-bold text-primary whitespace-nowrap">
+   332→   332→                {form.price ? `${parseFloat(form.price).toLocaleString('ro-RO')} ${form.currency}` : 'Pret nesetat'}
+   333→   333→                {form.transaction === 'INCHIRIERE' && form.price ? '/luna' : ''}
+   334→   334→              </p>
+   335→   335→            </div>
+   336→   336→            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+   337→   337→              {form.areaSqm && <span className="flex items-center gap-1"><Ruler className="h-4 w-4" />{form.areaSqm} m²</span>}
+   338→   338→              {form.rooms && <span className="flex items-center gap-1"><BedDouble className="h-4 w-4" />{form.rooms} camere</span>}
+   339→   339→              {form.bathrooms && <span className="flex items-center gap-1"><Bath className="h-4 w-4" />{form.bathrooms} bai</span>}
+   340→   340→              {form.yearBuilt && <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />{form.yearBuilt}</span>}
+   341→   341→            </div>
+   342→   342→            <Separator />
+   343→   343→            <p className="text-sm text-muted-foreground leading-relaxed">
+   344→   344→              {form.description || 'Descriere ne specificata...'}
+   345→   345→            </p>
+   346→   346→            <div className="flex flex-wrap gap-2">
+   347→   347→              {form.zone && <Badge variant="secondary" className="gap-1"><MapPin className="h-3 w-3" />{form.zone}</Badge>}
+   348→   348→              {form.sector && <Badge variant="secondary">{form.sector}</Badge>}
+   349→   349→              {form.address && <Badge variant="secondary">{form.address}</Badge>}
+   350→   350→            </div>
+   351→   351→          </div>
+   352→   352→        </motion.div>
+   353→   353→      </div>
+   354→   354→    )
+   355→   355→  }
+   356→   356→
+   357→   357→  return (
+   358→   358→    <div className="min-h-screen">
+   359→   359→      {/* Page Header */}
+   360→   360→      <section className="border-b bg-muted/30">
+   361→   361→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+   362→   362→          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+   363→   363→            <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-4" aria-label="Breadcrumb">
+   364→   364→              <Home className="h-4 w-4" />
+   365→   365→              <span>Acasa</span>
+   366→   366→              <ChevronRight className="h-3.5 w-3.5" />
+   367→   367→              <span className="text-foreground font-medium">Adauga Proprietate</span>
+   368→   368→            </nav>
+   369→   369→
+   370→   370→            <div className="flex items-center justify-between flex-wrap gap-4">
+   371→   371→              <div className="flex items-center gap-4">
+   372→   372→                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+   373→   373→                  <Plus className="h-6 w-6" />
+   374→   374→                </div>
+   375→   375→                <div>
+   376→   376→                  <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Adauga Proprietate</h1>
+   377→   377→                  <p className="text-sm text-muted-foreground mt-0.5">
+   378→   378→                    Publica o proprietate noua pe HQS Imobiliare
+   379→   379→                    {user && <span className="text-xs ml-2">({user.email})</span>}
+   380→   380→                  </p>
+   381→   381→                </div>
+   382→   382→              </div>
+   383→   383→              <div className="flex items-center gap-2">
+   384→   384→                {myProperties.length > 0 && (
+   385→   385→                  <Button variant="outline" size="sm" onClick={() => setShowMyProps(!showMyProps)} className="gap-1.5">
+   386→   386→                    <List className="h-4 w-4" />
+   387→   387→                    Proprietatile Mele ({myProperties.length})
+   388→   388→                  </Button>
+   389→   389→                )}
+   390→   390→                <Button variant="outline" size="sm" onClick={() => setPreviewMode(true)}>
+   391→   391→                  <Eye className="h-4 w-4 mr-1.5" />
+   392→   392→                  Preview
+   393→   393→                </Button>
+   394→   394→                {submittedCount > 0 && (
+   395→   395→                  <Badge variant="secondary" className="gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+   396→   396→                    <Check className="h-3 w-3" />
+   397→   397→                    {submittedCount} publicate
+   398→   398→                  </Badge>
+   399→   399→                )}
+   400→   400→              </div>
+   401→   401→            </div>
+   402→   402→          </motion.div>
+   403→   403→        </div>
+   404→   404→      </section>
+   405→   405→
+   406→   406→      {/* My Properties List */}
+   407→   407→      <AnimatePresence>
+   408→   408→        {showMyProps && myProperties.length > 0 && (
+   409→   409→          <motion.section
+   410→   410→            initial={{ opacity: 0, height: 0 }}
+   411→   411→            animate={{ opacity: 1, height: 'auto' }}
+   412→   412→            exit={{ opacity: 0, height: 0 }}
+   413→   413→            className="overflow-hidden"
+   414→   414→          >
+   415→   415→            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
+   416→   416→              <div className="glass-card rounded-xl p-4">
+   417→   417→                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+   418→   418→                  <Building2 className="h-4 w-4 text-primary" />
+   419→   419→                  Proprietatile tale ({myProperties.length})
+   420→   420→                </h3>
+   421→   421→                <div className="space-y-2 max-h-64 overflow-y-auto">
+   422→   422→                  {myProperties.map((prop) => (
+   423→   423→                    <div key={prop.id as string} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group">
+   424→   424→                      <div className="flex items-center gap-3 min-w-0 flex-1">
+   425→   425→                        <div className="h-12 w-12 rounded-lg bg-primary/5 flex items-center justify-center shrink-0 overflow-hidden">
+   426→   426→                          {prop.cover_url ? (
+   427→   427→                            <img src={prop.cover_url as string} alt="" className="h-full w-full object-cover" />
+   428→   428→                          ) : (
+   429→   429→                            <Building2 className="h-5 w-5 text-primary/50" />
+   430→   430→                          )}
+   431→   431→                        </div>
+   432→   432→                        <div className="min-w-0">
+   433→   433→                          <p className="text-sm font-medium truncate">{prop.title as string}</p>
+   434→   434→                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+   435→   435→                            <span>{prop.zone as string}{prop.sector ? `, ${prop.sector}` : ''}</span>
+   436→   436→                            <span>·</span>
+   437→   437→                            <span className="font-semibold text-foreground">
+   438→   438→                              {Number(prop.price).toLocaleString('ro-RO')} {prop.currency as string}
+   439→   439→                            </span>
+   440→   440→                            {prop.transaction === 'INCHIRIERE' && <span>/luna</span>}
+   441→   441→                          </div>
+   442→   442→                        </div>
+   443→   443→                      </div>
+   444→   444→                      <div className="flex items-center gap-2 shrink-0">
+   445→   445→                        <Badge variant="outline" className="text-[10px]">{prop.type as string}</Badge>
+   446→   446→                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+   447→   447→                          <Clock className="h-3 w-3" />
+   448→   448→                          {new Date(prop.created_at as string).toLocaleDateString('ro-RO')}
+   449→   449→                        </span>
+   450→   450→                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => deleteProperty(prop.id as string)}>
+   451→   451→                          <Trash2 className="h-3.5 w-3.5" />
+   452→   452→                        </Button>
+   453→   453→                      </div>
+   454→   454→                    </div>
+   455→   455→                  ))}
+   456→   456→                </div>
+   457→   457→              </div>
+   458→   458→            </div>
+   459→   459→          </motion.section>
+   460→   460→        )}
+   461→   461→      </AnimatePresence>
+   462→   462→
+   463→   463→      {/* Form */}
+   464→   464→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+   465→   465→        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+   466→   466→          {/* Main Form - 2 columns */}
+   467→   467→          <div className="lg:col-span-2 space-y-8">
+   468→   468→            {/* Basic Info */}
+   469→   469→            <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6 space-y-5">
+   470→   470→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   471→   471→                <Tag className="h-5 w-5 text-primary" />
+   472→   472→                Informatii de Baza
+   473→   473→              </h2>
+   474→   474→
+   475→   475→              <div className="space-y-2">
+   476→   476→                <Label htmlFor="title">Titlu *</Label>
+   477→   477→                <Input
+   478→   478→                  id="title"
+   479→   479→                  placeholder="Apartament 3 camere in Dorobanti, decomandat"
+   480→   480→                  value={form.title}
+   481→   481→                  onChange={(e) => updateField('title', e.target.value)}
+   482→   482→                  className="h-11"
+   483→   483→                  required
+   484→   484→                />
+   485→   485→              </div>
+   486→   486→
+   487→   487→              <div className="space-y-2">
+   488→   488→                <Label htmlFor="description">Descriere *</Label>
+   489→   489→                <Textarea
+   490→   490→                  id="description"
+   491→   491→                  placeholder="Descrie proprietatea detaliat: finisaje, dotari, vecinatate, acces transport etc."
+   492→   492→                  value={form.description}
+   493→   493→                  onChange={(e) => updateField('description', e.target.value)}
+   494→   494→                  className="min-h-[120px] resize-y"
+   495→   495→                  required
+   496→   496→                />
+   497→   497→              </div>
+   498→   498→
+   499→   499→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   500→   500→                <div className="space-y-2">
+   501→   501→                  <Label>Tip Proprietate *</Label>
+   502→   502→                  <Select value={form.type} onValueChange={(v) => updateField('type', v)} required>
+   503→   503→                    <SelectTrigger className="h-11">
+   504→   504→                      <SelectValue placeholder="Selecteaza tipul" />
+   505→   505→                    </SelectTrigger>
+   506→   506→                    <SelectContent>
+   507→   507→                      {PROPERTY_TYPES.map((t) => (
+   508→   508→                        <SelectItem key={t} value={t}>{t}</SelectItem>
+   509→   509→                      ))}
+   510→   510→                    </SelectContent>
+   511→   511→                  </Select>
+   512→   512→                </div>
+   513→   513→
+   514→   514→                <div className="space-y-2">
+   515→   515→                  <Label>Tranzactie *</Label>
+   516→   516→                  <Select value={form.transaction} onValueChange={(v) => updateField('transaction', v)}>
+   517→   517→                    <SelectTrigger className="h-11">
+   518→   518→                      <SelectValue />
+   519→   519→                    </SelectTrigger>
+   520→   520→                    <SelectContent>
+   521→   521→                      {TRANSACTIONS.map((t) => (
+   522→   522→                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+   523→   523→                      ))}
+   524→   524→                    </SelectContent>
+   525→   525→                  </Select>
+   526→   526→                </div>
+   527→   527→              </div>
+   528→   528→            </motion.section>
+   529→   529→
+   530→   530→            {/* Pricing & Size */}
+   531→   531→            <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card rounded-2xl p-6 space-y-5">
+   532→   532→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   533→   533→                <Euro className="h-5 w-5 text-primary" />
+   534→   534→                Pret si Dimensiuni
+   535→   535→              </h2>
+   536→   536→
+   537→   537→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   538→   538→                <div className="space-y-2">
+   539→   539→                  <Label htmlFor="price">Pret *</Label>
+   540→   540→                  <div className="relative">
+   541→   541→                    <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   542→   542→                    <Input
+   543→   543→                      id="price"
+   544→   544→                      type="number"
+   545→   545→                      min="0"
+   546→   546→                      step="1000"
+   547→   547→                      placeholder="95000"
+   548→   548→                      value={form.price}
+   549→   549→                      onChange={(e) => updateField('price', e.target.value)}
+   550→   550→                      className="pl-10 h-11"
+   551→   551→                      required
+   552→   552→                    />
+   553→   553→                  </div>
+   554→   554→                </div>
+   555→   555→                <div className="space-y-2">
+   556→   556→                  <Label>Moneda</Label>
+   557→   557→                  <Select value={form.currency} onValueChange={(v) => updateField('currency', v)}>
+   558→   558→                    <SelectTrigger className="h-11">
+   559→   559→                      <SelectValue />
+   560→   560→                    </SelectTrigger>
+   561→   561→                    <SelectContent>
+   562→   562→                      {CURRENCIES.map((c) => (
+   563→   563→                        <SelectItem key={c} value={c}>{c}</SelectItem>
+   564→   564→                      ))}
+   565→   565→                    </SelectContent>
+   566→   566→                  </Select>
+   567→   567→                </div>
+   568→   568→                <div className="space-y-2">
+   569→   569→                  <Label htmlFor="area">Suprafata (m²) *</Label>
+   570→   570→                  <div className="relative">
+   571→   571→                    <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   572→   572→                    <Input
+   573→   573→                      id="area"
+   574→   574→                      type="number"
+   575→   575→                      min="1"
+   576→   576→                      placeholder="75"
+   577→   577→                      value={form.areaSqm}
+   578→   578→                      onChange={(e) => updateField('areaSqm', e.target.value)}
+   579→   579→                      className="pl-10 h-11"
+   580→   580→                      required
+   581→   581→                    />
+   582→   582→                  </div>
+   583→   583→                </div>
+   584→   584→              </div>
+   585→   585→
+   586→   586→              {form.price && form.areaSqm && parseFloat(form.price) > 0 && parseFloat(form.areaSqm) > 0 && (
+   587→   587→                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
+   588→   588→                  <span className="text-sm text-muted-foreground">Pret/mp:</span>
+   589→   589→                  <span className="text-sm font-semibold text-primary">
+   590→   590→                    {Math.round(parseFloat(form.price) / parseFloat(form.areaSqm)).toLocaleString('ro-RO')} {form.currency}/m²
+   591→   591→                  </span>
+   592→   592→                </div>
+   593→   593→              )}
+   594→   594→            </motion.section>
+   595→   595→
+   596→   596→            {/* Rooms & Details */}
+   597→   597→            <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card rounded-2xl p-6 space-y-5">
+   598→   598→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   599→   599→                <Building2 className="h-5 w-5 text-primary" />
+   600→   600→                Detalii Imobil
+   601→   601→              </h2>
+   602→   602→
+   603→   603→              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+   604→   604→                <div className="space-y-2">
+   605→   605→                  <Label htmlFor="rooms">Camere *</Label>
+   606→   606→                  <div className="relative">
+   607→   607→                    <BedDouble className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   608→   608→                    <Input
+   609→   609→                      id="rooms"
+   610→   610→                      type="number"
+   611→   611→                      min="0"
+   612→   612→                      placeholder="3"
+   613→   613→                      value={form.rooms}
+   614→   614→                      onChange={(e) => updateField('rooms', e.target.value)}
+   615→   615→                      className="pl-10 h-11"
+   616→   616→                      required
+   617→   617→                    />
+   618→   618→                  </div>
+   619→   619→                </div>
+   620→   620→                <div className="space-y-2">
+   621→   621→                  <Label htmlFor="bathrooms">Bai</Label>
+   622→   622→                  <div className="relative">
+   623→   623→                    <Bath className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   624→   624→                    <Input
+   625→   625→                      id="bathrooms"
+   626→   626→                      type="number"
+   627→   627→                      min="0"
+   628→   628→                      placeholder="1"
+   629→   629→                      value={form.bathrooms}
+   630→   630→                      onChange={(e) => updateField('bathrooms', e.target.value)}
+   631→   631→                      className="pl-10 h-11"
+   632→   632→                    />
+   633→   633→                  </div>
+   634→   634→                </div>
+   635→   635→                <div className="space-y-2">
+   636→   636→                  <Label htmlFor="floor">Etaj</Label>
+   637→   637→                  <Input
+   638→   638→                    id="floor"
+   639→   639→                    type="number"
+   640→   640→                    min="0"
+   641→   641→                    placeholder="3"
+   642→   642→                    value={form.floor}
+   643→   643→                    onChange={(e) => updateField('floor', e.target.value)}
+   644→   644→                    className="h-11"
+   645→   645→                  />
+   646→   646→                </div>
+   647→   647→                <div className="space-y-2">
+   648→   648→                  <Label htmlFor="yearBuilt">An Constructie</Label>
+   649→   649→                  <div className="relative">
+   650→   650→                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   651→   651→                    <Input
+   652→   652→                      id="yearBuilt"
+   653→   653→                      type="number"
+   654→   654→                      min="1900"
+   655→   655→                      max={new Date().getFullYear()}
+   656→   656→                      placeholder="2020"
+   657→   657→                      value={form.yearBuilt}
+   658→   658→                      onChange={(e) => updateField('yearBuilt', e.target.value)}
+   659→   659→                      className="pl-10 h-11"
+   660→   660→                    />
+   661→   661→                  </div>
+   662→   662→                </div>
+   663→   663→              </div>
+   664→   664→            </motion.section>
+   665→   665→
+   666→   666→            {/* Location */}
+   667→   667→            <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card rounded-2xl p-6 space-y-5">
+   668→   668→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   669→   669→                <MapPin className="h-5 w-5 text-primary" />
+   670→   670→                Locatie
+   671→   671→              </h2>
+   672→   672→
+   673→   673→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   674→   674→                <div className="space-y-2">
+   675→   675→                  <Label>Sector *</Label>
+   676→   676→                  <Select value={form.sector} onValueChange={(v) => updateField('sector', v)} required>
+   677→   677→                    <SelectTrigger className="h-11">
+   678→   678→                      <SelectValue placeholder="Selecteaza sectorul" />
+   679→   679→                    </SelectTrigger>
+   680→   680→                    <SelectContent>
+   681→   681→                      {SECTOARE.map((s) => (
+   682→   682→                        <SelectItem key={s} value={s}>{s}</SelectItem>
+   683→   683→                      ))}
+   684→   684→                    </SelectContent>
+   685→   685→                  </Select>
+   686→   686→                </div>
+   687→   687→                <div className="space-y-2">
+   688→   688→                  <Label>Zona *</Label>
+   689→   689→                  <Select value={form.zone} onValueChange={(v) => updateField('zone', v)} required>
+   690→   690→                    <SelectTrigger className="h-11">
+   691→   691→                      <SelectValue placeholder="Selecteaza zona" />
+   692→   692→                    </SelectTrigger>
+   693→   693→                    <SelectContent>
+   694→   694→                      {ZONES.map((z) => (
+   695→   695→                        <SelectItem key={z} value={z}>{z}</SelectItem>
+   696→   696→                      ))}
+   697→   697→                    </SelectContent>
+   698→   698→                  </Select>
+   699→   699→                </div>
+   700→   700→              </div>
+   701→   701→
+   702→   702→              <div className="space-y-2">
+   703→   703→                <Label htmlFor="address">Adresa exacta</Label>
+   704→   704→                <Input
+   705→   705→                  id="address"
+   706→   706→                  placeholder="Str. Example nr. 10, Bl. A3, Sc. 2, Et. 4, Ap. 12"
+   707→   707→                  value={form.address}
+   708→   708→                  onChange={(e) => updateField('address', e.target.value)}
+   709→   709→                  className="h-11"
+   710→   710→                />
+   711→   711→              </div>
+   712→   712→            </motion.section>
+   713→   713→
+   714→   714→            {/* Images */}
+   715→   715→            <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card rounded-2xl p-6 space-y-5">
+   716→   716→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   717→   717→                <Upload className="h-5 w-5 text-primary" />
+   718→   718→                Imagini
+   719→   719→              </h2>
+   720→   720→              <ImageUrlInput
+   721→   721→                urls={form.galleryUrls}
+   722→   722→                onChange={(urls) => updateField('galleryUrls', urls)}
+   723→   723→              />
+   724→   724→            </motion.section>
+   725→   725→          </div>
+   726→   726→
+   727→   727→          {/* Sidebar */}
+   728→   728→          <div className="space-y-6">
+   729→   729→            {/* Submit Card */}
+   730→   730→            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6 sticky top-24">
+   731→   731→              <div className="space-y-4">
+   732→   732→                <div className="flex items-center justify-between">
+   733→   733→                  <span className="text-sm font-medium">Proprietate Evidentiata</span>
+   734→   734→                  <Switch
+   735→   735→                    checked={form.featured}
+   736→   736→                    onCheckedChange={(v) => updateField('featured', v)}
+   737→   737→                    aria-label="Marcheaza ca featured"
+   738→   738→                  />
+   739→   739→                </div>
+   740→   740→                {form.featured && (
+   741→   741→                  <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg p-2.5">
+   742→   742→                    Proprietatile evidensiate apar primele in rezultate si pe pagina principala.
+   743→   743→                  </p>
+   744→   744→                )}
+   745→   745→
+   746→   746→                <Separator />
+   747→   747→
+   748→   748→                {/* Quick summary */}
+   749→   749→                <div className="space-y-2 text-sm">
+   750→   750→                  <div className="flex justify-between">
+   751→   751→                    <span className="text-muted-foreground">Pret</span>
+   752→   752→                    <span className="font-semibold">
+   753→   753→                      {form.price ? `${parseFloat(form.price).toLocaleString('ro-RO')} ${form.currency}` : '—'}
+   754→   754→                    </span>
+   755→   755→                  </div>
+   756→   756→                  <div className="flex justify-between">
+   757→   757→                    <span className="text-muted-foreground">Suprafata</span>
+   758→   758→                    <span>{form.areaSqm ? `${form.areaSqm} m²` : '—'}</span>
+   759→   759→                  </div>
+   760→   760→                  <div className="flex justify-between">
+   761→   761→                    <span className="text-muted-foreground">Camere</span>
+   762→   762→                    <span>{form.rooms || '—'}</span>
+   763→   763→                  </div>
+   764→   764→                  <div className="flex justify-between">
+   765→   765→                    <span className="text-muted-foreground">Zona</span>
+   766→   766→                    <span className="text-right truncate max-w-[150px]">{form.zone || '—'}</span>
+   767→   767→                  </div>
+   768→   768→                  <div className="flex justify-between">
+   769→   769→                    <span className="text-muted-foreground">Imagini</span>
+   770→   770→                    <span>{form.galleryUrls.length > 0 ? `${form.galleryUrls.length} adaugate` : '—'}</span>
+   771→   771→                  </div>
+   772→   772→                </div>
+   773→   773→
+   774→   774→                <Separator />
+   775→   775→
+   776→   776→                <Button type="submit" className="w-full h-12 gap-2 text-base" disabled={isSubmitting}>
+   777→   777→                  {isSubmitting ? (
+   778→   778→                    <Loader2 className="h-5 w-5 animate-spin" />
+   779→   779→                  ) : (
+   780→   780→                    <>
+   781→   781→                      <Plus className="h-5 w-5" />
+   782→   782→                      Publica Proprietatea
+   783→   783→                    </>
+   784→   784→                  )}
+   785→   785→                </Button>
+   786→   786→
+   787→   787→                <p className="text-[11px] text-center text-muted-foreground">
+   788→   788→                  Prin publicare confirmi ca informatiile sunt corecte
+   789→   789→                  si ai dreptul de a publica aceasta proprietate.
+   790→   790→                </p>
+   791→   791→              </div>
+   792→   792→            </motion.div>
+   793→   793→
+   794→   794→            {/* Tips */}
+   795→   795→            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card rounded-2xl p-5 space-y-3">
+   796→   796→              <h3 className="text-sm font-semibold flex items-center gap-2">
+   797→   797→                💡 Sfaturi
+   798→   798→              </h3>
+   799→   799→              <ul className="text-xs text-muted-foreground space-y-2">
+   800→   800→                <li className="flex gap-2">
+   801→   801→                  <span className="text-primary mt-0.5">•</span>
+   802→   802→                  Adauga poze clare si luminoase — proprietatile cu poze primesc de 3x mai multe vizualizari
+   803→   803→                </li>
+   804→   804→                <li className="flex gap-2">
+   805→   805→                  <span className="text-primary mt-0.5">•</span>
+   806→   806→                  Scrie o descriere detaliata — include finisaje, dotari, vecinatate
+   807→   807→                </li>
+   808→   808→                <li className="flex gap-2">
+   809→   809→                  <span className="text-primary mt-0.5">•</span>
+   810→   810→                  Seteaza un pret realist — verifica preturile similare din zona
+   811→   811→                </li>
+   812→   812→                <li className="flex gap-2">
+   813→   813→                  <span className="text-primary mt-0.5">•</span>
+   814→   814→                  Completeaza adresa exacta pentru cautari mai precise
+   815→   815→                </li>
+   816→   816→              </ul>
+   817→   817→            </motion.div>
+   818→   818→          </div>
+   819→   819→        </form>
+   820→   820→      </div>
+   821→   821→    </div>
+   822→   822→  )
+   823→   823→}
