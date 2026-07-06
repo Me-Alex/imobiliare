@@ -326,17 +326,30 @@ export function DocumentePage() {
 
   // View/Download document
   const handleViewDocument = (doc: UploadedDocument) => {
+    const safeName = doc.fileName.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const isImage = doc.fileType.startsWith('image/')
+    const isPdf = doc.fileType === 'application/pdf'
     const win = window.open('')
     if (win) {
-      win.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head><title>${doc.fileName}</title></head>
-        <body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;">
-          <img src="${doc.filePreview}" style="max-width:100%;max-height:100vh;" alt="${doc.fileName}" />
-        </body>
-        </html>
-      `)
+      if (isPdf) {
+        win.document.write(`
+          <!DOCTYPE html><html><head><title>${safeName}</title></head>
+          <body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;">
+            <iframe src="${doc.filePreview}" style="width:100%;height:100vh;border:none;"></iframe>
+          </body></html>`)
+      } else if (isImage) {
+        win.document.write(`
+          <!DOCTYPE html><html><head><title>${safeName}</title></head>
+          <body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;">
+            <img src="${doc.filePreview}" style="max-width:100%;max-height:100vh;" alt="${safeName}" />
+          </body></html>`)
+      } else {
+        win.document.write(`
+          <!DOCTYPE html><html><head><title>${safeName}</title></head>
+          <body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;">
+            <p style="font-family:sans-serif;color:#666;">Previzualizare nu este disponibila pentru acest tip de fisier.</p>
+          </body></html>`)
+      }
       win.document.close()
     }
   }

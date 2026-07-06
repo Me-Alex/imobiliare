@@ -166,7 +166,6 @@ function VizionareCard({
   const { navigateTo } = useAppStore()
   const staff = getStaffById(vizionare.staffId)
   const statusCfg = STATUS_CONFIG[vizionare.status]
-  const Icon = getStaffById(vizionare.staffId)
   const isPast = vizionare.status === 'completed' || vizionare.status === 'cancelled'
 
   const handleUploadDocs = () => {

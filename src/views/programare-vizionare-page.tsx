@@ -50,6 +50,13 @@ function seedAvailability() {
   const existing = loadFromLS<AvailabilitySlot[]>('hqs_staff_availability', [])
   if (existing.length > 0) return
 
+  const toLocalDateStr = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
   const now = new Date()
   const slots: AvailabilitySlot[] = []
   const times = [
@@ -64,7 +71,7 @@ function seedAvailability() {
     const dayOfWeek = date.getDay() // 0=Sun
     if (dayOfWeek === 0) continue // Skip Sundays
 
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = toLocalDateStr(date)
     const activeStaff = DEFAULT_STAFF.filter(s => s.isActive)
     const shuffledTimes = [...times].sort(() => Math.random() - 0.5)
 
@@ -323,7 +330,7 @@ function StepAgentDate({
       d.setDate(today.getDate() + i + 1)
       const dow = d.getDay() === 0 ? 6 : d.getDay() - 1
       days.push({
-        date: d.toISOString().split('T')[0],
+        date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
         dayName: DAY_NAMES[dow],
         dayNum: d.getDate(),
         month: d.toLocaleDateString('ro-RO', { month: 'short' }),

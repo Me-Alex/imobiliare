@@ -72,10 +72,44 @@ function ImageUploader({ urls, onChange }: { urls: string[]; onChange: (urls: st
   const [showUrlInput, setShowUrlInput] = useState(false)
   const [urlInput, setUrlInput] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+  const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB raw input
   const MAX_IMAGES = 15
+  const MAX_DIMENSION = 1280 // max width/height in px
+  const JPEG_QUALITY = 0.75
 
-  const readFilesAsDataUrls = useCallback((files: FileList | File[]) => {
+  const compressImage = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let { width, height } = img
+          if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIMENSION) / width)
+              width = MAX_DIMENSION
+            } else {
+              width = Math.round((width * MAX_DIMENSION) / height)
+              height = MAX_DIMENSION
+            }
+          }
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          if (!ctx) { reject(new Error('Canvas not supported')); return }
+          ctx.drawImage(img, 0, 0, width, height)
+          resolve(canvas.toDataURL('image/jpeg', JPEG_QUALITY))
+        }
+        img.onerror = () => reject(new Error('Failed to load image'))
+        img.src = e.target?.result as string
+      }
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsDataURL(file)
+    })
+  }, [])
+
+  const readFilesAsDataUrls = useCallback(async (files: FileList | File[]) => {
     const fileArray = Array.from(files)
     if (urls.length + fileArray.length > MAX_IMAGES) {
       toast.error(`Maximum ${MAX_IMAGES} imagini permise`)
@@ -83,38 +117,30 @@ function ImageUploader({ urls, onChange }: { urls: string[]; onChange: (urls: st
     }
     for (const file of fileArray) {
       if (file.size > MAX_FILE_SIZE) {
-        toast.error(`"${file.name}" depaseste 5MB`)
+        toast.error(`"${file.name}" depaseste 10MB`)
         return
       }
     }
     setIsReading(true)
-    const results: string[] = []
-    let completed = 0
-    const total = fileArray.length
-
-    fileArray.forEach((file) => {
-      const reader = new FileReader()
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          results.push(reader.result)
-        }
-        completed++
-        if (completed === total) {
-          onChange([...urls, ...results])
-          setIsReading(false)
-        }
+    try {
+      const results = await Promise.all(
+        fileArray.map(async (file) => {
+          try {
+            return await compressImage(file)
+          } catch {
+            toast.error(`Eroare la procesarea "${file.name}"`)
+            return null
+          }
+        })
+      )
+      const validResults = results.filter((r): r is string => r !== null)
+      if (validResults.length > 0) {
+        onChange([...urls, ...validResults])
       }
-      reader.onerror = () => {
-        completed++
-        if (completed === total) {
-          onChange([...urls, ...results])
-          setIsReading(false)
-          toast.error(`Eroare la citirea fisierului "${file.name}"`)
-        }
-      }
-      reader.readAsDataURL(file)
-    })
-  }, [urls, onChange])
+    } finally {
+      setIsReading(false)
+    }
+  }, [urls, onChange, compressImage])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -203,7 +229,7 @@ function ImageUploader({ urls, onChange }: { urls: string[]; onChange: (urls: st
               <Upload className="h-4 w-4 mr-2" />
               Alege Fotografii
             </Button>
-            <p className="text-[11px] text-muted-foreground">PNG, JPG, WebP — max 5MB/fisier, {MAX_IMAGES} imagini</p>
+            <p className="text-[11px] text-muted-foreground">PNG, JPG, WebP — max 10MB/fisier, {MAX_IMAGES} imagini. Imaginile sunt redimensionate automat.</p>
           </>
         )}
       </div>
@@ -366,7 +392,12 @@ export function AdaugaProprietatePage() {
         ? (parseFloat(form.price) / parseFloat(form.areaSqm)).toFixed(0)
         : null
 
-      const propertyData = {
+      // Separate base64 images from URL images
+      const base64Images = form.galleryUrls.filter(u => u.startsWith('data:'))
+      const urlImages = form.galleryUrls.filter(u => !u.startsWith('data:'))
+
+      const newProp = {
+        id: crypto.randomUUID(),
         title: form.title,
         slug,
         description: form.description,
@@ -387,30 +418,40 @@ export function AdaugaProprietatePage() {
         featured: form.featured,
         cover_url: form.galleryUrls[0] || form.coverUrl || '',
         gallery_urls: JSON.stringify(form.galleryUrls),
+        gallery_url_list: urlImages, // only URL images for Supabase
         price_per_sqm: pricePerSqm ? parseFloat(pricePerSqm) : null,
-        status: 'PUBLISHED',
+        status: 'PUBLISHED' as const,
         user_id: user.id,
         user_email: user.email || '',
         user_name: user.user_metadata?.full_name || user.email || '',
+        created_at: new Date().toISOString(),
       }
 
-      // Try Supabase first, fallback to localStorage
-      let saved = false
+      // Save to localStorage FIRST (always works, instant)
+      const stored = JSON.parse(localStorage.getItem('hqs_user_properties') || '[]')
+      stored.push(newProp)
       try {
-        const { error } = await supabase
-          .from('user_properties')
-          .insert([propertyData])
-        if (!error) saved = true
+        localStorage.setItem('hqs_user_properties', JSON.stringify(stored))
       } catch {
-        // Supabase not reachable, use localStorage
+        toast.error('Spatiu de stocare plin', {
+          description: 'Imaginile sunt prea mari. Incearca cu mai putine imagini sau imagini mai mici.',
+        })
+        setIsSubmitting(false)
+        return
       }
 
-      if (!saved) {
-        // Save to localStorage as fallback
-        const stored = JSON.parse(localStorage.getItem('hqs_user_properties') || '[]')
-        const newProp = { ...propertyData, id: crypto.randomUUID(), created_at: new Date().toISOString() }
-        stored.push(newProp)
-        localStorage.setItem('hqs_user_properties', JSON.stringify(stored))
+      // Try Supabase in background (only URL images, no base64 to avoid payload limits)
+      if (urlImages.length > 0 || base64Images.length === 0) {
+        const supabaseData = {
+          ...newProp,
+          gallery_urls: JSON.stringify(urlImages.length > 0 ? urlImages : form.galleryUrls),
+        }
+        // Fire and forget — don't block the UI
+        supabase.from('user_properties').insert([supabaseData]).then(({ error }) => {
+          if (error) console.warn('Supabase save skipped:', error.message)
+        }).catch(() => {
+          // Silently ignore — localStorage already saved
+        })
       }
 
       toast.success('Proprietate adaugata cu succes!', {
@@ -425,8 +466,9 @@ export function AdaugaProprietatePage() {
         floor: '', totalFloors: '', yearBuilt: '', address: '',
         zone: '', sector: '', featured: false, coverUrl: '', galleryUrls: [],
       })
-    } catch {
-      toast.error('Eroare la salvare', { description: 'Verifica conexiunea si incearca din nou.' })
+    } catch (err) {
+      console.error('Submit error:', err)
+      toast.error('Eroare la salvare', { description: 'Verifica datele si incearca din nou.' })
     } finally {
       setIsSubmitting(false)
     }
