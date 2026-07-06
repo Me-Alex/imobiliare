@@ -27,6 +27,33 @@ const typeLabels: Record<string, string> = {
   APARTMENT: 'Apartament', HOUSE: 'Casa', VILLA: 'Vila', LAND: 'Teren', COMMERCIAL: 'Comercial',
 }
 
+/** Build a clean location string avoiding duplicates */
+function formatLocation(property: Property): string {
+  const parts: string[] = []
+  // Use address as the base
+  if (property.address) {
+    parts.push(property.address)
+  }
+  // Add zone only if not already present in the address
+  if (property.zone && property.address && !property.address.toLowerCase().includes(property.zone.toLowerCase())) {
+    parts.push(property.zone)
+  } else if (property.zone && !property.address) {
+    parts.push(property.zone)
+  }
+  // Add sector, normalizing to avoid "Sector Sector 3"
+  if (property.sector) {
+    const sectorLabel = property.sector.startsWith('Sector') ? property.sector : `Sector ${property.sector}`
+    if (!parts.some(p => p.includes(sectorLabel) || p.toLowerCase().includes(`sector ${property.sector}`.toLowerCase()))) {
+      parts.push(sectorLabel)
+    }
+  }
+  // Add city
+  if (!parts.some(p => p.toLowerCase().includes('bucuresti'))) {
+    parts.push('Bucuresti')
+  }
+  return parts.join(', ')
+}
+
 interface PropertyDetailDialogProps {
   onContact?: (propertyTitle: string) => void
 }
@@ -82,7 +109,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
             <DialogTitle className="text-2xl">{property.title}</DialogTitle>
             <DialogDescription className="flex items-center gap-1.5 text-base">
               <MapPin className="h-4 w-4" />
-              {property.address}, {property.zone}{property.sector ? `, Sector ${property.sector}` : ''}, Bucuresti
+              {formatLocation(property)}
             </DialogDescription>
           </DialogHeader>
 

@@ -8,6 +8,18 @@ import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/use-app-store'
 import { formatPrice, formatPricePerSqm, type Property } from '@/lib/api'
 
+/** Build a clean location string avoiding duplicates */
+function formatLocation(property: Property): string {
+  const parts: string[] = []
+  if (property.zone) parts.push(property.zone)
+  if (property.sector) {
+    const sectorLabel = property.sector.startsWith('Sector') ? property.sector : `Sector ${property.sector}`
+    if (!parts.some(p => p.includes(sectorLabel))) parts.push(sectorLabel)
+  }
+  if (!parts.some(p => p.toLowerCase().includes('bucuresti'))) parts.push('Bucuresti')
+  return parts.join(', ')
+}
+
 interface PropertyCardProps {
   property: Property
   onSelect: (slug: string) => void
@@ -97,7 +109,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
                   </h3>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
                     <MapPin className="h-3.5 w-3.5" />
-                    {property.zone}{property.sector ? `, Sector ${property.sector}` : ''}, Bucuresti
+                    {formatLocation(property)}
                   </div>
                 </div>
                 <div className="text-right shrink-0 pl-4 border-l-2 border-primary/30">
@@ -210,7 +222,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
         </h3>
         <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
           <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="line-clamp-1">{property.zone}{property.sector ? `, Sector ${property.sector}` : ''}, Bucuresti</span>
+          <span className="line-clamp-1">{formatLocation(property)}</span>
         </div>
         <div className="flex items-center gap-4 pt-3 border-t border-border/50">
           <MetricPill icon={BedDouble} value={property.rooms} label="camere" />

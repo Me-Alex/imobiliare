@@ -430,6 +430,8 @@ export function AdaugaProprietatePage() {
         floor: form.floor ? parseInt(form.floor) : null,
         year_built: form.yearBuilt ? parseInt(form.yearBuilt) : null,
         address: form.address,
+        zone: form.zone,
+        sector: form.sector,
         city: 'Bucuresti',
         county: 'Bucuresti',
         featured: form.featured,
@@ -463,11 +465,9 @@ export function AdaugaProprietatePage() {
       // Try Supabase in background (only if configured AND no base64 images)
       const hasSupabaseConfig = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
       if (hasSupabaseConfig && base64Images.length === 0) {
-        const supabaseData = { ...newProp }
-        // Remove fields that may not exist in the table yet
-        delete (supabaseData as Record<string, unknown>).zone
-        delete (supabaseData as Record<string, unknown>).sector
-        delete (supabaseData as Record<string, unknown>).price_per_sqm
+        // Remove zone/sector as the Supabase table doesn't have these columns;
+        // zone info is extracted from address field by the read layer
+        const { zone: _zone, sector: _sector, ...supabaseData } = newProp as Record<string, unknown>
         supabase.from('properties').insert([supabaseData]).then(({ error }) => {
           if (error) console.warn('Supabase save skipped:', error.message)
         }).catch(() => {

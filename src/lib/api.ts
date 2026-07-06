@@ -235,7 +235,7 @@ function buildSupabaseFilter(filters: PropertyFilters): string {
   const parts: string[] = ['status=eq.PUBLISHED']
 
   if (filters.type) parts.push(`type=eq.${filters.type}`)
-  if (filters.zone) parts.push(`zone=ilike.*${filters.zone}*`)
+  if (filters.zone) parts.push(`address=ilike.*${filters.zone}*`)
   if (filters.featured) parts.push('featured=eq.true')
 
   if (filters.transaction) {
@@ -243,7 +243,8 @@ function buildSupabaseFilter(filters: PropertyFilters): string {
     if (tx === 'RENT' || tx === 'INCHIRIERE') {
       parts.push('transaction_type=eq.rent')
     } else {
-      parts.push('transaction_type=eq.sale')
+      // Show both explicit 'sale' and null (null defaults to sale)
+      parts.push('or=(transaction_type.eq.sale,transaction_type.is.null)')
     }
   }
 
@@ -411,14 +412,15 @@ export async function getSearchSuggestions(q: string): Promise<SearchSuggestion[
     // Search properties
     try {
       const propRows = await sbFetch<Record<string, unknown>[]>(
-        `properties?status=eq.PUBLISHED&or=(title.ilike.*${encodeURIComponent(q)}*,address.ilike.*${encodeURIComponent(q)}*)&select=id,title,slug,zone,type,transaction_type,price,area_sqm&limit=5&order=created_at.desc`
+        `properties?status=eq.PUBLISHED&or=(title.ilike.*${encodeURIComponent(q)}*,address.ilike.*${encodeURIComponent(q)}*)&select=id,title,slug,address,type,transaction_type,price,area_sqm&limit=5&order=created_at.desc`
       )
       for (const r of propRows) {
+        const addr = (r.address as string) || ''
         suggestions.push({
           type: 'property',
           name: (r.title as string) || '',
           slug: (r.slug as string) || '',
-          zone: (r.zone as string) || '',
+          zone: extractZoneFromAddress(addr),
           propertyType: (r.type as string) || '',
           transaction: mapTransactionType(r.transaction_type as string | null),
           price: Number(r.price ?? 0),
