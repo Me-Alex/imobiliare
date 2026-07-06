@@ -1,4 +1,5 @@
 export const dynamic = "force-static";
+export function generateStaticParams() { return [] }
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 
