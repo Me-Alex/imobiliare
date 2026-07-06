@@ -27,6 +27,7 @@ import { DeCeNoiPage } from '@/views/de-ce-noi-page'
 import { CalculatorPage } from '@/views/calculator-page'
 import { LoginPage } from '@/views/login-page'
 import { AdminPage } from '@/views/admin-page'
+import { AdaugaProprietatePage } from '@/views/adauga-proprietate-page'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,10 +47,11 @@ const pageComponents: Record<string, React.ComponentType> = {
   calculator: CalculatorPage,
   login: LoginPage,
   admin: AdminPage,
+  'adauga-proprietate': AdaugaProprietatePage,
 }
 
 // Pages that should NOT show header/footer/overlays
-const fullBleedPages = new Set(['login', 'admin'])
+const fullBleedPages = new Set(['login', 'admin', 'adauga-proprietate'])
 
 function AppContent() {
   const {

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type PageKey = 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator' | 'login' | 'admin'
+export type PageKey = 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator' | 'login' | 'admin' | 'adauga-proprietate'
 
 interface AppState {
   currentPage: PageKey
@@ -41,6 +41,8 @@ interface AppState {
   clearLightbox: () => void
   chatOpen: boolean
   setChatOpen: (open: boolean) => void
+  userProperties: Array<Record<string, unknown>>
+  setUserProperties: (props: Array<Record<string, unknown>>) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -99,4 +101,6 @@ export const useAppStore = create<AppState>((set) => ({
   clearLightbox: () => set({ lightboxImages: [], lightboxIndex: 0 }),
   chatOpen: false,
   setChatOpen: (open) => set({ chatOpen: open }),
+  userProperties: [],
+  setUserProperties: (props) => set({ userProperties: props }),
 }))

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useTheme } from 'next-themes'
-import { Bell, Building2, Heart, LogIn, Menu, Moon, Sun, Shield, User } from 'lucide-react'
+import { Bell, Building2, Heart, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -15,6 +15,14 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { useAppStore, type PageKey } from '@/store/use-app-store'
 import { useAuth } from '@/contexts/auth-context'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 
 const navItems: { label: string; page: PageKey }[] = [
@@ -34,15 +42,20 @@ interface SiteHeaderProps {
 export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderProps) {
   const { setTheme, resolvedTheme } = useTheme()
   const { favorites, currentPage, navigateTo } = useAppStore()
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleAuthClick = () => {
     if (user) {
-      navigateTo('admin')
+      navigateTo('adauga-proprietate')
     } else {
       navigateTo('login')
     }
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+    navigateTo('acasa')
   }
 
   const handleMobileNav = (page: PageKey) => {
@@ -107,10 +120,57 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
             <Bell className="h-5 w-5" />
           </Button>
 
-          {/* Auth / Admin */}
-          <Button variant="ghost" size="icon" className="relative" aria-label={user ? 'Admin' : 'Autentificare'} onClick={handleAuthClick}>
-            {user ? <Shield className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
-          </Button>
+          {/* Add Property button (logged in) */}
+          {user && (
+            <Button
+              variant="default"
+              size="sm"
+              className="hidden sm:flex gap-1.5 h-9"
+              onClick={() => navigateTo('adauga-proprietate')}
+            >
+              <Plus className="h-4 w-4" />
+              Adauga Proprietate
+            </Button>
+          )}
+
+          {/* Auth / User Menu */}
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative" aria-label="Meniu utilizator">
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                      {(user.user_metadata?.full_name || user.email || 'U').charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-2 py-1.5">
+                  <p className="text-sm font-medium truncate">{user.user_metadata?.full_name || 'Utilizator'}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigateTo('adauga-proprietate')} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Adauga Proprietate
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigateTo('admin')} className="gap-2">
+                  <Shield className="h-4 w-4" />
+                  Panou Admin
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="gap-2 text-destructive focus:text-destructive">
+                  <LogOut className="h-4 w-4" />
+                  Deconectare
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button variant="ghost" size="icon" className="relative" aria-label="Autentificare" onClick={() => navigateTo('login')}>
+              <LogIn className="h-5 w-5" />
+            </Button>
+          )}
 
           {/* Theme toggle */}
           <Button
@@ -186,13 +246,40 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts }: SiteHeaderPro
                 }}
               >
                 <span className="flex items-center gap-2">
-                  {user ? <Shield className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
-                  {user ? 'Admin Panel' : 'Autentificare'}
+                  {user ? (
+                    <>
+                      <Avatar className="h-5 w-5">
+                        <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                          {(user.user_metadata?.full_name || user.email || 'U').charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {user.user_metadata?.full_name || 'Contul Meu'}
+                    </>
+                  ) : (
+                    <><LogIn className="h-4 w-4" />Autentificare</>
+                  )}
                 </span>
-                {user && (
-                  <span className="text-xs text-muted-foreground truncate max-w-[120px]">{user.email}</span>
-                )}
               </button>
+              {user && (
+                <>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
+                    onClick={() => { setMobileMenuOpen(false); navigateTo('adauga-proprietate') }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Adauga Proprietate
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 mt-1"
+                    onClick={() => { setMobileMenuOpen(false); handleSignOut() }}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Deconectare
+                  </button>
+                </>
+              )}
             </SheetContent>
           </Sheet>
         </div>

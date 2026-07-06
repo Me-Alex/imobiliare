@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "next build",
-    "pages:build": "mv src/app/api src/app/_api_disabled && next build && mkdir -p .vercel/output/static && cp -r out/* .vercel/output/static/ && mv src/app/_api_disabled src/app/api || { mv src/app/_api_disabled src/app/api 2>/dev/null; exit 1; }",
+    "pages:build": "mv src/app/api src/app/_api_disabled && NEXT_PUBLIC_OUTPUT_EXPORT=1 npx next build --output export && mkdir -p .vercel/output/static && cp -r out/* .vercel/output/static/ && mv src/app/_api_disabled src/app/api || { mv src/app/_api_disabled src/app/api 2>/dev/null; exit 1; }",
     "start": "npx serve out",
     "lint": "eslint .",
     "db:push": "prisma db push",
