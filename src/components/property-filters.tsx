@@ -102,6 +102,7 @@ export function PropertyFilters() {
             variant={!selectedType ? 'default' : 'outline'}
             onClick={() => setSelectedType('')}
             className="rounded-full"
+            aria-pressed={!selectedType}
           >
             Toate
           </Button>
@@ -112,6 +113,7 @@ export function PropertyFilters() {
               variant={selectedType === type.value ? 'default' : 'outline'}
               onClick={() => setSelectedType(selectedType === type.value ? '' : type.value)}
               className="rounded-full"
+              aria-pressed={selectedType === type.value}
             >
               {type.label}
             </Button>
@@ -141,6 +143,7 @@ export function PropertyFilters() {
               className="h-9 w-9 rounded-r-none"
               onClick={() => setViewMode('grid')}
               aria-label="Vizualizare grila"
+              aria-pressed={viewMode === 'grid'}
             >
               <LayoutGrid className="h-4 w-4" />
             </Button>
@@ -150,6 +153,7 @@ export function PropertyFilters() {
               className="h-9 w-9 rounded-l-none"
               onClick={() => setViewMode('list')}
               aria-label="Vizualizare lista"
+              aria-pressed={viewMode === 'list'}
             >
               <List className="h-4 w-4" />
             </Button>
@@ -339,6 +343,7 @@ function FilterPanel({
               variant={rooms === 0 ? 'default' : 'outline'}
               className="h-9 text-xs flex-1"
               onClick={() => setRooms(0)}
+              aria-pressed={rooms === 0}
             >
               Orice
             </Button>
@@ -349,6 +354,7 @@ function FilterPanel({
                 variant={rooms === opt.value ? 'default' : 'outline'}
                 className="h-9 text-xs flex-1"
                 onClick={() => setRooms(rooms === opt.value ? 0 : opt.value)}
+                aria-pressed={rooms === opt.value}
               >
                 {opt.label}
               </Button>
