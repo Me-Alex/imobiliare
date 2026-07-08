@@ -5,13 +5,14 @@
   "scripts": {
     "dev": "TURBOPACK=false next dev -p 3000 2>&1 | tee dev.log",
     "build": "next build",
-    "pages:build": "mv src/app/api src/app/_api_disabled && NEXT_PUBLIC_OUTPUT_EXPORT=1 npx next build && mkdir -p .vercel/output/static && cp -r out/* .vercel/output/static/ && mv src/app/_api_disabled src/app/api || { mv src/app/_api_disabled src/app/api 2>/dev/null; exit 1; }",
+    "pages:build": "npx prisma generate && mv src/app/api src/app/_api_disabled && NEXT_PUBLIC_OUTPUT_EXPORT=1 npx next build && mkdir -p .vercel/output/static && cp -r out/* .vercel/output/static/ && mv src/app/_api_disabled src/app/api || (mv src/app/_api_disabled src/app/api 2>/dev/null && false)",
     "start": "npx serve out",
     "lint": "eslint .",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "postinstall": "npx prisma generate"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
