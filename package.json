@@ -8,6 +8,7 @@
     "pages:build": "mv src/app/api src/app/_api_disabled && NEXT_PUBLIC_OUTPUT_EXPORT=1 npx next build && mkdir -p .vercel/output/static && cp -r out/* .vercel/output/static/ && mv src/app/_api_disabled src/app/api || { mv src/app/_api_disabled src/app/api 2>/dev/null; exit 1; }",
     "start": "npx serve out",
     "lint": "eslint .",
+    "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
