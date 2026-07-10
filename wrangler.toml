@@ -1,6 +1,13 @@
 name = "imobiliare2"
 compatibility_date = "2026-05-17"
 
+[build]
+command = "pnpm install && pnpm run pages:build"
+watch_dir = "src"
+
+[build.environment]
+NODE_VERSION = "20"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "imobiliare-db"
