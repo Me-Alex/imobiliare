@@ -1,6 +1,9 @@
 name = "imobiliare2"
 compatibility_date = "2026-05-17"
 
+[vars]
+node_version = "20"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "imobiliare-db"
