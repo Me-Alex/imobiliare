@@ -531,3 +531,45 @@ Stage Summary:
 - Zero lint errors
 - Build passes, deployed to Cloudflare
 - Cron job was reverted (it undid the reorganization) — may need to re-add any Supabase write functions later
+---
+Task ID: 3
+Agent: main (orchestrated 8 sub-agents)
+Task: Execute full 3-phase code improvement plan
+
+Work Log:
+Phase 1 — Foundation & Security:
+- Expanded lib/constants.ts with PROPERTY_TYPES, TRANSACTIONS, CURRENCIES, SECTOARE (6), ZONES (28), MONTH_NAMES_*/DAY_NAMES_*, VIZIONARE_STATUS_CONFIG, LS_KEYS (11 keys)
+- Created lib/validators.ts with isValidEmail()
+- Expanded lib/utils.ts with formatDateRO, getWeekdayRO, isDatePast, isToday, toDateString, formatRelativeTime, getNextMonday
+- Added UserProperty interface to lib/types.ts
+- Updated 18 files to use shared imports
+- Fixed api/admin/dashboard: added Supabase auth gate
+- Fixed api/price-alerts/[id]: added auth gate
+- Added IP rate limiting to api/ai-chat (10 req/min)
+- Deleted dead api/route.ts
+
+Phase 1 — Dead Code & Shared Components:
+- Deleted 23 unused shadcn/ui components (54% of ui/ removed)
+- Removed 24 lines orphaned --sidebar-* CSS vars
+- Created PageHero component (3 variants: full/border/simple) + PageBreadcrumb
+- Updated 11 views, saved 351 lines of duplicated hero JSX
+
+Phase 2 — View Decomposition:
+- adauga-proprietate-page: 1019→302 lines (-70%)
+- documente-page: 883→585 lines (-34%)
+- programare-vizionare-page: 837→275 lines (-67%)
+- vizionarile-mele-page: 624→311 lines (-50%)
+- Fixed 2 innerHTML anti-patterns
+
+Phase 3 — Polish:
+- Created barrel index.ts for all 7+2 component sub-folders
+- Annotated globals.css with @layer component comments
+- 15 new sub-components created total
+
+Stage Summary:
+- Commit 0f4d57d pushed to GitHub
+- Cloudflare build: all stages SUCCESS
+- Live site: 200 OK
+- ~5400 lines of duplication removed across the codebase
+- 109 files changed, 28121 insertions, 6140 deletions
+- Lint: 0 errors. Build: passes.
