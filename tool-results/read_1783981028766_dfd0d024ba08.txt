@@ -1,0 +1,884 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useState, useMemo, useCallback, useRef } from 'react'
+     4→     4→import { motion, AnimatePresence } from 'framer-motion'
+     5→     5→import {
+     6→     6→  Upload, FileText, IdCard, FileSignature, FileCheck, File,
+     7→     7→  Download, Trash2, Eye, AlertCircle, CheckCircle2, X, Loader2, FolderOpen, Building2,
+     8→     8→  CalendarDays, User,
+     9→     9→} from 'lucide-react'
+    10→    10→import { Button } from '@/components/ui/button'
+    11→    11→import { Input } from '@/components/ui/input'
+    12→    12→import { Label } from '@/components/ui/label'
+    13→    13→import { Textarea } from '@/components/ui/textarea'
+    14→    14→import { Badge } from '@/components/ui/badge'
+    15→    15→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+    16→    16→import { Separator } from '@/components/ui/separator'
+    17→    17→import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+    18→    18→import { Progress } from '@/components/ui/progress'
+    19→    19→import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
+    20→    20→import { DOC_TYPE_LABELS, LS_KEYS } from '@/lib/constants'
+    21→    21→import type { UploadedDocument, Vizionare } from '@/lib/types'
+    22→    22→import { toast } from 'sonner'
+    23→    23→import { cn } from '@/lib/utils'
+    24→    24→import { PageHero } from '@/components/layout/page-hero'
+    25→    25→
+    26→    26→const LS_DOCS = LS_KEYS.DOCUMENTS
+    27→    27→const LS_VIZIONARI = LS_KEYS.VIZIONARI
+    28→    28→const LS_SELECTED_VIZIONARE = LS_KEYS.SELECTED_VIZIONARE
+    29→    29→const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+    30→    30→
+    31→    31→type DocType = UploadedDocument['docType']
+    32→    32→
+    33→    33→const DOC_TYPE_CONFIG: Array<{
+    34→    34→  type: DocType
+    35→    35→  icon: React.ElementType
+    36→    36→  color: string
+    37→    37→  bgColor: string
+    38→    38→  description: string
+    39→    39→}> = [
+    40→    40→  {
+    41→    41→    type: 'id_card',
+    42→    42→    icon: IdCard,
+    43→    43→    color: 'text-blue-600 dark:text-blue-400',
+    44→    44→    bgColor: 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800',
+    45→    45→    description: 'Copie CI/Passport',
+    46→    46→  },
+    47→    47→  {
+    48→    48→    type: 'proof_of_income',
+    49→    49→    icon: FileCheck,
+    50→    50→    color: 'text-emerald-600 dark:text-emerald-400',
+    51→    51→    bgColor: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800',
+    52→    52→    description: 'Adeverinta salariu / venit',
+    53→    53→  },
+    54→    54→  {
+    55→    55→    type: 'vizionare_sign',
+    56→    56→    icon: FileSignature,
+    57→    57→    color: 'text-amber-600 dark:text-amber-400',
+    58→    58→    bgColor: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800',
+    59→    59→    description: 'Semnatura proces-verbal vizionare',
+    60→    60→  },
+    61→    61→  {
+    62→    62→    type: 'rental_contract',
+    63→    63→    icon: FileText,
+    64→    64→    color: 'text-purple-600 dark:text-purple-400',
+    65→    65→    bgColor: 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800',
+    66→    66→    description: 'Contract de inchiriere semnat',
+    67→    67→  },
+    68→    68→  {
+    69→    69→    type: 'other',
+    70→    70→    icon: File,
+    71→    71→    color: 'text-muted-foreground',
+    72→    72→    bgColor: 'bg-muted/50 border-border',
+    73→    73→    description: 'Alte documente necesare',
+    74→    74→  },
+    75→    75→]
+    76→    76→
+    77→    77→const RENTAL_CONTRACT_TEMPLATE = `CONTRACT DE INCHIRIERE
+    78→    78→
+    79→    79→Nr. ___________ / ___________
+    80→    80→
+    81→    81→Incheiat intre:
+    82→    82→PARTILE:
+    83→    83→
+    84→    84→1. PROPRIETARUL: _______________________________
+    85→    85→   CNP: _______________________________________
+    86→    86→   Adresa: _____________________________________
+    87→    87→   Telefon: ____________________________________
+    88→    88→   E-mail: _____________________________________
+    89→    89→
+    90→    90→   denumit in continuare "PROPRIETARUL"
+    91→    91→
+    92→    92→2. LOCATARUL: __________________________________
+    93→    93→   CNP: _______________________________________
+    94→    94→   Seria/Numar CI: _____________________________
+    95→    95→   Adresa: _____________________________________
+    96→    96→   Telefon: ____________________________________
+    97→    97→   E-mail: _____________________________________
+    98→    98→
+    99→    99→   denumit in continuare "LOCATARUL"
+   100→   100→
+   101→   101→OBIECTUL CONTRACTULUI
+   102→   102→
+   103→   103→Art. 1. PROPRIETARUL inchiriaza LOCATARULUI urmatoarea proprietate:
+   104→   104→   - Adresa: ___________________________________
+   105→   105→   - Tip: Apartament / Casa / Spatiu comercial
+   106→   106→   - Suprafata: _______ mp
+   107→   107→   - Numar camere: _______
+   108→   108→
+   109→   109→Art. 2. Proprietatea este inchiriata in stare buna, curata si funcționala, echipata cu:
+   110→   110→   _______________________________________________
+   111→   111→
+   112→   112→DURATA CONTRACTULUI
+   113→   113→
+   114→   114→Art. 3. Contractul este incheiat pe o perioada de _______ luni, incepand cu data
+   115→   115→   de ___________ pana la data de ___________.
+   116→   116→
+   117→   117→CHIRIA SI GAZDUIREA
+   118→   118→
+   119→   119→Art. 4. Chiria lunara este de _______ EUR / RON, platibila in avans pana la
+   120→   120→   data de 5 a fiecarei luni, prin transfer bancar sau numerar.
+   121→   121→
+   122→   122→Art. 5. Depozitul de garantie este de _______ EUR / RON, achitat la semnarea
+   123→   123→   contractului si restituit la finalizarea acestuia, cu exceptia cazului in care
+   124→   124→   exista pagube sau datorii neachitate.
+   125→   125→
+   126→   126→Art. 6. Cheltuielile de utilitati (electricitate, gaz, apa, internet, etc.) sunt
+   127→   127→   suportate de LOCATAR.
+   128→   128→
+   129→   129→OBLIGATIILE PARTILOR
+   130→   130→
+   131→   131→Art. 7. PROPRIETARUL se obliga:
+   132→   132→   a) Sa predea proprietatea in stare buna de utilizare
+   133→   133→   b) Sa efectueze reparatiile necesare care nu sunt cauzate de LOCATAR
+   134→   134→   c) Sa respecte confidentialitatea datelor personale ale LOCATARULUI
+   135→   135→
+   136→   136→Art. 8. LOCATARUL se obliga:
+   137→   137→   a) Sa foloseasca proprietatea exclusiv in scop locativ
+   138→   138→   b) Sa plateasca chiria la timp
+   139→   139→   c) Sa mentina proprietatea in stare buna
+   140→   140→   d) Sa nu subinchirieze fara acordul scris al PROPRIETARULUI
+   141→   141→   e) Sa permita accesul PROPRIETARULUI pentru inspectii, cu preaviz de 48h
+   142→   142→
+   143→   143→REZILIEREA
+   144→   144→
+   145→   145→Art. 9. Contractul poate fi reziliat de oricare parte cu un preaviz de 30 de zile,
+   146→   146→   notificat in scris.
+   147→   147→
+   148→   148→DISPOZITII FINALE
+   149→   149→
+   150→   150→Art. 10. Orice modificari ale prezentului contract se fac prin act aditional
+   151→   151→   semnat de ambele parti.
+   152→   152→
+   153→   153→Art. 11. Litigiile se vor solutiona pe cale amiabila, iar in caz de nerezolvare,
+   154→   154→   de catre instantele judecatoresti competente.
+   155→   155→
+   156→   156→
+   157→   157→SEMNATURI:
+   158→   158→
+   159→   159→PROPRIETARUL                    LOCATARUL
+   160→   160→_______________                 _______________
+   161→   161→(Nume, Prenume)                 (Nume, Prenume)
+   162→   162→Data: ___/___/______            Data: ___/___/______
+   163→   163→`
+   164→   164→
+   165→   165→function formatUploadDate(dateStr: string): string {
+   166→   166→  return new Date(dateStr).toLocaleDateString('ro-RO', {
+   167→   167→    day: '2-digit',
+   168→   168→    month: '2-digit',
+   169→   169→    year: 'numeric',
+   170→   170→    hour: '2-digit',
+   171→   171→    minute: '2-digit',
+   172→   172→  })
+   173→   173→}
+   174→   174→
+   175→   175→function formatFileSize(bytes: number): string {
+   176→   176→  if (bytes < 1024) return `${bytes} B`
+   177→   177→  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+   178→   178→  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+   179→   179→}
+   180→   180→
+   181→   181→function base64ToBytes(base64: string): number {
+   182→   182→  // Remove data URL prefix if present
+   183→   183→  const base64Data = base64.includes(',') ? base64.split(',')[1] : base64
+   184→   184→  return Math.ceil((base64Data.length * 3) / 4)
+   185→   185→}
+   186→   186→
+   187→   187→export function DocumentePage() {
+   188→   188→  const [documents, setDocuments] = useState<UploadedDocument[]>(() => {
+   189→   189→    if (typeof window === 'undefined') return []
+   190→   190→    return loadFromLS<UploadedDocument[]>(LS_DOCS, [])
+   191→   191→  })
+   192→   192→  const [allVizionari] = useState<Vizionare[]>(() => {
+   193→   193→    if (typeof window === 'undefined') return []
+   194→   194→    return loadFromLS<Vizionare[]>(LS_VIZIONARI, [])
+   195→   195→  })
+   196→   196→  const [vizionare, setVizionare] = useState<Vizionare | null>(() => {
+   197→   197→    if (typeof window === 'undefined') return null
+   198→   198→    const selectedId = loadFromLS<string | null>(LS_SELECTED_VIZIONARE, null)
+   199→   199→    if (!selectedId) return null
+   200→   200→    const vizionari = loadFromLS<Vizionare[]>(LS_VIZIONARI, [])
+   201→   201→    return vizionari.find((v) => v.id === selectedId) ?? null
+   202→   202→  })
+   203→   203→  const [uploadingType, setUploadingType] = useState<DocType | null>(null)
+   204→   204→  const [uploadProgress, setUploadProgress] = useState(0)
+   205→   205→  const [contractSigning, setContractSigning] = useState(false)
+   206→   206→  const [mounted] = useState(() => typeof window !== 'undefined')
+   207→   207→  const fileInputRefs = useRef<Record<DocType, HTMLInputElement | null>>({
+   208→   208→    id_card: null,
+   209→   209→    proof_of_income: null,
+   210→   210→    vizionare_sign: null,
+   211→   211→    rental_contract: null,
+   212→   212→    other: null,
+   213→   213→  })
+   214→   214→
+   215→   215→  // Persist documents
+   216→   216→  const persistDocuments = useCallback((newDocs: UploadedDocument[]) => {
+   217→   217→    setDocuments(newDocs)
+   218→   218→    saveToLS(LS_DOCS, newDocs)
+   219→   219→  }, [])
+   220→   220→
+   221→   221→  // Documents for current vizionare
+   222→   222→  const currentDocs = useMemo(
+   223→   223→    () => (vizionare ? documents.filter((d) => d.vizionareId === vizionare.id) : []),
+   224→   224→    [documents, vizionare],
+   225→   225→  )
+   226→   226→
+   227→   227→  // Documents grouped by vizionare (when no vizionare selected)
+   228→   228→  const docsByVizionare = useMemo(() => {
+   229→   229→    if (vizionare) return []
+   230→   230→    const groups: Record<string, UploadedDocument[]> = {}
+   231→   231→    documents.forEach((d) => {
+   232→   232→      if (!groups[d.vizionareId]) groups[d.vizionareId] = []
+   233→   233→      groups[d.vizionareId].push(d)
+   234→   234→    })
+   235→   235→    return Object.entries(groups).map(([vizId, docs]) => {
+   236→   236→      const v = allVizionari.find((viz) => viz.id === vizId)
+   237→   237→      return {
+   238→   238→        vizionareId: vizId,
+   239→   239→        vizionare: v ?? null,
+   240→   240→        documents: docs,
+   241→   241→      }
+   242→   242→    })
+   243→   243→  }, [documents, allVizionari, vizionare])
+   244→   244→
+   245→   245→  // Check if a doc type is already uploaded for current vizionare
+   246→   246→  const uploadedTypes = useMemo(() => {
+   247→   247→    if (!vizionare) return new Set<DocType>()
+   248→   248→    return new Set(currentDocs.map((d) => d.docType))
+   249→   249→  }, [currentDocs, vizionare])
+   250→   250→
+   251→   251→  // Handle file upload
+   252→   252→  const handleFileUpload = useCallback(
+   253→   253→    (e: React.ChangeEvent<HTMLInputElement>, docType: DocType) => {
+   254→   254→      const file = e.target.files?.[0]
+   255→   255→      if (!file) return
+   256→   256→
+   257→   257→      if (!vizionare) {
+   258→   258→        toast.error('Selecteaza o vizionare pentru a incarca documente')
+   259→   259→        return
+   260→   260→      }
+   261→   261→
+   262→   262→      if (file.size > MAX_FILE_SIZE) {
+   263→   263→        toast.error('Fisier prea mare (max 5MB)')
+   264→   264→        e.target.value = ''
+   265→   265→        return
+   266→   266→      }
+   267→   267→
+   268→   268→      setUploadingType(docType)
+   269→   269→      setUploadProgress(0)
+   270→   270→
+   271→   271→      const reader = new FileReader()
+   272→   272→
+   273→   273→      // Simulate progress
+   274→   274→      const progressInterval = setInterval(() => {
+   275→   275→        setUploadProgress((prev) => {
+   276→   276→          if (prev >= 90) {
+   277→   277→            clearInterval(progressInterval)
+   278→   278→            return 90
+   279→   279→          }
+   280→   280→          return prev + Math.random() * 20 + 5
+   281→   281→        })
+   282→   282→      }, 100)
+   283→   283→
+   284→   284→      reader.onload = () => {
+   285→   285→        clearInterval(progressInterval)
+   286→   286→        setUploadProgress(100)
+   287→   287→
+   288→   288→        const base64data = reader.result as string
+   289→   289→
+   290→   290→        const newDoc: UploadedDocument = {
+   291→   291→          id: generateId(),
+   292→   292→          vizionareId: vizionare.id,
+   293→   293→          fileName: file.name,
+   294→   294→          fileType: file.type,
+   295→   295→          fileData: base64data,
+   296→   296→          filePreview: base64data,
+   297→   297→          docType,
+   298→   298→          uploadedAt: new Date().toISOString(),
+   299→   299→        }
+   300→   300→
+   301→   301→        // Replace existing doc of same type for this vizionare
+   302→   302→        const filtered = documents.filter(
+   303→   303→          (d) => !(d.vizionareId === vizionare.id && d.docType === docType),
+   304→   304→        )
+   305→   305→
+   306→   306→        setTimeout(() => {
+   307→   307→          persistDocuments([...filtered, newDoc])
+   308→   308→          setUploadingType(null)
+   309→   309→          setUploadProgress(0)
+   310→   310→          toast.success('Document incarcat cu succes!')
+   311→   311→        }, 300)
+   312→   312→      }
+   313→   313→
+   314→   314→      reader.onerror = () => {
+   315→   315→        clearInterval(progressInterval)
+   316→   316→        setUploadingType(null)
+   317→   317→        setUploadProgress(0)
+   318→   318→        toast.error('Eroare la incarcarea fisierului')
+   319→   319→      }
+   320→   320→
+   321→   321→      reader.readAsDataURL(file)
+   322→   322→      e.target.value = ''
+   323→   323→    },
+   324→   324→    [vizionare, documents, persistDocuments],
+   325→   325→  )
+   326→   326→
+   327→   327→  // View/Download document
+   328→   328→  const handleViewDocument = (doc: UploadedDocument) => {
+   329→   329→    const safeName = doc.fileName.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+   330→   330→    const isImage = doc.fileType.startsWith('image/')
+   331→   331→    const isPdf = doc.fileType === 'application/pdf'
+   332→   332→    const win = window.open('')
+   333→   333→    if (win) {
+   334→   334→      if (isPdf) {
+   335→   335→        win.document.write(`
+   336→   336→          <!DOCTYPE html><html><head><title>${safeName}</title></head>
+   337→   337→          <body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;">
+   338→   338→            <iframe src="${doc.filePreview}" style="width:100%;height:100vh;border:none;"></iframe>
+   339→   339→          </body></html>`)
+   340→   340→      } else if (isImage) {
+   341→   341→        win.document.write(`
+   342→   342→          <!DOCTYPE html><html><head><title>${safeName}</title></head>
+   343→   343→          <body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;">
+   344→   344→            <img src="${doc.filePreview}" style="max-width:100%;max-height:100vh;" alt="${safeName}" />
+   345→   345→          </body></html>`)
+   346→   346→      } else {
+   347→   347→        win.document.write(`
+   348→   348→          <!DOCTYPE html><html><head><title>${safeName}</title></head>
+   349→   349→          <body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;">
+   350→   350→            <p style="font-family:sans-serif;color:#666;">Previzualizare nu este disponibila pentru acest tip de fisier.</p>
+   351→   351→          </body></html>`)
+   352→   352→      }
+   353→   353→      win.document.close()
+   354→   354→    }
+   355→   355→  }
+   356→   356→
+   357→   357→  // Download document
+   358→   358→  const handleDownloadDocument = (doc: UploadedDocument) => {
+   359→   359→    const link = document.createElement('a')
+   360→   360→    link.href = doc.filePreview
+   361→   361→    link.download = doc.fileName
+   362→   362→    document.body.appendChild(link)
+   363→   363→    link.click()
+   364→   364→    document.body.removeChild(link)
+   365→   365→  }
+   366→   366→
+   367→   367→  // Delete document
+   368→   368→  const handleDeleteDocument = (docId: string) => {
+   369→   369→    persistDocuments(documents.filter((d) => d.id !== docId))
+   370→   370→    toast.success('Document sters')
+   371→   371→  }
+   372→   372→
+   373→   373→  // Download contract template
+   374→   374→  const handleDownloadContract = () => {
+   375→   375→    let contractText = RENTAL_CONTRACT_TEMPLATE
+   376→   376→
+   377→   377→    if (vizionare) {
+   378→   378→      contractText = contractText.replace(
+   379→   379→        '   - Adresa: ___________________________________',
+   380→   380→        `   - Adresa: ${vizionare.propertyTitle}`,
+   381→   381→      )
+   382→   382→    }
+   383→   383→
+   384→   384→    const blob = new Blob([contractText], { type: 'text/plain;charset=utf-8' })
+   385→   385→    const url = URL.createObjectURL(blob)
+   386→   386→    const link = document.createElement('a')
+   387→   387→    link.href = url
+   388→   388→    link.download = `contract_inchiriere_${vizionare?.id ?? 'template'}.txt`
+   389→   389→    document.body.appendChild(link)
+   390→   390→    link.click()
+   391→   391→    document.body.removeChild(link)
+   392→   392→    URL.revokeObjectURL(url)
+   393→   393→    toast.success('Contract descarcat!')
+   394→   394→  }
+   395→   395→
+   396→   396→  // Sign & upload contract
+   397→   397→  const handleSignContract = () => {
+   398→   398→    setContractSigning(true)
+   399→   399→    // Trigger file input for rental_contract type
+   400→   400→    setTimeout(() => {
+   401→   401→      fileInputRefs.current.rental_contract?.click()
+   402→   402→      setContractSigning(false)
+   403→   403→    }, 100)
+   404→   404→  }
+   405→   405→
+   406→   406→  // Select a vizionare from the grouped list
+   407→   407→  const handleSelectVizionare = (vizId: string) => {
+   408→   408→    saveToLS(LS_SELECTED_VIZIONARE, vizId)
+   409→   409→    const found = allVizionari.find((v) => v.id === vizId) ?? null
+   410→   410→    setVizionare(found)
+   411→   411→    window.scrollTo({ top: 0, behavior: 'smooth' })
+   412→   412→  }
+   413→   413→
+   414→   414→  // Back to all documents
+   415→   415→  const handleBackToAll = () => {
+   416→   416→    saveToLS(LS_SELECTED_VIZIONARE, null)
+   417→   417→    setVizionare(null)
+   418→   418→  }
+   419→   419→
+   420→   420→  if (!mounted) return null
+   421→   421→
+   422→   422→  return (
+   423→   423→    <>
+   424→   424→      <PageHero
+   425→   425→        icon={FileText}
+   426→   426→        title="Documente"
+   427→   427→        description="Incarca si gestioneaza documentele necesare pentru vizionari si contracte"
+   428→   428→        breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Documente' }]}
+   429→   429→      />
+   430→   430→
+   431→   431→      {/* Main Content */}
+   432→   432→      <section className="py-12">
+   433→   433→        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+   434→   434→
+   435→   435→          {/* No vizionare selected — show all docs grouped */}
+   436→   436→          {!vizionare ? (
+   437→   437→            <motion.div
+   438→   438→              initial={{ opacity: 0, y: 12 }}
+   439→   439→              animate={{ opacity: 1, y: 0 }}
+   440→   440→              transition={{ delay: 0.1 }}
+   441→   441→            >
+   442→   442→              <div className="flex items-center gap-2 mb-4">
+   443→   443→                <FolderOpen className="h-5 w-5 text-muted-foreground" />
+   444→   444→                <h2 className="text-lg font-semibold">Toate Documentele</h2>
+   445→   445→                <Badge variant="secondary" className="ml-1">
+   446→   446→                  {documents.length}
+   447→   447→                </Badge>
+   448→   448→              </div>
+   449→   449→
+   450→   450→              {docsByVizionare.length === 0 ? (
+   451→   451→                <Card className="border-dashed">
+   452→   452→                  <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+   453→   453→                    <FileText className="h-12 w-12 text-muted-foreground/40 mb-3" />
+   454→   454→                    <p className="text-muted-foreground font-medium">Nu exista documente incarcate</p>
+   455→   455→                    <p className="text-sm text-muted-foreground/70 mt-1">
+   456→   456→                      Selecteaza o vizionare din sectiunea de programari pentru a incarca documente
+   457→   457→                    </p>
+   458→   458→                  </CardContent>
+   459→   459→                </Card>
+   460→   460→              ) : (
+   461→   461→                <div className="space-y-4">
+   462→   462→                  {docsByVizionare.map((group) => (
+   463→   463→                    <Card key={group.vizionareId} className="hover:shadow-md transition-shadow">
+   464→   464→                      <CardHeader
+   465→   465→                        className="cursor-pointer pb-3"
+   466→   466→                        onClick={() => handleSelectVizionare(group.vizionareId)}
+   467→   467→                      >
+   468→   468→                        <div className="flex items-center justify-between">
+   469→   469→                          <div className="flex items-center gap-3">
+   470→   470→                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+   471→   471→                              <Building2 className="h-5 w-5" />
+   472→   472→                            </div>
+   473→   473→                            <div>
+   474→   474→                              <CardTitle className="text-base">
+   475→   475→                                {group.vizionare?.propertyTitle ?? 'Vizionare stearsa'}
+   476→   476→                              </CardTitle>
+   477→   477→                              {group.vizionare && (
+   478→   478→                                <CardDescription className="text-xs">
+   479→   479→                                  <CalendarDays className="h-3 w-3 inline mr-1" />
+   480→   480→                                  {group.vizionare.date} · {group.vizionare.startTime}–{group.vizionare.endTime}
+   481→   481→                                  {' · '}
+   482→   482→                                  <User className="h-3 w-3 inline mr-1" />
+   483→   483→                                  {group.vizionare.staffName}
+   484→   484→                                </CardDescription>
+   485→   485→                              )}
+   486→   486→                            </div>
+   487→   487→                          </div>
+   488→   488→                          <Badge variant="secondary">{group.documents.length} doc</Badge>
+   489→   489→                        </div>
+   490→   490→                      </CardHeader>
+   491→   491→                      <CardContent className="pt-0">
+   492→   492→                        <div className="flex flex-wrap gap-2">
+   493→   493→                          {group.documents.map((doc) => (
+   494→   494→                            <div
+   495→   495→                              key={doc.id}
+   496→   496→                              className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-1.5"
+   497→   497→                            >
+   498→   498→                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+   499→   499→                              <span className="text-xs font-medium">{DOC_TYPE_LABELS[doc.docType]}</span>
+   500→   500→                              <span className="text-[10px] text-muted-foreground">{doc.fileName}</span>
+   501→   501→                              <button
+   502→   502→                                onClick={(e) => {
+   503→   503→                                  e.stopPropagation()
+   504→   504→                                  handleViewDocument(doc)
+   505→   505→                                }}
+   506→   506→                                className="text-muted-foreground hover:text-foreground"
+   507→   507→                                aria-label={`Vezi ${doc.fileName}`}
+   508→   508→                              >
+   509→   509→                                <Eye className="h-3.5 w-3.5" />
+   510→   510→                              </button>
+   511→   511→                            </div>
+   512→   512→                          ))}
+   513→   513→                        </div>
+   514→   514→                      </CardContent>
+   515→   515→                    </Card>
+   516→   516→                  ))}
+   517→   517→                </div>
+   518→   518→              )}
+   519→   519→            </motion.div>
+   520→   520→          ) : (
+   521→   521→            /* Vizionare selected — show upload section + docs */
+   522→   522→            <>
+   523→   523→              {/* Vizionare context bar */}
+   524→   524→              <motion.div
+   525→   525→                initial={{ opacity: 0, y: 12 }}
+   526→   526→                animate={{ opacity: 1, y: 0 }}
+   527→   527→                transition={{ delay: 0.1 }}
+   528→   528→                className="glass-card rounded-xl p-4 mb-6"
+   529→   529→              >
+   530→   530→                <div className="flex items-center justify-between">
+   531→   531→                  <div className="flex items-center gap-3">
+   532→   532→                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+   533→   533→                      <Building2 className="h-5 w-5" />
+   534→   534→                    </div>
+   535→   535→                    <div>
+   536→   536→                      <h2 className="font-semibold text-sm">{vizionare.propertyTitle}</h2>
+   537→   537→                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
+   538→   538→                        <span className="flex items-center gap-1">
+   539→   539→                          <CalendarDays className="h-3 w-3" />
+   540→   540→                          {vizionare.date}, {vizionare.startTime}–{vizionare.endTime}
+   541→   541→                        </span>
+   542→   542→                        <span className="flex items-center gap-1">
+   543→   543→                          <User className="h-3 w-3" />
+   544→   544→                          {vizionare.staffName}
+   545→   545→                        </span>
+   546→   546→                        <Badge
+   547→   547→                          variant="outline"
+   548→   548→                          className={cn(
+   549→   549→                            'text-[10px] px-1.5 py-0',
+   550→   550→                            vizionare.status === 'completed' && 'border-emerald-200 text-emerald-600 bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:bg-emerald-950/30',
+   551→   551→                            vizionare.status === 'confirmed' && 'border-blue-200 text-blue-600 bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:bg-blue-950/30',
+   552→   552→                            vizionare.status === 'pending' && 'border-amber-200 text-amber-600 bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:bg-amber-950/30',
+   553→   553→                            vizionare.status === 'cancelled' && 'border-red-200 text-red-600 bg-red-50 dark:border-red-800 dark:text-red-400 dark:bg-red-950/30',
+   554→   554→                          )}
+   555→   555→                        >
+   556→   556→                          {vizionare.status === 'pending' && 'In asteptare'}
+   557→   557→                          {vizionare.status === 'confirmed' && 'Confirmata'}
+   558→   558→                          {vizionare.status === 'completed' && 'Finalizata'}
+   559→   559→                          {vizionare.status === 'cancelled' && 'Anulata'}
+   560→   560→                        </Badge>
+   561→   561→                      </div>
+   562→   562→                    </div>
+   563→   563→                  </div>
+   564→   564→                  <Button variant="ghost" size="sm" onClick={handleBackToAll}>
+   565→   565→                    <X className="h-4 w-4 mr-1" />
+   566→   566→                    Inapoi
+   567→   567→                  </Button>
+   568→   568→                </div>
+   569→   569→              </motion.div>
+   570→   570→
+   571→   571→              {/* Document Upload Section */}
+   572→   572→              <motion.div
+   573→   573→                initial={{ opacity: 0, y: 12 }}
+   574→   574→                animate={{ opacity: 1, y: 0 }}
+   575→   575→                transition={{ delay: 0.15 }}
+   576→   576→                className="mb-8"
+   577→   577→              >
+   578→   578→                <div className="flex items-center gap-2 mb-4">
+   579→   579→                  <Upload className="h-5 w-5 text-muted-foreground" />
+   580→   580→                  <h2 className="text-lg font-semibold">Incarca Documente</h2>
+   581→   581→                </div>
+   582→   582→
+   583→   583→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   584→   584→                  {DOC_TYPE_CONFIG.map((config) => {
+   585→   585→                    const isUploaded = uploadedTypes.has(config.type)
+   586→   586→                    const isUploading = uploadingType === config.type
+   587→   587→                    const Icon = config.icon
+   588→   588→
+   589→   589→                    return (
+   590→   590→                      <div key={config.type}>
+   591→   591→                        <input
+   592→   592→                          ref={(el) => { fileInputRefs.current[config.type] = el }}
+   593→   593→                          type="file"
+   594→   594→                          accept="image/*,.pdf,.doc,.docx"
+   595→   595→                          className="hidden"
+   596→   596→                          onChange={(e) => handleFileUpload(e, config.type)}
+   597→   597→                          aria-label={`Incarca ${DOC_TYPE_LABELS[config.type]}`}
+   598→   598→                        />
+   599→   599→                        <button
+   600→   600→                          onClick={() => fileInputRefs.current[config.type]?.click()}
+   601→   601→                          disabled={isUploading}
+   602→   602→                          className={cn(
+   603→   603→                            'w-full rounded-xl border-2 border-dashed p-4 text-left transition-all duration-200 relative overflow-hidden',
+   604→   604→                            config.bgColor,
+   605→   605→                            isUploaded
+   606→   606→                              ? 'border-solid cursor-default'
+   607→   607→                              : 'hover:shadow-md hover:scale-[1.01] cursor-pointer active:scale-[0.99]',
+   608→   608→                            isUploading && 'pointer-events-none opacity-80',
+   609→   609→                          )}
+   610→   610→                        >
+   611→   611→                          {/* Upload progress overlay */}
+   612→   612→                          <AnimatePresence>
+   613→   613→                            {isUploading && (
+   614→   614→                              <motion.div
+   615→   615→                                initial={{ opacity: 0 }}
+   616→   616→                                animate={{ opacity: 1 }}
+   617→   617→                                exit={{ opacity: 0 }}
+   618→   618→                                className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center z-10"
+   619→   619→                              >
+   620→   620→                                <div className="flex flex-col items-center gap-2 w-3/4">
+   621→   621→                                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+   622→   622→                                  <Progress value={uploadProgress} className="h-1.5" />
+   623→   623→                                  <span className="text-xs text-muted-foreground">Se incarca...</span>
+   624→   624→                                </div>
+   625→   625→                              </motion.div>
+   626→   626→                            )}
+   627→   627→                          </AnimatePresence>
+   628→   628→
+   629→   629→                          <div className="flex items-center gap-3">
+   630→   630→                            <div className={cn(
+   631→   631→                              'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+   632→   632→                              isUploaded ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-background/80',
+   633→   633→                            )}>
+   634→   634→                              {isUploaded ? (
+   635→   635→                                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+   636→   636→                              ) : (
+   637→   637→                                <Icon className={cn('h-5 w-5', config.color)} />
+   638→   638→                              )}
+   639→   639→                            </div>
+   640→   640→                            <div className="min-w-0">
+   641→   641→                              <p className="text-sm font-medium truncate">{DOC_TYPE_LABELS[config.type]}</p>
+   642→   642→                              <p className="text-xs text-muted-foreground truncate">{config.description}</p>
+   643→   643→                              {isUploaded && (
+   644→   644→                                <Badge variant="outline" className="mt-1 text-[10px] border-emerald-200 text-emerald-600 bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:bg-emerald-950/30">
+   645→   645→                                  Incarcat
+   646→   646→                                </Badge>
+   647→   647→                              )}
+   648→   648→                            </div>
+   649→   649→                          </div>
+   650→   650→                        </button>
+   651→   651→                      </div>
+   652→   652→                    )
+   653→   653→                  })}
+   654→   654→                </div>
+   655→   655→
+   656→   656→                <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5">
+   657→   657→                  <AlertCircle className="h-3 w-3" />
+   658→   658→                  Dimensiune maxima: 5MB per fisier. Formate acceptate: imagine, PDF, DOC.
+   659→   659→                </p>
+   660→   660→              </motion.div>
+   661→   661→
+   662→   662→              {/* Rental Contract Section — shown when completed */}
+   663→   663→              {vizionare.status === 'completed' && (
+   664→   664→                <motion.div
+   665→   665→                  initial={{ opacity: 0, y: 12 }}
+   666→   666→                  animate={{ opacity: 1, y: 0 }}
+   667→   667→                  transition={{ delay: 0.2 }}
+   668→   668→                  className="mb-8"
+   669→   669→                >
+   670→   670→                  <div className="flex items-center gap-2 mb-4">
+   671→   671→                    <FileSignature className="h-5 w-5 text-muted-foreground" />
+   672→   672→                    <h2 className="text-lg font-semibold">Contract de Inchiriere</h2>
+   673→   673→                  </div>
+   674→   674→
+   675→   675→                  <Card className="overflow-hidden">
+   676→   676→                    <CardHeader className="pb-3">
+   677→   677→                      <CardTitle className="text-base">Sabloan Contract</CardTitle>
+   678→   678→                      <CardDescription>
+   679→   679→                        Descarca sablonul, semneaza-l, apoi incarca versiunea semnata
+   680→   680→                      </CardDescription>
+   681→   681→                    </CardHeader>
+   682→   682→                    <CardContent className="space-y-4">
+   683→   683→                      {/* Contract preview */}
+   684→   684→                      <div className="rounded-lg border bg-muted/30 p-4 max-h-64 overflow-y-auto">
+   685→   685→                        <pre className="text-[11px] leading-relaxed text-muted-foreground font-mono whitespace-pre-wrap">
+   686→   686→                          {RENTAL_CONTRACT_TEMPLATE.slice(0, 800)}...
+   687→   687→                        </pre>
+   688→   688→                      </div>
+   689→   689→
+   690→   690→                      <div className="flex flex-wrap gap-3">
+   691→   691→                        <Button variant="outline" onClick={handleDownloadContract}>
+   692→   692→                          <Download className="h-4 w-4 mr-1.5" />
+   693→   693→                          Descarca Contract
+   694→   694→                        </Button>
+   695→   695→                        <Button onClick={handleSignContract} disabled={contractSigning}>
+   696→   696→                          {contractSigning ? (
+   697→   697→                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+   698→   698→                          ) : (
+   699→   699→                            <FileSignature className="h-4 w-4 mr-1.5" />
+   700→   700→                          )}
+   701→   701→                          Semneaza si Incarca
+   702→   702→                        </Button>
+   703→   703→                      </div>
+   704→   704→                    </CardContent>
+   705→   705→                  </Card>
+   706→   706→                </motion.div>
+   707→   707→              )}
+   708→   708→
+   709→   709→              {/* Uploaded Documents List */}
+   710→   710→              <motion.div
+   711→   711→                initial={{ opacity: 0, y: 12 }}
+   712→   712→                animate={{ opacity: 1, y: 0 }}
+   713→   713→                transition={{ delay: 0.25 }}
+   714→   714→              >
+   715→   715→                <div className="flex items-center gap-2 mb-4">
+   716→   716→                  <FileText className="h-5 w-5 text-muted-foreground" />
+   717→   717→                  <h2 className="text-lg font-semibold">Documente Incarcate</h2>
+   718→   718→                  <Badge variant="secondary" className="ml-1">
+   719→   719→                    {currentDocs.length}
+   720→   720→                  </Badge>
+   721→   721→                </div>
+   722→   722→
+   723→   723→                {currentDocs.length === 0 ? (
+   724→   724→                  <Card className="border-dashed">
+   725→   725→                    <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+   726→   726→                      <Upload className="h-10 w-10 text-muted-foreground/40 mb-3" />
+   727→   727→                      <p className="text-muted-foreground font-medium text-sm">
+   728→   728→                        Selecteaza o vizionare pentru a incarca documente
+   729→   729→                      </p>
+   730→   730→                    </CardContent>
+   731→   731→                  </Card>
+   732→   732→                ) : (
+   733→   733→                  <Card>
+   734→   734→                    <CardContent className="p-0">
+   735→   735→                      {/* Desktop table */}
+   736→   736→                      <div className="hidden sm:block overflow-x-auto">
+   737→   737→                        <table className="w-full">
+   738→   738→                          <thead>
+   739→   739→                            <tr className="border-b bg-muted/30">
+   740→   740→                              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
+   741→   741→                                Document
+   742→   742→                              </th>
+   743→   743→                              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
+   744→   744→                                Tip
+   745→   745→                              </th>
+   746→   746→                              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
+   747→   747→                                Dimensiune
+   748→   748→                              </th>
+   749→   749→                              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
+   750→   750→                                Data
+   751→   751→                              </th>
+   752→   752→                              <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
+   753→   753→                                Actiuni
+   754→   754→                              </th>
+   755→   755→                            </tr>
+   756→   756→                          </thead>
+   757→   757→                          <tbody className="divide-y">
+   758→   758→                            {currentDocs.map((doc) => {
+   759→   759→                              const config = DOC_TYPE_CONFIG.find((c) => c.type === doc.docType)
+   760→   760→                              const Icon = config?.icon ?? File
+   761→   761→                              const fileSize = base64ToBytes(doc.fileData)
+   762→   762→
+   763→   763→                              return (
+   764→   764→                                <tr key={doc.id} className="hover:bg-muted/30 transition-colors">
+   765→   765→                                  <td className="px-4 py-3">
+   766→   766→                                    <div className="flex items-center gap-2.5">
+   767→   767→                                      <div className={cn(
+   768→   768→                                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
+   769→   769→                                        config?.bgColor ?? 'bg-muted',
+   770→   770→                                      )}>
+   771→   771→                                        <Icon className={cn('h-4 w-4', config?.color ?? 'text-muted-foreground')} />
+   772→   772→                                      </div>
+   773→   773→                                      <div className="min-w-0">
+   774→   774→                                        <p className="text-sm font-medium truncate max-w-[200px]">{doc.fileName}</p>
+   775→   775→                                        <p className="text-[10px] text-muted-foreground">{doc.fileType}</p>
+   776→   776→                                      </div>
+   777→   777→                                    </div>
+   778→   778→                                  </td>
+   779→   779→                                  <td className="px-4 py-3">
+   780→   780→                                    <Badge variant="outline" className="text-[11px]">
+   781→   781→                                      {DOC_TYPE_LABELS[doc.docType]}
+   782→   782→                                    </Badge>
+   783→   783→                                  </td>
+   784→   784→                                  <td className="px-4 py-3">
+   785→   785→                                    <span className="text-sm text-muted-foreground">{formatFileSize(fileSize)}</span>
+   786→   786→                                  </td>
+   787→   787→                                  <td className="px-4 py-3">
+   788→   788→                                    <span className="text-sm text-muted-foreground">
+   789→   789→                                      {formatUploadDate(doc.uploadedAt)}
+   790→   790→                                    </span>
+   791→   791→                                  </td>
+   792→   792→                                  <td className="px-4 py-3 text-right">
+   793→   793→                                    <div className="flex items-center justify-end gap-1">
+   794→   794→                                      <Button
+   795→   795→                                        variant="ghost"
+   796→   796→                                        size="sm"
+   797→   797→                                        onClick={() => handleViewDocument(doc)}
+   798→   798→                                        className="h-8 w-8 p-0"
+   799→   799→                                        aria-label="Vezi document"
+   800→   800→                                      >
+   801→   801→                                        <Eye className="h-4 w-4" />
+   802→   802→                                      </Button>
+   803→   803→                                      <Button
+   804→   804→                                        variant="ghost"
+   805→   805→                                        size="sm"
+   806→   806→                                        onClick={() => handleDownloadDocument(doc)}
+   807→   807→                                        className="h-8 w-8 p-0"
+   808→   808→                                        aria-label="Descarca document"
+   809→   809→                                      >
+   810→   810→                                        <Download className="h-4 w-4" />
+   811→   811→                                      </Button>
+   812→   812→                                      <Button
+   813→   813→                                        variant="ghost"
+   814→   814→                                        size="sm"
+   815→   815→                                        onClick={() => handleDeleteDocument(doc.id)}
+   816→   816→                                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+   817→   817→                                        aria-label="Sterge document"
+   818→   818→                                      >
+   819→   819→                                        <Trash2 className="h-4 w-4" />
+   820→   820→                                      </Button>
+   821→   821→                                    </div>
+   822→   822→                                  </td>
+   823→   823→                                </tr>
+   824→   824→                              )
+   825→   825→                            })}
+   826→   826→                          </tbody>
+   827→   827→                        </table>
+   828→   828→                      </div>
+   829→   829→
+   830→   830→                      {/* Mobile cards */}
+   831→   831→                      <div className="sm:hidden divide-y">
+   832→   832→                        {currentDocs.map((doc) => {
+   833→   833→                          const config = DOC_TYPE_CONFIG.find((c) => c.type === doc.docType)
+   834→   834→                          const Icon = config?.icon ?? File
+   835→   835→                          const fileSize = base64ToBytes(doc.fileData)
+   836→   836→
+   837→   837→                          return (
+   838→   838→                            <div key={doc.id} className="flex items-center justify-between p-4 gap-3">
+   839→   839→                              <div className="flex items-center gap-3 min-w-0">
+   840→   840→                                <div className={cn(
+   841→   841→                                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+   842→   842→                                  config?.bgColor ?? 'bg-muted',
+   843→   843→                                )}>
+   844→   844→                                  <Icon className={cn('h-5 w-5', config?.color ?? 'text-muted-foreground')} />
+   845→   845→                                </div>
+   846→   846→                                <div className="min-w-0">
+   847→   847→                                  <p className="text-sm font-medium truncate">{doc.fileName}</p>
+   848→   848→                                  <div className="flex items-center gap-2 mt-0.5">
+   849→   849→                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+   850→   850→                                      {DOC_TYPE_LABELS[doc.docType]}
+   851→   851→                                    </Badge>
+   852→   852→                                    <span className="text-[10px] text-muted-foreground">{formatFileSize(fileSize)}</span>
+   853→   853→                                  </div>
+   854→   854→                                  <p className="text-[10px] text-muted-foreground mt-0.5">
+   855→   855→                                    {formatUploadDate(doc.uploadedAt)}
+   856→   856→                                  </p>
+   857→   857→                                </div>
+   858→   858→                              </div>
+   859→   859→                              <div className="flex items-center gap-0.5 shrink-0">
+   860→   860→                                <Button variant="ghost" size="sm" onClick={() => handleViewDocument(doc)} className="h-8 w-8 p-0" aria-label="Vezi">
+   861→   861→                                  <Eye className="h-4 w-4" />
+   862→   862→                                </Button>
+   863→   863→                                <Button variant="ghost" size="sm" onClick={() => handleDownloadDocument(doc)} className="h-8 w-8 p-0" aria-label="Descarca">
+   864→   864→                                  <Download className="h-4 w-4" />
+   865→   865→                                </Button>
+   866→   866→                                <Button variant="ghost" size="sm" onClick={() => handleDeleteDocument(doc.id)} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" aria-label="Sterge">
+   867→   867→                                  <Trash2 className="h-4 w-4" />
+   868→   868→                                </Button>
+   869→   869→                              </div>
+   870→   870→                            </div>
+   871→   871→                          )
+   872→   872→                        })}
+   873→   873→                      </div>
+   874→   874→                    </CardContent>
+   875→   875→                  </Card>
+   876→   876→                )}
+   877→   877→              </motion.div>
+   878→   878→            </>
+   879→   879→          )}
+   880→   880→        </div>
+   881→   881→      </section>
+   882→   882→    </>
+   883→   883→  )
+   884→   884→}

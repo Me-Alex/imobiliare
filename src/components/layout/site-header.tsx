@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import { LS_KEYS } from '@/lib/constants'
 
 const navItems: { label: string; page: PageKey }[] = [
   { label: 'Acasa', page: 'acasa' },
@@ -40,7 +41,7 @@ function NotificationsBadge() {
   useEffect(() => {
     const update = () => {
       try {
-        const raw = localStorage.getItem('hqs_notifications')
+        const raw = localStorage.getItem(LS_KEYS.NOTIFICATIONS)
         const notifs = raw ? JSON.parse(raw) : []
         setCount(Array.isArray(notifs) ? notifs.filter((n: { read: boolean }) => !n.read).length : 0)
       } catch {

@@ -7,10 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { useAppStore, type PageKey } from '@/store/use-app-store'
+import { isValidEmail } from '@/lib/validators'
 
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
+
 
 const quickLinks: { label: string; page: PageKey }[] = [
   { label: 'Acasa', page: 'acasa' },

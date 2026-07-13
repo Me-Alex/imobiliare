@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useZones } from '@/hooks/use-properties'
+import { isValidEmail } from '@/lib/validators'
 
 const propertyTypes = [
   { label: 'Apartament', value: 'APARTMENT' },
@@ -105,8 +106,7 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!email.trim() || !emailRegex.test(email.trim())) {
+    if (!email.trim() || !isValidEmail(email.trim())) {
       toast.error('Te rugam introdu o adresa de email valida.')
       return
     }

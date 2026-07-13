@@ -8,15 +8,16 @@ import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { loadFromLS } from '@/lib/storage'
-import type { Vizionare } from '@/lib/types'
+import { LS_KEYS } from '@/lib/constants'
+import type { Vizionare, UserProperty, UploadedDocument } from '@/lib/types'
 
 export function DashboardPage() {
   const { user } = useAuth()
   const navigateTo = useAppStore((s) => s.navigateTo)
 
-  const properties = useMemo(() => loadFromLS<Array<Record<string, unknown>>>('hqs_user_properties', []), [])
-  const vizionari = useMemo(() => loadFromLS<Array<Vizionare>>('hqs_vizionari', []), [])
-  const documents = useMemo(() => loadFromLS<Array<Record<string, unknown>>>('hqs_documents', []), [])
+  const properties = useMemo(() => loadFromLS<UserProperty[]>(LS_KEYS.USER_PROPERTIES, []), [])
+  const vizionari = useMemo(() => loadFromLS<Array<Vizionare>>(LS_KEYS.VIZIONARI, []), [])
+  const documents = useMemo(() => loadFromLS<Array<UploadedDocument>>(LS_KEYS.DOCUMENTS, []), [])
 
   const activeVizionari = vizionari.filter(v => v.status === 'pending' || v.status === 'confirmed')
 
@@ -146,19 +147,19 @@ export function DashboardPage() {
             ) : (
               <div className="space-y-3 max-h-72 overflow-y-auto">
                 {properties.slice(-3).reverse().map((prop) => (
-                  <div key={prop.id as string} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
+                  <div key={prop.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
                     <div className="h-12 w-12 rounded-lg bg-primary/5 flex items-center justify-center shrink-0 overflow-hidden">
                       {prop.cover_url ? (
-                        <img src={prop.cover_url as string} alt="" className="h-full w-full object-cover" />
+                        <img src={prop.cover_url} alt="" className="h-full w-full object-cover" />
                       ) : (
                         <Building2 className="h-5 w-5 text-primary/50" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{prop.title as string}</p>
-                      <p className="text-xs text-muted-foreground">{prop.zone as string}{prop.sector ? `, ${prop.sector}` : ''}</p>
+                      <p className="text-sm font-medium truncate">{prop.title}</p>
+                      <p className="text-xs text-muted-foreground">{prop.zone ?? ''}{prop.sector ? `, ${prop.sector}` : ''}</p>
                       <span className="text-sm font-semibold text-primary">
-                        {Number(prop.price).toLocaleString('ro-RO')} {prop.currency as string}
+                        {Number(prop.price ?? 0).toLocaleString('ro-RO')} {prop.currency ?? ''}
                       </span>
                     </div>
                   </div>

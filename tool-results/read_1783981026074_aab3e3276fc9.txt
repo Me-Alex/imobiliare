@@ -1,0 +1,1019 @@
+     1→'use client'
+     2→
+     3→import { useState, useRef, type FormEvent, useCallback, useEffect } from 'react'
+     4→import { motion, AnimatePresence } from 'framer-motion'
+     5→import {
+     6→  Plus, Loader2, MapPin, Building2, Ruler,
+     7→  BedDouble, Bath, Calendar, Euro, Tag, ImagePlus, X, Check,
+     8→  ArrowLeft, Eye, EyeOff, Upload, User, Trash2, Clock, List, Camera, Pencil
+     9→} from 'lucide-react'
+    10→import { Button } from '@/components/ui/button'
+    11→import { Input } from '@/components/ui/input'
+    12→import { Label } from '@/components/ui/label'
+    13→import { Textarea } from '@/components/ui/textarea'
+    14→import { Badge } from '@/components/ui/badge'
+    15→import { Separator } from '@/components/ui/separator'
+    16→import {
+    17→  Select,
+    18→  SelectContent,
+    19→  SelectItem,
+    20→  SelectTrigger,
+    21→  SelectValue,
+    22→} from '@/components/ui/select'
+    23→import { Switch } from '@/components/ui/switch'
+    24→import { useAuth } from '@/contexts/auth-context'
+    25→import { useAppStore } from '@/store/use-app-store'
+    26→import { supabase } from '@/lib/supabase'
+    27→import { toast } from 'sonner'
+    28→import { EditPropertyDialog } from '@/components/property/edit-property-dialog'
+    29→import { PageHero } from '@/components/layout/page-hero'
+    30→import { PROPERTY_TYPES, TRANSACTIONS, CURRENCIES, SECTOARE, ZONES, LS_KEYS } from '@/lib/constants'
+    31→import type { UserProperty } from '@/lib/types'
+    32→
+    33→interface PropertyFormData {
+    34→  title: string
+    35→  description: string
+    36→  type: string
+    37→  transaction: string
+    38→  price: string
+    39→  currency: string
+    40→  areaSqm: string
+    41→  rooms: string
+    42→  bathrooms: string
+    43→  floor: string
+    44→  totalFloors: string
+    45→  yearBuilt: string
+    46→  address: string
+    47→  zone: string
+    48→  sector: string
+    49→  featured: boolean
+    50→  coverUrl: string
+    51→  galleryUrls: string[]
+    52→}
+    53→
+    54→function ImageUploader({ urls, onChange }: { urls: string[]; onChange: (urls: string[]) => void }) {
+    55→  const [isDragging, setIsDragging] = useState(false)
+    56→  const [isReading, setIsReading] = useState(false)
+    57→  const [showUrlInput, setShowUrlInput] = useState(false)
+    58→  const [urlInput, setUrlInput] = useState('')
+    59→  const fileInputRef = useRef<HTMLInputElement>(null)
+    60→  const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB raw input
+    61→  const MAX_IMAGES = 15
+    62→  const MAX_DIMENSION = 1280 // max width/height in px
+    63→  const JPEG_QUALITY = 0.75
+    64→
+    65→  const compressImage = useCallback((file: File): Promise<string> => {
+    66→    return new Promise((resolve, reject) => {
+    67→      const reader = new FileReader()
+    68→      reader.onload = (e) => {
+    69→        const img = new Image()
+    70→        img.onload = () => {
+    71→          const canvas = document.createElement('canvas')
+    72→          let { width, height } = img
+    73→          if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+    74→            if (width > height) {
+    75→              height = Math.round((height * MAX_DIMENSION) / width)
+    76→              width = MAX_DIMENSION
+    77→            } else {
+    78→              width = Math.round((width * MAX_DIMENSION) / height)
+    79→              height = MAX_DIMENSION
+    80→            }
+    81→          }
+    82→          canvas.width = width
+    83→          canvas.height = height
+    84→          const ctx = canvas.getContext('2d')
+    85→          if (!ctx) { reject(new Error('Canvas not supported')); return }
+    86→          ctx.drawImage(img, 0, 0, width, height)
+    87→          resolve(canvas.toDataURL('image/jpeg', JPEG_QUALITY))
+    88→        }
+    89→        img.onerror = () => reject(new Error('Failed to load image'))
+    90→        img.src = e.target?.result as string
+    91→      }
+    92→      reader.onerror = () => reject(new Error('Failed to read file'))
+    93→      reader.readAsDataURL(file)
+    94→    })
+    95→  }, [])
+    96→
+    97→  const readFilesAsDataUrls = useCallback(async (files: FileList | File[]) => {
+    98→    const fileArray = Array.from(files)
+    99→    if (urls.length + fileArray.length > MAX_IMAGES) {
+   100→      toast.error(`Maximum ${MAX_IMAGES} imagini permise`)
+   101→      return
+   102→    }
+   103→    for (const file of fileArray) {
+   104→      if (file.size > MAX_FILE_SIZE) {
+   105→        toast.error(`"${file.name}" depaseste 10MB`)
+   106→        return
+   107→      }
+   108→    }
+   109→    setIsReading(true)
+   110→    try {
+   111→      const results = await Promise.all(
+   112→        fileArray.map(async (file) => {
+   113→          try {
+   114→            return await compressImage(file)
+   115→          } catch {
+   116→            toast.error(`Eroare la procesarea "${file.name}"`)
+   117→            return null
+   118→          }
+   119→        })
+   120→      )
+   121→      const validResults = results.filter((r): r is string => r !== null)
+   122→      if (validResults.length > 0) {
+   123→        onChange([...urls, ...validResults])
+   124→      }
+   125→    } finally {
+   126→      setIsReading(false)
+   127→    }
+   128→  }, [urls, onChange, compressImage])
+   129→
+   130→  const handleDragOver = useCallback((e: React.DragEvent) => {
+   131→    e.preventDefault()
+   132→    e.stopPropagation()
+   133→    setIsDragging(true)
+   134→  }, [])
+   135→
+   136→  const handleDragLeave = useCallback((e: React.DragEvent) => {
+   137→    e.preventDefault()
+   138→    e.stopPropagation()
+   139→    setIsDragging(false)
+   140→  }, [])
+   141→
+   142→  const handleDrop = useCallback((e: React.DragEvent) => {
+   143→    e.preventDefault()
+   144→    e.stopPropagation()
+   145→    setIsDragging(false)
+   146→    const files = e.dataTransfer.files
+   147→    if (files.length > 0) {
+   148→      readFilesAsDataUrls(files)
+   149→    }
+   150→  }, [readFilesAsDataUrls])
+   151→
+   152→  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+   153→    const files = e.target.files
+   154→    if (files && files.length > 0) {
+   155→      readFilesAsDataUrls(files)
+   156→    }
+   157→    e.target.value = ''
+   158→  }, [readFilesAsDataUrls])
+   159→
+   160→  const addUrl = () => {
+   161→    const trimmed = urlInput.trim()
+   162→    if (trimmed && !urls.includes(trimmed)) {
+   163→      if (urls.length >= MAX_IMAGES) {
+   164→        toast.error(`Maximum ${MAX_IMAGES} imagini permise`)
+   165→        return
+   166→      }
+   167→      onChange([...urls, trimmed])
+   168→      setUrlInput('')
+   169→    }
+   170→  }
+   171→
+   172→  const removeUrl = (index: number) => {
+   173→    onChange(urls.filter((_, i) => i !== index))
+   174→  }
+   175→
+   176→  return (
+   177→    <div className="space-y-3">
+   178→      {/* Drop zone */}
+   179→      <div
+   180→        role="button"
+   181→        tabIndex={0}
+   182→        onClick={() => fileInputRef?.click()}
+   183→        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef?.click() }}
+   184→        onDragOver={handleDragOver}
+   185→        onDragLeave={handleDragLeave}
+   186→        onDrop={handleDrop}
+   187→        className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 transition-all cursor-pointer select-none
+   188→          ${isDragging
+   189→            ? 'border-primary bg-primary/5 scale-[1.01]'
+   190→            : 'border-border hover:border-primary/50 hover:bg-muted/30'
+   191→          }
+   192→          ${isReading ? 'pointer-events-none opacity-70' : ''}
+   193→        `}
+   194→      >
+   195→        {isReading ? (
+   196→          <motion.div
+   197→            initial={{ opacity: 0 }}
+   198→            animate={{ opacity: 1 }}
+   199→            className="flex flex-col items-center gap-2"
+   200→          >
+   201→            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+   202→            <span className="text-sm text-muted-foreground">Se proceseaza...</span>
+   203→          </motion.div>
+   204→        ) : (
+   205→          <>
+   206→            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+   207→              <Camera className="h-6 w-6 text-muted-foreground" />
+   208→            </div>
+   209→            <div className="text-center">
+   210→              <p className="text-sm font-medium">Trage fotografii aici</p>
+   211→              <p className="text-xs text-muted-foreground mt-0.5">sau</p>
+   212→            </div>
+   213→            <Button type="button" variant="outline" size="sm" className="pointer-events-none">
+   214→              <Upload className="h-4 w-4 mr-2" />
+   215→              Alege Fotografii
+   216→            </Button>
+   217→            <p className="text-[11px] text-muted-foreground">PNG, JPG, WebP — max 10MB/fisier, {MAX_IMAGES} imagini. Imaginile sunt redimensionate automat.</p>
+   218→          </>
+   219→        )}
+   220→      </div>
+   221→
+   222→      <input
+   223→        ref={fileInputRef}
+   224→        type="file"
+   225→        accept="image/*"
+   226→        multiple
+   227→        className="hidden"
+   228→        onChange={handleFileSelect}
+   229→      />
+   230→
+   231→      {/* Thumbnail grid */}
+   232→      <AnimatePresence>
+   233→        {urls.length > 0 && (
+   234→          <motion.div
+   235→            initial={{ opacity: 0, height: 0 }}
+   236→            animate={{ opacity: 1, height: 'auto' }}
+   237→            exit={{ opacity: 0, height: 0 }}
+   238→          >
+   239→            <div className="flex flex-wrap gap-2">
+   240→              {urls.map((url, i) => (
+   241→                <motion.div
+   242→                  key={`${url.slice(0, 60)}-${i}`}
+   243→                  initial={{ opacity: 0, scale: 0.9 }}
+   244→                  animate={{ opacity: 1, scale: 1 }}
+   245→                  exit={{ opacity: 0, scale: 0.9 }}
+   246→                  className="relative group"
+   247→                >
+   248→                  <div className="h-20 w-20 rounded-lg overflow-hidden border border-border">
+   249→                    <img
+   250→                      src={url}
+   251→                      alt={`Poza ${i + 1}`}
+   252→                      className="h-full w-full object-cover"
+   253→                      onError={(e) => { (e.target as HTMLImageElement).src = '' }}
+   254→                    />
+   255→                  </div>
+   256→                  <button
+   257→                    type="button"
+   258→                    onClick={() => removeUrl(i)}
+   259→                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+   260→                    aria-label={`Sterge poza ${i + 1}`}
+   261→                  >
+   262→                    <X className="h-3 w-3" />
+   263→                  </button>
+   264→                  {i === 0 && (
+   265→                    <Badge className="absolute bottom-0.5 left-0.5 text-[8px] px-1 h-3.5 bg-primary">Cover</Badge>
+   266→                  )}
+   267→                </motion.div>
+   268→              ))}
+   269→            </div>
+   270→          </motion.div>
+   271→        )}
+   272→      </AnimatePresence>
+   273→
+   274→      {/* URL fallback */}
+   275→      <div className="text-center">
+   276→        <button
+   277→          type="button"
+   278→          onClick={() => setShowUrlInput((v) => !v)}
+   279→          className="text-xs text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+   280→        >
+   281→          <ImagePlus className="h-3 w-3" />
+   282→          {showUrlInput ? 'Ascunde' : 'sau adauga prin link'}
+   283→        </button>
+   284→      </div>
+   285→
+   286→      <AnimatePresence>
+   287→        {showUrlInput && (
+   288→          <motion.div
+   289→            initial={{ opacity: 0, height: 0 }}
+   290→            animate={{ opacity: 1, height: 'auto' }}
+   291→            exit={{ opacity: 0, height: 0 }}
+   292→            className="overflow-hidden"
+   293→          >
+   294→            <div className="flex gap-2">
+   295→              <div className="relative flex-1">
+   296→                <ImagePlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   297→                <Input
+   298→                  placeholder="https://exemplu.ro/imagine.jpg"
+   299→                  value={urlInput}
+   300→                  onChange={(e) => setUrlInput(e.target.value)}
+   301→                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addUrl() } }}
+   302→                  className="pl-10 h-10"
+   303→                />
+   304→              </div>
+   305→              <Button type="button" variant="outline" size="sm" onClick={addUrl} disabled={!urlInput.trim()}>
+   306→                <Plus className="h-4 w-4" />
+   307→              </Button>
+   308→            </div>
+   309→          </motion.div>
+   310→        )}
+   311→      </AnimatePresence>
+   312→
+   313→      <p className="text-xs text-muted-foreground">Prima imagine va fi folosita ca coperta.</p>
+   314→    </div>
+   315→  )
+   316→}
+   317→
+   318→function generateSlug(title: string): string {
+   319→  const roMap: Record<string, string> = {
+   320→    'ă': 'a', 'â': 'a', 'î': 'i', 'ș': 's', 'ț': 't',
+   321→    'Ă': 'a', 'Â': 'a', 'Î': 'i', 'Ș': 's', 'Ț': 't',
+   322→  }
+   323→  return title
+   324→    .toLowerCase()
+   325→    .split('')
+   326→    .map((c) => roMap[c] || c)
+   327→    .replace(/[^a-z0-9]+/g, '-')
+   328→    .replace(/^-|-$/g, '')
+   329→    + '-' + Date.now().toString(36)
+   330→}
+   331→
+   332→export function AdaugaProprietatePage() {
+   333→  const { user, loading: authLoading } = useAuth()
+   334→  const navigateTo = useAppStore((s) => s.navigateTo)
+   335→  const [isSubmitting, setIsSubmitting] = useState(false)
+   336→  const [previewMode, setPreviewMode] = useState(false)
+   337→  const [submittedCount, setSubmittedCount] = useState(0)
+   338→  const [myProperties, setMyProperties] = useState<Array<UserProperty>>([])
+   339→  const [showMyProps, setShowMyProps] = useState(false)
+   340→  const [editProperty, setEditProperty] = useState<UserProperty | null>(null)
+   341→  const [editOpen, setEditOpen] = useState(false)
+   342→
+   343→  const [form, setForm] = useState<PropertyFormData>({
+   344→    title: '', description: '', type: '', transaction: 'VANZARE',
+   345→    price: '', currency: 'EUR', areaSqm: '', rooms: '', bathrooms: '',
+   346→    floor: '', totalFloors: '', yearBuilt: '', address: '',
+   347→    zone: '', sector: '', featured: false, coverUrl: '', galleryUrls: [],
+   348→  })
+   349→
+   350→  const updateField = useCallback(<K extends keyof PropertyFormData>(key: K, value: PropertyFormData[K]) => {
+   351→    setForm((prev) => ({ ...prev, [key]: value }))
+   352→  }, [])
+   353→
+   354→  const loadMyProperties = useCallback(() => {
+   355→    try {
+   356→      const stored = JSON.parse(localStorage.getItem(LS_KEYS.USER_PROPERTIES) || '[]')
+   357→      setMyProperties(stored)
+   358→    } catch { setMyProperties([]) }
+   359→  }, [])
+   360→
+   361→  useEffect(() => { loadMyProperties() }, [loadMyProperties])
+   362→
+   363→  const deleteProperty = useCallback((id: string) => {
+   364→    const stored = JSON.parse(localStorage.getItem(LS_KEYS.USER_PROPERTIES) || '[]')
+   365→    const filtered = stored.filter((p: UserProperty) => p.id !== id)
+   366→    localStorage.setItem(LS_KEYS.USER_PROPERTIES, JSON.stringify(filtered))
+   367→    setMyProperties(filtered)
+   368→    toast.success('Proprietate stearsa')
+   369→  }, [])
+   370→
+   371→  const handleSubmit = async (e: FormEvent) => {
+   372→    e.preventDefault()
+   373→    if (!user) return
+   374→
+   375→    setIsSubmitting(true)
+   376→    try {
+   377→      const slug = generateSlug(form.title)
+   378→      const pricePerSqm = form.price && form.areaSqm
+   379→        ? (parseFloat(form.price) / parseFloat(form.areaSqm)).toFixed(0)
+   380→        : null
+   381→
+   382→      // Separate base64 images from URL images
+   383→      const base64Images = form.galleryUrls.filter(u => u.startsWith('data:'))
+   384→      const urlImages = form.galleryUrls.filter(u => !u.startsWith('data:'))
+   385→
+   386→      const newProp = {
+   387→        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+   388→        title: form.title,
+   389→        slug,
+   390→        description: form.description,
+   391→        type: form.type,
+   392→        transaction: form.transaction,
+   393→        price: parseFloat(form.price) || 0,
+   394→        currency: form.currency,
+   395→        area_sqm: parseFloat(form.areaSqm) || 0,
+   396→        rooms: parseInt(form.rooms) || 0,
+   397→        bathrooms: parseInt(form.bathrooms) || 0,
+   398→        floor: form.floor ? parseInt(form.floor) : null,
+   399→        total_floors: form.totalFloors ? parseInt(form.totalFloors) : null,
+   400→        year_built: form.yearBuilt ? parseInt(form.yearBuilt) : null,
+   401→        address: form.address,
+   402→        zone: form.zone,
+   403→        sector: form.sector,
+   404→        city: 'Bucuresti',
+   405→        featured: form.featured,
+   406→        cover_url: form.galleryUrls[0] || form.coverUrl || '',
+   407→        gallery_urls: JSON.stringify(form.galleryUrls),
+   408→        price_per_sqm: pricePerSqm ? parseFloat(pricePerSqm) : null,
+   409→        status: 'PUBLISHED' as const,
+   410→        user_id: user.id,
+   411→        user_email: user.email || '',
+   412→        user_name: user.user_metadata?.full_name || user.email || '',
+   413→        created_at: new Date().toISOString(),
+   414→      }
+   415→
+   416→      // Save to localStorage FIRST (always works, instant)
+   417→      let stored: UserProperty[] = []
+   418→      try {
+   419→        stored = JSON.parse(localStorage.getItem(LS_KEYS.USER_PROPERTIES) || '[]')
+   420→        if (!Array.isArray(stored)) stored = []
+   421→      } catch {
+   422→        // Corrupted data — reset
+   423→        stored = []
+   424→      }
+   425→      stored.push(newProp)
+   426→      try {
+   427→        localStorage.setItem(LS_KEYS.USER_PROPERTIES, JSON.stringify(stored))
+   428→      } catch {
+   429→        toast.error('Spatiu de stocare plin', {
+   430→          description: 'Imaginile sunt prea mari. Incearca cu mai putine imagini sau imagini mai mici.',
+   431→        })
+   432→        setIsSubmitting(false)
+   433→        return
+   434→      }
+   435→
+   436→      // Try Supabase in background (only if configured AND no base64 images to avoid payload limits)
+   437→      const hasSupabaseConfig = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+   438→      if (hasSupabaseConfig && base64Images.length === 0) {
+   439→        const supabaseData = { ...newProp }
+   440→        supabase.from('user_properties').insert([supabaseData]).then(({ error }) => {
+   441→          if (error) console.warn('Supabase save skipped:', error.message)
+   442→        }).catch(() => {
+   443→          // Silently ignore — localStorage already saved
+   444→        })
+   445→      }
+   446→
+   447→      toast.success('Proprietate adaugata cu succes!', {
+   448→        description: `"${form.title}" este acum publica pe platforma.`,
+   449→      })
+   450→      setSubmittedCount((c) => c + 1)
+   451→      loadMyProperties()
+   452→      // Reset form
+   453→      setForm({
+   454→        title: '', description: '', type: '', transaction: 'VANZARE',
+   455→        price: '', currency: 'EUR', areaSqm: '', rooms: '', bathrooms: '',
+   456→        floor: '', totalFloors: '', yearBuilt: '', address: '',
+   457→        zone: '', sector: '', featured: false, coverUrl: '', galleryUrls: [],
+   458→      })
+   459→    } catch (err) {
+   460→      const msg = err instanceof Error ? err.message : 'Eroare necunoscuta'
+   461→      console.error('Submit error:', err)
+   462→      toast.error('Eroare la salvare', { description: msg })
+   463→    } finally {
+   464→      setIsSubmitting(false)
+   465→    }
+   466→  }
+   467→
+   468→  // Auth guard
+   469→  if (!authLoading && !user) {
+   470→    return (
+   471→      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center py-12 px-4">
+   472→        <motion.div
+   473→          initial={{ opacity: 0, y: 20 }}
+   474→          animate={{ opacity: 1, y: 0 }}
+   475→          className="glass-card rounded-2xl p-8 text-center max-w-md"
+   476→        >
+   477→          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
+   478→            <User className="h-7 w-7" />
+   479→          </div>
+   480→          <h2 className="text-xl font-bold mb-2">Autentifica-te</h2>
+   481→          <p className="text-sm text-muted-foreground mb-6">
+   482→            Trebuie sa fii autentificat pentru a adauga proprietati.
+   483→          </p>
+   484→          <Button onClick={() => navigateTo('login')} className="gap-2">
+   485→            Autentifica-te
+   486→            <ArrowLeft className="h-4 w-4 rotate-180" />
+   487→          </Button>
+   488→        </motion.div>
+   489→      </div>
+   490→    )
+   491→  }
+   492→
+   493→  if (authLoading) {
+   494→    return (
+   495→      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
+   496→        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+   497→      </div>
+   498→    )
+   499→  }
+   500→
+   501→  if (previewMode) {
+   502→    return (
+   503→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+   504→        <div className="flex items-center justify-between mb-6">
+   505→          <button onClick={() => setPreviewMode(false)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+   506→            <ArrowLeft className="h-4 w-4" />
+   507→            Inapoi la formular
+   508→          </button>
+   509→          <Button variant="outline" size="sm" onClick={() => setPreviewMode(false)}>
+   510→            <EyeOff className="h-4 w-4 mr-1.5" />
+   511→            Ascunde Preview
+   512→          </Button>
+   513→        </div>
+   514→        <motion.div
+   515→          initial={{ opacity: 0, y: 10 }}
+   516→          animate={{ opacity: 1, y: 0 }}
+   517→          className="glass-card rounded-2xl overflow-hidden"
+   518→        >
+   519→          {form.galleryUrls.length > 0 ? (
+   520→            <div className="h-64 sm:h-80 bg-muted">
+   521→              <img src={form.galleryUrls[0]} alt={form.title} className="h-full w-full object-cover" />
+   522→            </div>
+   523→          ) : (
+   524→            <div className="h-48 bg-muted/50 flex items-center justify-center">
+   525→              <p className="text-muted-foreground text-sm">Nicio imagine adaugata</p>
+   526→            </div>
+   527→          )}
+   528→          <div className="p-6 space-y-4">
+   529→            <div className="flex items-start justify-between gap-4">
+   530→              <div>
+   531→                <div className="flex gap-2 mb-2">
+   532→                  <Badge variant="outline">{form.type || 'Tip ne_specificat'}</Badge>
+   533→                  <Badge>{form.transaction === 'INCHIRIERE' ? 'Inchiriere' : 'Vanzare'}</Badge>
+   534→                  {form.featured && <Badge className="bg-amber-500 text-white border-0">Featured</Badge>}
+   535→                </div>
+   536→                <h2 className="text-xl font-bold">{form.title || 'Titlu proprietate'}</h2>
+   537→              </div>
+   538→              <p className="text-2xl font-bold text-primary whitespace-nowrap">
+   539→                {form.price ? `${parseFloat(form.price).toLocaleString('ro-RO')} ${form.currency}` : 'Pret nesetat'}
+   540→                {form.transaction === 'INCHIRIERE' && form.price ? '/luna' : ''}
+   541→              </p>
+   542→            </div>
+   543→            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+   544→              {form.areaSqm && <span className="flex items-center gap-1"><Ruler className="h-4 w-4" />{form.areaSqm} m²</span>}
+   545→              {form.rooms && <span className="flex items-center gap-1"><BedDouble className="h-4 w-4" />{form.rooms} camere</span>}
+   546→              {form.bathrooms && <span className="flex items-center gap-1"><Bath className="h-4 w-4" />{form.bathrooms} bai</span>}
+   547→              {form.yearBuilt && <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />{form.yearBuilt}</span>}
+   548→            </div>
+   549→            <Separator />
+   550→            <p className="text-sm text-muted-foreground leading-relaxed">
+   551→              {form.description || 'Descriere ne specificata...'}
+   552→            </p>
+   553→            <div className="flex flex-wrap gap-2">
+   554→              {form.zone && <Badge variant="secondary" className="gap-1"><MapPin className="h-3 w-3" />{form.zone}</Badge>}
+   555→              {form.sector && <Badge variant="secondary">{form.sector}</Badge>}
+   556→              {form.address && <Badge variant="secondary">{form.address}</Badge>}
+   557→            </div>
+   558→          </div>
+   559→        </motion.div>
+   560→      </div>
+   561→    )
+   562→  }
+   563→
+   564→  return (
+   565→    <div className="min-h-screen">
+   566→      <PageHero
+   567→        variant="border"
+   568→        icon={Plus}
+   569→        title="Adauga Proprietate"
+   570→        description={`Publica o proprietate noua pe HQS Imobiliare${user ? ` (${user.email})` : ''}`}
+   571→        breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Adauga Proprietate' }]}
+   572→      >
+   573→        <div className="flex items-center gap-2">
+   574→          {myProperties.length > 0 && (
+   575→            <Button variant="outline" size="sm" onClick={() => setShowMyProps(!showMyProps)} className="gap-1.5">
+   576→              <List className="h-4 w-4" />
+   577→              Proprietatile Mele ({myProperties.length})
+   578→            </Button>
+   579→          )}
+   580→          <Button variant="outline" size="sm" onClick={() => setPreviewMode(true)}>
+   581→            <Eye className="h-4 w-4 mr-1.5" />
+   582→            Preview
+   583→          </Button>
+   584→          {submittedCount > 0 && (
+   585→            <Badge variant="secondary" className="gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+   586→              <Check className="h-3 w-3" />
+   587→              {submittedCount} publicate
+   588→            </Badge>
+   589→          )}
+   590→        </div>
+   591→      </PageHero>
+   592→
+   593→      {/* My Properties List */}
+   594→      <AnimatePresence>
+   595→        {showMyProps && myProperties.length > 0 && (
+   596→          <motion.section
+   597→            initial={{ opacity: 0, height: 0 }}
+   598→            animate={{ opacity: 1, height: 'auto' }}
+   599→            exit={{ opacity: 0, height: 0 }}
+   600→            className="overflow-hidden"
+   601→          >
+   602→            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
+   603→              <div className="glass-card rounded-xl p-4">
+   604→                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+   605→                  <Building2 className="h-4 w-4 text-primary" />
+   606→                  Proprietatile tale ({myProperties.length})
+   607→                </h3>
+   608→                <div className="space-y-2 max-h-64 overflow-y-auto">
+   609→                  {myProperties.map((prop) => (
+   610→                    <div key={prop.id as string} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group">
+   611→                      <div className="flex items-center gap-3 min-w-0 flex-1">
+   612→                        <div className="h-12 w-12 rounded-lg bg-primary/5 flex items-center justify-center shrink-0 overflow-hidden">
+   613→                          {prop.cover_url ? (
+   614→                            <img src={prop.cover_url as string} alt="" className="h-full w-full object-cover" />
+   615→                          ) : (
+   616→                            <Building2 className="h-5 w-5 text-primary/50" />
+   617→                          )}
+   618→                        </div>
+   619→                        <div className="min-w-0">
+   620→                          <p className="text-sm font-medium truncate">{prop.title as string}</p>
+   621→                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+   622→                            <span>{prop.zone as string}{prop.sector ? `, ${prop.sector}` : ''}</span>
+   623→                            <span>·</span>
+   624→                            <span className="font-semibold text-foreground">
+   625→                              {Number(prop.price).toLocaleString('ro-RO')} {prop.currency as string}
+   626→                            </span>
+   627→                            {prop.transaction === 'INCHIRIERE' && <span>/luna</span>}
+   628→                          </div>
+   629→                        </div>
+   630→                      </div>
+   631→                      <div className="flex items-center gap-1 shrink-0">
+   632→                        <Badge variant="outline" className="text-[10px]">{prop.type as string}</Badge>
+   633→                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+   634→                          <Clock className="h-3 w-3" />
+   635→                          {new Date(prop.created_at as string).toLocaleDateString('ro-RO')}
+   636→                        </span>
+   637→                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary" onClick={() => { setEditProperty(prop); setEditOpen(true) }}>
+   638→                          <Pencil className="h-3.5 w-3.5" />
+   639→                        </Button>
+   640→                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => deleteProperty(prop.id as string)}>
+   641→                          <Trash2 className="h-3.5 w-3.5" />
+   642→                        </Button>
+   643→                      </div>
+   644→                    </div>
+   645→                  ))}
+   646→                </div>
+   647→              </div>
+   648→            </div>
+   649→          </motion.section>
+   650→        )}
+   651→      </AnimatePresence>
+   652→
+   653→      {/* Form */}
+   654→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+   655→        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+   656→          {/* Main Form - 2 columns */}
+   657→          <div className="lg:col-span-2 space-y-8">
+   658→            {/* Basic Info */}
+   659→            <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6 space-y-5">
+   660→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   661→                <Tag className="h-5 w-5 text-primary" />
+   662→                Informatii de Baza
+   663→              </h2>
+   664→
+   665→              <div className="space-y-2">
+   666→                <Label htmlFor="title">Titlu *</Label>
+   667→                <Input
+   668→                  id="title"
+   669→                  placeholder="Apartament 3 camere in Dorobanti, decomandat"
+   670→                  value={form.title}
+   671→                  onChange={(e) => updateField('title', e.target.value)}
+   672→                  className="h-11"
+   673→                  required
+   674→                />
+   675→              </div>
+   676→
+   677→              <div className="space-y-2">
+   678→                <Label htmlFor="description">Descriere *</Label>
+   679→                <Textarea
+   680→                  id="description"
+   681→                  placeholder="Descrie proprietatea detaliat: finisaje, dotari, vecinatate, acces transport etc."
+   682→                  value={form.description}
+   683→                  onChange={(e) => updateField('description', e.target.value)}
+   684→                  className="min-h-[120px] resize-y"
+   685→                  required
+   686→                />
+   687→              </div>
+   688→
+   689→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   690→                <div className="space-y-2">
+   691→                  <Label>Tip Proprietate *</Label>
+   692→                  <Select value={form.type} onValueChange={(v) => updateField('type', v)} required>
+   693→                    <SelectTrigger className="h-11">
+   694→                      <SelectValue placeholder="Selecteaza tipul" />
+   695→                    </SelectTrigger>
+   696→                    <SelectContent>
+   697→                      {PROPERTY_TYPES.map((t) => (
+   698→                        <SelectItem key={t} value={t}>{t}</SelectItem>
+   699→                      ))}
+   700→                    </SelectContent>
+   701→                  </Select>
+   702→                </div>
+   703→
+   704→                <div className="space-y-2">
+   705→                  <Label>Tranzactie *</Label>
+   706→                  <Select value={form.transaction} onValueChange={(v) => updateField('transaction', v)}>
+   707→                    <SelectTrigger className="h-11">
+   708→                      <SelectValue />
+   709→                    </SelectTrigger>
+   710→                    <SelectContent>
+   711→                      {TRANSACTIONS.map((t) => (
+   712→                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+   713→                      ))}
+   714→                    </SelectContent>
+   715→                  </Select>
+   716→                </div>
+   717→              </div>
+   718→            </motion.section>
+   719→
+   720→            {/* Pricing & Size */}
+   721→            <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card rounded-2xl p-6 space-y-5">
+   722→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   723→                <Euro className="h-5 w-5 text-primary" />
+   724→                Pret si Dimensiuni
+   725→              </h2>
+   726→
+   727→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   728→                <div className="space-y-2">
+   729→                  <Label htmlFor="price">Pret *</Label>
+   730→                  <div className="relative">
+   731→                    <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   732→                    <Input
+   733→                      id="price"
+   734→                      type="number"
+   735→                      min="0"
+   736→                      step="1000"
+   737→                      placeholder="95000"
+   738→                      value={form.price}
+   739→                      onChange={(e) => updateField('price', e.target.value)}
+   740→                      className="pl-10 h-11"
+   741→                      required
+   742→                    />
+   743→                  </div>
+   744→                </div>
+   745→                <div className="space-y-2">
+   746→                  <Label>Moneda</Label>
+   747→                  <Select value={form.currency} onValueChange={(v) => updateField('currency', v)}>
+   748→                    <SelectTrigger className="h-11">
+   749→                      <SelectValue />
+   750→                    </SelectTrigger>
+   751→                    <SelectContent>
+   752→                      {CURRENCIES.map((c) => (
+   753→                        <SelectItem key={c} value={c}>{c}</SelectItem>
+   754→                      ))}
+   755→                    </SelectContent>
+   756→                  </Select>
+   757→                </div>
+   758→                <div className="space-y-2">
+   759→                  <Label htmlFor="area">Suprafata (m²) *</Label>
+   760→                  <div className="relative">
+   761→                    <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   762→                    <Input
+   763→                      id="area"
+   764→                      type="number"
+   765→                      min="1"
+   766→                      placeholder="75"
+   767→                      value={form.areaSqm}
+   768→                      onChange={(e) => updateField('areaSqm', e.target.value)}
+   769→                      className="pl-10 h-11"
+   770→                      required
+   771→                    />
+   772→                  </div>
+   773→                </div>
+   774→              </div>
+   775→
+   776→              {form.price && form.areaSqm && parseFloat(form.price) > 0 && parseFloat(form.areaSqm) > 0 && (
+   777→                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
+   778→                  <span className="text-sm text-muted-foreground">Pret/mp:</span>
+   779→                  <span className="text-sm font-semibold text-primary">
+   780→                    {Math.round(parseFloat(form.price) / parseFloat(form.areaSqm)).toLocaleString('ro-RO')} {form.currency}/m²
+   781→                  </span>
+   782→                </div>
+   783→              )}
+   784→            </motion.section>
+   785→
+   786→            {/* Rooms & Details */}
+   787→            <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card rounded-2xl p-6 space-y-5">
+   788→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   789→                <Building2 className="h-5 w-5 text-primary" />
+   790→                Detalii Imobil
+   791→              </h2>
+   792→
+   793→              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+   794→                <div className="space-y-2">
+   795→                  <Label htmlFor="rooms">Camere *</Label>
+   796→                  <div className="relative">
+   797→                    <BedDouble className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   798→                    <Input
+   799→                      id="rooms"
+   800→                      type="number"
+   801→                      min="0"
+   802→                      placeholder="3"
+   803→                      value={form.rooms}
+   804→                      onChange={(e) => updateField('rooms', e.target.value)}
+   805→                      className="pl-10 h-11"
+   806→                      required
+   807→                    />
+   808→                  </div>
+   809→                </div>
+   810→                <div className="space-y-2">
+   811→                  <Label htmlFor="bathrooms">Bai</Label>
+   812→                  <div className="relative">
+   813→                    <Bath className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   814→                    <Input
+   815→                      id="bathrooms"
+   816→                      type="number"
+   817→                      min="0"
+   818→                      placeholder="1"
+   819→                      value={form.bathrooms}
+   820→                      onChange={(e) => updateField('bathrooms', e.target.value)}
+   821→                      className="pl-10 h-11"
+   822→                    />
+   823→                  </div>
+   824→                </div>
+   825→                <div className="space-y-2">
+   826→                  <Label htmlFor="floor">Etaj</Label>
+   827→                  <Input
+   828→                    id="floor"
+   829→                    type="number"
+   830→                    min="0"
+   831→                    placeholder="3"
+   832→                    value={form.floor}
+   833→                    onChange={(e) => updateField('floor', e.target.value)}
+   834→                    className="h-11"
+   835→                  />
+   836→                </div>
+   837→                <div className="space-y-2">
+   838→                  <Label htmlFor="yearBuilt">An Constructie</Label>
+   839→                  <div className="relative">
+   840→                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   841→                    <Input
+   842→                      id="yearBuilt"
+   843→                      type="number"
+   844→                      min="1900"
+   845→                      max={new Date().getFullYear()}
+   846→                      placeholder="2020"
+   847→                      value={form.yearBuilt}
+   848→                      onChange={(e) => updateField('yearBuilt', e.target.value)}
+   849→                      className="pl-10 h-11"
+   850→                    />
+   851→                  </div>
+   852→                </div>
+   853→              </div>
+   854→            </motion.section>
+   855→
+   856→            {/* Location */}
+   857→            <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card rounded-2xl p-6 space-y-5">
+   858→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   859→                <MapPin className="h-5 w-5 text-primary" />
+   860→                Locatie
+   861→              </h2>
+   862→
+   863→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   864→                <div className="space-y-2">
+   865→                  <Label>Sector *</Label>
+   866→                  <Select value={form.sector} onValueChange={(v) => updateField('sector', v)} required>
+   867→                    <SelectTrigger className="h-11">
+   868→                      <SelectValue placeholder="Selecteaza sectorul" />
+   869→                    </SelectTrigger>
+   870→                    <SelectContent>
+   871→                      {SECTOARE.map((s) => (
+   872→                        <SelectItem key={s} value={s}>{s}</SelectItem>
+   873→                      ))}
+   874→                    </SelectContent>
+   875→                  </Select>
+   876→                </div>
+   877→                <div className="space-y-2">
+   878→                  <Label>Zona *</Label>
+   879→                  <Select value={form.zone} onValueChange={(v) => updateField('zone', v)} required>
+   880→                    <SelectTrigger className="h-11">
+   881→                      <SelectValue placeholder="Selecteaza zona" />
+   882→                    </SelectTrigger>
+   883→                    <SelectContent>
+   884→                      {ZONES.map((z) => (
+   885→                        <SelectItem key={z} value={z}>{z}</SelectItem>
+   886→                      ))}
+   887→                    </SelectContent>
+   888→                  </Select>
+   889→                </div>
+   890→              </div>
+   891→
+   892→              <div className="space-y-2">
+   893→                <Label htmlFor="address">Adresa exacta</Label>
+   894→                <Input
+   895→                  id="address"
+   896→                  placeholder="Str. Example nr. 10, Bl. A3, Sc. 2, Et. 4, Ap. 12"
+   897→                  value={form.address}
+   898→                  onChange={(e) => updateField('address', e.target.value)}
+   899→                  className="h-11"
+   900→                />
+   901→              </div>
+   902→            </motion.section>
+   903→
+   904→            {/* Images */}
+   905→            <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card rounded-2xl p-6 space-y-5">
+   906→              <h2 className="text-lg font-semibold flex items-center gap-2">
+   907→                <Upload className="h-5 w-5 text-primary" />
+   908→                Imagini
+   909→              </h2>
+   910→              <ImageUploader
+   911→                urls={form.galleryUrls}
+   912→                onChange={(urls) => updateField('galleryUrls', urls)}
+   913→              />
+   914→            </motion.section>
+   915→          </div>
+   916→
+   917→          {/* Sidebar */}
+   918→          <div className="space-y-6">
+   919→            {/* Submit Card */}
+   920→            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6 sticky top-24">
+   921→              <div className="space-y-4">
+   922→                <div className="flex items-center justify-between">
+   923→                  <span className="text-sm font-medium">Proprietate Evidentiata</span>
+   924→                  <Switch
+   925→                    checked={form.featured}
+   926→                    onCheckedChange={(v) => updateField('featured', v)}
+   927→                    aria-label="Marcheaza ca featured"
+   928→                  />
+   929→                </div>
+   930→                {form.featured && (
+   931→                  <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg p-2.5">
+   932→                    Proprietatile evidensiate apar primele in rezultate si pe pagina principala.
+   933→                  </p>
+   934→                )}
+   935→
+   936→                <Separator />
+   937→
+   938→                {/* Quick summary */}
+   939→                <div className="space-y-2 text-sm">
+   940→                  <div className="flex justify-between">
+   941→                    <span className="text-muted-foreground">Pret</span>
+   942→                    <span className="font-semibold">
+   943→                      {form.price ? `${parseFloat(form.price).toLocaleString('ro-RO')} ${form.currency}` : '—'}
+   944→                    </span>
+   945→                  </div>
+   946→                  <div className="flex justify-between">
+   947→                    <span className="text-muted-foreground">Suprafata</span>
+   948→                    <span>{form.areaSqm ? `${form.areaSqm} m²` : '—'}</span>
+   949→                  </div>
+   950→                  <div className="flex justify-between">
+   951→                    <span className="text-muted-foreground">Camere</span>
+   952→                    <span>{form.rooms || '—'}</span>
+   953→                  </div>
+   954→                  <div className="flex justify-between">
+   955→                    <span className="text-muted-foreground">Zona</span>
+   956→                    <span className="text-right truncate max-w-[150px]">{form.zone || '—'}</span>
+   957→                  </div>
+   958→                  <div className="flex justify-between">
+   959→                    <span className="text-muted-foreground">Imagini</span>
+   960→                    <span>{form.galleryUrls.length > 0 ? `${form.galleryUrls.length} adaugate` : '—'}</span>
+   961→                  </div>
+   962→                </div>
+   963→
+   964→                <Separator />
+   965→
+   966→                <Button type="submit" className="w-full h-12 gap-2 text-base" disabled={isSubmitting}>
+   967→                  {isSubmitting ? (
+   968→                    <Loader2 className="h-5 w-5 animate-spin" />
+   969→                  ) : (
+   970→                    <>
+   971→                      <Plus className="h-5 w-5" />
+   972→                      Publica Proprietatea
+   973→                    </>
+   974→                  )}
+   975→                </Button>
+   976→
+   977→                <p className="text-[11px] text-center text-muted-foreground">
+   978→                  Prin publicare confirmi ca informatiile sunt corecte
+   979→                  si ai dreptul de a publica aceasta proprietate.
+   980→                </p>
+   981→              </div>
+   982→            </motion.div>
+   983→
+   984→            {/* Tips */}
+   985→            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card rounded-2xl p-5 space-y-3">
+   986→              <h3 className="text-sm font-semibold flex items-center gap-2">
+   987→                💡 Sfaturi
+   988→              </h3>
+   989→              <ul className="text-xs text-muted-foreground space-y-2">
+   990→                <li className="flex gap-2">
+   991→                  <span className="text-primary mt-0.5">•</span>
+   992→                  Adauga poze clare si luminoase — proprietatile cu poze primesc de 3x mai multe vizualizari
+   993→                </li>
+   994→                <li className="flex gap-2">
+   995→                  <span className="text-primary mt-0.5">•</span>
+   996→                  Scrie o descriere detaliata — include finisaje, dotari, vecinatate
+   997→                </li>
+   998→                <li className="flex gap-2">
+   999→                  <span className="text-primary mt-0.5">•</span>
+  1000→                  Seteaza un pret realist — verifica preturile similare din zona
+  1001→                </li>
+  1002→                <li className="flex gap-2">
+  1003→                  <span className="text-primary mt-0.5">•</span>
+  1004→                  Completeaza adresa exacta pentru cautari mai precise
+  1005→                </li>
+  1006→              </ul>
+  1007→            </motion.div>
+  1008→          </div>
+  1009→        </form>
+  1010→      </div>
+  1011→      <EditPropertyDialog
+  1012→        open={editOpen}
+  1013→        onOpenChange={setEditOpen}
+  1014→        property={editProperty}
+  1015→        onSaved={() => { loadMyProperties(); setEditProperty(null) }}
+  1016→      />
+  1017→    </div>
+  1018→  )
+  1019→}

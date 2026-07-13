@@ -58,6 +58,29 @@ export interface UploadedDocument {
 // Document type labels (type only — value lives in @/lib/constants)
 export type DocTypeLabelMap = Record<UploadedDocument['docType'], string>
 
+// User Property (stored in localStorage, created via adauga-proprietate)
+export interface UserProperty {
+  id: string
+  title: string
+  type?: string
+  transaction?: string
+  price?: string
+  currency?: string
+  areaSqm?: string
+  rooms?: string
+  bathrooms?: string
+  floor?: string
+  yearBuilt?: string
+  address?: string
+  zone?: string
+  sector?: string
+  description?: string
+  coverUrl?: string
+  cover_url?: string
+  galleryUrls?: string[]
+  [key: string]: unknown
+}
+
 // Property
 export interface Property {
   id: string

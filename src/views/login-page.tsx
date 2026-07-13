@@ -2,12 +2,13 @@
 
 import { useState, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Building2, Lock, Mail, Eye, EyeOff, ArrowRight, Loader2, Shield, Home, ChevronRight, User, AlertTriangle, ExternalLink, X, Info } from 'lucide-react'
+import { Building2, Lock, Mail, Eye, EyeOff, ArrowRight, Loader2, Shield, User, AlertTriangle, ExternalLink, X, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { useAuth, type GoogleAuthError } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
+import { PageBreadcrumb } from '@/components/layout/page-hero'
 import { toast } from 'sonner'
 
 export function LoginPage() {
@@ -101,12 +102,9 @@ export function LoginPage() {
         className="relative w-full max-w-md"
       >
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
-          <Home className="h-4 w-4" />
-          <span>Acasa</span>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <span className="text-foreground font-medium">{isLogin ? 'Autentificare' : 'Inregistrare'}</span>
-        </nav>
+        <PageBreadcrumb
+          items={[{ label: 'Acasa', page: 'acasa' }, { label: isLogin ? 'Autentificare' : 'Inregistrare' }]}
+        />
 
         <div className="glass-card rounded-2xl p-8">
           {/* Header */}

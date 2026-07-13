@@ -1,8 +1,9 @@
 import type { StateCreator } from 'zustand'
+import type { UserProperty } from '@/lib/types'
 
 export interface UserSlice {
-  userProperties: Array<Record<string, unknown>>
-  setUserProperties: (props: Array<Record<string, unknown>>) => void
+  userProperties: Array<UserProperty>
+  setUserProperties: (props: Array<UserProperty>) => void
   vizionarePropertyId: string | null
   vizionarePropertyTitle: string | null
   setVizionareProperty: (id: string | null, title: string | null) => void

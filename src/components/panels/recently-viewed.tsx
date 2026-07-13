@@ -7,9 +7,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/use-app-store'
 import { formatPrice } from '@/lib/utils'
+import { LS_KEYS } from '@/lib/constants'
 import type { Property } from '@/lib/types'
 
-const STORAGE_KEY = 'pm-recently-viewed'
+const STORAGE_KEY = LS_KEYS.RECENTLY_VIEWED
 const MAX_RECENT = 4
 
 const typeLabels: Record<string, string> = {

@@ -4,8 +4,9 @@ import { useCallback, useSyncExternalStore } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { LS_KEYS } from '@/lib/constants'
 
-const STORAGE_KEY = 'pm-announcement-dismissed'
+const STORAGE_KEY = LS_KEYS.ANNOUNCEMENT_DISMISSED
 
 function subscribe(callback: () => void) {
   window.addEventListener('storage', callback)

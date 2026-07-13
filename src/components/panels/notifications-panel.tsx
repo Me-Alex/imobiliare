@@ -19,9 +19,10 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
+import { LS_KEYS } from '@/lib/constants'
 import { useAppStore, type PageKey } from '@/store/use-app-store'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { cn } from '@/lib/utils'
+import { cn, formatRelativeTime } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,28 +50,10 @@ export interface NotificationsPanelProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const LS_KEY = 'hqs_notifications'
+const LS_KEY = LS_KEYS.NOTIFICATIONS
 const MAX_NOTIFICATIONS = 20
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatRelativeTime(isoString: string): string {
-  const now = Date.now()
-  const then = new Date(isoString).getTime()
-  const diffMs = now - then
-  const diffSec = Math.floor(diffMs / 1000)
-  const diffMin = Math.floor(diffSec / 60)
-  const diffH = Math.floor(diffMin / 60)
-  const diffDays = Math.floor(diffH / 24)
-
-  if (diffSec < 60) return 'acum cateva secunde'
-  if (diffMin < 60) return `acum ${diffMin} min`
-  if (diffH < 24) return `acum ${diffH} ${diffH === 1 ? 'ora' : 'ore'}`
-  if (diffDays === 1) return 'ieri'
-  if (diffDays < 7) return `acum ${diffDays} zile`
-  if (diffDays < 30) return `acum ${Math.floor(diffDays / 7)} saptamani`
-  return `acum ${Math.floor(diffDays / 30)} luni`
-}
 
 function getNotificationIcon(type: NotificationItem['type']) {
   switch (type) {

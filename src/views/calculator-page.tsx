@@ -1,71 +1,45 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Calculator, Home, ChevronRight, Euro, Percent, Calendar, Info } from 'lucide-react'
+import { Calculator, Euro, Percent, Calendar, Info } from 'lucide-react'
 import { MortgageCalculator } from '@/components/features/mortgage-calculator'
+import { PageHero } from '@/components/layout/page-hero'
 
 export function CalculatorPage() {
   return (
     <>
-      {/* Page Hero */}
-      <section className="relative py-16 lg:py-20 bg-gradient-to-b from-primary/5 via-transparent to-transparent overflow-hidden">
-        <div className="absolute inset-0 dots-pattern opacity-30" />
-        <div className="floating-blob w-[400px] h-[400px] -top-32 -right-32" style={{ background: 'radial-gradient(circle, oklch(0.527 0.14 160 / 10%) 0%, transparent 70%)' }} />
-
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            {/* Breadcrumb */}
-            <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
-              <Home className="h-4 w-4" />
-              <span>Acasa</span>
-              <ChevronRight className="h-3.5 w-3.5" />
-              <span className="text-foreground font-medium">Calculator</span>
-            </nav>
-
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Calculator className="h-6 w-6" />
+      <PageHero
+        icon={Calculator}
+        title="Calculator Ipotecar"
+        description="Estimeaza rata lunara si planul de amortizare"
+        breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Calculator' }]}
+      >
+        {/* Quick info cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
+          {[
+            { icon: Euro, label: 'Dobanda medie', value: '5.4% - 6.2%', desc: 'EURIBOR + marja' },
+            { icon: Calendar, label: 'Perioada', value: '5 - 30 ani', desc: 'Flexibila' },
+            { icon: Percent, label: 'Avans minim', value: '15% - 25%', desc: 'Dupa tip credit' },
+            { icon: Info, label: 'DAE mediu', value: '~6.8%', desc: 'Cost total credit' },
+          ].map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * i, duration: 0.4 }}
+              className="flex items-center gap-3 rounded-xl border border-border/60 bg-card p-3"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <stat.icon className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Calculator Ipotecar</h1>
-                <p className="text-muted-foreground mt-1">Estimeaza rata lunara si planul de amortizare</p>
+                <div className="text-sm font-medium">{stat.value}</div>
+                <div className="text-xs text-muted-foreground">{stat.label} · {stat.desc}</div>
               </div>
-            </div>
-
-            {/* Quick info cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-              {[
-                { icon: Euro, label: 'Dobanda medie', value: '5.4% - 6.2%', desc: 'EURIBOR + marja' },
-                { icon: Calendar, label: 'Perioada', value: '5 - 30 ani', desc: 'Flexibila' },
-                { icon: Percent, label: 'Avans minim', value: '15% - 25%', desc: 'Dupa tip credit' },
-                { icon: Info, label: 'DAE mediu', value: '~6.8%', desc: 'Cost total credit' },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * i, duration: 0.4 }}
-                  className="flex items-center gap-3 rounded-xl border border-border/60 bg-card p-3"
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <stat.icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">{stat.value}</div>
-                    <div className="text-xs text-muted-foreground">{stat.label} · {stat.desc}</div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+            </motion.div>
+          ))}
         </div>
-      </section>
-
-      <hr className="section-divider" />
+      </PageHero>
 
       {/* Calculator */}
       <MortgageCalculator />

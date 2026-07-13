@@ -29,28 +29,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { loadFromLS, saveToLS } from '@/lib/storage'
+import { PROPERTY_TYPES, TRANSACTIONS, CURRENCIES, SECTOARE, ZONES, LS_KEYS } from '@/lib/constants'
+import type { UserProperty } from '@/lib/types'
 import { toast } from 'sonner'
-
-/* ─── Constants (same as add-property page) ─── */
-
-const PROPERTY_TYPES = [
-  'Apartament', 'Garsoniera', 'Casa', 'Vila', 'Teren', 'Spatiu Comercial',
-  'Birou', 'Depozit', 'Pensiune', 'Apartament Nou', 'Studio',
-]
-const TRANSACTIONS = [
-  { value: 'VANZARE', label: 'Vanzare' },
-  { value: 'INCHIRIERE', label: 'Inchiriere' },
-]
-const CURRENCIES = ['EUR', 'RON', 'USD']
-const SECTOARE = ['Sector 1', 'Sector 2', 'Sector 3', 'Sector 4', 'Sector 5', 'Sector 6']
-const ZONES = [
-  'Dorobanti', 'Victoriei', 'Floreasca', 'Aviatorilor', 'Primaverii',
-  'Herastrau', 'Baneasa', 'Pipera', 'Barbu Vacarescu', 'Romană',
-  'Universitate', 'Unirii', 'Centru Civic', 'Parlament',
-  'Vitan', 'Titan', 'Pantelimon', 'Colentina', 'Obor',
-  'Militari', 'Drumul Taberei', 'Ghencea', 'Rahova', 'Crangasi',
-  'Grozavesti', 'Politehnica', 'Iancului', 'Mihai Bravu',
-]
 
 /* ─── Form data (camelCase for UI) ─── */
 
@@ -83,7 +64,7 @@ function emptyForm(): EditFormData {
   }
 }
 
-function propertyToForm(prop: Record<string, unknown>): EditFormData {
+function propertyToForm(prop: UserProperty): EditFormData {
   let galleryUrls: string[] = []
   try {
     const raw = prop.gallery_urls
@@ -133,6 +114,7 @@ function ImageEditor({
   onChange: (urls: string[]) => void
 }) {
   const [urlInput, setUrlInput] = useState('')
+  const [erroredIndices, setErroredIndices] = useState<Set<number>>(new Set())
   const MAX_IMAGES = 15
 
   const addUrl = () => {
@@ -174,17 +156,20 @@ function ImageEditor({
                   className="relative group"
                 >
                   <div className="h-20 w-20 rounded-lg overflow-hidden border border-border">
-                    <img
-                      src={url}
-                      alt={`Poza ${i + 1}`}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = ''
-                        ;(e.target as HTMLImageElement).style.display = 'none'
-                        ;(e.target as HTMLImageElement).parentElement!.innerHTML =
-                          '<div class="h-full w-full flex items-center justify-center bg-muted text-muted-foreground text-[10px]">Eroare</div>'
-                      }}
-                    />
+                    {erroredIndices.has(i) ? (
+                      <div className="h-full w-full flex items-center justify-center bg-muted text-muted-foreground text-[10px]">
+                        Eroare
+                      </div>
+                    ) : (
+                      <img
+                        src={url}
+                        alt={`Poza ${i + 1}`}
+                        className="h-full w-full object-cover"
+                        onError={() => {
+                          setErroredIndices(prev => new Set(prev).add(i))
+                        }}
+                      />
+                    )}
                   </div>
                   <button
                     type="button"
@@ -246,7 +231,7 @@ function ImageEditor({
 export interface EditPropertyDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  property: Record<string, unknown> | null
+  property: UserProperty | null
   onSaved: () => void
 }
 
@@ -307,7 +292,7 @@ export function EditPropertyDialog({
 
     setIsSaving(true)
     try {
-      const properties = loadFromLS<Record<string, unknown>[]>('hqs_user_properties', [])
+      const properties = loadFromLS<UserProperty[]>(LS_KEYS.USER_PROPERTIES, [])
       const idx = properties.findIndex((p) => p.id === property.id)
       if (idx === -1) {
         toast.error('Proprietatea nu a fost gasita in localStorage')
@@ -319,7 +304,7 @@ export function EditPropertyDialog({
       const pricePerSqm = price > 0 && areaSqm > 0 ? Math.round(price / areaSqm) : null
 
       // Build updated property object preserving original fields we don't edit
-      const updated: Record<string, unknown> = {
+      const updated: UserProperty = {
         ...properties[idx],
         title: form.title.trim(),
         description: form.description.trim(),
@@ -343,7 +328,7 @@ export function EditPropertyDialog({
       }
 
       properties[idx] = updated
-      saveToLS('hqs_user_properties', properties)
+      saveToLS(LS_KEYS.USER_PROPERTIES, properties)
 
       toast.success('Proprietate actualizata cu succes!', {
         description: `"${form.title}" a fost salvata.`,

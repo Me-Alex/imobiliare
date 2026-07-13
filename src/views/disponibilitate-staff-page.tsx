@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Home, ChevronRight, CalendarDays, Clock, Plus, Trash2, CalendarRange,
+  CalendarDays, Clock, Plus, Trash2, CalendarRange,
   Users, CheckCircle2, Lock, AlertCircle, CalendarPlus, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,67 +14,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
-import { DEFAULT_STAFF } from '@/lib/constants'
+import { DEFAULT_STAFF, LS_KEYS, MONTH_NAMES_FULL } from '@/lib/constants'
 import type { StaffMember, AvailabilitySlot } from '@/lib/types'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { cn, formatDateRO, getWeekdayRO, isDatePast, isToday, toDateString, getNextMonday } from '@/lib/utils'
+import { PageHero } from '@/components/layout/page-hero'
 
-const LS_KEY = 'hqs_staff_availability'
-const LS_VIZIONARI = 'hqs_vizionari'
-
-const WEEKDAY_NAMES_RO = ['Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', 'Sambata', 'Duminica']
-const MONTH_NAMES_RO = [
-  'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
-  'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie',
-]
-
-function formatDateRO(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  return `${d.getDate()} ${MONTH_NAMES_RO[d.getMonth()]} ${d.getFullYear()}`
-}
-
-function getWeekdayRO(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  return WEEKDAY_NAMES_RO[d.getDay() === 0 ? 6 : d.getDay() - 1]
-}
-
-function isDatePast(dateStr: string): boolean {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const d = new Date(dateStr + 'T00:00:00')
-  return d < today
-}
-
-function isToday(dateStr: string): boolean {
-  const today = new Date()
-  const d = new Date(dateStr + 'T00:00:00')
-  return (
-    d.getDate() === today.getDate() &&
-    d.getMonth() === today.getMonth() &&
-    d.getFullYear() === today.getFullYear()
-  )
-}
-
-function getNextMonday(): Date {
-  const d = new Date()
-  const day = d.getDay()
-  const diff = day === 0 ? 1 : 8 - day
-  d.setDate(d.getDate() + diff)
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-function toDateString(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
+const LS_VIZIONARI = LS_KEYS.VIZIONARI
 
 export function DisponibilitateStaffPage() {
   const [slots, setSlots] = useState<AvailabilitySlot[]>(() => {
     if (typeof window === 'undefined') return []
-    return loadFromLS<AvailabilitySlot[]>(LS_KEY, [])
+    return loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
   })
   const [selectedStaffId, setSelectedStaffId] = useState<string>(DEFAULT_STAFF[0].id)
   const [date, setDate] = useState('')
@@ -86,7 +37,7 @@ export function DisponibilitateStaffPage() {
   // Persist slots
   const persistSlots = useCallback((newSlots: AvailabilitySlot[]) => {
     setSlots(newSlots)
-    saveToLS(LS_KEY, newSlots)
+    saveToLS(LS_KEYS.STAFF_AVAILABILITY, newSlots)
   }, [])
 
   // Filter slots for selected staff
@@ -217,44 +168,12 @@ export function DisponibilitateStaffPage() {
 
   return (
     <>
-      {/* Page Hero */}
-      <section className="relative py-16 lg:py-20 bg-gradient-to-b from-primary/5 via-transparent to-transparent overflow-hidden">
-        <div className="absolute inset-0 dots-pattern opacity-30" />
-        <div
-          className="floating-blob w-[400px] h-[400px] -top-32 -right-32"
-          style={{ background: 'radial-gradient(circle, oklch(0.527 0.14 160 / 10%) 0%, transparent 70%)' }}
-        />
-
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            {/* Breadcrumb */}
-            <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
-              <Home className="h-4 w-4" />
-              <span>Acasa</span>
-              <ChevronRight className="h-3.5 w-3.5" />
-              <span className="text-foreground font-medium">Disponibilitate Staff</span>
-            </nav>
-
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <CalendarDays className="h-6 w-6" />
-              </div>
-              <div>
-                <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Disponibilitate Staff</h1>
-                <p className="text-muted-foreground mt-1">
-                  Gestioneaza intervalele orare disponibile pentru fiecare membru al echipei
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      <hr className="section-divider" />
+      <PageHero
+        icon={CalendarDays}
+        title="Disponibilitate Staff"
+        description="Gestioneaza intervalele orare disponibile pentru fiecare membru al echipei"
+        breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Disponibilitate Staff' }]}
+      />
 
       {/* Main Content */}
       <section className="py-12">
@@ -425,7 +344,7 @@ export function DisponibilitateStaffPage() {
                               {new Date(dateStr + 'T00:00:00').getDate()}
                             </span>
                             <span className="text-[10px] font-medium uppercase text-primary/80 mt-0.5">
-                              {MONTH_NAMES_RO[new Date(dateStr + 'T00:00:00').getMonth()].slice(0, 3)}
+                              {MONTH_NAMES_FULL[new Date(dateStr + 'T00:00:00').getMonth()].slice(0, 3)}
                             </span>
                           </div>
                           <div>

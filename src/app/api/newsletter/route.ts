@@ -1,35 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { isValidEmail } from '@/lib/validators'
+import { Prisma } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
+  // ── Parse & validate input ──────────────────────────────────
+  let email: string
+
   try {
     const body = await request.json()
-    const { email } = body as { email?: string }
+    ;({ email } = body as { email?: string })
+  } catch {
+    return NextResponse.json(
+      { error: 'Corpul cererii nu este valid JSON.' },
+      { status: 400 }
+    )
+  }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!email || !emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: 'Adresa de email nu este valida.' },
-        { status: 400 }
-      )
-    }
+  if (!email || !isValidEmail(email)) {
+    return NextResponse.json(
+      { error: 'Adresa de email nu este valida.' },
+      { status: 400 }
+    )
+  }
 
-    // Try to create — unique constraint will catch duplicates
-    try {
-      await db.newsletterSubscription.create({
-        data: { email: email.trim().toLowerCase() },
-      })
-    } catch {
-      // Already subscribed — that's fine, just return success
+  // ── Persist to database ─────────────────────────────────────
+  try {
+    await db.newsletterSubscription.create({
+      data: { email: email.trim().toLowerCase() },
+    })
+  } catch (error) {
+    // Unique constraint violation — user is already subscribed
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
       return NextResponse.json({ success: true, message: 'Esti deja abonat!' })
     }
 
-    return NextResponse.json({ success: true, message: 'Multumim pentru abonare!' })
-  } catch (error) {
     console.error('Eroare la abonare newsletter:', error)
     return NextResponse.json(
       { error: 'A aparut o eroare. Va rugam incercati din nou.' },
       { status: 500 }
     )
   }
+
+  return NextResponse.json({ success: true, message: 'Multumim pentru abonare!' })
 }

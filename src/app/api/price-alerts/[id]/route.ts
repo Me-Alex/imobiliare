@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabase'
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // ── Auth check ──────────────────────────────────────────────
+  try {
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const token = authHeader.slice(7)
+    const { error } = await supabase.auth.getUser(token)
+    if (error) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // ── Handler ─────────────────────────────────────────────────
   try {
     const { id } = await params
 

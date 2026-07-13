@@ -1,0 +1,963 @@
+     1→     1→@import "tailwindcss";
+     2→     2→@import "tw-animate-css";
+     3→     3→
+     4→     4→@custom-variant dark (&:is(.dark *));
+     5→     5→
+     6→     6→@theme inline {
+     7→     7→  --color-background: var(--background);
+     8→     8→  --color-foreground: var(--foreground);
+     9→     9→  --font-sans: var(--font-geist-sans);
+    10→    10→  --font-mono: var(--font-geist-mono);
+    11→    11→  --color-chart-5: var(--chart-5);
+    12→    12→  --color-chart-4: var(--chart-4);
+    13→    13→  --color-chart-3: var(--chart-3);
+    14→    14→  --color-chart-2: var(--chart-2);
+    15→    15→  --color-chart-1: var(--chart-1);
+    16→    16→  --color-ring: var(--ring);
+    17→    17→  --color-input: var(--input);
+    18→    18→  --color-border: var(--border);
+    19→    19→  --color-destructive: var(--destructive);
+    20→    20→  --color-accent-foreground: var(--accent-foreground);
+    21→    21→  --color-accent: var(--accent);
+    22→    22→  --color-muted-foreground: var(--muted-foreground);
+    23→    23→  --color-muted: var(--muted);
+    24→    24→  --color-secondary-foreground: var(--secondary-foreground);
+    25→    25→  --color-secondary: var(--secondary);
+    26→    26→  --color-primary-foreground: var(--primary-foreground);
+    27→    27→  --color-primary: var(--primary);
+    28→    28→  --color-popover-foreground: var(--popover-foreground);
+    29→    29→  --color-popover: var(--popover);
+    30→    30→  --color-card-foreground: var(--card-foreground);
+    31→    31→  --color-card: var(--card);
+    32→    32→  --radius-sm: calc(var(--radius) - 4px);
+    33→    33→  --radius-md: calc(var(--radius) - 2px);
+    34→    34→  --radius-lg: var(--radius);
+    35→    35→  --radius-xl: calc(var(--radius) + 4px);
+    36→    36→  --color-emerald-accent: oklch(0.527 0.14 160);
+    37→    37→  --color-emerald-light: oklch(0.87 0.08 160);
+    38→    38→  --color-emerald-dark: oklch(0.37 0.12 160);
+    39→    39→  --color-warm-50: oklch(0.985 0.005 80);
+    40→    40→  --color-warm-100: oklch(0.96 0.01 80);
+    41→    41→  --color-warm-200: oklch(0.92 0.02 75);
+    42→    42→  --color-warm-800: oklch(0.25 0.02 60);
+    43→    43→  --color-warm-900: oklch(0.18 0.015 55);
+    44→    44→}
+    45→    45→
+    46→    46→:root {
+    47→    47→  --radius: 0.625rem;
+    48→    48→  --background: oklch(0.995 0.003 80);
+    49→    49→  --foreground: oklch(0.16 0.02 60);
+    50→    50→  --card: oklch(1 0 0);
+    51→    51→  --card-foreground: oklch(0.16 0.02 60);
+    52→    52→  --popover: oklch(1 0 0);
+    53→    53→  --popover-foreground: oklch(0.16 0.02 60);
+    54→    54→  --primary: oklch(0.527 0.14 160);
+    55→    55→  --primary-foreground: oklch(0.99 0.005 160);
+    56→    56→  --secondary: oklch(0.96 0.015 80);
+    57→    57→  --secondary-foreground: oklch(0.25 0.02 60);
+    58→    58→  --muted: oklch(0.96 0.01 80);
+    59→    59→  --muted-foreground: oklch(0.50 0.02 60);
+    60→    60→  --accent: oklch(0.93 0.04 160);
+    61→    61→  --accent-foreground: oklch(0.25 0.06 160);
+    62→    62→  --destructive: oklch(0.577 0.245 27.325);
+    63→    63→  --border: oklch(0.91 0.01 80);
+    64→    64→  --input: oklch(0.91 0.01 80);
+    65→    65→  --ring: oklch(0.527 0.14 160);
+    66→    66→  --chart-1: oklch(0.527 0.14 160);
+    67→    67→  --chart-2: oklch(0.65 0.17 140);
+    68→    68→  --chart-3: oklch(0.75 0.12 85);
+    69→    69→  --chart-4: oklch(0.60 0.15 25);
+    70→    70→  --chart-5: oklch(0.55 0.10 290);
+    71→    71→}
+    72→    72→
+    73→    73→.dark {
+    74→    74→  --background: oklch(0.14 0.015 60);
+    75→    75→  --foreground: oklch(0.96 0.01 80);
+    76→    76→  --card: oklch(0.19 0.015 60);
+    77→    77→  --card-foreground: oklch(0.96 0.01 80);
+    78→    78→  --popover: oklch(0.19 0.015 60);
+    79→    79→  --popover-foreground: oklch(0.96 0.01 80);
+    80→    80→  --primary: oklch(0.65 0.17 160);
+    81→    81→  --primary-foreground: oklch(0.14 0.03 160);
+    82→    82→  --secondary: oklch(0.24 0.02 60);
+    83→    83→  --secondary-foreground: oklch(0.96 0.01 80);
+    84→    84→  --muted: oklch(0.24 0.02 60);
+    85→    85→  --muted-foreground: oklch(0.65 0.02 80);
+    86→    86→  --accent: oklch(0.28 0.04 160);
+    87→    87→  --accent-foreground: oklch(0.93 0.08 160);
+    88→    88→  --destructive: oklch(0.704 0.191 22.216);
+    89→    89→  --border: oklch(1 0 0 / 10%);
+    90→    90→  --input: oklch(1 0 0 / 15%);
+    91→    91→  --ring: oklch(0.65 0.17 160);
+    92→    92→  --chart-1: oklch(0.65 0.17 160);
+    93→    93→  --chart-2: oklch(0.70 0.15 140);
+    94→    94→  --chart-3: oklch(0.78 0.10 85);
+    95→    95→  --chart-4: oklch(0.65 0.13 25);
+    96→    96→  --chart-5: oklch(0.60 0.08 290);
+    97→    97→}
+    98→    98→
+    99→    99→@layer base {
+   100→   100→  * {
+   101→   101→    @apply border-border outline-ring/50;
+   102→   102→  }
+   103→   103→  body {
+   104→   104→    @apply bg-background text-foreground;
+   105→   105→  }
+   106→   106→}
+   107→   107→
+   108→   108→/* Skip link for accessibility */
+   109→   109→.skip-link {
+   110→   110→  position: absolute;
+   111→   111→  top: -100%;
+   112→   112→  left: 0;
+   113→   113→  z-index: 9999;
+   114→   114→  padding: 0.5rem 1rem;
+   115→   115→  background: var(--primary);
+   116→   116→  color: var(--primary-foreground);
+   117→   117→  text-decoration: none;
+   118→   118→  font-weight: 600;
+   119→   119→  border-radius: 0 0 0.5rem 0;
+   120→   120→  transition: top 0.2s;
+   121→   121→}
+   122→   122→.skip-link:focus {
+   123→   123→  top: 0;
+   124→   124→}
+   125→   125→
+   126→   126→/* Smooth scrollbar styling */
+   127→   127→::-webkit-scrollbar {
+   128→   128→  width: 8px;
+   129→   129→  height: 8px;
+   130→   130→}
+   131→   131→::-webkit-scrollbar-track {
+   132→   132→  background: transparent;
+   133→   133→}
+   134→   134→::-webkit-scrollbar-thumb {
+   135→   135→  background: oklch(0.7 0.02 60);
+   136→   136→  border-radius: 4px;
+   137→   137→}
+   138→   138→::-webkit-scrollbar-thumb:hover {
+   139→   139→  background: oklch(0.55 0.03 60);
+   140→   140→}
+   141→   141→.dark ::-webkit-scrollbar-thumb {
+   142→   142→  background: oklch(0.35 0.02 60);
+   143→   143→}
+   144→   144→.dark ::-webkit-scrollbar-thumb:hover {
+   145→   145→  background: oklch(0.45 0.03 60);
+   146→   146→}
+   147→   147→
+   148→   148→/* Custom selection colors */
+   149→   149→::selection {
+   150→   150→  background: oklch(0.65 0.17 160 / 30%);
+   151→   151→  color: inherit;
+   152→   152→}
+   153→   153→
+   154→   154→/* Gradient text utility */
+   155→   155→.gradient-text {
+   156→   156→  background: linear-gradient(135deg, oklch(0.527 0.14 160), oklch(0.45 0.10 145));
+   157→   157→  -webkit-background-clip: text;
+   158→   158→  -webkit-text-fill-color: transparent;
+   159→   159→  background-clip: text;
+   160→   160→}
+   161→   161→
+   162→   162→.dark .gradient-text {
+   163→   163→  background: linear-gradient(135deg, oklch(0.65 0.17 160), oklch(0.55 0.12 145));
+   164→   164→  -webkit-background-clip: text;
+   165→   165→  -webkit-text-fill-color: transparent;
+   166→   166→  background-clip: text;
+   167→   167→}
+   168→   168→
+   169→   169→/* Card hover animation */
+   170→   170→.card-hover {
+   171→   171→  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+   172→   172→}
+   173→   173→.card-hover:hover {
+   174→   174→  transform: translateY(-4px);
+   175→   175→  box-shadow: 0 12px 40px -8px oklch(0.2 0.03 160 / 15%);
+   176→   176→}
+   177→   177→
+   178→   178→/* Stat counter animation */
+   179→   179→@keyframes countUp {
+   180→   180→  from {
+   181→   181→    opacity: 0;
+   182→   182→    transform: translateY(10px);
+   183→   183→  }
+   184→   184→  to {
+   185→   185→    opacity: 1;
+   186→   186→    transform: translateY(0);
+   187→   187→  }
+   188→   188→}
+   189→   189→.animate-count-up {
+   190→   190→  animation: countUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+   191→   191→}
+   192→   192→
+   193→   193→/* Fade in on scroll */
+   194→   194→@keyframes fadeInUp {
+   195→   195→  from {
+   196→   196→    opacity: 0;
+   197→   197→    transform: translateY(24px);
+   198→   198→  }
+   199→   199→  to {
+   200→   200→    opacity: 1;
+   201→   201→    transform: translateY(0);
+   202→   202→  }
+   203→   203→}
+   204→   204→.animate-fade-in-up {
+   205→   205→  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+   206→   206→}
+   207→   207→
+   208→   208→/* Custom focus styles */
+   209→   209→*:focus-visible {
+   210→   210→  outline: 2px solid oklch(0.527 0.14 160);
+   211→   211→  outline-offset: 2px;
+   212→   212→  border-radius: 4px;
+   213→   213→}
+   214→   214→.dark *:focus-visible {
+   215→   215→  outline-color: oklch(0.65 0.17 160);
+   216→   216→}
+   217→   217→
+   218→   218→/* Hero gradient overlay */
+   219→   219→.hero-gradient {
+   220→   220→  background: linear-gradient(
+   221→   221→    135deg,
+   222→   222→    oklch(0.16 0.02 60 / 92%) 0%,
+   223→   223→    oklch(0.20 0.04 160 / 85%) 50%,
+   224→   224→    oklch(0.16 0.02 60 / 90%) 100%
+   225→   225→  );
+   226→   226→}
+   227→   227→
+   228→   228→.dark .hero-gradient {
+   229→   229→  background: linear-gradient(
+   230→   230→    135deg,
+   231→   231→    oklch(0.10 0.01 60 / 95%) 0%,
+   232→   232→    oklch(0.14 0.03 160 / 88%) 50%,
+   233→   233→    oklch(0.10 0.01 60 / 93%) 100%
+   234→   234→  );
+   235→   235→}
+   236→   236→
+   237→   237→/* Image zoom on hover */
+   238→   238→.img-zoom {
+   239→   239→  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+   240→   240→}
+   241→   241→.img-zoom:hover {
+   242→   242→  transform: scale(1.08);
+   243→   243→}
+   244→   244→
+   245→   245→/* Custom max height with scroll */
+   246→   246→.scrollbar-thin {
+   247→   247→  scrollbar-width: thin;
+   248→   248→  scrollbar-color: oklch(0.7 0.02 60) transparent;
+   249→   249→}
+   250→   250→.dark .scrollbar-thin {
+   251→   251→  scrollbar-color: oklch(0.35 0.02 60) transparent;
+   252→   252→}
+   253→   253→
+   254→   254→/* Section divider — subtle gradient line */
+   255→   255→.section-divider {
+   256→   256→  height: 2px;
+   257→   257→  border: none;
+   258→   258→  background: linear-gradient(
+   259→   259→    90deg,
+   260→   260→    transparent 0%,
+   261→   261→    oklch(0.527 0.14 160 / 30%) 50%,
+   262→   262→    transparent 100%
+   263→   263→  );
+   264→   264→  margin: 0;
+   265→   265→}
+   266→   266→
+   267→   267→.dark .section-divider {
+   268→   268→  background: linear-gradient(
+   269→   269→    90deg,
+   270→   270→    transparent 0%,
+   271→   271→    oklch(0.65 0.17 160 / 25%) 50%,
+   272→   272→    transparent 100%
+   273→   273→  );
+   274→   274→}
+   275→   275→
+   276→   276→/* Section fade in — fade + slide up 30px with 0.6s ease-out */
+   277→   277→@keyframes sectionFadeIn {
+   278→   278→  from {
+   279→   279→    opacity: 0;
+   280→   280→    transform: translateY(30px);
+   281→   281→  }
+   282→   282→  to {
+   283→   283→    opacity: 1;
+   284→   284→    transform: translateY(0);
+   285→   285→  }
+   286→   286→}
+   287→   287→.section-fade-in {
+   288→   288→  opacity: 0;
+   289→   289→  animation: sectionFadeIn 0.6s ease-out forwards;
+   290→   290→}
+   291→   291→
+   292→   292→@media (prefers-reduced-motion: reduce) {
+   293→   293→  .section-fade-in {
+   294→   294→    opacity: 1;
+   295→   295→    animation: none;
+   296→   296→  }
+   297→   297→  .section-fade-in > * {
+   298→   298→    animation: none !important;
+   299→   299→    transition: none !important;
+   300→   300→  }
+   301→   301→}
+   302→   302→
+   303→   303→/* Card image shimmer effect on hover */
+   304→   304→.card-shimmer {
+   305→   305→  position: relative;
+   306→   306→  overflow: hidden;
+   307→   307→}
+   308→   308→.card-shimmer::after {
+   309→   309→  content: '';
+   310→   310→  position: absolute;
+   311→   311→  inset: 0;
+   312→   312→  background: linear-gradient(
+   313→   313→    105deg,
+   314→   314→    transparent 40%,
+   315→   315→    rgba(255, 255, 255, 0.15) 45%,
+   316→   316→    rgba(255, 255, 255, 0.25) 50%,
+   317→   317→    rgba(255, 255, 255, 0.15) 55%,
+   318→   318→    transparent 60%
+   319→   319→  );
+   320→   320→  transform: translateX(-100%);
+   321→   321→  transition: transform 0.6s ease-in-out;
+   322→   322→  z-index: 1;
+   323→   323→  pointer-events: none;
+   324→   324→}
+   325→   325→.card-shimmer:hover::after {
+   326→   326→  transform: translateX(100%);
+   327→   327→}
+   328→   328→
+   329→   329→@media (prefers-reduced-motion: reduce) {
+   330→   330→  .card-shimmer::after {
+   331→   331→    display: none;
+   332→   332→  }
+   333→   333→}
+   334→   334→
+   335→   335→/* Animated gradient border for CTA */
+   336→   336→@keyframes gradientBorderSpin {
+   337→   337→  0% {
+   338→   338→    background-position: 0% 50%;
+   339→   339→  }
+   340→   340→  50% {
+   341→   341→    background-position: 100% 50%;
+   342→   342→  }
+   343→   343→  100% {
+   344→   344→    background-position: 0% 50%;
+   345→   345→  }
+   346→   346→}
+   347→   347→
+   348→   348→/* Favorite pulse animation */
+   349→   349→@keyframes favPulse {
+   350→   350→  0% { transform: scale(1); }
+   351→   351→  50% { transform: scale(1.25); }
+   352→   352→  100% { transform: scale(1); }
+   353→   353→}
+   354→   354→.fav-pulse {
+   355→   355→  animation: favPulse 0.3s ease-out;
+   356→   356→}
+   357→   357→
+   358→   358→@media (prefers-reduced-motion: reduce) {
+   359→   359→  .fav-pulse {
+   360→   360→    animation: none;
+   361→   361→  }
+   362→   362→}
+   363→   363→
+   364→   364→/* Floating badge pulse dot */
+   365→   365→@keyframes pulseDot {
+   366→   366→  0%, 100% { opacity: 1; transform: scale(1); }
+   367→   367→  50% { opacity: 0.5; transform: scale(1.8); }
+   368→   368→}
+   369→   369→.pulse-dot {
+   370→   370→  animation: pulseDot 2s ease-in-out infinite;
+   371→   371→}
+   372→   372→
+   373→   373→@media (prefers-reduced-motion: reduce) {
+   374→   374→  .pulse-dot {
+   375→   375→    animation: none;
+   376→   376→  }
+   377→   377→}
+   378→   378→
+   379→   379→/* Gradient shift animation for backgrounds */
+   380→   380→@keyframes gradientShift {
+   381→   381→  0% { background-position: 0% 50%; }
+   382→   382→  50% { background-position: 100% 50%; }
+   383→   383→  100% { background-position: 0% 50%; }
+   384→   384→}
+   385→   385→.gradient-shift {
+   386→   386→  background-size: 200% 200%;
+   387→   387→  animation: gradientShift 8s ease infinite;
+   388→   388→}
+   389→   389→
+   390→   390→@media (prefers-reduced-motion: reduce) {
+   391→   391→  .gradient-shift {
+   392→   392→    animation: none;
+   393→   393→  }
+   394→   394→}
+   395→   395→
+   396→   396→/* Dots pattern background */
+   397→   397→.dots-pattern {
+   398→   398→  background-image: radial-gradient(
+   399→   399→    oklch(0.527 0.14 160 / 8%) 1px,
+   400→   400→    transparent 1px
+   401→   401→  );
+   402→   402→  background-size: 24px 24px;
+   403→   403→}
+   404→   404→.dark .dots-pattern {
+   405→   405→  background-image: radial-gradient(
+   406→   406→    oklch(0.65 0.17 160 / 6%) 1px,
+   407→   407→    transparent 1px
+   408→   408→  );
+   409→   409→}
+   410→   410→
+   411→   411→/* Footer watermark text */
+   412→   412→.footer-watermark {
+   413→   413→  position: absolute;
+   414→   414→  bottom: -10px;
+   415→   415→  right: -10px;
+   416→   416→  font-size: 8rem;
+   417→   417→  font-weight: 900;
+   418→   418→  line-height: 1;
+   419→   419→  color: oklch(0.527 0.14 160 / 4%);
+   420→   420→  user-select: none;
+   421→   421→  pointer-events: none;
+   422→   422→  letter-spacing: -0.05em;
+   423→   423→}
+   424→   424→.dark .footer-watermark {
+   425→   425→  color: oklch(0.65 0.17 160 / 3%);
+   426→   426→}
+   427→   427→
+   428→   428→/* Link hover underline animation */
+   429→   429→.link-underline {
+   430→   430→  position: relative;
+   431→   431→  text-decoration: none;
+   432→   432→}
+   433→   433→.link-underline::after {
+   434→   434→  content: '';
+   435→   435→  position: absolute;
+   436→   436→  bottom: -2px;
+   437→   437→  left: 0;
+   438→   438→  width: 0;
+   439→   439→  height: 1.5px;
+   440→   440→  background: currentColor;
+   441→   441→  transition: width 0.3s ease;
+   442→   442→}
+   443→   443→.link-underline:hover::after {
+   444→   444→  width: 100%;
+   445→   445→}
+   446→   446→
+   447→   447→@media (prefers-reduced-motion: reduce) {
+   448→   448→  .link-underline::after {
+   449→   449→    transition: none;
+   450→   450→  }
+   451→   451→}
+   452→   452→
+   453→   453→/* Chart card subtle pattern */
+   454→   454→.chart-card-pattern {
+   455→   455→  background-image:
+   456→   456→    radial-gradient(oklch(0.527 0.14 160 / 3%) 1px, transparent 1px);
+   457→   457→  background-size: 20px 20px;
+   458→   458→}
+   459→   459→.dark .chart-card-pattern {
+   460→   460→  background-image:
+   461→   461→    radial-gradient(oklch(0.65 0.17 160 / 4%) 1px, transparent 1px);
+   462→   462→}
+   463→   463→
+   464→   464→/* Animated demand bar fill */
+   465→   465→@keyframes demandBarFill {
+   466→   466→  from { width: 0%; }
+   467→   467→}
+   468→   468→.demand-bar-animated {
+   469→   469→  animation: demandBarFill 1s ease-out forwards;
+   470→   470→}
+   471→   471→
+   472→   472→@media (prefers-reduced-motion: reduce) {
+   473→   473→  .demand-bar-animated {
+   474→   474→    animation: none;
+   475→   475→  }
+   476→   476→}
+   477→   477→
+   478→   478→/* CTA animated gradient border wrapper */
+   479→   479→.cta-gradient-border {
+   480→   480→  position: relative;
+   481→   481→  border-radius: var(--radius);
+   482→   482→  z-index: 0;
+   483→   483→}
+   484→   484→.cta-gradient-border::before {
+   485→   485→  content: '';
+   486→   486→  position: absolute;
+   487→   487→  inset: -2px;
+   488→   488→  border-radius: calc(var(--radius) + 2px);
+   489→   489→  background: linear-gradient(
+   490→   490→    135deg,
+   491→   491→    oklch(0.527 0.14 160),
+   492→   492→    oklch(0.65 0.17 140),
+   493→   493→    oklch(0.45 0.10 145),
+   494→   494→    oklch(0.527 0.14 160)
+   495→   495→  );
+   496→   496→  background-size: 300% 300%;
+   497→   497→  animation: gradientBorderSpin 3s ease infinite;
+   498→   498→  z-index: -1;
+   499→   499→}
+   500→   500→
+   501→   501→@media (prefers-reduced-motion: reduce) {
+   502→   502→  .cta-gradient-border::before {
+   503→   503→    animation: none;
+   504→   504→  }
+   505→   505→}
+   506→   506→
+   507→   507→/* Smooth tabular number rendering for prices */
+   508→   508→.tabular-nums {
+   509→   509→  font-variant-numeric: tabular-nums;
+   510→   510→}
+   511→   511→
+   512→   512→/* Amortization table scroll */
+   513→   513→.amortization-table {
+   514→   514→  scrollbar-width: thin;
+   515→   515→  scrollbar-color: oklch(0.7 0.02 60) transparent;
+   516→   516→}
+   517→   517→.dark .amortization-table {
+   518→   518→  scrollbar-color: oklch(0.35 0.02 60) transparent;
+   519→   519→}
+   520→   520→
+   521→   521→/* Favorites panel slide animation */
+   522→   522→.favorites-item-enter {
+   523→   523→  animation: favoritesItemIn 0.3s ease-out forwards;
+   524→   524→}
+   525→   525→@keyframes favoritesItemIn {
+   526→   526→  from {
+   527→   527→    opacity: 0;
+   528→   528→    transform: translateX(12px);
+   529→   529→  }
+   530→   530→  to {
+   531→   531→    opacity: 1;
+   532→   532→    transform: translateX(0);
+   533→   533→  }
+   534→   534→}
+   535→   535→
+   536→   536→/* Subtle glow effect on primary cards */
+   537→   537→.card-glow {
+   538→   538→  position: relative;
+   539→   539→}
+   540→   540→.card-glow::before {
+   541→   541→  content: '';
+   542→   542→  position: absolute;
+   543→   543→  inset: -1px;
+   544→   544→  border-radius: calc(var(--radius) + 1px);
+   545→   545→  background: linear-gradient(
+   546→   546→    135deg,
+   547→   547→    oklch(0.527 0.14 160 / 0%),
+   548→   548→    oklch(0.527 0.14 160 / 15%),
+   549→   549→    oklch(0.527 0.14 160 / 0%)
+   550→   550→  );
+   551→   551→  z-index: -1;
+   552→   552→  opacity: 0;
+   553→   553→  transition: opacity 0.3s ease;
+   554→   554→}
+   555→   555→.card-glow:hover::before {
+   556→   556→  opacity: 1;
+   557→   557→}
+   558→   558→
+   559→   559→/* Input focus ring animation */
+   560→   560→@keyframes inputFocusRing {
+   561→   561→  from {
+   562→   562→    box-shadow: 0 0 0 0 oklch(0.527 0.14 160 / 30%);
+   563→   563→  }
+   564→   564→  to {
+   565→   565→    box-shadow: 0 0 0 3px oklch(0.527 0.14 160 / 15%);
+   566→   566→  }
+   567→   567→}
+   568→   568→
+   569→   569→/* Smooth transition for theme changes */
+   570→   570→html {
+   571→   571→  transition: color-scheme 0.3s ease;
+   572→   572→  scroll-behavior: smooth;
+   573→   573→  scroll-padding-top: 5rem;
+   574→   574→}
+   575→   575→
+   576→   576→/* Back to top button pulse on appear */
+   577→   577→@keyframes backToTopPulse {
+   578→   578→  0% { box-shadow: 0 0 0 0 oklch(0.527 0.14 160 / 40%); }
+   579→   579→  70% { box-shadow: 0 0 0 10px oklch(0.527 0.14 160 / 0%); }
+   580→   580→  100% { box-shadow: 0 0 0 0 oklch(0.527 0.14 160 / 0%); }
+   581→   581→}
+   582→   582→.back-to-top-pulse {
+   583→   583→  animation: backToTopPulse 0.6s ease-out;
+   584→   584→}
+   585→   585→
+   586→   586→/* Section header decorative underline */
+   587→   587→.section-title-accent {
+   588→   588→  position: relative;
+   589→   589→  display: inline-block;
+   590→   590→}
+   591→   591→.section-title-accent::after {
+   592→   592→  content: '';
+   593→   593→  position: absolute;
+   594→   594→  bottom: -8px;
+   595→   595→  left: 50%;
+   596→   596→  transform: translateX(-50%);
+   597→   597→  width: 60px;
+   598→   598→  height: 3px;
+   599→   599→  background: linear-gradient(90deg, oklch(0.527 0.14 160), oklch(0.65 0.17 140));
+   600→   600→  border-radius: 2px;
+   601→   601→}
+   602→   602→
+   603→   603→/* Enhanced horizontal scroll container */
+   604→   604→.scroll-horizontal {
+   605→   605→  scrollbar-width: thin;
+   606→   606→  scrollbar-color: oklch(0.7 0.02 60) transparent;
+   607→   607→  -webkit-overflow-scrolling: touch;
+   608→   608→}
+   609→   609→.scroll-horizontal::-webkit-scrollbar {
+   610→   610→  height: 6px;
+   611→   611→}
+   612→   612→.scroll-horizontal::-webkit-scrollbar-track {
+   613→   613→  background: transparent;
+   614→   614→}
+   615→   615→.scroll-horizontal::-webkit-scrollbar-thumb {
+   616→   616→  background: oklch(0.8 0.01 60);
+   617→   617→  border-radius: 3px;
+   618→   618→}
+   619→   619→.scroll-horizontal::-webkit-scrollbar-thumb:hover {
+   620→   620→  background: oklch(0.6 0.02 60);
+   621→   621→}
+   622→   622→.dark .scroll-horizontal::-webkit-scrollbar-thumb {
+   623→   623→  background: oklch(0.35 0.02 60);
+   624→   624→}
+   625→   625→.dark .scroll-horizontal::-webkit-scrollbar-thumb:hover {
+   626→   626→  background: oklch(0.45 0.02 60);
+   627→   627→}
+   628→   628→
+   629→   629→/* Notifications panel thin scrollbar */
+   630→   630→.notifications-scroll {
+   631→   631→  scrollbar-width: thin;
+   632→   632→  scrollbar-color: oklch(0.7 0.02 60) transparent;
+   633→   633→}
+   634→   634→.notifications-scroll::-webkit-scrollbar {
+   635→   635→  width: 4px;
+   636→   636→}
+   637→   637→.notifications-scroll::-webkit-scrollbar-track {
+   638→   638→  background: transparent;
+   639→   639→}
+   640→   640→.notifications-scroll::-webkit-scrollbar-thumb {
+   641→   641→  background: oklch(0.75 0.015 60);
+   642→   642→  border-radius: 2px;
+   643→   643→}
+   644→   644→.notifications-scroll::-webkit-scrollbar-thumb:hover {
+   645→   645→  background: oklch(0.6 0.025 60);
+   646→   646→}
+   647→   647→.dark .notifications-scroll {
+   648→   648→  scrollbar-color: oklch(0.35 0.02 60) transparent;
+   649→   649→}
+   650→   650→.dark .notifications-scroll::-webkit-scrollbar-thumb {
+   651→   651→  background: oklch(0.3 0.02 60);
+   652→   652→}
+   653→   653→.dark .notifications-scroll::-webkit-scrollbar-thumb:hover {
+   654→   654→  background: oklch(0.4 0.025 60);
+   655→   655→}
+   656→   656→
+   657→   657→/* Property card grid transition */
+   658→   658→@property --card-angle {
+   659→   659→  syntax: "<angle>";
+   660→   660→  initial-value: 0deg;
+   661→   661→  inherits: false;
+   662→   662→}
+   663→   663→
+   664→   664→/* Subtle noise texture overlay for depth */
+   665→   665→.noise-overlay::before {
+   666→   666→  content: '';
+   667→   667→  position: absolute;
+   668→   668→  inset: 0;
+   669→   669→  opacity: 0.015;
+   670→   670→  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+   671→   671→  background-repeat: repeat;
+   672→   672→  background-size: 256px 256px;
+   673→   673→  pointer-events: none;
+   674→   674→  z-index: 0;
+   675→   675→}
+   676→   676→
+   677→   677→/* Announcement banner shimmer */
+   678→   678→@keyframes announcementShimmer {
+   679→   679→  0% { background-position: -200% center; }
+   680→   680→  100% { background-position: 200% center; }
+   681→   681→}
+   682→   682→.announcement-shimmer {
+   683→   683→  background-size: 200% 100%;
+   684→   684→  animation: announcementShimmer 8s linear infinite;
+   685→   685→}
+   686→   686→
+   687→   687→/* Enhanced focus visible for better accessibility */
+   688→   688→button:focus-visible,
+   689→   689→a:focus-visible,
+   690→   690→input:focus-visible,
+   691→   691→select:focus-visible,
+   692→   692→textarea:focus-visible {
+   693→   693→  outline: 2px solid oklch(0.527 0.14 160);
+   694→   694→  outline-offset: 2px;
+   695→   695→  border-radius: 6px;
+   696→   696→}
+   697→   697→.dark button:focus-visible,
+   698→   698→.dark a:focus-visible,
+   699→   699→.dark input:focus-visible,
+   700→   700→.dark select:focus-visible,
+   701→   701→.dark textarea:focus-visible {
+   702→   702→  outline-color: oklch(0.65 0.17 160);
+   703→   703→}
+   704→   704→
+   705→   705→/* ===== TASK 3-B: Enhanced Styling Additions ===== */
+   706→   706→
+   707→   707→/* Enhanced section header with decorative elements */
+   708→   708→.section-header {
+   709→   709→  position: relative;
+   710→   710→  text-align: center;
+   711→   711→  margin-bottom: 3rem;
+   712→   712→}
+   713→   713→.section-header h2 {
+   714→   714→  font-size: 2.25rem;
+   715→   715→  font-weight: 800;
+   716→   716→  letter-spacing: -0.025em;
+   717→   717→  line-height: 1.1;
+   718→   718→}
+   719→   719→.section-header p {
+   720→   720→  margin-top: 0.75rem;
+   721→   721→  max-width: 32rem;
+   722→   722→  margin-left: auto;
+   723→   723→  margin-right: auto;
+   724→   724→}
+   725→   725→.section-header::before {
+   726→   726→  content: '';
+   727→   727→  position: absolute;
+   728→   728→  top: -12px;
+   729→   729→  left: 50%;
+   730→   730→  transform: translateX(-50%);
+   731→   731→  width: 40px;
+   732→   732→  height: 4px;
+   733→   733→  border-radius: 2px;
+   734→   734→  background: linear-gradient(90deg, oklch(0.527 0.14 160), oklch(0.65 0.17 140));
+   735→   735→}
+   736→   736→
+   737→   737→/* Glassmorphism Card System */
+   738→   738→.glass-card {
+   739→   739→  background: oklch(1 0 0 / 70%);
+   740→   740→  backdrop-filter: blur(16px) saturate(180%);
+   741→   741→  border: 1px solid oklch(0.527 0.14 160 / 10%);
+   742→   742→  box-shadow: 0 8px 32px -8px oklch(0.2 0.03 160 / 10%);
+   743→   743→  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+   744→   744→}
+   745→   745→.glass-card:hover {
+   746→   746→  box-shadow: 0 16px 48px -12px oklch(0.2 0.03 160 / 15%);
+   747→   747→  border-color: oklch(0.527 0.14 160 / 20%);
+   748→   748→  transform: translateY(-2px);
+   749→   749→}
+   750→   750→.dark .glass-card {
+   751→   751→  background: oklch(0.19 0.015 60 / 80%);
+   752→   752→  border-color: oklch(0.65 0.17 160 / 12%);
+   753→   753→  box-shadow: 0 8px 32px -8px oklch(0 0 0 / 20%);
+   754→   754→}
+   755→   755→.dark .glass-card:hover {
+   756→   756→  box-shadow: 0 16px 48px -12px oklch(0 0 0 / 30%);
+   757→   757→  border-color: oklch(0.65 0.17 160 / 20%);
+   758→   758→}
+   759→   759→
+   760→   760→/* Floating Decorative Blobs */
+   761→   761→.floating-blob {
+   762→   762→  position: absolute;
+   763→   763→  border-radius: 50%;
+   764→   764→  filter: blur(80px);
+   765→   765→  opacity: 0.15;
+   766→   766→  pointer-events: none;
+   767→   767→  z-index: 0;
+   768→   768→}
+   769→   769→.dark .floating-blob {
+   770→   770→  opacity: 0.08;
+   771→   771→}
+   772→   772→
+   773→   773→/* Enhanced Badge Styles */
+   774→   774→.badge-glow {
+   775→   775→  box-shadow: 0 0 12px -2px currentColor;
+   776→   776→}
+   777→   777→.badge-shine {
+   778→   778→  position: relative;
+   779→   779→  overflow: hidden;
+   780→   780→}
+   781→   781→.badge-shine::after {
+   782→   782→  content: '';
+   783→   783→  position: absolute;
+   784→   784→  top: -50%;
+   785→   785→  left: -50%;
+   786→   786→  width: 200%;
+   787→   787→  height: 200%;
+   788→   788→  background: linear-gradient(
+   789→   789→    45deg,
+   790→   790→    transparent 30%,
+   791→   791→    rgba(255,255,255,0.3) 50%,
+   792→   792→    transparent 70%
+   793→   793→  );
+   794→   794→  transform: rotate(45deg) translateX(-100%);
+   795→   795→  transition: transform 0.6s ease;
+   796→   796→}
+   797→   797→.badge-shine:hover::after {
+   798→   798→  transform: rotate(45deg) translateX(100%);
+   799→   799→}
+   800→   800→
+   801→   801→/* Marquee/Infinite Scroll */
+   802→   802→@keyframes marquee {
+   803→   803→  0% { transform: translateX(0); }
+   804→   804→  100% { transform: translateX(-50%); }
+   805→   805→}
+   806→   806→.animate-marquee {
+   807→   807→  animation: marquee 25s linear infinite;
+   808→   808→}
+   809→   809→.animate-marquee:hover {
+   810→   810→  animation-play-state: paused;
+   811→   811→}
+   812→   812→@media (prefers-reduced-motion: reduce) {
+   813→   813→  .animate-marquee {
+   814→   814→    animation: none;
+   815→   815→  }
+   816→   816→}
+   817→   817→
+   818→   818→/* Text Gradient Utility (extended) */
+   819→   819→.gradient-text-warm {
+   820→   820→  background: linear-gradient(135deg, oklch(0.65 0.17 60), oklch(0.70 0.15 85));
+   821→   821→  -webkit-background-clip: text;
+   822→   822→  -webkit-text-fill-color: transparent;
+   823→   823→  background-clip: text;
+   824→   824→}
+   825→   825→
+   826→   826→/* Number counter styling */
+   827→   827→.counter-value {
+   828→   828→  font-variant-numeric: tabular-nums;
+   829→   829→  letter-spacing: -0.02em;
+   830→   830→}
+   831→   831→
+   832→   832→/* Subtle floating animation for decorative elements */
+   833→   833→@keyframes gentleFloat {
+   834→   834→  0%, 100% { transform: translateY(0px) rotate(0deg); }
+   835→   835→  33% { transform: translateY(-8px) rotate(1deg); }
+   836→   836→  66% { transform: translateY(-4px) rotate(-1deg); }
+   837→   837→}
+   838→   838→.animate-gentle-float {
+   839→   839→  animation: gentleFloat 6s ease-in-out infinite;
+   840→   840→}
+   841→   841→@media (prefers-reduced-motion: reduce) {
+   842→   842→  .animate-gentle-float {
+   843→   843→    animation: none;
+   844→   844→  }
+   845→   845→}
+   846→   846→
+   847→   847→/* Interactive hover lift effect */
+   848→   848→.hover-lift {
+   849→   849→  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+   850→   850→}
+   851→   851→.hover-lift:hover {
+   852→   852→  transform: translateY(-6px);
+   853→   853→  box-shadow: 0 20px 40px -12px oklch(0.2 0.03 160 / 20%);
+   854→   854→}
+   855→   855→
+   856→   856→/* ===== TASK 8-6: Major Visual Styling Improvements ===== */
+   857→   857→
+   858→   858→/* 1. Animated Floating Particles */
+   859→   859→@keyframes float-particle {
+   860→   860→  0%, 100% { transform: translateY(0) translateX(0) scale(1); opacity: 0.6; }
+   861→   861→  25% { transform: translateY(-20px) translateX(10px) scale(1.1); opacity: 0.8; }
+   862→   862→  50% { transform: translateY(-35px) translateX(-5px) scale(0.9); opacity: 0.5; }
+   863→   863→  75% { transform: translateY(-15px) translateX(15px) scale(1.05); opacity: 0.7; }
+   864→   864→}
+   865→   865→.particle {
+   866→   866→  position: absolute;
+   867→   867→  border-radius: 50%;
+   868→   868→  pointer-events: none;
+   869→   869→  animation: float-particle var(--duration, 6s) ease-in-out infinite;
+   870→   870→  animation-delay: var(--delay, 0s);
+   871→   871→}
+   872→   872→@media (prefers-reduced-motion: reduce) {
+   873→   873→  .particle { animation: none; opacity: 0.3; }
+   874→   874→}
+   875→   875→
+   876→   876→/* 2. Price Tag Gradient Animation */
+   877→   877→@keyframes priceShine {
+   878→   878→  0% { background-position: -200% center; }
+   879→   879→  100% { background-position: 200% center; }
+   880→   880→}
+   881→   881→.price-tag-animated {
+   882→   882→  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+   883→   883→  background-size: 200% 100%;
+   884→   884→  animation: priceShine 3s ease-in-out infinite;
+   885→   885→}
+   886→   886→.dark .price-tag-animated {
+   887→   887→  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+   888→   888→  background-size: 200% 100%;
+   889→   889→  animation: priceShine 3s ease-in-out infinite;
+   890→   890→}
+   891→   891→@media (prefers-reduced-motion: reduce) {
+   892→   892→  .price-tag-animated { animation: none; }
+   893→   893→}
+   894→   894→
+   895→   895→/* 3. Enhanced Dark Mode Section Overlays */
+   896→   896→.dark .section-dark-overlay {
+   897→   897→  position: relative;
+   898→   898→}
+   899→   899→.dark .section-dark-overlay::after {
+   900→   900→  content: '';
+   901→   901→  position: absolute;
+   902→   902→  inset: 0;
+   903→   903→  background: linear-gradient(180deg, oklch(0 0 0 / 3%) 0%, transparent 30%, transparent 70%, oklch(0 0 0 / 3%) 100%);
+   904→   904→  pointer-events: none;
+   905→   905→  z-index: 0;
+   906→   906→}
+   907→   907→
+   908→   908→/* 4. Card Reveal Animation */
+   909→   909→@keyframes cardReveal {
+   910→   910→  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+   911→   911→  to { opacity: 1; transform: translateY(0) scale(1); }
+   912→   912→}
+   913→   913→.card-reveal {
+   914→   914→  animation: cardReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+   915→   915→  opacity: 0;
+   916→   916→}
+   917→   917→@media (prefers-reduced-motion: reduce) {
+   918→   918→  .card-reveal { animation: none; opacity: 1; }
+   919→   919→}
+   920→   920→
+   921→   921→/* 5. Text Reveal Gradient Mask */
+   922→   922→.text-reveal-mask {
+   923→   923→  mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+   924→   924→  -webkit-mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+   925→   925→}
+   926→   926→
+   927→   927→/* 6. Interactive Scale on Press */
+   928→   928→.press-scale {
+   929→   929→  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+   930→   930→}
+   931→   931→.press-scale:active {
+   932→   932→  transform: scale(0.97);
+   933→   933→}
+   934→   934→
+   935→   935→/* 7. Shimmer Loading (for any future skeletons) */
+   936→   936→@keyframes shimmerLoad {
+   937→   937→  0% { background-position: -200% 0; }
+   938→   938→  100% { background-position: 200% 0; }
+   939→   939→}
+   940→   940→.shimmer-load {
+   941→   941→  background: linear-gradient(90deg, oklch(0.95 0.01 80) 25%, oklch(0.98 0.005 80) 50%, oklch(0.95 0.01 80) 75%);
+   942→   942→  background-size: 200% 100%;
+   943→   943→  animation: shimmerLoad 1.5s ease-in-out infinite;
+   944→   944→}
+   945→   945→.dark .shimmer-load {
+   946→   946→  background: linear-gradient(90deg, oklch(0.22 0.015 60) 25%, oklch(0.26 0.01 60) 50%, oklch(0.22 0.015 60) 75%);
+   947→   947→  background-size: 200% 100%;
+   948→   948→  animation: shimmerLoad 1.5s ease-in-out infinite;
+   949→   949→}
+   950→   950→
+   951→   951→/* 8. Decorative Grid Lines */
+   952→   952→.grid-lines {
+   953→   953→  background-image:
+   954→   954→    linear-gradient(oklch(0.527 0.14 160 / 5%) 1px, transparent 1px),
+   955→   955→    linear-gradient(90deg, oklch(0.527 0.14 160 / 5%) 1px, transparent 1px);
+   956→   956→  background-size: 60px 60px;
+   957→   957→}
+   958→   958→.dark .grid-lines {
+   959→   959→  background-image:
+   960→   960→    linear-gradient(oklch(0.65 0.17 160 / 4%) 1px, transparent 1px),
+   961→   961→    linear-gradient(90deg, oklch(0.65 0.17 160 / 4%) 1px, transparent 1px);
+   962→   962→  background-size: 60px 60px;
+   963→   963→}

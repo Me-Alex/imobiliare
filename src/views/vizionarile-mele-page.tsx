@@ -3,348 +3,21 @@
 import { useState, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  CalendarDays, Clock, User, FileText,
-  Upload, XCircle, ArrowLeft, CalendarCheck, CalendarX2,
-  Download, Eye, File, Trash2, Inbox,
-  Star, CalendarClock, MessageSquarePlus,
+  CalendarDays, Clock, User,
+  CalendarCheck, CalendarX2, Inbox,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { loadFromLS, saveToLS } from '@/lib/storage'
-import { DEFAULT_STAFF, DOC_TYPE_LABELS } from '@/lib/constants'
-import type { Vizionare, UploadedDocument, AvailabilitySlot } from '@/lib/types'
-import { VizionareFeedbackDialog, StarRating } from '@/components/dialogs/vizionare-feedback-dialog'
+import { LS_KEYS } from '@/lib/constants'
+import type { Vizionare, AvailabilitySlot } from '@/lib/types'
+import { VizionareFeedbackDialog } from '@/components/dialogs/vizionare-feedback-dialog'
 import { toast } from 'sonner'
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-const MONTH_NAMES = [
-  'Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun',
-  'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-]
-
-const STATUS_CONFIG: Record<Vizionare['status'], { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }> = {
-  pending: { label: 'In asteptare', variant: 'outline', className: 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700' },
-  confirmed: { label: 'Confirmata', variant: 'default', className: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700' },
-  completed: { label: 'Finalizata', variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700' },
-  cancelled: { label: 'Anulata', variant: 'destructive', className: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700' },
-}
-
-function formatDateRO(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`
-}
-
-function getStaffById(id: string) {
-  return DEFAULT_STAFF.find(s => s.id === id)
-}
-
-function getDocFileIcon(fileType: string) {
-  if (fileType.includes('pdf')) return FileText
-  if (fileType.includes('image')) return Eye
-  return File
-}
-
-// ─── Document Badge ─────────────────────────────────────────────────────────
-
-function DocTypeBadge({ docType }: { docType: UploadedDocument['docType'] }) {
-  return (
-    <Badge variant="secondary" className="text-[10px] px-2 py-0 h-5 font-medium">
-      {DOC_TYPE_LABELS[docType]}
-    </Badge>
-  )
-}
-
-// ─── Document List ──────────────────────────────────────────────────────────
-
-function DocumentList({ vizionareId }: { vizionareId: string }) {
-  const [refreshKey, setRefreshKey] = useState(0)
-  const documents = useMemo(() => {
-    const allDocs = loadFromLS<UploadedDocument[]>('hqs_documents', [])
-    return allDocs.filter(d => d.vizionareId === vizionareId)
-  }, [vizionareId, refreshKey])
-
-  if (documents.length === 0) return null
-
-  const handleDownload = (doc: UploadedDocument) => {
-    const link = document.createElement('a')
-    link.href = doc.filePreview || `data:application/octet-stream;base64,${doc.fileData}`
-    link.download = doc.fileName
-    link.click()
-  }
-
-  const handlePreview = (doc: UploadedDocument) => {
-    if (doc.fileType.includes('image')) {
-      const w = window.open('')
-      if (w) {
-        w.document.write(`
-          <html><head><title>${doc.fileName}</title><style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#111;}</style></head>
-          <body><img src="${doc.filePreview}" style="max-width:100%;max-height:100vh;" /></body></html>
-        `)
-      }
-    } else {
-      handleDownload(doc)
-    }
-  }
-
-  const handleDelete = (docId: string) => {
-    const allDocs = loadFromLS<UploadedDocument[]>('hqs_documents', [])
-    saveToLS('hqs_documents', allDocs.filter(d => d.id !== docId))
-    setRefreshKey(k => k + 1)
-    toast.success('Document sters')
-  }
-
-  return (
-    <div className="mt-3 space-y-2">
-      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-        <FileText className="h-3 w-3" />
-        Documente ({documents.length})
-      </p>
-      <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
-        {documents.map((doc) => {
-          const Icon = getDocFileIcon(doc.fileType)
-          return (
-            <motion.div
-              key={doc.id}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 group"
-            >
-              <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <span className="text-xs truncate flex-1">{doc.fileName}</span>
-              <DocTypeBadge docType={doc.docType} />
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {doc.fileType.includes('image') && (
-                  <button
-                    type="button"
-                    onClick={() => handlePreview(doc)}
-                    className="p-1 rounded hover:bg-muted transition-colors"
-                    title="Previzualizeaza"
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleDownload(doc)}
-                  className="p-1 rounded hover:bg-muted transition-colors"
-                  title="Descarca"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(doc.id)}
-                  className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-muted-foreground hover:text-red-600 transition-colors"
-                  title="Sterge"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </motion.div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ─── Vizionare Card ─────────────────────────────────────────────────────────
-
-function VizionareCard({
-  vizionare,
-  onCancel,
-  onAddFeedback,
-  onReschedule,
-}: {
-  vizionare: Vizionare
-  onCancel: (id: string) => void
-  onAddFeedback: (v: Vizionare) => void
-  onReschedule: (v: Vizionare) => void
-}) {
-  const { navigateTo } = useAppStore()
-  const staff = getStaffById(vizionare.staffId)
-  const statusCfg = STATUS_CONFIG[vizionare.status]
-  const isPast = vizionare.status === 'completed' || vizionare.status === 'cancelled'
-  const isActive = vizionare.status === 'pending' || vizionare.status === 'confirmed'
-  const isCompleted = vizionare.status === 'completed'
-  const hasFeedback = typeof vizionare.rating === 'number' && vizionare.rating > 0
-
-  const handleUploadDocs = () => {
-    saveToLS('hqs_selected_vizionare_id', vizionare.id)
-    navigateTo('documente')
-  }
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.2 }}
-    >
-      <Card className={`glass-card border-0 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md ${
-        isPast ? 'opacity-75' : ''
-      }`}>
-        <CardContent className="p-4 sm:p-5">
-          {/* Header row */}
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div className="flex items-start gap-3 min-w-0">
-              <Avatar className="h-10 w-10 flex-shrink-0">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                  {staff?.avatarInitials || '?'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <h4 className="font-semibold text-sm truncate">{vizionare.propertyTitle}</h4>
-                <p className="text-xs text-muted-foreground">{vizionare.staffName}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {isCompleted && hasFeedback && (
-                <Badge
-                  variant="outline"
-                  className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
-                >
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400 mr-1" />
-                  {vizionare.rating}
-                </Badge>
-              )}
-              {isCompleted && typeof vizionare.wouldProceed === 'boolean' && (
-                <Badge
-                  variant="outline"
-                  className={
-                    vizionare.wouldProceed
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
-                      : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-700'
-                  }
-                >
-                  {vizionare.wouldProceed ? 'Doreste sa continue' : 'Nu este interesat'}
-                </Badge>
-              )}
-              <Badge className={statusCfg.className} variant={statusCfg.variant}>
-                {statusCfg.label}
-              </Badge>
-            </div>
-          </div>
-
-          {/* Date & Time */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-            <div className="flex items-center gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5" />
-              <span>{formatDateRO(vizionare.date)}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5" />
-              <span>{vizionare.startTime} — {vizionare.endTime}</span>
-            </div>
-          </div>
-
-          {/* Completed vizionare with feedback — show read-only stars + feedback text */}
-          {isCompleted && hasFeedback && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="mb-3 space-y-2"
-            >
-              <div className="flex items-center gap-2">
-                <StarRating value={vizionare.rating!} readonly />
-                <span className="text-xs text-muted-foreground">
-                  {vizionare.rating}/5
-                </span>
-              </div>
-              {vizionare.feedback && (
-                <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2.5 line-clamp-3">
-                  {vizionare.feedback}
-                </p>
-              )}
-            </motion.div>
-          )}
-
-          {/* Notes */}
-          {vizionare.notes && !isCompleted && (
-            <p className="text-xs text-muted-foreground mb-3 line-clamp-2 bg-muted/50 rounded-lg p-2.5">
-              {vizionare.notes}
-            </p>
-          )}
-
-          {/* Documents */}
-          <DocumentList vizionareId={vizionare.id} />
-
-          {/* Actions */}
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 text-xs h-8"
-              onClick={handleUploadDocs}
-            >
-              <Upload className="h-3.5 w-3.5" />
-              Incarca Documente
-            </Button>
-
-            {/* Add Feedback button — completed vizionari without rating */}
-            {isCompleted && !hasFeedback && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs h-8 text-amber-700 border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-900/20"
-                onClick={() => onAddFeedback(vizionare)}
-              >
-                <MessageSquarePlus className="h-3.5 w-3.5" />
-                Adauga Feedback
-              </Button>
-            )}
-
-            {/* Edit Feedback button — completed vizionari with rating */}
-            {isCompleted && hasFeedback && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-xs h-8 text-muted-foreground"
-                onClick={() => onAddFeedback(vizionare)}
-              >
-                <MessageSquarePlus className="h-3.5 w-3.5" />
-                Editeaza Feedback
-              </Button>
-            )}
-
-            {/* Reschedule button — active vizionari */}
-            {isActive && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs h-8 text-primary border-primary/30 hover:bg-primary/5 dark:border-primary/50"
-                onClick={() => onReschedule(vizionare)}
-              >
-                <CalendarClock className="h-3.5 w-3.5" />
-                Reprogramare
-              </Button>
-            )}
-
-            {/* Cancel button — pending vizionari */}
-            {vizionare.status === 'pending' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-xs h-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 ml-auto"
-                onClick={() => onCancel(vizionare.id)}
-              >
-                <XCircle className="h-3.5 w-3.5" />
-                Anuleaza
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
-}
+import { PageHero } from '@/components/layout/page-hero'
+import { VizionareCard } from '@/components/features/vizionare-card'
 
 // ─── Empty State ────────────────────────────────────────────────────────────
 
@@ -389,7 +62,7 @@ export function VizionarileMelePage() {
 
   const vizionari = useMemo(() => {
     if (!user) return []
-    const all = loadFromLS<Vizionare[]>('hqs_vizionari', [])
+    const all = loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, [])
     return all.filter(v => v.userId === user.id)
   }, [user, refreshKey])
 
@@ -406,13 +79,13 @@ export function VizionarileMelePage() {
   )
 
   const handleCancel = useCallback((id: string) => {
-    const all = loadFromLS<Vizionare[]>('hqs_vizionari', [])
+    const all = loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, [])
     const idx = all.findIndex(v => v.id === id)
     if (idx !== -1) {
       all[idx].status = 'cancelled'
-      saveToLS('hqs_vizionari', all)
+      saveToLS(LS_KEYS.VIZIONARI, all)
       // Also free the availability slot
-      const slots = loadFromLS<AvailabilitySlot[]>('hqs_staff_availability', [])
+      const slots = loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
       const slotIdx = slots.findIndex(
         (s: AvailabilitySlot) =>
           s.staffId === all[idx].staffId &&
@@ -424,7 +97,7 @@ export function VizionarileMelePage() {
         slots[slotIdx].isBooked = false
         slots[slotIdx].bookedBy = null
         slots[slotIdx].bookedByName = null
-        saveToLS('hqs_staff_availability', slots)
+        saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
       }
       setRefreshKey(k => k + 1)
       toast.success('Vizionare anulata', { description: 'Programarea a fost anulata cu succes.' })
@@ -442,14 +115,14 @@ export function VizionarileMelePage() {
 
   const handleReschedule = useCallback((v: Vizionare) => {
     // Cancel the existing vizionare
-    const all = loadFromLS<Vizionare[]>('hqs_vizionari', [])
+    const all = loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, [])
     const idx = all.findIndex(item => item.id === v.id)
     if (idx !== -1) {
       all[idx].status = 'cancelled'
-      saveToLS('hqs_vizionari', all)
+      saveToLS(LS_KEYS.VIZIONARI, all)
 
       // Free the availability slot
-      const slots = loadFromLS<AvailabilitySlot[]>('hqs_staff_availability', [])
+      const slots = loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
       const slotIdx = slots.findIndex(
         (s: AvailabilitySlot) =>
           s.staffId === all[idx].staffId &&
@@ -461,7 +134,7 @@ export function VizionarileMelePage() {
         slots[slotIdx].isBooked = false
         slots[slotIdx].bookedBy = null
         slots[slotIdx].bookedByName = null
-        saveToLS('hqs_staff_availability', slots)
+        saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
       }
     }
 
@@ -507,23 +180,14 @@ export function VizionarileMelePage() {
   return (
     <div className="min-h-[calc(100vh-10rem)] py-8 px-4">
       <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <button
-            type="button"
-            onClick={() => navigateTo('acasa')}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Inapoi
-          </button>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Vizionarile Mele
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Gestioneaza programarile tale de vizionare.
-          </p>
-        </div>
+        <PageHero
+          variant="simple"
+          title="Vizionarile Mele"
+          description="Gestioneaza programarile tale de vizionare."
+          showBackButton
+          onBack={() => navigateTo('acasa')}
+          backLabel="Inapoi"
+        />
 
         {/* Stats summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">

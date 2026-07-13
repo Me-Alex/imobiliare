@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Home, ChevronRight, LogOut, Building2, Users, Mail, Bell, BarChart3,
+  LogOut, Building2, Users, Mail, Bell, BarChart3,
   MessageSquare, ArrowUpRight, ArrowDownRight, Eye, Trash2, RefreshCw,
   Shield, Loader2, TrendingUp, AlertTriangle, CheckCircle2,
   Table2, Search, Filter
@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { PageHero } from '@/components/layout/page-hero'
 
 interface DashboardData {
   contacts: Array<{
@@ -224,51 +225,28 @@ export function AdminPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Admin Header */}
-      <section className="border-b bg-muted/30">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            {/* Breadcrumb */}
-            <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-4" aria-label="Breadcrumb">
-              <Home className="h-4 w-4" />
-              <span>Acasa</span>
-              <ChevronRight className="h-3.5 w-3.5" />
-              <span className="text-foreground font-medium">Admin</span>
-            </nav>
-
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Shield className="h-6 w-6" />
-                </div>
-                <div>
-                  <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Panou de Administrare</h1>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {user.email} &middot; Ultima actualizare: {new Date().toLocaleTimeString('ro-RO')}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={fetchDashboard} disabled={loading}>
-                  <RefreshCw className={cn('h-4 w-4 mr-1.5', loading && 'animate-spin')} />
-                  Refresh
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => navigateTo('acasa')}>
-                  <Building2 className="h-4 w-4 mr-1.5" />
-                  Site
-                </Button>
-                <Button variant="destructive" size="sm" onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-1.5" />
-                  Deconectare
-                </Button>
-              </div>
-            </div>
-          </motion.div>
+      <PageHero
+        variant="border"
+        icon={Shield}
+        title="Panou de Administrare"
+        description={`${user.email} \u00b7 Ultima actualizare: ${new Date().toLocaleTimeString('ro-RO')}`}
+        breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Admin' }]}
+      >
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={fetchDashboard} disabled={loading}>
+            <RefreshCw className={cn('h-4 w-4 mr-1.5', loading && 'animate-spin')} />
+            Refresh
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigateTo('acasa')}>
+            <Building2 className="h-4 w-4 mr-1.5" />
+            Site
+          </Button>
+          <Button variant="destructive" size="sm" onClick={handleSignOut}>
+            <LogOut className="h-4 w-4 mr-1.5" />
+            Deconectare
+          </Button>
         </div>
-      </section>
+      </PageHero>
 
       {/* Dashboard Content */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">

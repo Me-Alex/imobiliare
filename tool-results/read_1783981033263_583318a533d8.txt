@@ -1,0 +1,751 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback, type FormEvent } from 'react'
+     4→import { motion, AnimatePresence } from 'framer-motion'
+     5→import {
+     6→  Tag, Euro, Building2, MapPin, Ruler, BedDouble, Bath, Calendar,
+     7→  ImagePlus, Plus, Loader2, X, Pencil,
+     8→} from 'lucide-react'
+     9→import { Button } from '@/components/ui/button'
+    10→import { Input } from '@/components/ui/input'
+    11→import { Label } from '@/components/ui/label'
+    12→import { Textarea } from '@/components/ui/textarea'
+    13→import { Badge } from '@/components/ui/badge'
+    14→import { Separator } from '@/components/ui/separator'
+    15→import {
+    16→  Select,
+    17→  SelectContent,
+    18→  SelectItem,
+    19→  SelectTrigger,
+    20→  SelectValue,
+    21→} from '@/components/ui/select'
+    22→import { Switch } from '@/components/ui/switch'
+    23→import {
+    24→  Dialog,
+    25→  DialogContent,
+    26→  DialogDescription,
+    27→  DialogFooter,
+    28→  DialogHeader,
+    29→  DialogTitle,
+    30→} from '@/components/ui/dialog'
+    31→import { loadFromLS, saveToLS } from '@/lib/storage'
+    32→import { PROPERTY_TYPES, TRANSACTIONS, CURRENCIES, SECTOARE, ZONES, LS_KEYS } from '@/lib/constants'
+    33→import type { UserProperty } from '@/lib/types'
+    34→import { toast } from 'sonner'
+    35→
+    36→/* ─── Form data (camelCase for UI) ─── */
+    37→
+    38→interface EditFormData {
+    39→  title: string
+    40→  description: string
+    41→  type: string
+    42→  transaction: string
+    43→  price: string
+    44→  currency: string
+    45→  areaSqm: string
+    46→  rooms: string
+    47→  bathrooms: string
+    48→  floor: string
+    49→  totalFloors: string
+    50→  yearBuilt: string
+    51→  address: string
+    52→  zone: string
+    53→  sector: string
+    54→  featured: boolean
+    55→  galleryUrls: string[]
+    56→}
+    57→
+    58→function emptyForm(): EditFormData {
+    59→  return {
+    60→    title: '', description: '', type: '', transaction: 'VANZARE',
+    61→    price: '', currency: 'EUR', areaSqm: '', rooms: '', bathrooms: '',
+    62→    floor: '', totalFloors: '', yearBuilt: '', address: '',
+    63→    zone: '', sector: '', featured: false, galleryUrls: [],
+    64→  }
+    65→}
+    66→
+    67→function propertyToForm(prop: UserProperty): EditFormData {
+    68→  let galleryUrls: string[] = []
+    69→  try {
+    70→    const raw = prop.gallery_urls
+    71→    if (typeof raw === 'string' && raw) {
+    72→      galleryUrls = JSON.parse(raw)
+    73→    } else if (Array.isArray(raw)) {
+    74→      galleryUrls = raw as string[]
+    75→    }
+    76→  } catch {
+    77→    galleryUrls = []
+    78→  }
+    79→
+    80→  // Ensure cover_url is first in the gallery
+    81→  const coverUrl = (prop.cover_url as string) || ''
+    82→  if (coverUrl && !galleryUrls.includes(coverUrl)) {
+    83→    galleryUrls.unshift(coverUrl)
+    84→  }
+    85→
+    86→  return {
+    87→    title: (prop.title as string) || '',
+    88→    description: (prop.description as string) || '',
+    89→    type: (prop.type as string) || '',
+    90→    transaction: (prop.transaction as string) || 'VANZARE',
+    91→    price: prop.price != null ? String(prop.price) : '',
+    92→    currency: (prop.currency as string) || 'EUR',
+    93→    areaSqm: prop.area_sqm != null ? String(prop.area_sqm) : '',
+    94→    rooms: prop.rooms != null ? String(prop.rooms) : '',
+    95→    bathrooms: prop.bathrooms != null ? String(prop.bathrooms) : '',
+    96→    floor: prop.floor != null ? String(prop.floor) : '',
+    97→    totalFloors: prop.total_floors != null ? String(prop.total_floors) : '',
+    98→    yearBuilt: prop.year_built != null ? String(prop.year_built) : '',
+    99→    address: (prop.address as string) || '',
+   100→    zone: (prop.zone as string) || '',
+   101→    sector: (prop.sector as string) || '',
+   102→    featured: !!(prop.featured),
+   103→    galleryUrls,
+   104→  }
+   105→}
+   106→
+   107→/* ─── Image Editor (URL-based, simplified for dialog) ─── */
+   108→
+   109→function ImageEditor({
+   110→  urls,
+   111→  onChange,
+   112→}: {
+   113→  urls: string[]
+   114→  onChange: (urls: string[]) => void
+   115→}) {
+   116→  const [urlInput, setUrlInput] = useState('')
+   117→  const MAX_IMAGES = 15
+   118→
+   119→  const addUrl = () => {
+   120→    const trimmed = urlInput.trim()
+   121→    if (!trimmed) return
+   122→    if (urls.length >= MAX_IMAGES) {
+   123→      toast.error(`Maximum ${MAX_IMAGES} imagini permise`)
+   124→      return
+   125→    }
+   126→    if (urls.includes(trimmed)) {
+   127→      toast.error('Aceasta imagine este deja adaugata')
+   128→      return
+   129→    }
+   130→    onChange([...urls, trimmed])
+   131→    setUrlInput('')
+   132→  }
+   133→
+   134→  const removeUrl = (index: number) => {
+   135→    onChange(urls.filter((_, i) => i !== index))
+   136→  }
+   137→
+   138→  return (
+   139→    <div className="space-y-3">
+   140→      {/* Existing thumbnails */}
+   141→      <AnimatePresence>
+   142→        {urls.length > 0 && (
+   143→          <motion.div
+   144→            initial={{ opacity: 0, height: 0 }}
+   145→            animate={{ opacity: 1, height: 'auto' }}
+   146→            exit={{ opacity: 0, height: 0 }}
+   147→          >
+   148→            <div className="flex flex-wrap gap-2">
+   149→              {urls.map((url, i) => (
+   150→                <motion.div
+   151→                  key={`${url.slice(0, 80)}-${i}`}
+   152→                  initial={{ opacity: 0, scale: 0.9 }}
+   153→                  animate={{ opacity: 1, scale: 1 }}
+   154→                  exit={{ opacity: 0, scale: 0.9 }}
+   155→                  className="relative group"
+   156→                >
+   157→                  <div className="h-20 w-20 rounded-lg overflow-hidden border border-border">
+   158→                    <img
+   159→                      src={url}
+   160→                      alt={`Poza ${i + 1}`}
+   161→                      className="h-full w-full object-cover"
+   162→                      onError={(e) => {
+   163→                        (e.target as HTMLImageElement).src = ''
+   164→                        ;(e.target as HTMLImageElement).style.display = 'none'
+   165→                        ;(e.target as HTMLImageElement).parentElement!.innerHTML =
+   166→                          '<div class="h-full w-full flex items-center justify-center bg-muted text-muted-foreground text-[10px]">Eroare</div>'
+   167→                      }}
+   168→                    />
+   169→                  </div>
+   170→                  <button
+   171→                    type="button"
+   172→                    onClick={() => removeUrl(i)}
+   173→                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+   174→                    aria-label={`Sterge poza ${i + 1}`}
+   175→                  >
+   176→                    <X className="h-3 w-3" />
+   177→                  </button>
+   178→                  {i === 0 && (
+   179→                    <Badge className="absolute bottom-0.5 left-0.5 text-[8px] px-1 h-3.5 bg-primary">
+   180→                      Cover
+   181→                    </Badge>
+   182→                  )}
+   183→                </motion.div>
+   184→              ))}
+   185→            </div>
+   186→          </motion.div>
+   187→        )}
+   188→      </AnimatePresence>
+   189→
+   190→      {/* URL input */}
+   191→      <div className="flex gap-2">
+   192→        <div className="relative flex-1">
+   193→          <ImagePlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   194→          <Input
+   195→            placeholder="https://exemplu.ro/imagine.jpg"
+   196→            value={urlInput}
+   197→            onChange={(e) => setUrlInput(e.target.value)}
+   198→            onKeyDown={(e) => {
+   199→              if (e.key === 'Enter') {
+   200→                e.preventDefault()
+   201→                addUrl()
+   202→              }
+   203→            }}
+   204→            className="pl-10 h-10"
+   205→          />
+   206→        </div>
+   207→        <Button
+   208→          type="button"
+   209→          variant="outline"
+   210→          size="sm"
+   211→          onClick={addUrl}
+   212→          disabled={!urlInput.trim()}
+   213→        >
+   214→          <Plus className="h-4 w-4" />
+   215→        </Button>
+   216→      </div>
+   217→
+   218→      <p className="text-xs text-muted-foreground">
+   219→        Prima imagine va fi folosita ca coperta.
+   220→      </p>
+   221→    </div>
+   222→  )
+   223→}
+   224→
+   225→/* ─── Main Component ─── */
+   226→
+   227→export interface EditPropertyDialogProps {
+   228→  open: boolean
+   229→  onOpenChange: (open: boolean) => void
+   230→  property: UserProperty | null
+   231→  onSaved: () => void
+   232→}
+   233→
+   234→export function EditPropertyDialog({
+   235→  open,
+   236→  onOpenChange,
+   237→  property,
+   238→  onSaved,
+   239→}: EditPropertyDialogProps) {
+   240→  const [form, setForm] = useState<EditFormData>(emptyForm)
+   241→  const [isSaving, setIsSaving] = useState(false)
+   242→  const [initialized, setInitialized] = useState(false)
+   243→
+   244→  // When property changes, populate the form
+   245→  useEffect(() => {
+   246→    if (!open) {
+   247→      // Reset when closed
+   248→      setForm(emptyForm())
+   249→      setInitialized(false)
+   250→      return
+   251→    }
+   252→    if (property) {
+   253→      setForm(propertyToForm(property))
+   254→      setInitialized(true)
+   255→    }
+   256→  }, [open, property])
+   257→
+   258→  const updateField = useCallback(
+   259→    <K extends keyof EditFormData>(key: K, value: EditFormData[K]) => {
+   260→      setForm((prev) => ({ ...prev, [key]: value }))
+   261→    },
+   262→    [],
+   263→  )
+   264→
+   265→  const handleSave = async (e: FormEvent) => {
+   266→    e.preventDefault()
+   267→    if (!property) return
+   268→
+   269→    const price = parseFloat(form.price)
+   270→    const areaSqm = parseFloat(form.areaSqm)
+   271→
+   272→    if (!form.title.trim()) {
+   273→      toast.error('Titlul este obligatoriu')
+   274→      return
+   275→    }
+   276→    if (!form.description.trim()) {
+   277→      toast.error('Descrierea este obligatorie')
+   278→      return
+   279→    }
+   280→    if (isNaN(price) || price <= 0) {
+   281→      toast.error('Pretul trebuie sa fie un numar pozitiv')
+   282→      return
+   283→    }
+   284→    if (isNaN(areaSqm) || areaSqm <= 0) {
+   285→      toast.error('Suprafata trebuie sa fie un numar pozitiv')
+   286→      return
+   287→    }
+   288→
+   289→    setIsSaving(true)
+   290→    try {
+   291→      const properties = loadFromLS<UserProperty[]>(LS_KEYS.USER_PROPERTIES, [])
+   292→      const idx = properties.findIndex((p) => p.id === property.id)
+   293→      if (idx === -1) {
+   294→        toast.error('Proprietatea nu a fost gasita in localStorage')
+   295→        setIsSaving(false)
+   296→        return
+   297→      }
+   298→
+   299→      // Recalculate price_per_sqm
+   300→      const pricePerSqm = price > 0 && areaSqm > 0 ? Math.round(price / areaSqm) : null
+   301→
+   302→      // Build updated property object preserving original fields we don't edit
+   303→      const updated: UserProperty = {
+   304→        ...properties[idx],
+   305→        title: form.title.trim(),
+   306→        description: form.description.trim(),
+   307→        type: form.type,
+   308→        transaction: form.transaction,
+   309→        price,
+   310→        currency: form.currency,
+   311→        area_sqm: areaSqm,
+   312→        rooms: parseInt(form.rooms) || 0,
+   313→        bathrooms: parseInt(form.bathrooms) || 0,
+   314→        floor: form.floor !== '' ? parseInt(form.floor) : null,
+   315→        total_floors: form.totalFloors !== '' ? parseInt(form.totalFloors) : null,
+   316→        year_built: form.yearBuilt !== '' ? parseInt(form.yearBuilt) : null,
+   317→        address: form.address.trim(),
+   318→        zone: form.zone,
+   319→        sector: form.sector,
+   320→        featured: form.featured,
+   321→        cover_url: form.galleryUrls[0] || '',
+   322→        gallery_urls: JSON.stringify(form.galleryUrls),
+   323→        price_per_sqm: pricePerSqm,
+   324→      }
+   325→
+   326→      properties[idx] = updated
+   327→      saveToLS(LS_KEYS.USER_PROPERTIES, properties)
+   328→
+   329→      toast.success('Proprietate actualizata cu succes!', {
+   330→        description: `"${form.title}" a fost salvata.`,
+   331→      })
+   332→      onSaved()
+   333→      onOpenChange(false)
+   334→    } catch (err) {
+   335→      const msg = err instanceof Error ? err.message : 'Eroare necunoscuta'
+   336→      console.error('Edit save error:', err)
+   337→      toast.error('Eroare la salvare', { description: msg })
+   338→    } finally {
+   339→      setIsSaving(false)
+   340→    }
+   341→  }
+   342→
+   343→  // Compute live price/sqm for display
+   344→  const priceVal = parseFloat(form.price)
+   345→  const areaVal = parseFloat(form.areaSqm)
+   346→  const showPricePerSqm = !isNaN(priceVal) && priceVal > 0 && !isNaN(areaVal) && areaVal > 0
+   347→
+   348→  return (
+   349→    <Dialog open={open} onOpenChange={onOpenChange}>
+   350→      <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+   351→        {/* Header */}
+   352→        <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
+   353→          <DialogTitle className="flex items-center gap-2 text-xl">
+   354→            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+   355→              <Pencil className="h-4.5 w-4.5" />
+   356→            </div>
+   357→            Editeaza Proprietatea
+   358→          </DialogTitle>
+   359→          <DialogDescription>
+   360→            Modifica detaliile proprietatii si salveaza schimbarile.
+   361→          </DialogDescription>
+   362→        </DialogHeader>
+   363→
+   364→        {/* Scrollable form body */}
+   365→        {initialized && (
+   366→          <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0">
+   367→            <div className="max-h-[70vh] overflow-y-auto px-6 py-4 space-y-6">
+   368→              {/* ── Basic Info ── */}
+   369→              <motion.section
+   370→                initial={{ opacity: 0, y: 8 }}
+   371→                animate={{ opacity: 1, y: 0 }}
+   372→                className="rounded-xl border bg-muted/20 p-4 space-y-4"
+   373→              >
+   374→                <h3 className="text-sm font-semibold flex items-center gap-2">
+   375→                  <Tag className="h-4 w-4 text-primary" />
+   376→                  Informatii de Baza
+   377→                </h3>
+   378→
+   379→                <div className="space-y-1.5">
+   380→                  <Label htmlFor="edit-title" className="text-xs">
+   381→                    Titlu <span className="text-destructive">*</span>
+   382→                  </Label>
+   383→                  <Input
+   384→                    id="edit-title"
+   385→                    placeholder="Apartament 3 camere in Dorobanti, decomandat"
+   386→                    value={form.title}
+   387→                    onChange={(e) => updateField('title', e.target.value)}
+   388→                    className="h-10"
+   389→                    required
+   390→                  />
+   391→                </div>
+   392→
+   393→                <div className="space-y-1.5">
+   394→                  <Label htmlFor="edit-description" className="text-xs">
+   395→                    Descriere <span className="text-destructive">*</span>
+   396→                  </Label>
+   397→                  <Textarea
+   398→                    id="edit-description"
+   399→                    placeholder="Descrie proprietatea detaliat..."
+   400→                    value={form.description}
+   401→                    onChange={(e) => updateField('description', e.target.value)}
+   402→                    className="min-h-[100px] resize-y text-sm"
+   403→                    required
+   404→                  />
+   405→                </div>
+   406→
+   407→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   408→                  <div className="space-y-1.5">
+   409→                    <Label className="text-xs">
+   410→                      Tip Proprietate <span className="text-destructive">*</span>
+   411→                    </Label>
+   412→                    <Select
+   413→                      value={form.type}
+   414→                      onValueChange={(v) => updateField('type', v)}
+   415→                      required
+   416→                    >
+   417→                      <SelectTrigger className="h-10">
+   418→                        <SelectValue placeholder="Selecteaza tipul" />
+   419→                      </SelectTrigger>
+   420→                      <SelectContent>
+   421→                        {PROPERTY_TYPES.map((t) => (
+   422→                          <SelectItem key={t} value={t}>
+   423→                            {t}
+   424→                          </SelectItem>
+   425→                        ))}
+   426→                      </SelectContent>
+   427→                    </Select>
+   428→                  </div>
+   429→
+   430→                  <div className="space-y-1.5">
+   431→                    <Label className="text-xs">Tranzactie</Label>
+   432→                    <Select
+   433→                      value={form.transaction}
+   434→                      onValueChange={(v) => updateField('transaction', v)}
+   435→                    >
+   436→                      <SelectTrigger className="h-10">
+   437→                        <SelectValue />
+   438→                      </SelectTrigger>
+   439→                      <SelectContent>
+   440→                        {TRANSACTIONS.map((t) => (
+   441→                          <SelectItem key={t.value} value={t.value}>
+   442→                            {t.label}
+   443→                          </SelectItem>
+   444→                        ))}
+   445→                      </SelectContent>
+   446→                    </Select>
+   447→                  </div>
+   448→                </div>
+   449→              </motion.section>
+   450→
+   451→              {/* ── Pricing & Size ── */}
+   452→              <motion.section
+   453→                initial={{ opacity: 0, y: 8 }}
+   454→                animate={{ opacity: 1, y: 0 }}
+   455→                transition={{ delay: 0.04 }}
+   456→                className="rounded-xl border bg-muted/20 p-4 space-y-4"
+   457→              >
+   458→                <h3 className="text-sm font-semibold flex items-center gap-2">
+   459→                  <Euro className="h-4 w-4 text-primary" />
+   460→                  Pret si Dimensiuni
+   461→                </h3>
+   462→
+   463→                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+   464→                  <div className="space-y-1.5">
+   465→                    <Label htmlFor="edit-price" className="text-xs">
+   466→                      Pret <span className="text-destructive">*</span>
+   467→                    </Label>
+   468→                    <div className="relative">
+   469→                      <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+   470→                      <Input
+   471→                        id="edit-price"
+   472→                        type="number"
+   473→                        min="0"
+   474→                        step="1000"
+   475→                        placeholder="95000"
+   476→                        value={form.price}
+   477→                        onChange={(e) => updateField('price', e.target.value)}
+   478→                        className="pl-9 h-10 text-sm"
+   479→                        required
+   480→                      />
+   481→                    </div>
+   482→                  </div>
+   483→                  <div className="space-y-1.5">
+   484→                    <Label className="text-xs">Moneda</Label>
+   485→                    <Select
+   486→                      value={form.currency}
+   487→                      onValueChange={(v) => updateField('currency', v)}
+   488→                    >
+   489→                      <SelectTrigger className="h-10">
+   490→                        <SelectValue />
+   491→                      </SelectTrigger>
+   492→                      <SelectContent>
+   493→                        {CURRENCIES.map((c) => (
+   494→                          <SelectItem key={c} value={c}>
+   495→                            {c}
+   496→                          </SelectItem>
+   497→                        ))}
+   498→                      </SelectContent>
+   499→                    </Select>
+   500→                  </div>
+   501→                  <div className="space-y-1.5">
+   502→                    <Label htmlFor="edit-area" className="text-xs">
+   503→                      Suprafata (m²) <span className="text-destructive">*</span>
+   504→                    </Label>
+   505→                    <div className="relative">
+   506→                      <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+   507→                      <Input
+   508→                        id="edit-area"
+   509→                        type="number"
+   510→                        min="1"
+   511→                        placeholder="75"
+   512→                        value={form.areaSqm}
+   513→                        onChange={(e) => updateField('areaSqm', e.target.value)}
+   514→                        className="pl-9 h-10 text-sm"
+   515→                        required
+   516→                      />
+   517→                    </div>
+   518→                  </div>
+   519→                </div>
+   520→
+   521→                {showPricePerSqm && (
+   522→                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
+   523→                    <span className="text-xs text-muted-foreground">Pret/mp:</span>
+   524→                    <span className="text-xs font-semibold text-primary">
+   525→                      {Math.round(priceVal / areaVal).toLocaleString('ro-RO')}{' '}
+   526→                      {form.currency}/m²
+   527→                    </span>
+   528→                  </div>
+   529→                )}
+   530→              </motion.section>
+   531→
+   532→              {/* ── Rooms & Details ── */}
+   533→              <motion.section
+   534→                initial={{ opacity: 0, y: 8 }}
+   535→                animate={{ opacity: 1, y: 0 }}
+   536→                transition={{ delay: 0.08 }}
+   537→                className="rounded-xl border bg-muted/20 p-4 space-y-4"
+   538→              >
+   539→                <h3 className="text-sm font-semibold flex items-center gap-2">
+   540→                  <Building2 className="h-4 w-4 text-primary" />
+   541→                  Detalii Imobil
+   542→                </h3>
+   543→
+   544→                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   545→                  <div className="space-y-1.5">
+   546→                    <Label htmlFor="edit-rooms" className="text-xs">
+   547→                      Camere <span className="text-destructive">*</span>
+   548→                    </Label>
+   549→                    <div className="relative">
+   550→                      <BedDouble className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+   551→                      <Input
+   552→                        id="edit-rooms"
+   553→                        type="number"
+   554→                        min="0"
+   555→                        placeholder="3"
+   556→                        value={form.rooms}
+   557→                        onChange={(e) => updateField('rooms', e.target.value)}
+   558→                        className="pl-9 h-10 text-sm"
+   559→                        required
+   560→                      />
+   561→                    </div>
+   562→                  </div>
+   563→                  <div className="space-y-1.5">
+   564→                    <Label htmlFor="edit-bathrooms" className="text-xs">Bai</Label>
+   565→                    <div className="relative">
+   566→                      <Bath className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+   567→                      <Input
+   568→                        id="edit-bathrooms"
+   569→                        type="number"
+   570→                        min="0"
+   571→                        placeholder="1"
+   572→                        value={form.bathrooms}
+   573→                        onChange={(e) => updateField('bathrooms', e.target.value)}
+   574→                        className="pl-9 h-10 text-sm"
+   575→                      />
+   576→                    </div>
+   577→                  </div>
+   578→                  <div className="space-y-1.5">
+   579→                    <Label htmlFor="edit-floor" className="text-xs">Etaj</Label>
+   580→                    <Input
+   581→                      id="edit-floor"
+   582→                      type="number"
+   583→                      min="0"
+   584→                      placeholder="3"
+   585→                      value={form.floor}
+   586→                      onChange={(e) => updateField('floor', e.target.value)}
+   587→                      className="h-10 text-sm"
+   588→                    />
+   589→                  </div>
+   590→                  <div className="space-y-1.5">
+   591→                    <Label htmlFor="edit-totalFloors" className="text-xs">
+   592→                      Etaje Total
+   593→                    </Label>
+   594→                    <Input
+   595→                      id="edit-totalFloors"
+   596→                      type="number"
+   597→                      min="1"
+   598→                      placeholder="8"
+   599→                      value={form.totalFloors}
+   600→                      onChange={(e) => updateField('totalFloors', e.target.value)}
+   601→                      className="h-10 text-sm"
+   602→                    />
+   603→                  </div>
+   604→                </div>
+   605→
+   606→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   607→                  <div className="space-y-1.5">
+   608→                    <Label htmlFor="edit-yearBuilt" className="text-xs">
+   609→                      An Constructie
+   610→                    </Label>
+   611→                    <div className="relative">
+   612→                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+   613→                      <Input
+   614→                        id="edit-yearBuilt"
+   615→                        type="number"
+   616→                        min="1900"
+   617→                        max={new Date().getFullYear()}
+   618→                        placeholder="2020"
+   619→                        value={form.yearBuilt}
+   620→                        onChange={(e) => updateField('yearBuilt', e.target.value)}
+   621→                        className="pl-9 h-10 text-sm"
+   622→                      />
+   623→                    </div>
+   624→                  </div>
+   625→                  <div className="flex items-end pb-1">
+   626→                    <div className="flex items-center justify-between w-full gap-3">
+   627→                      <Label className="text-xs">Proprietate Evidentiata</Label>
+   628→                      <Switch
+   629→                        checked={form.featured}
+   630→                        onCheckedChange={(v) => updateField('featured', v)}
+   631→                        aria-label="Marcheaza ca featured"
+   632→                      />
+   633→                    </div>
+   634→                  </div>
+   635→                </div>
+   636→              </motion.section>
+   637→
+   638→              {/* ── Location ── */}
+   639→              <motion.section
+   640→                initial={{ opacity: 0, y: 8 }}
+   641→                animate={{ opacity: 1, y: 0 }}
+   642→                transition={{ delay: 0.12 }}
+   643→                className="rounded-xl border bg-muted/20 p-4 space-y-4"
+   644→              >
+   645→                <h3 className="text-sm font-semibold flex items-center gap-2">
+   646→                  <MapPin className="h-4 w-4 text-primary" />
+   647→                  Locatie
+   648→                </h3>
+   649→
+   650→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   651→                  <div className="space-y-1.5">
+   652→                    <Label className="text-xs">Sector</Label>
+   653→                    <Select
+   654→                      value={form.sector}
+   655→                      onValueChange={(v) => updateField('sector', v)}
+   656→                    >
+   657→                      <SelectTrigger className="h-10">
+   658→                        <SelectValue placeholder="Selecteaza sectorul" />
+   659→                      </SelectTrigger>
+   660→                      <SelectContent>
+   661→                        {SECTOARE.map((s) => (
+   662→                          <SelectItem key={s} value={s}>
+   663→                            {s}
+   664→                          </SelectItem>
+   665→                        ))}
+   666→                      </SelectContent>
+   667→                    </Select>
+   668→                  </div>
+   669→                  <div className="space-y-1.5">
+   670→                    <Label className="text-xs">Zona</Label>
+   671→                    <Select
+   672→                      value={form.zone}
+   673→                      onValueChange={(v) => updateField('zone', v)}
+   674→                    >
+   675→                      <SelectTrigger className="h-10">
+   676→                        <SelectValue placeholder="Selecteaza zona" />
+   677→                      </SelectTrigger>
+   678→                      <SelectContent>
+   679→                        {ZONES.map((z) => (
+   680→                          <SelectItem key={z} value={z}>
+   681→                            {z}
+   682→                          </SelectItem>
+   683→                        ))}
+   684→                      </SelectContent>
+   685→                    </Select>
+   686→                  </div>
+   687→                </div>
+   688→
+   689→                <div className="space-y-1.5">
+   690→                  <Label htmlFor="edit-address" className="text-xs">
+   691→                    Adresa exacta
+   692→                  </Label>
+   693→                  <Input
+   694→                    id="edit-address"
+   695→                    placeholder="Str. Example nr. 10, Bl. A3, Sc. 2, Et. 4, Ap. 12"
+   696→                    value={form.address}
+   697→                    onChange={(e) => updateField('address', e.target.value)}
+   698→                    className="h-10 text-sm"
+   699→                  />
+   700→                </div>
+   701→              </motion.section>
+   702→
+   703→              {/* ── Images ── */}
+   704→              <motion.section
+   705→                initial={{ opacity: 0, y: 8 }}
+   706→                animate={{ opacity: 1, y: 0 }}
+   707→                transition={{ delay: 0.16 }}
+   708→                className="rounded-xl border bg-muted/20 p-4 space-y-4"
+   709→              >
+   710→                <h3 className="text-sm font-semibold flex items-center gap-2">
+   711→                  <ImagePlus className="h-4 w-4 text-primary" />
+   712→                  Imagini ({form.galleryUrls.length})
+   713→                </h3>
+   714→                <ImageEditor
+   715→                  urls={form.galleryUrls}
+   716→                  onChange={(urls) => updateField('galleryUrls', urls)}
+   717→                />
+   718→              </motion.section>
+   719→            </div>
+   720→
+   721→            {/* ── Footer ── */}
+   722→            <Separator />
+   723→            <DialogFooter className="px-6 py-4 shrink-0">
+   724→              <Button
+   725→                type="button"
+   726→                variant="outline"
+   727→                onClick={() => onOpenChange(false)}
+   728→                disabled={isSaving}
+   729→              >
+   730→                Anuleaza
+   731→              </Button>
+   732→              <Button type="submit" disabled={isSaving} className="gap-2 min-w-[140px]">
+   733→                {isSaving ? (
+   734→                  <>
+   735→                    <Loader2 className="h-4 w-4 animate-spin" />
+   736→                    Se salveaza...
+   737→                  </>
+   738→                ) : (
+   739→                  <>
+   740→                    <Pencil className="h-4 w-4" />
+   741→                    Salveaza Modificarile
+   742→                  </>
+   743→                )}
+   744→              </Button>
+   745→            </DialogFooter>
+   746→          </form>
+   747→        )}
+   748→      </DialogContent>
+   749→    </Dialog>
+   750→  )
+   751→}

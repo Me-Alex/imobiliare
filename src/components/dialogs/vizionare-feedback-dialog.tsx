@@ -15,6 +15,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { loadFromLS, saveToLS } from '@/lib/storage'
+import { LS_KEYS, MONTH_NAMES_SHORT } from '@/lib/constants'
 import type { Vizionare } from '@/lib/types'
 import { toast } from 'sonner'
 
@@ -123,7 +124,7 @@ export function VizionareFeedbackDialog({
 
     setSaving(true)
     try {
-      const all = loadFromLS<Vizionare[]>('hqs_vizionari', [])
+      const all = loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, [])
       const idx = all.findIndex((v) => v.id === vizionare.id)
       if (idx !== -1) {
         all[idx].rating = rating
@@ -131,7 +132,7 @@ export function VizionareFeedbackDialog({
         all[idx].wouldProceed = wouldProceed
         all[idx].completedAt = vizionare.completedAt || new Date().toISOString()
         all[idx].notes = notes.trim()
-        saveToLS('hqs_vizionari', all)
+        saveToLS(LS_KEYS.VIZIONARI, all)
       }
       toast.success('Feedback salvat', {
         description: 'Multumim pentru feedback-ul tau!',
@@ -149,13 +150,8 @@ export function VizionareFeedbackDialog({
 
   if (!vizionare) return null
 
-  const MONTH_NAMES = [
-    'Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun',
-    'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ]
-
   const dateObj = new Date(vizionare.date + 'T00:00:00')
-  const formattedDate = `${dateObj.getDate()} ${MONTH_NAMES[dateObj.getMonth()]} ${dateObj.getFullYear()}`
+  const formattedDate = `${dateObj.getDate()} ${MONTH_NAMES_SHORT[dateObj.getMonth()]} ${dateObj.getFullYear()}`
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

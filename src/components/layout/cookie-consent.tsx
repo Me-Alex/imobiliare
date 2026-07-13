@@ -4,8 +4,9 @@ import { useCallback, useSyncExternalStore } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Cookie } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { LS_KEYS } from '@/lib/constants'
 
-const STORAGE_KEY = 'pm-cookies-accepted'
+const STORAGE_KEY = LS_KEYS.COOKIES_ACCEPTED
 
 function subscribe(callback: () => void) {
   window.addEventListener('storage', callback)
