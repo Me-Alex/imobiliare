@@ -1,0 +1,877 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useState, useMemo, useEffect } from 'react'
+     4→     4→import { motion, AnimatePresence } from 'framer-motion'
+     5→     5→import {
+     6→     6→  CalendarDays, Clock, MapPin, User, ChevronRight, ChevronLeft,
+     7→     7→  Check, Building2, Phone, Loader2, ArrowLeft, CalendarCheck,
+     8→     8→} from 'lucide-react'
+     9→     9→import { Button } from '@/components/ui/button'
+    10→    10→import { Textarea } from '@/components/ui/textarea'
+    11→    11→import { Label } from '@/components/ui/label'
+    12→    12→import { Badge } from '@/components/ui/badge'
+    13→    13→import { Card, CardContent } from '@/components/ui/card'
+    14→    14→import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+    15→    15→import { Separator } from '@/components/ui/separator'
+    16→    16→import { useAuth } from '@/contexts/auth-context'
+    17→    17→import { useAppStore } from '@/store/use-app-store'
+    18→    18→import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
+    19→    19→import { DEFAULT_STAFF } from '@/lib/constants'
+    20→    20→import type { StaffMember, AvailabilitySlot, Vizionare } from '@/lib/types'
+    21→    21→import { toast } from 'sonner'
+    22→    22→
+    23→    23→// ─── Helpers ────────────────────────────────────────────────────────────────
+    24→    24→
+    25→    25→const STEP_LABELS = ['Alege Proprietatea', 'Alege Agent si Data', 'Confirmare']
+    26→    26→const DAY_NAMES = ['Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sam', 'Dum']
+    27→    27→const MONTH_NAMES = [
+    28→    28→  'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
+    29→    29→  'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie',
+    30→    30→]
+    31→    31→
+    32→    32→interface UserProperty {
+    33→    33→  id: string
+    34→    34→  title: string
+    35→    35→  type?: string
+    36→    36→  transaction?: string
+    37→    37→  price?: string
+    38→    38→  currency?: string
+    39→    39→  areaSqm?: string
+    40→    40→  rooms?: string
+    41→    41→  address?: string
+    42→    42→  zone?: string
+    43→    43→  coverUrl?: string
+    44→    44→  galleryUrls?: string[]
+    45→    45→  [key: string]: unknown
+    46→    46→}
+    47→    47→
+    48→    48→function seedAvailability() {
+    49→    49→  const existing = loadFromLS<AvailabilitySlot[]>('hqs_staff_availability', [])
+    50→    50→  if (existing.length > 0) return
+    51→    51→
+    52→    52→  const toLocalDateStr = (d: Date) => {
+    53→    53→    const y = d.getFullYear()
+    54→    54→    const m = String(d.getMonth() + 1).padStart(2, '0')
+    55→    55→    const day = String(d.getDate()).padStart(2, '0')
+    56→    56→    return `${y}-${m}-${day}`
+    57→    57→  }
+    58→    58→
+    59→    59→  const now = new Date()
+    60→    60→  const slots: AvailabilitySlot[] = []
+    61→    61→  const times = [
+    62→    62→    ['09:00', '10:00'], ['10:00', '11:00'], ['11:00', '12:00'],
+    63→    63→    ['13:00', '14:00'], ['14:00', '15:00'], ['15:00', '16:00'],
+    64→    64→    ['16:00', '17:00'],
+    65→    65→  ]
+    66→    66→
+    67→    67→  for (let d = 1; d <= 14; d++) {
+    68→    68→    const date = new Date(now)
+    69→    69→    date.setDate(date.getDate() + d)
+    70→    70→    const dayOfWeek = date.getDay() // 0=Sun
+    71→    71→    if (dayOfWeek === 0) continue // Skip Sundays
+    72→    72→
+    73→    73→    const dateStr = toLocalDateStr(date)
+    74→    74→    const activeStaff = DEFAULT_STAFF.filter(s => s.isActive)
+    75→    75→    const shuffledTimes = [...times].sort(() => Math.random() - 0.5)
+    76→    76→
+    77→    77→    for (const staff of activeStaff) {
+    78→    78→      const numSlots = 3 + Math.floor(Math.random() * 3)
+    79→    79→      for (let t = 0; t < Math.min(numSlots, shuffledTimes.length); t++) {
+    80→    80→        slots.push({
+    81→    81→          id: generateId(),
+    82→    82→          staffId: staff.id,
+    83→    83→          date: dateStr,
+    84→    84→          startTime: shuffledTimes[t][0],
+    85→    85→          endTime: shuffledTimes[t][1],
+    86→    86→          isBooked: false,
+    87→    87→          bookedBy: null,
+    88→    88→          bookedByName: null,
+    89→    89→        })
+    90→    90→      }
+    91→    91→    }
+    92→    92→  }
+    93→    93→  saveToLS('hqs_staff_availability', slots)
+    94→    94→}
+    95→    95→
+    96→    96→function formatDateRO(dateStr: string): string {
+    97→    97→  const d = new Date(dateStr + 'T00:00:00')
+    98→    98→  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`
+    99→    99→}
+   100→   100→
+   101→   101→// ─── Step Indicator ─────────────────────────────────────────────────────────
+   102→   102→
+   103→   103→function StepIndicator({ currentStep, onStepClick }: { currentStep: number; onStepClick: (step: number) => void }) {
+   104→   104→  return (
+   105→   105→    <div className="flex items-center justify-center gap-0 mb-8">
+   106→   106→      {STEP_LABELS.map((label, i) => {
+   107→   107→        const stepNum = i + 1
+   108→   108→        const isActive = stepNum === currentStep
+   109→   109→        const isCompleted = stepNum < currentStep
+   110→   110→        const isClickable = stepNum <= currentStep
+   111→   111→
+   112→   112→        return (
+   113→   113→          <div key={label} className="flex items-center">
+   114→   114→            <button
+   115→   115→              type="button"
+   116→   116→              onClick={() => isClickable && onStepClick(stepNum)}
+   117→   117→              disabled={!isClickable}
+   118→   118→              className="flex items-center gap-2 group"
+   119→   119→            >
+   120→   120→              <div
+   121→   121→                className={`
+   122→   122→                  flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold transition-all duration-300
+   123→   123→                  ${isCompleted
+   124→   124→                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25'
+   125→   125→                    : isActive
+   126→   126→                      ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-110'
+   127→   127→                      : 'bg-muted text-muted-foreground'
+   128→   128→                  }
+   129→   129→                  ${isClickable ? 'cursor-pointer' : 'cursor-not-allowed'}
+   130→   130→                `}
+   131→   131→              >
+   132→   132→                {isCompleted ? <Check className="h-4 w-4" /> : stepNum}
+   133→   133→              </div>
+   134→   134→              <span
+   135→   135→                className={`hidden sm:inline text-sm font-medium transition-colors ${
+   136→   136→                  isActive ? 'text-foreground' : 'text-muted-foreground'
+   137→   137→                }`}
+   138→   138→              >
+   139→   139→                {label}
+   140→   140→              </span>
+   141→   141→            </button>
+   142→   142→            {i < STEP_LABELS.length - 1 && (
+   143→   143→              <div
+   144→   144→                className={`w-8 sm:w-16 lg:w-24 h-0.5 mx-2 sm:mx-3 rounded-full transition-colors duration-300 ${
+   145→   145→                  stepNum < currentStep ? 'bg-emerald-500' : 'bg-muted'
+   146→   146→                }`}
+   147→   147→              />
+   148→   148→            )}
+   149→   149→          </div>
+   150→   150→        )
+   151→   151→      })}
+   152→   152→    </div>
+   153→   153→  )
+   154→   154→}
+   155→   155→
+   156→   156→// ─── Step 1: Property Selection ─────────────────────────────────────────────
+   157→   157→
+   158→   158→function StepPropertySelection({
+   159→   159→  selectedId,
+   160→   160→  onSelect,
+   161→   161→}: {
+   162→   162→  selectedId: string | null
+   163→   163→  onSelect: (prop: UserProperty) => void
+   164→   164→}) {
+   165→   165→  const { user } = useAuth()
+   166→   166→  const properties = loadFromLS<UserProperty[]>('hqs_user_properties', [])
+   167→   167→
+   168→   168→  const allProperties = useMemo(() => {
+   169→   169→    // Also include some demo properties if user has none
+   170→   170→    if (properties.length > 0) return properties
+   171→   171→    return [
+   172→   172→      {
+   173→   173→        id: 'demo-1', title: 'Apartament 2 camere Dorobanti',
+   174→   174→        type: 'Apartament', transaction: 'VANZARE', price: '95000',
+   175→   175→        currency: 'EUR', areaSqm: '58', rooms: '2', address: 'Str. Dorobanti nr. 45',
+   176→   176→        zone: 'Dorobanti', coverUrl: '/images/prop-demo-1.jpg',
+   177→   177→      },
+   178→   178→      {
+   179→   179→        id: 'demo-2', title: 'Garsoniera Centru',
+   180→   180→        type: 'Garsoniera', transaction: 'INCHIRIERE', price: '450',
+   181→   181→        currency: 'EUR', areaSqm: '35', rooms: '1', address: 'Str. Victoriei nr. 12',
+   182→   182→        zone: 'Victoriei', coverUrl: '/images/prop-demo-2.jpg',
+   183→   183→      },
+   184→   184→      {
+   185→   185→        id: 'demo-3', title: 'Casa 3 camere Pipera',
+   186→   186→        type: 'Casa', transaction: 'VANZARE', price: '185000',
+   187→   187→        currency: 'EUR', areaSqm: '120', rooms: '3', address: 'Str. Pipera nr. 78',
+   188→   188→        zone: 'Pipera', coverUrl: '/images/prop-demo-3.jpg',
+   189→   189→      },
+   190→   190→    ]
+   191→   191→  }, [properties])
+   192→   192→
+   193→   193→  if (!user) {
+   194→   194→    return (
+   195→   195→      <div className="text-center py-12">
+   196→   196→        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
+   197→   197→          <User className="h-7 w-7" />
+   198→   198→        </div>
+   199→   199→        <h3 className="text-lg font-semibold mb-2">Autentifica-te</h3>
+   200→   200→        <p className="text-sm text-muted-foreground mb-6">
+   201→   201→          Trebuie sa fii autentificat pentru a programa o vizionare.
+   202→   202→        </p>
+   203→   203→        <Button onClick={() => useAppStore.getState().navigateTo('login')} className="gap-2">
+   204→   204→          Autentifica-te
+   205→   205→        </Button>
+   206→   206→      </div>
+   207→   207→    )
+   208→   208→  }
+   209→   209→
+   210→   210→  return (
+   211→   211→    <div className="space-y-4">
+   212→   212→      <p className="text-sm text-muted-foreground text-center">
+   213→   213→        Selecteaza o proprietate pentru a programa o vizionare
+   214→   214→      </p>
+   215→   215→      <div className="grid gap-3 max-h-96 overflow-y-auto pr-1 custom-scrollbar">
+   216→   216→        {allProperties.map((prop) => {
+   217→   217→          const isSelected = selectedId === prop.id
+   218→   218→          return (
+   219→   219→            <motion.button
+   220→   220→              key={prop.id}
+   221→   221→              type="button"
+   222→   222→              whileHover={{ scale: 1.01 }}
+   223→   223→              whileTap={{ scale: 0.99 }}
+   224→   224→              onClick={() => onSelect(prop)}
+   225→   225→              className={`
+   226→   226→                w-full text-left rounded-xl border-2 p-4 transition-all duration-200
+   227→   227→                ${isSelected
+   228→   228→                  ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
+   229→   229→                  : 'border-border hover:border-primary/40 hover:bg-muted/50'
+   230→   230→                }
+   231→   231→              `}
+   232→   232→            >
+   233→   233→              <div className="flex gap-4">
+   234→   234→                {prop.coverUrl ? (
+   235→   235→                  <div className="w-20 h-20 rounded-lg bg-muted flex-shrink-0 overflow-hidden">
+   236→   236→                    <img
+   237→   237→                      src={prop.coverUrl}
+   238→   238→                      alt={prop.title}
+   239→   239→                      className="w-full h-full object-cover"
+   240→   240→                      onError={(e) => {
+   241→   241→                        (e.target as HTMLImageElement).style.display = 'none'
+   242→   242→                        ;(e.target as HTMLImageElement).parentElement!.innerHTML =
+   243→   243→                          '<div class="w-full h-full flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>'
+   244→   244→                      }}
+   245→   245→                    />
+   246→   246→                  </div>
+   247→   247→                ) : (
+   248→   248→                  <div className="w-20 h-20 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0">
+   249→   249→                    <Building2 className="h-8 w-8 text-muted-foreground/50" />
+   250→   250→                  </div>
+   251→   251→                )}
+   252→   252→                <div className="flex-1 min-w-0">
+   253→   253→                  <div className="flex items-start justify-between gap-2">
+   254→   254→                    <h4 className="font-semibold text-sm leading-tight truncate">{prop.title}</h4>
+   255→   255→                    {isSelected && (
+   256→   256→                      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+   257→   257→                        <Check className="h-3 w-3 text-primary-foreground" />
+   258→   258→                      </div>
+   259→   259→                    )}
+   260→   260→                  </div>
+   261→   261→                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+   262→   262→                    {prop.type && <Badge variant="secondary" className="text-xs">{prop.type}</Badge>}
+   263→   263→                    {prop.transaction && (
+   264→   264→                      <Badge variant="outline" className="text-xs">
+   265→   265→                        {prop.transaction === 'VANZARE' ? 'Vanzare' : 'Inchiriere'}
+   266→   266→                      </Badge>
+   267→   267→                    )}
+   268→   268→                  </div>
+   269→   269→                  <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+   270→   270→                    {prop.price && <span className="font-medium text-foreground">{prop.price} {prop.currency}</span>}
+   271→   271→                    {prop.areaSqm && <span>{prop.areaSqm} m²</span>}
+   272→   272→                    {prop.rooms && <span>{prop.rooms} cam.</span>}
+   273→   273→                  </div>
+   274→   274→                  {prop.address && (
+   275→   275→                    <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+   276→   276→                      <MapPin className="h-3 w-3" />
+   277→   277→                      <span className="truncate">{prop.address}</span>
+   278→   278→                    </div>
+   279→   279→                  )}
+   280→   280→                </div>
+   281→   281→              </div>
+   282→   282→            </motion.button>
+   283→   283→          )
+   284→   284→        })}
+   285→   285→      </div>
+   286→   286→    </div>
+   287→   287→  )
+   288→   288→}
+   289→   289→
+   290→   290→// ─── Step 2: Agent & Date Selection ─────────────────────────────────────────
+   291→   291→
+   292→   292→function StepAgentDate({
+   293→   293→  selectedStaffId,
+   294→   294→  selectedDate,
+   295→   295→  selectedSlotId,
+   296→   296→  onStaffSelect,
+   297→   297→  onDateSelect,
+   298→   298→  onSlotSelect,
+   299→   299→}: {
+   300→   300→  selectedStaffId: string | null
+   301→   301→  selectedDate: string | null
+   302→   302→  selectedSlotId: string | null
+   303→   303→  onStaffSelect: (staff: StaffMember) => void
+   304→   304→  onDateSelect: (date: string) => void
+   305→   305→  onSlotSelect: (slot: AvailabilitySlot) => void
+   306→   306→}) {
+   307→   307→  const [availability, setAvailability] = useState<AvailabilitySlot[]>(() =>
+   308→   308→    loadFromLS<AvailabilitySlot[]>('hqs_staff_availability', [])
+   309→   309→  )
+   310→   310→  const staff = DEFAULT_STAFF.filter(s => s.isActive)
+   311→   311→
+   312→   312→  // Generate next 14 days grid
+   313→   313→  const calendarDays = useMemo(() => {
+   314→   314→    const today = new Date()
+   315→   315→    const days: Array<{ date: string; dayName: string; dayNum: number; month: string; isToday: boolean }> = []
+   316→   316→    // Find Monday of current week or next Monday if today is Sunday
+   317→   317→    const currentDay = today.getDay() === 0 ? 6 : today.getDay() - 1
+   318→   318→    const monday = new Date(today)
+   319→   319→    monday.setDate(today.getDate() - currentDay + 1)
+   320→   320→    // If Monday is today, start from today
+   321→   321→    if (monday <= today) {
+   322→   322→      // Start from today
+   323→   323→    } else {
+   324→   324→      // Start from today anyway
+   325→   325→    }
+   326→   326→
+   327→   327→    for (let i = 0; i < 14; i++) {
+   328→   328→      const d = new Date(today)
+   329→   329→      d.setDate(today.getDate() + i + 1)
+   330→   330→      const dow = d.getDay() === 0 ? 6 : d.getDay() - 1
+   331→   331→      days.push({
+   332→   332→        date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+   333→   333→        dayName: DAY_NAMES[dow],
+   334→   334→        dayNum: d.getDate(),
+   335→   335→        month: d.toLocaleDateString('ro-RO', { month: 'short' }),
+   336→   336→        isToday: false,
+   337→   337→      })
+   338→   338→    }
+   339→   339→    return days
+   340→   340→  }, [])
+   341→   341→
+   342→   342→  // Group calendar into weeks
+   343→   343→  const weeks = useMemo(() => {
+   344→   344→    const result: typeof calendarDays[] = []
+   345→   345→    for (let i = 0; i < calendarDays.length; i += 7) {
+   346→   346→      result.push(calendarDays.slice(i, i + 7))
+   347→   347→    }
+   348→   348→    return result
+   349→   349→  }, [calendarDays])
+   350→   350→
+   351→   351→  // Get available slots for selected staff + date
+   352→   352→  const availableSlots = useMemo(() => {
+   353→   353→    if (!selectedStaffId || !selectedDate) return []
+   354→   354→    return availability
+   355→   355→      .filter(s => s.staffId === selectedStaffId && s.date === selectedDate && !s.isBooked)
+   356→   356→      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+   357→   357→  }, [availability, selectedStaffId, selectedDate])
+   358→   358→
+   359→   359→  const selectedStaff = staff.find(s => s.id === selectedStaffId)
+   360→   360→
+   361→   361→  // Get dates that have at least one slot for the selected staff
+   362→   362→  const datesWithSlots = useMemo(() => {
+   363→   363→    if (!selectedStaffId) return new Set<string>()
+   364→   364→    return new Set(
+   365→   365→      availability.filter(s => s.staffId === selectedStaffId && !s.isBooked).map(s => s.date)
+   366→   366→    )
+   367→   367→  }, [availability, selectedStaffId])
+   368→   368→
+   369→   369→  return (
+   370→   370→    <div className="space-y-6">
+   371→   371→      {/* Staff Selection */}
+   372→   372→      <div>
+   373→   373→        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+   374→   374→          <User className="h-4 w-4 text-primary" />
+   375→   375→          Alege un agent
+   376→   376→        </h3>
+   377→   377→        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   378→   378→          {staff.map((member) => {
+   379→   379→            const isSelected = selectedStaffId === member.id
+   380→   380→            return (
+   381→   381→              <motion.button
+   382→   382→                key={member.id}
+   383→   383→                type="button"
+   384→   384→                whileHover={{ scale: 1.02 }}
+   385→   385→                whileTap={{ scale: 0.98 }}
+   386→   386→                onClick={() => {
+   387→   387→                  onStaffSelect(member)
+   388→   388→                  onDateSelect(null)
+   389→   389→                  onSlotSelect({} as AvailabilitySlot)
+   390→   390→                }}
+   391→   391→                className={`
+   392→   392→                  text-left rounded-xl border-2 p-4 transition-all duration-200
+   393→   393→                  ${isSelected
+   394→   394→                    ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
+   395→   395→                    : 'border-border hover:border-primary/40 hover:bg-muted/50'
+   396→   396→                  }
+   397→   397→                `}
+   398→   398→              >
+   399→   399→                <div className="flex items-center gap-3">
+   400→   400→                  <Avatar className="h-11 w-11">
+   401→   401→                    <AvatarFallback className={
+   402→   402→                      isSelected
+   403→   403→                        ? 'bg-primary text-primary-foreground text-sm font-bold'
+   404→   404→                        : 'bg-muted text-muted-foreground text-sm font-bold'
+   405→   405→                    }>
+   406→   406→                      {member.avatarInitials}
+   407→   407→                    </AvatarFallback>
+   408→   408→                  </Avatar>
+   409→   409→                  <div className="flex-1 min-w-0">
+   410→   410→                    <p className="font-semibold text-sm truncate">{member.name}</p>
+   411→   411→                    <p className="text-xs text-muted-foreground">{member.role}</p>
+   412→   412→                  </div>
+   413→   413→                  {isSelected && (
+   414→   414→                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+   415→   415→                      <Check className="h-3 w-3 text-primary-foreground" />
+   416→   416→                    </div>
+   417→   417→                  )}
+   418→   418→                </div>
+   419→   419→                <div className="flex items-center gap-1.5 mt-2.5 text-xs text-muted-foreground">
+   420→   420→                  <Phone className="h-3 w-3" />
+   421→   421→                  {member.phone}
+   422→   422→                </div>
+   423→   423→              </motion.button>
+   424→   424→            )
+   425→   425→          })}
+   426→   426→        </div>
+   427→   427→      </div>
+   428→   428→
+   429→   429→      <Separator />
+   430→   430→
+   431→   431→      {/* Calendar Grid */}
+   432→   432→      {selectedStaffId && (
+   433→   433→        <motion.div
+   434→   434→          initial={{ opacity: 0, y: 10 }}
+   435→   435→          animate={{ opacity: 1, y: 0 }}
+   436→   436→          transition={{ duration: 0.3 }}
+   437→   437→        >
+   438→   438→          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+   439→   439→            <CalendarDays className="h-4 w-4 text-primary" />
+   440→   440→            Alege o data
+   441→   441→          </h3>
+   442→   442→          <div className="glass-card rounded-xl p-4">
+   443→   443→            <div className="grid grid-cols-7 gap-1 mb-2">
+   444→   444→              {DAY_NAMES.map(d => (
+   445→   445→                <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
+   446→   446→                  {d}
+   447→   447→                </div>
+   448→   448→              ))}
+   449→   449→            </div>
+   450→   450→            {weeks.map((week, wi) => (
+   451→   451→              <div key={wi} className="grid grid-cols-7 gap-1">
+   452→   452→                {week.map((day) => {
+   453→   453→                  const hasSlots = datesWithSlots.has(day.date)
+   454→   454→                  const isSelected = selectedDate === day.date
+   455→   455→                  const isDisabled = !hasSlots
+   456→   456→                  return (
+   457→   457→                    <button
+   458→   458→                      key={day.date}
+   459→   459→                      type="button"
+   460→   460→                      disabled={isDisabled}
+   461→   461→                      onClick={() => {
+   462→   462→                        onDateSelect(day.date)
+   463→   463→                        onSlotSelect({} as AvailabilitySlot)
+   464→   464→                      }}
+   465→   465→                      className={`
+   466→   466→                        relative flex flex-col items-center py-2 px-1 rounded-lg text-xs transition-all duration-200
+   467→   467→                        ${isDisabled
+   468→   468→                          ? 'text-muted-foreground/40 cursor-not-allowed'
+   469→   469→                          : isSelected
+   470→   470→                            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25 scale-105'
+   471→   471→                            : 'hover:bg-muted cursor-pointer'
+   472→   472→                        }
+   473→   473→                      `}
+   474→   474→                    >
+   475→   475→                      <span className="font-medium">{day.dayName}</span>
+   476→   476→                      <span className={`text-base font-bold leading-tight ${isSelected ? '' : ''}`}>
+   477→   477→                        {day.dayNum}
+   478→   478→                      </span>
+   479→   479→                      <span className="text-[10px] leading-tight">{day.month}</span>
+   480→   480→                      {hasSlots && !isSelected && (
+   481→   481→                        <div className="absolute bottom-1 w-1 h-1 rounded-full bg-emerald-500" />
+   482→   482→                      )}
+   483→   483→                    </button>
+   484→   484→                  )
+   485→   485→                })}
+   486→   486→              </div>
+   487→   487→            ))}
+   488→   488→          </div>
+   489→   489→        </motion.div>
+   490→   490→      )}
+   491→   491→
+   492→   492→      {/* Time Slots */}
+   493→   493→      {selectedStaffId && selectedDate && (
+   494→   494→        <motion.div
+   495→   495→          initial={{ opacity: 0, y: 10 }}
+   496→   496→          animate={{ opacity: 1, y: 0 }}
+   497→   497→          transition={{ duration: 0.3 }}
+   498→   498→        >
+   499→   499→          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+   500→   500→            <Clock className="h-4 w-4 text-primary" />
+   501→   501→            Ore disponibile — {formatDateRO(selectedDate)}
+   502→   502→            {selectedStaff && (
+   503→   503→              <span className="text-muted-foreground font-normal">cu {selectedStaff.name}</span>
+   504→   504→            )}
+   505→   505→          </h3>
+   506→   506→          {availableSlots.length > 0 ? (
+   507→   507→            <div className="flex flex-wrap gap-2">
+   508→   508→              {availableSlots.map((slot) => {
+   509→   509→                const isSelected = selectedSlotId === slot.id
+   510→   510→                return (
+   511→   511→                  <motion.button
+   512→   512→                    key={slot.id}
+   513→   513→                    type="button"
+   514→   514→                    whileHover={{ scale: 1.05 }}
+   515→   515→                    whileTap={{ scale: 0.95 }}
+   516→   516→                    onClick={() => onSlotSelect(slot)}
+   517→   517→                    className={`
+   518→   518→                      px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border
+   519→   519→                      ${isSelected
+   520→   520→                        ? 'bg-primary text-primary-foreground border-primary shadow-md shadow-primary/25'
+   521→   521→                        : 'bg-background border-border hover:border-primary/40 hover:bg-primary/5'
+   522→   522→                      }
+   523→   523→                    `}
+   524→   524→                  >
+   525→   525→                    {slot.startTime} — {slot.endTime}
+   526→   526→                  </motion.button>
+   527→   527→                )
+   528→   528→              })}
+   529→   529→            </div>
+   530→   530→          ) : (
+   531→   531→            <div className="text-center py-8 text-sm text-muted-foreground">
+   532→   532→              <Clock className="h-8 w-8 mx-auto mb-2 opacity-30" />
+   533→   533→              Nu sunt sloturi disponibile pentru aceasta data.
+   534→   534→            </div>
+   535→   535→          )}
+   536→   536→        </motion.div>
+   537→   537→      )}
+   538→   538→    </div>
+   539→   539→  )
+   540→   540→}
+   541→   541→
+   542→   542→// ─── Step 3: Confirmation ───────────────────────────────────────────────────
+   543→   543→
+   544→   544→function StepConfirmation({
+   545→   545→  property,
+   546→   546→  staff,
+   547→   547→  date,
+   548→   548→  slot,
+   549→   549→  notes,
+   550→   550→  onNotesChange,
+   551→   551→  isSubmitting,
+   552→   552→  onSubmit,
+   553→   553→}: {
+   554→   554→  property: UserProperty
+   555→   555→  staff: StaffMember
+   556→   556→  date: string
+   557→   557→  slot: AvailabilitySlot
+   558→   558→  notes: string
+   559→   559→  onNotesChange: (notes: string) => void
+   560→   560→  isSubmitting: boolean
+   561→   561→  onSubmit: () => void
+   562→   562→}) {
+   563→   563→  return (
+   564→   564→    <div className="space-y-5">
+   565→   565→      {/* Summary Card */}
+   566→   566→      <Card className="glass-card border-0 shadow-none overflow-hidden">
+   567→   567→        <CardContent className="p-5 space-y-4">
+   568→   568→          <h3 className="text-sm font-semibold flex items-center gap-2 text-primary">
+   569→   569→            <CalendarCheck className="h-4 w-4" />
+   570→   570→            Rezumat Programare
+   571→   571→          </h3>
+   572→   572→
+   573→   573→          <div className="grid gap-3">
+   574→   574→            {/* Property */}
+   575→   575→            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+   576→   576→              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+   577→   577→                <Building2 className="h-4 w-4 text-primary" />
+   578→   578→              </div>
+   579→   579→              <div className="min-w-0">
+   580→   580→                <p className="text-xs text-muted-foreground">Proprietate</p>
+   581→   581→                <p className="font-semibold text-sm">{property.title}</p>
+   582→   582→                {property.address && (
+   583→   583→                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{property.address}</p>
+   584→   584→                )}
+   585→   585→              </div>
+   586→   586→            </div>
+   587→   587→
+   588→   588→            {/* Agent */}
+   589→   589→            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+   590→   590→              <Avatar className="h-9 w-9 flex-shrink-0">
+   591→   591→                <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+   592→   592→                  {staff.avatarInitials}
+   593→   593→                </AvatarFallback>
+   594→   594→              </Avatar>
+   595→   595→              <div className="min-w-0">
+   596→   596→                <p className="text-xs text-muted-foreground">Agent Imobiliar</p>
+   597→   597→                <p className="font-semibold text-sm">{staff.name}</p>
+   598→   598→                <p className="text-xs text-muted-foreground">{staff.role} · {staff.phone}</p>
+   599→   599→              </div>
+   600→   600→            </div>
+   601→   601→
+   602→   602→            {/* Date & Time */}
+   603→   603→            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+   604→   604→              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+   605→   605→                <CalendarDays className="h-4 w-4 text-primary" />
+   606→   606→              </div>
+   607→   607→              <div>
+   608→   608→                <p className="text-xs text-muted-foreground">Data si Ora</p>
+   609→   609→                <p className="font-semibold text-sm">{formatDateRO(date)}</p>
+   610→   610→                <p className="text-xs text-muted-foreground">{slot.startTime} — {slot.endTime}</p>
+   611→   611→              </div>
+   612→   612→            </div>
+   613→   613→          </div>
+   614→   614→        </CardContent>
+   615→   615→      </Card>
+   616→   616→
+   617→   617→      {/* Notes */}
+   618→   618→      <div className="space-y-2">
+   619→   619→        <Label htmlFor="notes" className="text-sm font-medium">
+   620→   620→          Observatii <span className="text-muted-foreground font-normal">(optional)</span>
+   621→   621→        </Label>
+   622→   622→        <Textarea
+   623→   623→          id="notes"
+   624→   624→          placeholder="Adauga observatii pentru vizionare (ex: preferi sa vezi zona de noapte, ai intrebari specifice etc.)"
+   625→   625→          value={notes}
+   626→   626→          onChange={(e) => onNotesChange(e.target.value)}
+   627→   627→          rows={3}
+   628→   628→          className="resize-none"
+   629→   629→        />
+   630→   630→      </div>
+   631→   631→
+   632→   632→      {/* Submit */}
+   633→   633→      <Button
+   634→   634→        onClick={onSubmit}
+   635→   635→        disabled={isSubmitting}
+   636→   636→        className="w-full h-12 text-base font-semibold gap-2"
+   637→   637→        size="lg"
+   638→   638→      >
+   639→   639→        {isSubmitting ? (
+   640→   640→          <>
+   641→   641→            <Loader2 className="h-4 w-4 animate-spin" />
+   642→   642→            Se salveaza...
+   643→   643→          </>
+   644→   644→        ) : (
+   645→   645→          <>
+   646→   646→            <CalendarCheck className="h-4 w-4" />
+   647→   647→            Confirma Programarea
+   648→   648→          </>
+   649→   649→        )}
+   650→   650→      </Button>
+   651→   651→    </div>
+   652→   652→  )
+   653→   653→}
+   654→   654→
+   655→   655→// ─── Main Page ──────────────────────────────────────────────────────────────
+   656→   656→
+   657→   657→export function ProgramareVizionarePage() {
+   658→   658→  const { user, loading: authLoading } = useAuth()
+   659→   659→  const { vizionarePropertyId, vizionarePropertyTitle, setVizionareProperty, navigateTo } = useAppStore()
+   660→   660→
+   661→   661→  const [step, setStep] = useState(() => vizionarePropertyId ? 2 : 1)
+   662→   662→  const [selectedProperty, setSelectedProperty] = useState<UserProperty | null>(() =>
+   663→   663→    vizionarePropertyId && vizionarePropertyTitle
+   664→   664→      ? { id: vizionarePropertyId, title: vizionarePropertyTitle } as UserProperty
+   665→   665→      : null
+   666→   666→  )
+   667→   667→  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null)
+   668→   668→  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+   669→   669→  const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null)
+   670→   670→  const [notes, setNotes] = useState('')
+   671→   671→  const [isSubmitting, setIsSubmitting] = useState(false)
+   672→   672→
+   673→   673→  // Seed availability on first render
+   674→   674→  useEffect(() => {
+   675→   675→    seedAvailability()
+   676→   676→  }, [])
+   677→   677→
+   678→   678→  const handlePropertySelect = (prop: UserProperty) => {
+   679→   679→    setSelectedProperty(prop)
+   680→   680→    setSelectedStaff(null)
+   681→   681→    setSelectedDate(null)
+   682→   682→    setSelectedSlot(null)
+   683→   683→    setNotes('')
+   684→   684→  }
+   685→   685→
+   686→   686→  const handleStaffSelect = (staff: StaffMember) => {
+   687→   687→    setSelectedStaff(staff)
+   688→   688→    setSelectedDate(null)
+   689→   689→    setSelectedSlot(null)
+   690→   690→  }
+   691→   691→
+   692→   692→  const handleDateSelect = (date: string) => {
+   693→   693→    setSelectedDate(date)
+   694→   694→    setSelectedSlot(null)
+   695→   695→  }
+   696→   696→
+   697→   697→  const handleSlotSelect = (slot: AvailabilitySlot) => {
+   698→   698→    setSelectedSlot(slot)
+   699→   699→  }
+   700→   700→
+   701→   701→  const handleSubmit = () => {
+   702→   702→    if (!user || !selectedProperty || !selectedStaff || !selectedDate || !selectedSlot) return
+   703→   703→
+   704→   704→    setIsSubmitting(true)
+   705→   705→
+   706→   706→    // Create vizionare
+   707→   707→    const vizionare: Vizionare = {
+   708→   708→      id: generateId(),
+   709→   709→      propertyId: selectedProperty.id,
+   710→   710→      propertyTitle: selectedProperty.title,
+   711→   711→      userId: user.id,
+   712→   712→      userName: user.user_metadata?.full_name || user.email || '',
+   713→   713→      userEmail: user.email || '',
+   714→   714→      staffId: selectedStaff.id,
+   715→   715→      staffName: selectedStaff.name,
+   716→   716→      date: selectedDate,
+   717→   717→      startTime: selectedSlot.startTime,
+   718→   718→      endTime: selectedSlot.endTime,
+   719→   719→      status: 'pending',
+   720→   720→      notes,
+   721→   721→      createdAt: new Date().toISOString(),
+   722→   722→    }
+   723→   723→
+   724→   724→    // Save vizionare
+   725→   725→    const existing = loadFromLS<Vizionare[]>('hqs_vizionari', [])
+   726→   726→    existing.push(vizionare)
+   727→   727→    saveToLS('hqs_vizionari', existing)
+   728→   728→
+   729→   729→    // Mark slot as booked
+   730→   730→    const slots = loadFromLS<AvailabilitySlot[]>('hqs_staff_availability', [])
+   731→   731→    const slotIndex = slots.findIndex(s => s.id === selectedSlot.id)
+   732→   732→    if (slotIndex !== -1) {
+   733→   733→      slots[slotIndex].isBooked = true
+   734→   734→      slots[slotIndex].bookedBy = user.id
+   735→   735→      slots[slotIndex].bookedByName = user.user_metadata?.full_name || user.email || ''
+   736→   736→      saveToLS('hqs_staff_availability', slots)
+   737→   737→    }
+   738→   738→
+   739→   739→    // Clear context
+   740→   740→    setVizionareProperty(null, null)
+   741→   741→
+   742→   742→    setTimeout(() => {
+   743→   743→      setIsSubmitting(false)
+   744→   744→      toast.success('Vizionare programata cu succes!', {
+   745→   745→        description: `Vei fi contactat de ${selectedStaff.name} pentru confirmare.`,
+   746→   746→      })
+   747→   747→      navigateTo('vizionarile-mele')
+   748→   748→    }, 600)
+   749→   749→  }
+   750→   750→
+   751→   751→  const canProceedStep2 = !!selectedProperty
+   752→   752→  const canProceedStep3 = !!selectedStaff && !!selectedDate && !!selectedSlot && !!selectedSlot.id
+   753→   753→
+   754→   754→  const handleStepClick = (newStep: number) => {
+   755→   755→    if (newStep === 1) {
+   756→   756→      setStep(1)
+   757→   757→    } else if (newStep === 2 && canProceedStep2) {
+   758→   758→      setStep(2)
+   759→   759→    } else if (newStep === 3 && canProceedStep3) {
+   760→   760→      setStep(3)
+   761→   761→    }
+   762→   762→  }
+   763→   763→
+   764→   764→  const goNext = () => {
+   765→   765→    if (step < 3) {
+   766→   766→      setStep(step + 1)
+   767→   767→    }
+   768→   768→  }
+   769→   769→  const goBack = () => {
+   770→   770→    if (step > 1) {
+   771→   771→      setStep(step - 1)
+   772→   772→    }
+   773→   773→  }
+   774→   774→
+   775→   775→  if (authLoading) {
+   776→   776→    return (
+   777→   777→      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
+   778→   778→        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+   779→   779→      </div>
+   780→   780→    )
+   781→   781→  }
+   782→   782→
+   783→   783→  return (
+   784→   784→    <div className="min-h-[calc(100vh-10rem)] py-8 px-4">
+   785→   785→      <div className="max-w-3xl mx-auto">
+   786→   786→        {/* Header */}
+   787→   787→        <div className="mb-6">
+   788→   788→          <button
+   789→   789→            type="button"
+   790→   790→            onClick={() => navigateTo('proprietati')}
+   791→   791→            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+   792→   792→          >
+   793→   793→            <ArrowLeft className="h-4 w-4" />
+   794→   794→            Inapoi la proprietati
+   795→   795→          </button>
+   796→   796→          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   797→   797→            Programare Vizionare
+   798→   798→          </h1>
+   799→   799→          <p className="text-muted-foreground mt-1 text-sm">
+   800→   800→            Programeaza o vizionare la proprietatea dorita cu un agent specialist.
+   801→   801→          </p>
+   802→   802→        </div>
+   803→   803→
+   804→   804→        {/* Step Indicator */}
+   805→   805→        <StepIndicator currentStep={step} onStepClick={handleStepClick} />
+   806→   806→
+   807→   807→        {/* Step Content */}
+   808→   808→        <div className="glass-card rounded-2xl p-5 sm:p-8 min-h-[400px]">
+   809→   809→          <AnimatePresence mode="wait">
+   810→   810→            <motion.div
+   811→   811→              key={step}
+   812→   812→              initial={{ opacity: 0, x: 20 }}
+   813→   813→              animate={{ opacity: 1, x: 0 }}
+   814→   814→              exit={{ opacity: 0, x: -20 }}
+   815→   815→              transition={{ duration: 0.25, ease: 'easeInOut' }}
+   816→   816→            >
+   817→   817→              {step === 1 && (
+   818→   818→                <StepPropertySelection
+   819→   819→                  selectedId={selectedProperty?.id ?? null}
+   820→   820→                  onSelect={handlePropertySelect}
+   821→   821→                />
+   822→   822→              )}
+   823→   823→
+   824→   824→              {step === 2 && (
+   825→   825→                <StepAgentDate
+   826→   826→                  selectedStaffId={selectedStaff?.id ?? null}
+   827→   827→                  selectedDate={selectedDate}
+   828→   828→                  selectedSlotId={selectedSlot?.id ?? null}
+   829→   829→                  onStaffSelect={handleStaffSelect}
+   830→   830→                  onDateSelect={handleDateSelect}
+   831→   831→                  onSlotSelect={handleSlotSelect}
+   832→   832→                />
+   833→   833→              )}
+   834→   834→
+   835→   835→              {step === 3 && selectedProperty && selectedStaff && selectedDate && selectedSlot && (
+   836→   836→                <StepConfirmation
+   837→   837→                  property={selectedProperty}
+   838→   838→                  staff={selectedStaff}
+   839→   839→                  date={selectedDate}
+   840→   840→                  slot={selectedSlot}
+   841→   841→                  notes={notes}
+   842→   842→                  onNotesChange={setNotes}
+   843→   843→                  isSubmitting={isSubmitting}
+   844→   844→                  onSubmit={handleSubmit}
+   845→   845→                />
+   846→   846→              )}
+   847→   847→            </motion.div>
+   848→   848→          </AnimatePresence>
+   849→   849→        </div>
+   850→   850→
+   851→   851→        {/* Navigation Buttons */}
+   852→   852→        <div className="flex items-center justify-between mt-6">
+   853→   853→          <Button
+   854→   854→            variant="outline"
+   855→   855→            onClick={goBack}
+   856→   856→            disabled={step === 1}
+   857→   857→            className="gap-2"
+   858→   858→          >
+   859→   859→            <ChevronLeft className="h-4 w-4" />
+   860→   860→            Inapoi
+   861→   861→          </Button>
+   862→   862→
+   863→   863→          {step < 3 && (
+   864→   864→            <Button
+   865→   865→              onClick={goNext}
+   866→   866→              disabled={step === 1 ? !canProceedStep2 : !canProceedStep3}
+   867→   867→              className="gap-2"
+   868→   868→            >
+   869→   869→              Urmatorul
+   870→   870→              <ChevronRight className="h-4 w-4" />
+   871→   871→            </Button>
+   872→   872→          )}
+   873→   873→        </div>
+   874→   874→      </div>
+   875→   875→    </div>
+   876→   876→  )
+   877→   877→}

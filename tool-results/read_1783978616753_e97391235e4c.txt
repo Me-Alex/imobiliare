@@ -1,0 +1,648 @@
+     1→'use client'
+     2→
+     3→import { useState, useMemo, useCallback } from 'react'
+     4→import { motion, AnimatePresence } from 'framer-motion'
+     5→import {
+     6→  CalendarDays, Clock, User, FileText,
+     7→  Upload, XCircle, ArrowLeft, CalendarCheck, CalendarX2,
+     8→  Download, Eye, File, Trash2, Inbox,
+     9→  Star, CalendarClock, MessageSquarePlus,
+    10→} from 'lucide-react'
+    11→import { Button } from '@/components/ui/button'
+    12→import { Badge } from '@/components/ui/badge'
+    13→import { Card, CardContent } from '@/components/ui/card'
+    14→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    15→import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+    16→import { useAuth } from '@/contexts/auth-context'
+    17→import { useAppStore } from '@/store/use-app-store'
+    18→import { loadFromLS, saveToLS } from '@/lib/storage'
+    19→import { DEFAULT_STAFF, DOC_TYPE_LABELS } from '@/lib/constants'
+    20→import type { Vizionare, UploadedDocument, AvailabilitySlot } from '@/lib/types'
+    21→import { VizionareFeedbackDialog, StarRating } from '@/components/dialogs/vizionare-feedback-dialog'
+    22→import { toast } from 'sonner'
+    23→
+    24→// ─── Helpers ────────────────────────────────────────────────────────────────
+    25→
+    26→const MONTH_NAMES = [
+    27→  'Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun',
+    28→  'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    29→]
+    30→
+    31→const STATUS_CONFIG: Record<Vizionare['status'], { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }> = {
+    32→  pending: { label: 'In asteptare', variant: 'outline', className: 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700' },
+    33→  confirmed: { label: 'Confirmata', variant: 'default', className: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700' },
+    34→  completed: { label: 'Finalizata', variant: 'secondary', className: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700' },
+    35→  cancelled: { label: 'Anulata', variant: 'destructive', className: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700' },
+    36→}
+    37→
+    38→function formatDateRO(dateStr: string): string {
+    39→  const d = new Date(dateStr + 'T00:00:00')
+    40→  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`
+    41→}
+    42→
+    43→function getStaffById(id: string) {
+    44→  return DEFAULT_STAFF.find(s => s.id === id)
+    45→}
+    46→
+    47→function getDocFileIcon(fileType: string) {
+    48→  if (fileType.includes('pdf')) return FileText
+    49→  if (fileType.includes('image')) return Eye
+    50→  return File
+    51→}
+    52→
+    53→// ─── Document Badge ─────────────────────────────────────────────────────────
+    54→
+    55→function DocTypeBadge({ docType }: { docType: UploadedDocument['docType'] }) {
+    56→  return (
+    57→    <Badge variant="secondary" className="text-[10px] px-2 py-0 h-5 font-medium">
+    58→      {DOC_TYPE_LABELS[docType]}
+    59→    </Badge>
+    60→  )
+    61→}
+    62→
+    63→// ─── Document List ──────────────────────────────────────────────────────────
+    64→
+    65→function DocumentList({ vizionareId }: { vizionareId: string }) {
+    66→  const [refreshKey, setRefreshKey] = useState(0)
+    67→  const documents = useMemo(() => {
+    68→    const allDocs = loadFromLS<UploadedDocument[]>('hqs_documents', [])
+    69→    return allDocs.filter(d => d.vizionareId === vizionareId)
+    70→  }, [vizionareId, refreshKey])
+    71→
+    72→  if (documents.length === 0) return null
+    73→
+    74→  const handleDownload = (doc: UploadedDocument) => {
+    75→    const link = document.createElement('a')
+    76→    link.href = doc.filePreview || `data:application/octet-stream;base64,${doc.fileData}`
+    77→    link.download = doc.fileName
+    78→    link.click()
+    79→  }
+    80→
+    81→  const handlePreview = (doc: UploadedDocument) => {
+    82→    if (doc.fileType.includes('image')) {
+    83→      const w = window.open('')
+    84→      if (w) {
+    85→        w.document.write(`
+    86→          <html><head><title>${doc.fileName}</title><style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#111;}</style></head>
+    87→          <body><img src="${doc.filePreview}" style="max-width:100%;max-height:100vh;" /></body></html>
+    88→        `)
+    89→      }
+    90→    } else {
+    91→      handleDownload(doc)
+    92→    }
+    93→  }
+    94→
+    95→  const handleDelete = (docId: string) => {
+    96→    const allDocs = loadFromLS<UploadedDocument[]>('hqs_documents', [])
+    97→    saveToLS('hqs_documents', allDocs.filter(d => d.id !== docId))
+    98→    setRefreshKey(k => k + 1)
+    99→    toast.success('Document sters')
+   100→  }
+   101→
+   102→  return (
+   103→    <div className="mt-3 space-y-2">
+   104→      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+   105→        <FileText className="h-3 w-3" />
+   106→        Documente ({documents.length})
+   107→      </p>
+   108→      <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
+   109→        {documents.map((doc) => {
+   110→          const Icon = getDocFileIcon(doc.fileType)
+   111→          return (
+   112→            <motion.div
+   113→              key={doc.id}
+   114→              initial={{ opacity: 0, height: 0 }}
+   115→              animate={{ opacity: 1, height: 'auto' }}
+   116→              className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 group"
+   117→            >
+   118→              <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+   119→              <span className="text-xs truncate flex-1">{doc.fileName}</span>
+   120→              <DocTypeBadge docType={doc.docType} />
+   121→              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+   122→                {doc.fileType.includes('image') && (
+   123→                  <button
+   124→                    type="button"
+   125→                    onClick={() => handlePreview(doc)}
+   126→                    className="p-1 rounded hover:bg-muted transition-colors"
+   127→                    title="Previzualizeaza"
+   128→                  >
+   129→                    <Eye className="h-3.5 w-3.5" />
+   130→                  </button>
+   131→                )}
+   132→                <button
+   133→                  type="button"
+   134→                  onClick={() => handleDownload(doc)}
+   135→                  className="p-1 rounded hover:bg-muted transition-colors"
+   136→                  title="Descarca"
+   137→                >
+   138→                  <Download className="h-3.5 w-3.5" />
+   139→                </button>
+   140→                <button
+   141→                  type="button"
+   142→                  onClick={() => handleDelete(doc.id)}
+   143→                  className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-muted-foreground hover:text-red-600 transition-colors"
+   144→                  title="Sterge"
+   145→                >
+   146→                  <Trash2 className="h-3.5 w-3.5" />
+   147→                </button>
+   148→              </div>
+   149→            </motion.div>
+   150→          )
+   151→        })}
+   152→      </div>
+   153→    </div>
+   154→  )
+   155→}
+   156→
+   157→// ─── Vizionare Card ─────────────────────────────────────────────────────────
+   158→
+   159→function VizionareCard({
+   160→  vizionare,
+   161→  onCancel,
+   162→  onAddFeedback,
+   163→  onReschedule,
+   164→}: {
+   165→  vizionare: Vizionare
+   166→  onCancel: (id: string) => void
+   167→  onAddFeedback: (v: Vizionare) => void
+   168→  onReschedule: (v: Vizionare) => void
+   169→}) {
+   170→  const { navigateTo } = useAppStore()
+   171→  const staff = getStaffById(vizionare.staffId)
+   172→  const statusCfg = STATUS_CONFIG[vizionare.status]
+   173→  const isPast = vizionare.status === 'completed' || vizionare.status === 'cancelled'
+   174→  const isActive = vizionare.status === 'pending' || vizionare.status === 'confirmed'
+   175→  const isCompleted = vizionare.status === 'completed'
+   176→  const hasFeedback = typeof vizionare.rating === 'number' && vizionare.rating > 0
+   177→
+   178→  const handleUploadDocs = () => {
+   179→    saveToLS('hqs_selected_vizionare_id', vizionare.id)
+   180→    navigateTo('documente')
+   181→  }
+   182→
+   183→  return (
+   184→    <motion.div
+   185→      layout
+   186→      initial={{ opacity: 0, y: 10 }}
+   187→      animate={{ opacity: 1, y: 0 }}
+   188→      exit={{ opacity: 0, y: -10 }}
+   189→      transition={{ duration: 0.2 }}
+   190→    >
+   191→      <Card className={`glass-card border-0 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md ${
+   192→        isPast ? 'opacity-75' : ''
+   193→      }`}>
+   194→        <CardContent className="p-4 sm:p-5">
+   195→          {/* Header row */}
+   196→          <div className="flex items-start justify-between gap-3 mb-3">
+   197→            <div className="flex items-start gap-3 min-w-0">
+   198→              <Avatar className="h-10 w-10 flex-shrink-0">
+   199→                <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+   200→                  {staff?.avatarInitials || '?'}
+   201→                </AvatarFallback>
+   202→              </Avatar>
+   203→              <div className="min-w-0">
+   204→                <h4 className="font-semibold text-sm truncate">{vizionare.propertyTitle}</h4>
+   205→                <p className="text-xs text-muted-foreground">{vizionare.staffName}</p>
+   206→              </div>
+   207→            </div>
+   208→            <div className="flex items-center gap-1.5 flex-shrink-0">
+   209→              {isCompleted && hasFeedback && (
+   210→                <Badge
+   211→                  variant="outline"
+   212→                  className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
+   213→                >
+   214→                  <Star className="h-3 w-3 fill-amber-400 text-amber-400 mr-1" />
+   215→                  {vizionare.rating}
+   216→                </Badge>
+   217→              )}
+   218→              {isCompleted && typeof vizionare.wouldProceed === 'boolean' && (
+   219→                <Badge
+   220→                  variant="outline"
+   221→                  className={
+   222→                    vizionare.wouldProceed
+   223→                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
+   224→                      : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-700'
+   225→                  }
+   226→                >
+   227→                  {vizionare.wouldProceed ? 'Doreste sa continue' : 'Nu este interesat'}
+   228→                </Badge>
+   229→              )}
+   230→              <Badge className={statusCfg.className} variant={statusCfg.variant}>
+   231→                {statusCfg.label}
+   232→              </Badge>
+   233→            </div>
+   234→          </div>
+   235→
+   236→          {/* Date & Time */}
+   237→          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+   238→            <div className="flex items-center gap-1.5">
+   239→              <CalendarDays className="h-3.5 w-3.5" />
+   240→              <span>{formatDateRO(vizionare.date)}</span>
+   241→            </div>
+   242→            <div className="flex items-center gap-1.5">
+   243→              <Clock className="h-3.5 w-3.5" />
+   244→              <span>{vizionare.startTime} — {vizionare.endTime}</span>
+   245→            </div>
+   246→          </div>
+   247→
+   248→          {/* Completed vizionare with feedback — show read-only stars + feedback text */}
+   249→          {isCompleted && hasFeedback && (
+   250→            <motion.div
+   251→              initial={{ opacity: 0, height: 0 }}
+   252→              animate={{ opacity: 1, height: 'auto' }}
+   253→              className="mb-3 space-y-2"
+   254→            >
+   255→              <div className="flex items-center gap-2">
+   256→                <StarRating value={vizionare.rating!} readonly />
+   257→                <span className="text-xs text-muted-foreground">
+   258→                  {vizionare.rating}/5
+   259→                </span>
+   260→              </div>
+   261→              {vizionare.feedback && (
+   262→                <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2.5 line-clamp-3">
+   263→                  {vizionare.feedback}
+   264→                </p>
+   265→              )}
+   266→            </motion.div>
+   267→          )}
+   268→
+   269→          {/* Notes */}
+   270→          {vizionare.notes && !isCompleted && (
+   271→            <p className="text-xs text-muted-foreground mb-3 line-clamp-2 bg-muted/50 rounded-lg p-2.5">
+   272→              {vizionare.notes}
+   273→            </p>
+   274→          )}
+   275→
+   276→          {/* Documents */}
+   277→          <DocumentList vizionareId={vizionare.id} />
+   278→
+   279→          {/* Actions */}
+   280→          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50 flex-wrap">
+   281→            <Button
+   282→              variant="outline"
+   283→              size="sm"
+   284→              className="gap-1.5 text-xs h-8"
+   285→              onClick={handleUploadDocs}
+   286→            >
+   287→              <Upload className="h-3.5 w-3.5" />
+   288→              Incarca Documente
+   289→            </Button>
+   290→
+   291→            {/* Add Feedback button — completed vizionari without rating */}
+   292→            {isCompleted && !hasFeedback && (
+   293→              <Button
+   294→                variant="outline"
+   295→                size="sm"
+   296→                className="gap-1.5 text-xs h-8 text-amber-700 border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-900/20"
+   297→                onClick={() => onAddFeedback(vizionare)}
+   298→              >
+   299→                <MessageSquarePlus className="h-3.5 w-3.5" />
+   300→                Adauga Feedback
+   301→              </Button>
+   302→            )}
+   303→
+   304→            {/* Edit Feedback button — completed vizionari with rating */}
+   305→            {isCompleted && hasFeedback && (
+   306→              <Button
+   307→                variant="ghost"
+   308→                size="sm"
+   309→                className="gap-1.5 text-xs h-8 text-muted-foreground"
+   310→                onClick={() => onAddFeedback(vizionare)}
+   311→              >
+   312→                <MessageSquarePlus className="h-3.5 w-3.5" />
+   313→                Editeaza Feedback
+   314→              </Button>
+   315→            )}
+   316→
+   317→            {/* Reschedule button — active vizionari */}
+   318→            {isActive && (
+   319→              <Button
+   320→                variant="outline"
+   321→                size="sm"
+   322→                className="gap-1.5 text-xs h-8 text-primary border-primary/30 hover:bg-primary/5 dark:border-primary/50"
+   323→                onClick={() => onReschedule(vizionare)}
+   324→              >
+   325→                <CalendarClock className="h-3.5 w-3.5" />
+   326→                Reprogramare
+   327→              </Button>
+   328→            )}
+   329→
+   330→            {/* Cancel button — pending vizionari */}
+   331→            {vizionare.status === 'pending' && (
+   332→              <Button
+   333→                variant="ghost"
+   334→                size="sm"
+   335→                className="gap-1.5 text-xs h-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 ml-auto"
+   336→                onClick={() => onCancel(vizionare.id)}
+   337→              >
+   338→                <XCircle className="h-3.5 w-3.5" />
+   339→                Anuleaza
+   340→              </Button>
+   341→            )}
+   342→          </div>
+   343→        </CardContent>
+   344→      </Card>
+   345→    </motion.div>
+   346→  )
+   347→}
+   348→
+   349→// ─── Empty State ────────────────────────────────────────────────────────────
+   350→
+   351→function EmptyState({ message, icon: Icon }: { message: string; icon: React.ComponentType<{ className?: string }> }) {
+   352→  return (
+   353→    <motion.div
+   354→      initial={{ opacity: 0, y: 10 }}
+   355→      animate={{ opacity: 1, y: 0 }}
+   356→      className="flex flex-col items-center justify-center py-16 text-center"
+   357→    >
+   358→      <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+   359→        <Icon className="h-8 w-8 text-muted-foreground/50" />
+   360→      </div>
+   361→      <p className="text-muted-foreground text-sm max-w-xs">{message}</p>
+   362→    </motion.div>
+   363→  )
+   364→}
+   365→
+   366→// ─── Timeline Dot ───────────────────────────────────────────────────────────
+   367→
+   368→function TimelineDot({ status }: { status: Vizionare['status'] }) {
+   369→  const colorMap: Record<string, string> = {
+   370→    pending: 'bg-yellow-400',
+   371→    confirmed: 'bg-emerald-500',
+   372→    completed: 'bg-blue-500',
+   373→    cancelled: 'bg-red-400',
+   374→  }
+   375→  return <div className={`w-3 h-3 rounded-full ${colorMap[status] || 'bg-muted'} ring-4 ring-background flex-shrink-0`} />
+   376→}
+   377→
+   378→// ─── Main Page ──────────────────────────────────────────────────────────────
+   379→
+   380→export function VizionarileMelePage() {
+   381→  const { user, loading: authLoading } = useAuth()
+   382→  const { navigateTo, setVizionareProperty } = useAppStore()
+   383→  const [refreshKey, setRefreshKey] = useState(0)
+   384→  const [activeTab, setActiveTab] = useState('active')
+   385→
+   386→  // Feedback dialog state
+   387→  const [feedbackOpen, setFeedbackOpen] = useState(false)
+   388→  const [feedbackVizionare, setFeedbackVizionare] = useState<Vizionare | null>(null)
+   389→
+   390→  const vizionari = useMemo(() => {
+   391→    if (!user) return []
+   392→    const all = loadFromLS<Vizionare[]>('hqs_vizionari', [])
+   393→    return all.filter(v => v.userId === user.id)
+   394→  }, [user, refreshKey])
+   395→
+   396→  const activeVizionari = useMemo(
+   397→    () => vizionari.filter(v => v.status === 'pending' || v.status === 'confirmed')
+   398→      .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime)),
+   399→    [vizionari]
+   400→  )
+   401→
+   402→  const historyVizionari = useMemo(
+   403→    () => vizionari.filter(v => v.status === 'completed' || v.status === 'cancelled')
+   404→      .sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime)),
+   405→    [vizionari]
+   406→  )
+   407→
+   408→  const handleCancel = useCallback((id: string) => {
+   409→    const all = loadFromLS<Vizionare[]>('hqs_vizionari', [])
+   410→    const idx = all.findIndex(v => v.id === id)
+   411→    if (idx !== -1) {
+   412→      all[idx].status = 'cancelled'
+   413→      saveToLS('hqs_vizionari', all)
+   414→      // Also free the availability slot
+   415→      const slots = loadFromLS<AvailabilitySlot[]>('hqs_staff_availability', [])
+   416→      const slotIdx = slots.findIndex(
+   417→        (s: AvailabilitySlot) =>
+   418→          s.staffId === all[idx].staffId &&
+   419→          s.date === all[idx].date &&
+   420→          s.startTime === all[idx].startTime &&
+   421→          s.isBooked
+   422→      )
+   423→      if (slotIdx !== -1) {
+   424→        slots[slotIdx].isBooked = false
+   425→        slots[slotIdx].bookedBy = null
+   426→        slots[slotIdx].bookedByName = null
+   427→        saveToLS('hqs_staff_availability', slots)
+   428→      }
+   429→      setRefreshKey(k => k + 1)
+   430→      toast.success('Vizionare anulata', { description: 'Programarea a fost anulata cu succes.' })
+   431→    }
+   432→  }, [])
+   433→
+   434→  const handleAddFeedback = useCallback((v: Vizionare) => {
+   435→    setFeedbackVizionare(v)
+   436→    setFeedbackOpen(true)
+   437→  }, [])
+   438→
+   439→  const handleFeedbackSaved = useCallback(() => {
+   440→    setRefreshKey(k => k + 1)
+   441→  }, [])
+   442→
+   443→  const handleReschedule = useCallback((v: Vizionare) => {
+   444→    // Cancel the existing vizionare
+   445→    const all = loadFromLS<Vizionare[]>('hqs_vizionari', [])
+   446→    const idx = all.findIndex(item => item.id === v.id)
+   447→    if (idx !== -1) {
+   448→      all[idx].status = 'cancelled'
+   449→      saveToLS('hqs_vizionari', all)
+   450→
+   451→      // Free the availability slot
+   452→      const slots = loadFromLS<AvailabilitySlot[]>('hqs_staff_availability', [])
+   453→      const slotIdx = slots.findIndex(
+   454→        (s: AvailabilitySlot) =>
+   455→          s.staffId === all[idx].staffId &&
+   456→          s.date === all[idx].date &&
+   457→          s.startTime === all[idx].startTime &&
+   458→          s.isBooked
+   459→      )
+   460→      if (slotIdx !== -1) {
+   461→        slots[slotIdx].isBooked = false
+   462→        slots[slotIdx].bookedBy = null
+   463→        slots[slotIdx].bookedByName = null
+   464→        saveToLS('hqs_staff_availability', slots)
+   465→      }
+   466→    }
+   467→
+   468→    // Pre-select the property and navigate
+   469→    setVizionareProperty(v.propertyId, v.propertyTitle)
+   470→    navigateTo('programare-vizionare')
+   471→    toast.info('Reprogramare', {
+   472→      description: 'Vizionarea anterioara a fost anulata. Alege o noua data.',
+   473→    })
+   474→  }, [setVizionareProperty, navigateTo])
+   475→
+   476→  if (authLoading) {
+   477→    return (
+   478→      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
+   479→        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+   480→      </div>
+   481→    )
+   482→  }
+   483→
+   484→  if (!user) {
+   485→    return (
+   486→      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center py-12 px-4">
+   487→        <motion.div
+   488→          initial={{ opacity: 0, y: 20 }}
+   489→          animate={{ opacity: 1, y: 0 }}
+   490→          className="glass-card rounded-2xl p-8 text-center max-w-md"
+   491→        >
+   492→          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
+   493→            <User className="h-7 w-7" />
+   494→          </div>
+   495→          <h2 className="text-xl font-bold mb-2">Autentifica-te</h2>
+   496→          <p className="text-sm text-muted-foreground mb-6">
+   497→            Trebuie sa fii autentificat pentru a vedea vizionarile tale.
+   498→          </p>
+   499→          <Button onClick={() => navigateTo('login')} className="gap-2">
+   500→            Autentifica-te
+   501→          </Button>
+   502→        </motion.div>
+   503→      </div>
+   504→    )
+   505→  }
+   506→
+   507→  return (
+   508→    <div className="min-h-[calc(100vh-10rem)] py-8 px-4">
+   509→      <div className="max-w-3xl mx-auto">
+   510→        {/* Header */}
+   511→        <div className="mb-6">
+   512→          <button
+   513→            type="button"
+   514→            onClick={() => navigateTo('acasa')}
+   515→            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+   516→          >
+   517→            <ArrowLeft className="h-4 w-4" />
+   518→            Inapoi
+   519→          </button>
+   520→          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   521→            Vizionarile Mele
+   522→          </h1>
+   523→          <p className="text-muted-foreground mt-1 text-sm">
+   524→            Gestioneaza programarile tale de vizionare.
+   525→          </p>
+   526→        </div>
+   527→
+   528→        {/* Stats summary */}
+   529→        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+   530→          {[
+   531→            { label: 'Active', count: activeVizionari.length, icon: CalendarCheck, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' },
+   532→            { label: 'In asteptare', count: activeVizionari.filter(v => v.status === 'pending').length, icon: Clock, color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' },
+   533→            { label: 'Confirmate', count: activeVizionari.filter(v => v.status === 'confirmed').length, icon: CalendarDays, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' },
+   534→            { label: 'Istoric', count: historyVizionari.length, icon: CalendarX2, color: 'text-muted-600 bg-muted/50' },
+   535→          ].map(stat => (
+   536→            <div key={stat.label} className="glass-card rounded-xl p-3 sm:p-4 text-center">
+   537→              <div className={`mx-auto w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${stat.color}`}>
+   538→                <stat.icon className="h-4 w-4" />
+   539→              </div>
+   540→              <p className="text-xl font-bold">{stat.count}</p>
+   541→              <p className="text-xs text-muted-foreground">{stat.label}</p>
+   542→            </div>
+   543→          ))}
+   544→        </div>
+   545→
+   546→        {/* Tabs */}
+   547→        <Tabs value={activeTab} onValueChange={setActiveTab}>
+   548→          <TabsList className="w-full mb-6">
+   549→            <TabsTrigger value="active" className="flex-1 gap-1.5">
+   550→              <CalendarDays className="h-3.5 w-3.5 hidden sm:block" />
+   551→              Vizionari Active
+   552→              {activeVizionari.length > 0 && (
+   553→                <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] text-[10px] px-1.5">
+   554→                  {activeVizionari.length}
+   555→                </Badge>
+   556→              )}
+   557→            </TabsTrigger>
+   558→            <TabsTrigger value="history" className="flex-1 gap-1.5">
+   559→              <CalendarX2 className="h-3.5 w-3.5 hidden sm:block" />
+   560→              Istoric
+   561→              {historyVizionari.length > 0 && (
+   562→                <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] text-[10px] px-1.5">
+   563→                  {historyVizionari.length}
+   564→                </Badge>
+   565→              )}
+   566→            </TabsTrigger>
+   567→          </TabsList>
+   568→
+   569→          {/* Active Tab */}
+   570→          <TabsContent value="active">
+   571→            <AnimatePresence mode="popLayout">
+   572→              {activeVizionari.length > 0 ? (
+   573→                <div className="space-y-3">
+   574→                  {activeVizionari.map((v) => (
+   575→                    <VizionareCard
+   576→                      key={v.id}
+   577→                      vizionare={v}
+   578→                      onCancel={handleCancel}
+   579→                      onAddFeedback={handleAddFeedback}
+   580→                      onReschedule={handleReschedule}
+   581→                    />
+   582→                  ))}
+   583→                </div>
+   584→              ) : (
+   585→                <EmptyState
+   586→                  icon={CalendarCheck}
+   587→                  message="Fara vizionari programate. Programeaza o vizionare la o proprietate care te intereseaza."
+   588→                />
+   589→              )}
+   590→            </AnimatePresence>
+   591→
+   592→            {activeVizionari.length > 0 && (
+   593→              <div className="mt-6 text-center">
+   594→                <Button
+   595→                  variant="outline"
+   596→                  className="gap-2"
+   597→                  onClick={() => navigateTo('programare-vizionare')}
+   598→                >
+   599→                  <CalendarDays className="h-4 w-4" />
+   600→                  Programeaza o Vizionare Noua
+   601→                </Button>
+   602→              </div>
+   603→            )}
+   604→          </TabsContent>
+   605→
+   606→          {/* History Tab */}
+   607→          <TabsContent value="history">
+   608→            <AnimatePresence mode="popLayout">
+   609→              {historyVizionari.length > 0 ? (
+   610→                <div className="relative pl-6">
+   611→                  {/* Timeline line */}
+   612→                  <div className="absolute left-[5px] top-2 bottom-2 w-0.5 bg-border" />
+   613→
+   614→                  <div className="space-y-4">
+   615→                    {historyVizionari.map((v) => (
+   616→                      <div key={v.id} className="relative">
+   617→                        <TimelineDot status={v.status} />
+   618→                        <VizionareCard
+   619→                          vizionare={v}
+   620→                          onCancel={handleCancel}
+   621→                          onAddFeedback={handleAddFeedback}
+   622→                          onReschedule={handleReschedule}
+   623→                        />
+   624→                      </div>
+   625→                    ))}
+   626→                  </div>
+   627→                </div>
+   628→              ) : (
+   629→                <EmptyState
+   630→                  icon={Inbox}
+   631→                  message="Nu ai inca vizionari in istoric. Vizionarile finalizate sau anulate vor aparea aici."
+   632→                />
+   633→              )}
+   634→            </AnimatePresence>
+   635→          </TabsContent>
+   636→        </Tabs>
+   637→      </div>
+   638→
+   639→      {/* Feedback Dialog */}
+   640→      <VizionareFeedbackDialog
+   641→        open={feedbackOpen}
+   642→        onOpenChange={setFeedbackOpen}
+   643→        vizionare={feedbackVizionare}
+   644→        onSaved={handleFeedbackSaved}
+   645→      />
+   646→    </div>
+   647→  )
+   648→}
