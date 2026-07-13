@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { Calculator, Home, ChevronRight, Euro, Percent, Calendar, Info } from 'lucide-react'
-import { MortgageCalculator } from '@/components/mortgage-calculator'
+import { MortgageCalculator } from '@/components/features/mortgage-calculator'
 
 export function CalculatorPage() {
   return (

@@ -14,7 +14,8 @@ import {
 } from '@/components/ui/select'
 import { useAppStore } from '@/store/use-app-store'
 import { useZones, useSearchSuggestions } from '@/hooks/use-properties'
-import { formatPrice, type SearchSuggestion } from '@/lib/api'
+import { formatPrice } from '@/lib/utils'
+import type { SearchSuggestion } from '@/lib/types'
 
 function AnimatedCounter({ target, suffix = '', prefix = '' }: { target: number; suffix?: string; prefix?: string }) {
   const [count, setCount] = useState(0)

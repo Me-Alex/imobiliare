@@ -28,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { loadFromLS, saveToLS } from '@/lib/types'
+import { loadFromLS, saveToLS } from '@/lib/storage'
 import { toast } from 'sonner'
 
 /* ─── Constants (same as add-property page) ─── */

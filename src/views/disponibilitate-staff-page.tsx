@@ -13,10 +13,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import {
-  loadFromLS, saveToLS, generateId, DEFAULT_STAFF,
-  type StaffMember, type AvailabilitySlot,
-} from '@/lib/types'
+import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
+import { DEFAULT_STAFF } from '@/lib/constants'
+import type { StaffMember, AvailabilitySlot } from '@/lib/types'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 

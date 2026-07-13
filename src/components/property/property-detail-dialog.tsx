@@ -19,9 +19,10 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppStore } from '@/store/use-app-store'
 import { useProperty, useProperties } from '@/hooks/use-properties'
-import { formatPrice, formatPricePerSqm, type Property } from '@/lib/api'
+import { formatPrice, formatPricePerSqm } from '@/lib/utils'
+import type { Property } from '@/lib/types'
 import { toast } from 'sonner'
-import { PropertyCard } from '@/components/property-card'
+import { PropertyCard } from '@/components/property/property-card'
 
 const typeLabels: Record<string, string> = {
   APARTMENT: 'Apartament', HOUSE: 'Casa', VILLA: 'Vila', LAND: 'Teren', COMMERCIAL: 'Comercial',

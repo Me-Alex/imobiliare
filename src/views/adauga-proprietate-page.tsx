@@ -25,7 +25,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { EditPropertyDialog } from '@/components/edit-property-dialog'
+import { EditPropertyDialog } from '@/components/property/edit-property-dialog'
 
 const PROPERTY_TYPES = [
   'Apartament', 'Garsoniera', 'Casa', 'Vila', 'Teren', 'Spatiu Comercial',

@@ -2,10 +2,10 @@
 
 import { motion } from 'framer-motion'
 import { BarChart3, Home, ChevronRight, TrendingUp, Activity, PieChart } from 'lucide-react'
-import { MarketAnalytics } from '@/components/market-analytics'
-import { ZoneCards } from '@/components/zone-cards'
-import { ZoneMap } from '@/components/zone-map'
-import { NeighborhoodInsights } from '@/components/neighborhood-insights'
+import { MarketAnalytics } from '@/components/features/market-analytics'
+import { ZoneCards } from '@/components/zone/zone-cards'
+import { ZoneMap } from '@/components/zone/zone-map'
+import { NeighborhoodInsights } from '@/components/zone/neighborhood-insights'
 
 export function AnalizaPage() {
   return (

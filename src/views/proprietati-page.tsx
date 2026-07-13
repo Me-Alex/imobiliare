@@ -3,9 +3,9 @@
 import { useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Search, Home, Building2, ChevronRight } from 'lucide-react'
-import { PropertyFilters } from '@/components/property-filters'
-import { PropertyGrid } from '@/components/property-grid'
-import { RecentlyViewed } from '@/components/recently-viewed'
+import { PropertyFilters } from '@/components/property/property-filters'
+import { PropertyGrid } from '@/components/property/property-grid'
+import { RecentlyViewed } from '@/components/panels/recently-viewed'
 import { useAppStore } from '@/store/use-app-store'
 
 export function ProprietatiPage() {

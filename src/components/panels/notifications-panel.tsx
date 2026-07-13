@@ -18,7 +18,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { loadFromLS, saveToLS, generateId } from '@/lib/types'
+import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
 import { useAppStore, type PageKey } from '@/store/use-app-store'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'

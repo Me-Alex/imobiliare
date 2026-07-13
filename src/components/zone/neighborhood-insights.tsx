@@ -19,8 +19,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useZones } from '@/hooks/use-properties'
 import { useAppStore } from '@/store/use-app-store'
-import { formatPrice } from '@/lib/api'
-import type { Zone } from '@/lib/api'
+import { formatPrice } from '@/lib/utils'
+import type { Zone } from '@/lib/types'
 
 const demandTextColors: Record<string, string> = {
   Ridicata: 'text-red-500',

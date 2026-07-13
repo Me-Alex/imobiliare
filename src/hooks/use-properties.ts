@@ -6,8 +6,8 @@ import {
   getMarketData,
   getZones,
   getSearchSuggestions,
-  type PropertyFilters,
 } from '@/lib/api'
+import type { PropertyFilters } from '@/lib/types'
 
 export function useProperties(filters: PropertyFilters = {}) {
   return useQuery({

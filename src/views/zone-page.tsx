@@ -2,9 +2,9 @@
 
 import { motion } from 'framer-motion'
 import { MapPin, Home, ChevronRight, Navigation, Layers, Compass } from 'lucide-react'
-import { ZoneCards } from '@/components/zone-cards'
-import { ZoneMap } from '@/components/zone-map'
-import { NeighborhoodInsights } from '@/components/neighborhood-insights'
+import { ZoneCards } from '@/components/zone/zone-cards'
+import { ZoneMap } from '@/components/zone/zone-map'
+import { NeighborhoodInsights } from '@/components/zone/neighborhood-insights'
 
 export function ZonePage() {
   return (

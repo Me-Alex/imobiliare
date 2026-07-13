@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useZones } from '@/hooks/use-properties'
-import { formatPrice } from '@/lib/api'
+import { formatPrice } from '@/lib/utils'
 
 const demandColors: Record<string, string> = {
   Ridicata: 'bg-red-500',

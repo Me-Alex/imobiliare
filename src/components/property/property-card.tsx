@@ -6,7 +6,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/use-app-store'
-import { formatPrice, formatPricePerSqm, type Property } from '@/lib/api'
+import { formatPrice, formatPricePerSqm } from '@/lib/utils'
+import type { Property } from '@/lib/types'
 
 interface PropertyCardProps {
   property: Property

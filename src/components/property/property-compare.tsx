@@ -22,8 +22,9 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppStore } from '@/store/use-app-store'
-import { formatPrice, formatPricePerSqm, getPropertiesByIds, type Property } from '@/lib/api'
-import { cn } from '@/lib/utils'
+import { cn, formatPrice, formatPricePerSqm } from '@/lib/utils'
+import { getPropertiesByIds } from '@/lib/api'
+import type { Property } from '@/lib/types'
 
 const typeLabels: Record<string, string> = {
   APARTMENT: 'Apartament',

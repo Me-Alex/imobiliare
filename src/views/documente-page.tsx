@@ -16,10 +16,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
-import {
-  loadFromLS, saveToLS, generateId, DOC_TYPE_LABELS,
-  type UploadedDocument, type Vizionare,
-} from '@/lib/types'
+import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
+import { DOC_TYPE_LABELS } from '@/lib/constants'
+import type { UploadedDocument, Vizionare } from '@/lib/types'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 

@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
-import { loadFromLS, type Vizionare } from '@/lib/types'
+import { loadFromLS } from '@/lib/storage'
+import type { Vizionare } from '@/lib/types'
 
 export function DashboardPage() {
   const { user } = useAuth()

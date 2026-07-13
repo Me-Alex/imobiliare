@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/use-app-store'
 import { usePropertiesPaginated, type PropertyFilters } from '@/hooks/use-properties'
-import { PropertyCard } from '@/components/property-card'
+import { PropertyCard } from '@/components/property/property-card'
 
 export function PropertyGrid({ onSelectProperty }: { onSelectProperty: (slug: string) => void }) {
   const {

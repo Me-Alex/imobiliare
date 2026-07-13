@@ -15,12 +15,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
-import {
-  loadFromLS, saveToLS, DEFAULT_STAFF,
-  type Vizionare, type UploadedDocument, type AvailabilitySlot,
-  DOC_TYPE_LABELS,
-} from '@/lib/types'
-import { VizionareFeedbackDialog, StarRating } from '@/components/vizionare-feedback-dialog'
+import { loadFromLS, saveToLS } from '@/lib/storage'
+import { DEFAULT_STAFF, DOC_TYPE_LABELS } from '@/lib/constants'
+import type { Vizionare, UploadedDocument, AvailabilitySlot } from '@/lib/types'
+import { VizionareFeedbackDialog, StarRating } from '@/components/dialogs/vizionare-feedback-dialog'
 import { toast } from 'sonner'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

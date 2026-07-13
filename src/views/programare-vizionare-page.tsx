@@ -15,10 +15,9 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
-import {
-  loadFromLS, saveToLS, generateId, DEFAULT_STAFF,
-  type StaffMember, type AvailabilitySlot, type Vizionare,
-} from '@/lib/types'
+import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
+import { DEFAULT_STAFF } from '@/lib/constants'
+import type { StaffMember, AvailabilitySlot, Vizionare } from '@/lib/types'
 import { toast } from 'sonner'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

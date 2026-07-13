@@ -55,43 +55,101 @@ export interface UploadedDocument {
   uploadedAt: string
 }
 
-// Document type labels
-export const DOC_TYPE_LABELS: Record<UploadedDocument['docType'], string> = {
-  id_card: 'Carte de Identitate',
-  proof_of_income: 'Adeverinta de Venit',
-  vizionare_sign: 'Semnatura Vizionare',
-  rental_contract: 'Contract de Inchiriere',
-  other: 'Alt Document',
+// Document type labels (type only — value lives in @/lib/constants)
+export type DocTypeLabelMap = Record<UploadedDocument['docType'], string>
+
+// Property
+export interface Property {
+  id: string
+  title: string
+  slug: string
+  description: string
+  type: string
+  transaction: string
+  price: number
+  currency: string
+  areaSqm: number
+  rooms: number
+  bathrooms: number
+  floor: number | null
+  yearBuilt: number | null
+  address: string
+  zone: string
+  sector: string | null
+  city: string
+  lat: number | null
+  lng: number | null
+  status: string
+  featured: boolean
+  coverUrl: string | null
+  galleryUrls: string
+  pricePerSqm: number | null
+  createdAt: string
+  updatedAt: string
 }
 
-// Default staff members (hardcoded for MVP)
-export const DEFAULT_STAFF: StaffMember[] = [
-  { id: 'staff-1', name: 'Maria Ionescu', email: 'maria@hqs.ro', phone: '+40 721 123 456', role: 'Agent Imobiliar', avatarInitials: 'MI', isActive: true },
-  { id: 'staff-2', name: 'Alexandru Popa', email: 'alex@hqs.ro', phone: '+40 722 234 567', role: 'Agent Imobiliar', avatarInitials: 'AP', isActive: true },
-  { id: 'staff-3', name: 'Elena Dumitrescu', email: 'elena@hqs.ro', phone: '+40 723 345 678', role: 'Consilier Imobiliar', avatarInitials: 'ED', isActive: true },
-  { id: 'staff-4', name: 'Cristian Marinescu', email: 'cristian@hqs.ro', phone: '+40 724 456 789', role: 'Director Vanzari', avatarInitials: 'CM', isActive: true },
-]
-
-// LocalStorage helpers
-export function loadFromLS<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback
-  try {
-    const data = localStorage.getItem(key)
-    return data ? JSON.parse(data) : fallback
-  } catch {
-    return fallback
-  }
+export interface MarketDataPoint {
+  id: string
+  zone: string
+  type: string
+  avgPriceSqm: number
+  avgAreaSqm: number
+  totalListed: number
+  soldCount: number
+  week: string
 }
 
-export function saveToLS(key: string, data: unknown): void {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(key, JSON.stringify(data))
-  } catch {
-    // Storage full or unavailable
-  }
+export interface Zone {
+  id: string
+  name: string
+  slug: string
+  sector: string | null
+  description: string | null
+  avgPriceSqm: number | null
+  demand: string
+  popularFor: string
+  sortOrder: number
+  _count?: { properties: number }
 }
 
-export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+export interface ZoneSuggestion {
+  type: 'zone'
+  name: string
+  sector: string | null
+  avgPriceSqm: number | null
+}
+
+export interface PropertySuggestion {
+  type: 'property'
+  name: string
+  slug: string
+  zone: string
+  propertyType: string
+  transaction: string
+  price: number
+  areaSqm: number
+}
+
+export type SearchSuggestion = ZoneSuggestion | PropertySuggestion
+
+export interface PropertyFilters {
+  zone?: string
+  type?: string
+  transaction?: string
+  minPrice?: number
+  maxPrice?: number
+  rooms?: number
+  featured?: boolean
+  search?: string
+  sort?: string
+  minArea?: number
+  maxArea?: number
+}
+
+export interface PaginatedPropertiesResponse {
+  properties: Property[]
+  total: number
+  page: number
+  pageSize: number
+  hasMore: boolean
 }

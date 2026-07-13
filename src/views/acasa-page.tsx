@@ -1,13 +1,13 @@
 'use client'
 
 import { useCallback } from 'react'
-import { HeroSection } from '@/components/hero-section'
-import { StatsSection } from '@/components/stats-section'
-import { RecentlyViewed } from '@/components/recently-viewed'
-import { PropertyFilters } from '@/components/property-filters'
-import { PropertyGrid } from '@/components/property-grid'
-import { PartnersSection } from '@/components/partners-section'
-import { CtaSection } from '@/components/cta-section'
+import { HeroSection } from '@/components/marketing/hero-section'
+import { StatsSection } from '@/components/marketing/stats-section'
+import { RecentlyViewed } from '@/components/panels/recently-viewed'
+import { PropertyFilters } from '@/components/property/property-filters'
+import { PropertyGrid } from '@/components/property/property-grid'
+import { PartnersSection } from '@/components/marketing/partners-section'
+import { CtaSection } from '@/components/marketing/cta-section'
 import { useAppStore } from '@/store/use-app-store'
 
 export function AcasaPage() {

@@ -6,7 +6,8 @@ import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/use-app-store'
-import { formatPrice, type Property } from '@/lib/api'
+import { formatPrice } from '@/lib/utils'
+import type { Property } from '@/lib/types'
 
 const STORAGE_KEY = 'pm-recently-viewed'
 const MAX_RECENT = 4

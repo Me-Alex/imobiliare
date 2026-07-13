@@ -15,7 +15,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import { useMarketData, useProperties } from '@/hooks/use-properties'
-import { formatPrice } from '@/lib/api'
+import { formatPrice } from '@/lib/utils'
 
 const priceTrendConfig: ChartConfig = {
   avgPriceSqm: {

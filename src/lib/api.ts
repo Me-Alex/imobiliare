@@ -1,89 +1,11 @@
-export interface Property {
-  id: string
-  title: string
-  slug: string
-  description: string
-  type: string
-  transaction: string
-  price: number
-  currency: string
-  areaSqm: number
-  rooms: number
-  bathrooms: number
-  floor: number | null
-  yearBuilt: number | null
-  address: string
-  zone: string
-  sector: string | null
-  city: string
-  lat: number | null
-  lng: number | null
-  status: string
-  featured: boolean
-  coverUrl: string | null
-  galleryUrls: string
-  pricePerSqm: number | null
-  createdAt: string
-  updatedAt: string
-}
-
-export interface MarketDataPoint {
-  id: string
-  zone: string
-  type: string
-  avgPriceSqm: number
-  avgAreaSqm: number
-  totalListed: number
-  soldCount: number
-  week: string
-}
-
-export interface Zone {
-  id: string
-  name: string
-  slug: string
-  sector: string | null
-  description: string | null
-  avgPriceSqm: number | null
-  demand: string
-  popularFor: string
-  sortOrder: number
-  _count?: { properties: number }
-}
-
-export interface ZoneSuggestion {
-  type: 'zone'
-  name: string
-  sector: string | null
-  avgPriceSqm: number | null
-}
-
-export interface PropertySuggestion {
-  type: 'property'
-  name: string
-  slug: string
-  zone: string
-  propertyType: string
-  transaction: string
-  price: number
-  areaSqm: number
-}
-
-export type SearchSuggestion = ZoneSuggestion | PropertySuggestion
-
-export interface PropertyFilters {
-  zone?: string
-  type?: string
-  transaction?: string
-  minPrice?: number
-  maxPrice?: number
-  rooms?: number
-  featured?: boolean
-  search?: string
-  sort?: string
-  minArea?: number
-  maxArea?: number
-}
+import type {
+  Property,
+  MarketDataPoint,
+  Zone,
+  SearchSuggestion,
+  PropertyFilters,
+  PaginatedPropertiesResponse,
+} from './types'
 
 const BASE = '/api'
 
@@ -96,14 +18,6 @@ async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
     throw new Error(`API error: ${res.status}`)
   }
   return res.json()
-}
-
-export interface PaginatedPropertiesResponse {
-  properties: Property[]
-  total: number
-  page: number
-  pageSize: number
-  hasMore: boolean
 }
 
 export async function getProperties(filters: PropertyFilters = {}): Promise<Property[]> {
@@ -163,22 +77,4 @@ export async function getPropertiesByIds(ids: string[]): Promise<Property[]> {
     body: JSON.stringify({ ids }),
   })
   return data.properties
-}
-
-export function formatPrice(price: number, currency: string = 'EUR'): string {
-  return new Intl.NumberFormat('ro-RO', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price)
-}
-
-export function formatPricePerSqm(price: number): string {
-  return new Intl.NumberFormat('ro-RO', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price) + '/m²'
 }

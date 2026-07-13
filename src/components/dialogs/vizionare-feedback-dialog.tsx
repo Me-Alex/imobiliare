@@ -14,7 +14,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { loadFromLS, saveToLS, type Vizionare } from '@/lib/types'
+import { loadFromLS, saveToLS } from '@/lib/storage'
+import type { Vizionare } from '@/lib/types'
 import { toast } from 'sonner'
 
 // ─── Rating Labels ────────────────────────────────────────────────────────

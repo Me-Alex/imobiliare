@@ -2,12 +2,12 @@
 
 import { motion } from 'framer-motion'
 import { Shield, Home, ChevronRight, Users, Award, CheckCircle2 } from 'lucide-react'
-import { TrustSection } from '@/components/trust-section'
-import { HowItWorks } from '@/components/how-it-works'
-import { TestimonialsSection } from '@/components/testimonials-section'
-import { AboutUsSection } from '@/components/about-us-section'
-import { FaqSection } from '@/components/faq-section'
-import { PartnersSection } from '@/components/partners-section'
+import { TrustSection } from '@/components/marketing/trust-section'
+import { HowItWorks } from '@/components/marketing/how-it-works'
+import { TestimonialsSection } from '@/components/marketing/testimonials-section'
+import { AboutUsSection } from '@/components/marketing/about-us-section'
+import { FaqSection } from '@/components/marketing/faq-section'
+import { PartnersSection } from '@/components/marketing/partners-section'
 
 export function DeCeNoiPage() {
   return (
