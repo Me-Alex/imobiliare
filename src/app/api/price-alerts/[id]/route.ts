@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { getSafeDb } from '@/lib/edge-db'
 import { supabase } from '@/lib/supabase'
 
 export async function DELETE(
@@ -22,6 +22,11 @@ export async function DELETE(
   }
 
   // ── Handler ─────────────────────────────────────────────────
+  const db = await getSafeDb()
+  if (!db) {
+    return NextResponse.json({ success: true }) // demo mode
+  }
+
   try {
     const { id } = await params
 

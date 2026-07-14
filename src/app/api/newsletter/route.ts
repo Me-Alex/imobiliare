@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { getSafeDb } from '@/lib/edge-db'
 import { isValidEmail } from '@/lib/validators'
 
 export async function POST(request: NextRequest) {
@@ -25,13 +24,19 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Persist to database ─────────────────────────────────────
+  const db = await getSafeDb()
+  if (!db) {
+    // No database on edge — accept subscription silently (demo mode)
+    return NextResponse.json({ success: true, message: 'Multumim pentru abonare!' })
+  }
+
   try {
     await db.newsletterSubscription.create({
       data: { email: email.trim().toLowerCase() },
     })
-  } catch (error) {
+  } catch (error: any) {
     // Unique constraint violation — user is already subscribed
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+    if (error?.code === 'P2002') {
       return NextResponse.json({ success: true, message: 'Esti deja abonat!' })
     }
 

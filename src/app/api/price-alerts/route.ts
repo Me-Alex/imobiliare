@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { getSafeDb } from '@/lib/edge-db'
 import { z } from 'zod'
 
 const createAlertSchema = z.object({
@@ -12,6 +12,11 @@ const createAlertSchema = z.object({
 })
 
 export async function GET() {
+  const db = await getSafeDb()
+  if (!db) {
+    return NextResponse.json([])
+  }
+
   try {
     const alerts = await db.priceAlert.findMany({
       orderBy: { createdAt: 'desc' },
@@ -24,27 +29,43 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const body = await request.json()
+  const result = createAlertSchema.safeParse(body)
+
+  if (!result.success) {
+    const firstError = result.error.issues[0]
+    return NextResponse.json(
+      { error: firstError?.message || 'Date invalide.' },
+      { status: 400 }
+    )
+  }
+
+  const { email, zone, propertyType, minPrice, maxPrice, minRooms } = result.data
+
+  if (minPrice != null && maxPrice != null && maxPrice <= minPrice) {
+    return NextResponse.json(
+      { error: 'Pretul maxim trebuie sa fie mai mare decat pretul minim.' },
+      { status: 400 }
+    )
+  }
+
+  const db = await getSafeDb()
+  if (!db) {
+    // Edge mode — accept alert silently (demo mode)
+    return NextResponse.json({
+      id: 'demo-' + Date.now(),
+      email,
+      zone: zone || null,
+      propertyType: propertyType || null,
+      minPrice: minPrice ?? null,
+      maxPrice: maxPrice ?? null,
+      minRooms: minRooms ?? null,
+      active: true,
+      createdAt: new Date().toISOString(),
+    }, { status: 201 })
+  }
+
   try {
-    const body = await request.json()
-    const result = createAlertSchema.safeParse(body)
-
-    if (!result.success) {
-      const firstError = result.error.issues[0]
-      return NextResponse.json(
-        { error: firstError?.message || 'Date invalide.' },
-        { status: 400 }
-      )
-    }
-
-    const { email, zone, propertyType, minPrice, maxPrice, minRooms } = result.data
-
-    if (minPrice != null && maxPrice != null && maxPrice <= minPrice) {
-      return NextResponse.json(
-        { error: 'Pretul maxim trebuie sa fie mai mare decat pretul minim.' },
-        { status: 400 }
-      )
-    }
-
     const alert = await db.priceAlert.create({
       data: {
         email,

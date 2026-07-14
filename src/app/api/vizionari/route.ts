@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { getSafeDb } from '@/lib/edge-db'
 import { z } from 'zod'
 
 const createSchema = z.object({
@@ -19,19 +19,24 @@ const createSchema = z.object({
 
 // GET /api/vizionari?userId=xxx
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const userId = searchParams.get('userId')
+
+  if (!userId) {
+    return NextResponse.json({ error: 'userId este necesar' }, { status: 400 })
+  }
+
+  const db = await getSafeDb()
+  if (!db) {
+    // Edge mode — no database, return empty list
+    return NextResponse.json({ vizionari: [] })
+  }
+
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-
-    if (!userId) {
-      return NextResponse.json({ error: 'userId este necesar' }, { status: 400 })
-    }
-
     const vizionari = await db.vizionare.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     })
-
     return NextResponse.json({ vizionari })
   } catch (error) {
     console.error('GET /api/vizionari error:', error)
@@ -41,19 +46,30 @@ export async function GET(request: NextRequest) {
 
 // POST /api/vizionari
 export async function POST(request: NextRequest) {
+  const body = await request.json()
+  const parsed = createSchema.safeParse(body)
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Date invalide', details: parsed.error.flatten().fieldErrors },
+      { status: 400 }
+    )
+  }
+
+  const data = parsed.data
+
+  const db = await getSafeDb()
+  if (!db) {
+    // Edge mode — no database, accept booking silently (demo mode)
+    return NextResponse.json({
+      id: 'demo-' + Date.now(),
+      ...data,
+      status: 'confirmed',
+      createdAt: new Date().toISOString(),
+    }, { status: 201 })
+  }
+
   try {
-    const body = await request.json()
-    const parsed = createSchema.safeParse(body)
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Date invalide', details: parsed.error.flatten().fieldErrors },
-        { status: 400 }
-      )
-    }
-
-    const data = parsed.data
-
     // Check for conflicting bookings
     if (data.staffId) {
       const conflicting = await db.vizionare.findFirst({
@@ -99,14 +115,19 @@ export async function POST(request: NextRequest) {
 
 // PATCH /api/vizionari?id=xxx
 export async function PATCH(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+
+  if (!id) {
+    return NextResponse.json({ error: 'id este necesar' }, { status: 400 })
+  }
+
+  const db = await getSafeDb()
+  if (!db) {
+    return NextResponse.json({ error: 'Funcționalitate indisponibilă în modul demo.' }, { status: 503 })
+  }
+
   try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-
-    if (!id) {
-      return NextResponse.json({ error: 'id este necesar' }, { status: 400 })
-    }
-
     const body = await request.json()
     const { status, notes } = body as { status?: string; notes?: string }
 
@@ -128,14 +149,19 @@ export async function PATCH(request: NextRequest) {
 
 // DELETE /api/vizionari?id=xxx
 export async function DELETE(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+
+  if (!id) {
+    return NextResponse.json({ error: 'id este necesar' }, { status: 400 })
+  }
+
+  const db = await getSafeDb()
+  if (!db) {
+    return NextResponse.json({ error: 'Funcționalitate indisponibilă în modul demo.' }, { status: 503 })
+  }
+
   try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-
-    if (!id) {
-      return NextResponse.json({ error: 'id este necesar' }, { status: 400 })
-    }
-
     await db.vizionare.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {

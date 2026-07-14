@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { getSafeDb } from '@/lib/edge-db'
 import { supabase } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
@@ -19,6 +19,25 @@ export async function GET(request: NextRequest) {
   }
 
   // ── Handler ─────────────────────────────────────────────────
+  const db = await getSafeDb()
+  if (!db) {
+    // Edge / demo mode — return empty dashboard
+    return NextResponse.json({
+      contacts: [],
+      newsletters: [],
+      alerts: [],
+      properties: [],
+      stats: {
+        totalContacts: 0,
+        totalNewsletters: 0,
+        totalAlerts: 0,
+        totalProperties: 0,
+        activeProperties: 0,
+        soldProperties: 0,
+      },
+    })
+  }
+
   try {
     const [contacts, newsletters, alerts, properties] = await Promise.all([
       db.contactSubmission.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }),
