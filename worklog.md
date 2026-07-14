@@ -792,3 +792,39 @@ Stage Summary:
 - Post-login redirect returns user to the vizionare scheduling flow with property pre-selected
 - QA verified via agent-browser: buttons appear on all 12 property cards, auth dialog shows from both card and detail, login page navigation works
 - Lint: clean, no errors
+
+---
+Task ID: Cloudflare Deployment (Main Coordinator)
+Agent: main
+Task: Commit project to GitHub and deploy to Cloudflare with build verification
+
+Work Log:
+- **GitHub Push**: Pushed 30+ commits to https://github.com/Me-Alex/imobiliare.git (branch: main)
+- **Cloudflare Build Setup**: Installed @opennextjs/cloudflare v1.20.1 for Cloudflare Workers deployment
+- **Configuration Files**: Created open-next.config.ts and wrangler.toml with D1 binding, nodejs_compat, Supabase env vars
+- **D1 Database**: Created Cloudflare D1 database "hqs-imobiliare-db" (ID: 96fa755c-4fdf-4d45-98f3-933fedb4a97e)
+- **D1 Schema**: Initialized all 11 tables (User, Post, Property, PropertyAnalytics, MarketData, Zone, ContactSubmission, NewsletterSubscription, PriceAlert, Vizionare, UserProfile) + 11 indexes
+- **Build Verification**: OpenNext Cloudflare build completes successfully (~30s build time)
+- **Mock Data Fallbacks**: Added src/lib/mock-data.ts with 9 properties and 9 zones, updated 5 API routes with fallback data for Cloudflare Workers environment
+- **Deployment**: Deployed to https://hqs-imobiliare.floreaalexandru2002.workers.dev
+- **QA Verification**: Agent-browser confirmed:
+  - Homepage renders with property cards showing prices (285,000 EUR, 195,000 EUR, etc.)
+  - Property detail dialog opens with full details (address, sqm, rooms, description)
+  - Zones page shows zone names (Dorobanti, Primaverii, Unirii, Floreasca)
+  - No runtime errors (only Radix UI accessibility warnings)
+  - All navigation works correctly
+- **Infrastructure Files Created**:
+  - src/lib/db-d1.ts - D1 database adapter (Prisma-compatible API)
+  - src/lib/ai-edge.ts - Edge-compatible AI helper
+  - wrangler.toml - Cloudflare Workers configuration
+  - open-next.config.ts - OpenNext build configuration
+
+Stage Summary:
+- ✅ Project committed and pushed to GitHub
+- ✅ Cloudflare Workers deployment live at hqs-imobiliare.floreaalexandru2002.workers.dev
+- ✅ D1 database created and schema initialized
+- ✅ Build verified: OpenNext Cloudflare build completes without errors
+- ✅ Runtime verified: Site renders fully with mock data on Cloudflare
+- ⚠️ API routes use Prisma fallback pattern - mock data on Cloudflare, real DB on local dev
+- ⚠️ D1 adapter built (db-d1.ts) but not yet wired into routes (future work)
+- ⚠️ z-ai-web-dev-sdk works only in local dev (internal API) - AI features use fallback on Cloudflare
