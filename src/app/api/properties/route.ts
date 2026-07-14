@@ -1,6 +1,5 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
-import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +19,7 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, Number(searchParams.get('page')) || 1)
     const pageSize = Math.min(50, Math.max(1, Number(searchParams.get('pageSize')) || 12))
 
-    const where: Prisma.PropertyWhereInput = { status: 'PUBLISHED' }
+    const where: Record<string, any> = { status: 'PUBLISHED' }
 
     if (type) where.type = type
     if (zone) where.zone = zone
@@ -53,7 +52,7 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    let orderBy: Prisma.PropertyOrderByWithRelationInput
+    let orderBy: any
     switch (sort) {
       case 'priceAsc':
         orderBy = { price: 'asc' }

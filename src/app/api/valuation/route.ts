@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import ZAI from 'z-ai-web-dev-sdk'
 
+// ── ZAI singleton ─────────────────────────────────────────────
+let zaiInstance: InstanceType<typeof ZAI> | null = null
+
+function getZAI() {
+  if (!zaiInstance) {
+    zaiInstance = new ZAI()
+  }
+  return zaiInstance
+}
+
 // ── Simple in-memory rate limiter ─────────────────────────────
 const RATE_LIMIT_WINDOW = 60_000
 const RATE_LIMIT_MAX = 8
@@ -59,15 +69,6 @@ CONSIDERAȚII PENTRU EVALUARE:
 GENEREAZĂ exact 3 proprietăți comparabile realiste pentru zona și tipul cerut.
 
 RĂSPUNDE DOAR CU JSON, FĂRĂ ALTE TEXTE.`
-
-let zaiInstance: Awaited<ReturnType<typeof ZAI.create>> | null = null
-
-async function getZAI() {
-  if (!zaiInstance) {
-    zaiInstance = await ZAI.create()
-  }
-  return zaiInstance
-}
 
 // ── Fallback response ─────────────────────────────────────────
 function buildFallback(data: Record<string, unknown>) {
@@ -146,16 +147,14 @@ ${condition ? `- Stare: ${condition}` : ''}
 
 Răspunde DOAR cu JSON-ul solicitat.`
 
-    const zai = await getZAI()
-
+    const zai = getZAI()
     const completion = await zai.chat.completions.create({
       messages: [
-        { role: 'assistant' as const, content: systemPrompt },
-        { role: 'user' as const, content: userMessage },
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
       ],
       thinking: { type: 'disabled' },
     })
-
     const raw = completion.choices[0]?.message?.content || ''
 
     // Try to extract JSON from the response

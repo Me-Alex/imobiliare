@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  ...(process.env.NEXT_PUBLIC_OUTPUT_EXPORT === '1' ? { output: 'export' as const, images: { unoptimized: true } } : {}),
+  ...(process.env.NEXT_PUBLIC_OUTPUT_EXPORT === '1'
+    ? { output: 'export' as const, images: { unoptimized: true } }
+    : {
+        // Cloudflare Pages compatibility
+        images: {
+          unoptimized: true,
+        },
+      }),
   typescript: {
     ignoreBuildErrors: true,
   },

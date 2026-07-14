@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { isValidEmail } from '@/lib/validators'
 import { Prisma } from '@prisma/client'
+import { isValidEmail } from '@/lib/validators'
 
 export async function POST(request: NextRequest) {
   // ── Parse & validate input ──────────────────────────────────
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       console.error('Prisma error saving contact:', error.code, error.message)
     } else {
       console.error('Eroare la trimiterea formularului de contact:', error)

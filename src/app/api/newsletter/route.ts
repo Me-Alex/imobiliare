@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { isValidEmail } from '@/lib/validators'
 import { Prisma } from '@prisma/client'
+import { isValidEmail } from '@/lib/validators'
 
 export async function POST(request: NextRequest) {
   // ── Parse & validate input ──────────────────────────────────
@@ -31,10 +31,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     // Unique constraint violation — user is already subscribed
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002'
-    ) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return NextResponse.json({ success: true, message: 'Esti deja abonat!' })
     }
 

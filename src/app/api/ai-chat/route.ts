@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import ZAI from 'z-ai-web-dev-sdk'
 
+// ── ZAI singleton ─────────────────────────────────────────────
+let zaiInstance: InstanceType<typeof ZAI> | null = null
+
+function getZAI() {
+  if (!zaiInstance) {
+    zaiInstance = new ZAI()
+  }
+  return zaiInstance
+}
+
 // ── Simple in-memory rate limiter ─────────────────────────────
 const RATE_LIMIT_WINDOW = 60_000        // 1 minute in ms
 const RATE_LIMIT_MAX = 10               // max requests per window
@@ -30,19 +40,6 @@ function isRateLimited(ip: string): boolean {
   return false
 }
 
-// ── AI setup ──────────────────────────────────────────────────
-const systemPrompt =
-  'Ești un asistent virtual pentru HQS Imobiliare, o platformă de analiză imobiliară din București. Răspunde scurt și util în limba română despre: proprietăți, zone, prețuri, piețe imobiliare, sfaturi de cumpărare/vânzare. Dacă ești întrebat despre alte subiecte, redirecționează politicos spre imobiliare. Max 3 propoziții.'
-
-let zaiInstance: Awaited<ReturnType<typeof ZAI.create>> | null = null
-
-async function getZAI() {
-  if (!zaiInstance) {
-    zaiInstance = await ZAI.create()
-  }
-  return zaiInstance
-}
-
 // ── Handler ───────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   // Rate limiting
@@ -65,20 +62,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const zai = await getZAI()
+    const systemPrompt = 'Ești un asistent virtual pentru HQS Imobiliare, o platformă de analiză imobiliară din București. Răspunde scurt și util în limba română despre: proprietăți, zone, prețuri, piețe imobiliare, sfaturi de cumpărare/vânzare. Dacă ești întrebat despre alte subiecte, redirecționează politicos spre imobiliare. Max 3 propoziții.'
 
-    const messages = [
-      { role: 'assistant' as const, content: systemPrompt },
-      ...(history || []),
-      { role: 'user' as const, content: message.trim() },
-    ]
-
+    const zai = getZAI()
     const completion = await zai.chat.completions.create({
-      messages,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...(history || []).map((h) => ({ role: h.role as 'user' | 'assistant', content: h.content })),
+        { role: 'user', content: message.trim() },
+      ],
       thinking: { type: 'disabled' },
     })
-
-    const reply = completion.choices[0]?.message?.content || 'Ne pare rău, nu am putut genera un răspuns.'
+    const reply = completion.choices[0]?.message?.content || 'Nu am putut genera un răspuns.'
 
     return NextResponse.json({ reply })
   } catch (error) {
