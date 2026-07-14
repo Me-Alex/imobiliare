@@ -176,3 +176,39 @@ export interface PaginatedPropertiesResponse {
   pageSize: number
   hasMore: boolean
 }
+
+// Saved Search
+export interface SavedSearch {
+  id: string
+  name: string
+  filters: {
+    selectedType?: string
+    selectedZone?: string
+    priceRange?: [number, number]
+    rooms?: number
+    transaction?: string
+    featuredOnly?: boolean
+    sort?: string
+    minArea?: string
+    maxArea?: string
+    searchQuery?: string
+  }
+  createdAt: string
+}
+
+// Valuation Result
+export interface ValuationResult {
+  estimatedValue: number
+  pricePerSqm: number
+  confidenceRange: [number, number]
+  marketTrend: string
+  zoneAnalysis: string
+  recommendations: string[]
+  comparableProperties: Array<{
+    title: string
+    zone: string
+    price: number
+    areaSqm: number
+    pricePerSqm: number
+  }>
+}

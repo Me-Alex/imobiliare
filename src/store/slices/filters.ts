@@ -11,6 +11,8 @@ export interface FiltersSlice {
   setPriceRange: (range: [number, number]) => void
   viewMode: 'grid' | 'list'
   setViewMode: (mode: 'grid' | 'list') => void
+  mapViewMode: boolean
+  setMapViewMode: (v: boolean) => void
   selectedPropertySlug: string | null
   setSelectedPropertySlug: (slug: string | null) => void
   rooms: number
@@ -38,6 +40,8 @@ export const createFiltersSlice: StateCreator<FiltersSlice> = (set) => ({
   setPriceRange: (range) => set({ priceRange: range }),
   viewMode: 'grid',
   setViewMode: (mode) => set({ viewMode: mode }),
+  mapViewMode: false,
+  setMapViewMode: (v) => set({ mapViewMode: v }),
   selectedPropertySlug: null,
   setSelectedPropertySlug: (slug) => set({ selectedPropertySlug: slug }),
   rooms: 0,

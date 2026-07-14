@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import {
   Heart, Scale, MapPin, BedDouble, Maximize2, Bath, Building,
   Calendar, Phone, ChevronLeft, ChevronRight,
-  Share2, MessageCircle, Link, Check,
+  Share2, MessageCircle, Link, Check, Home,
 } from 'lucide-react'
 import {
   Dialog,
@@ -18,7 +18,9 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppStore } from '@/store/use-app-store'
-import { useProperty, useProperties } from '@/hooks/use-properties'
+import { useProperty } from '@/hooks/use-properties'
+import { useQuery } from '@tanstack/react-query'
+import { getProperties } from '@/lib/api'
 import { formatPrice, formatPricePerSqm } from '@/lib/utils'
 import type { Property } from '@/lib/types'
 import { toast } from 'sonner'
@@ -192,11 +194,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
           </div>
 
           {/* Similar properties section */}
-          <Separator />
-          <div>
-            <h3 className="font-semibold mb-4">Proprietati similare</h3>
-            <SimilarProperties currentId={property.id} zone={property.zone} type={property.type} onSelect={setSelectedPropertySlug} />
-          </div>
+          <SimilarProperties currentId={property.id} zone={property.zone} type={property.type} price={property.price} onSelect={setSelectedPropertySlug} />
         </div>
       </DialogContent>
     </Dialog>
@@ -314,19 +312,66 @@ function MetricCard({ icon: Icon, label, value }: { icon: React.ElementType; lab
   )
 }
 
-function SimilarProperties({ currentId, zone, type, onSelect }: { currentId: string; zone: string; type: string; onSelect: (slug: string) => void }) {
-  const { data: properties } = useProperties({ zone, type, sort: 'newest' })
-  const similar = properties?.filter((p) => p.id !== currentId).slice(0, 3)
+function SimilarProperties({ currentId, zone, type, price, onSelect }: { currentId: string; zone: string; type: string; price: number; onSelect: (slug: string) => void }) {
+  const priceMargin = price * 0.3
+  const minPrice = Math.max(0, Math.round(price - priceMargin))
+  const maxPrice = Math.round(price + priceMargin)
 
-  if (!similar || similar.length === 0) {
-    return <p className="text-sm text-muted-foreground">Nu am gasit proprietati similare.</p>
-  }
+  // Primary query: same zone + type + similar price range
+  const { data: zoneTypeResults, isLoading: loadingPrimary } = useQuery({
+    queryKey: ['similar-zone-type', zone, type, minPrice, maxPrice, currentId],
+    queryFn: () => getProperties({ zone, type, minPrice, maxPrice }),
+    staleTime: 30_000,
+  })
+
+  // Fallback query: same zone only (no type filter) — enabled when primary doesn't yield enough
+  const primaryFiltered = (zoneTypeResults ?? []).filter((p) => p.id !== currentId)
+  const needFallback = !loadingPrimary && primaryFiltered.length < 3
+
+  const { data: zoneOnlyResults, isLoading: loadingFallback } = useQuery({
+    queryKey: ['similar-zone-only', zone, minPrice, maxPrice, currentId],
+    queryFn: () => getProperties({ zone, minPrice, maxPrice }),
+    staleTime: 30_000,
+    enabled: needFallback,
+  })
+
+  const isLoading = loadingPrimary || (needFallback && loadingFallback)
+
+  // Merge results: prefer zone+type, fill from zone-only, deduplicate, limit to 4
+  const zoneOnlyFiltered = (zoneOnlyResults ?? []).filter(
+    (p) => p.id !== currentId && !primaryFiltered.some((pp) => pp.id === p.id),
+  )
+  const similar = [...primaryFiltered, ...zoneOnlyFiltered].slice(0, 4)
+
+  // Don't render anything while loading — but we do show the section with skeletons
+  // Hide entire section if still loading and not yet resolved
+  // Show skeletons while loading, hide section if no results after loading
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      {similar.map((p: Property) => (
-        <PropertyCard key={p.id} property={p} onSelect={onSelect} />
-      ))}
-    </div>
+    <>
+      <Separator className="my-6" />
+      <h3 className="text-lg font-semibold flex items-center gap-2">
+        <Home className="h-5 w-5 text-primary" />
+        Proprietati Similare
+      </h3>
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-3">
+              <Skeleton className="h-40 w-full rounded-lg" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : similar.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+          {similar.map((prop) => (
+            <PropertyCard key={prop.id} property={prop} onSelect={onSelect} />
+          ))}
+        </div>
+      ) : null}
+    </>
   )
 }

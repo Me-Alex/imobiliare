@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
-import { Bell, Building2, CalendarCheck, FileText, Heart, LayoutDashboard, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User, Users } from 'lucide-react'
+import { Bell, Bookmark, Building2, CalendarCheck, FileText, Heart, LayoutDashboard, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -31,6 +31,7 @@ const navItems: { label: string; page: PageKey }[] = [
   { label: 'Proprietati', page: 'proprietati' },
   { label: 'Analiza', page: 'analiza' },
   { label: 'Zone', page: 'zone' },
+  { label: 'Evaluare', page: 'evaluare' },
   { label: 'De Ce Noi', page: 'de-ce-noi' },
   { label: 'Calculator', page: 'calculator' },
 ]
@@ -69,9 +70,30 @@ interface SiteHeaderProps {
   onOpenFavorites?: () => void
   onOpenPriceAlerts?: () => void
   onOpenNotifications?: () => void
+  onOpenSavedSearches?: () => void
 }
 
-export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotifications }: SiteHeaderProps) {
+export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotifications, onOpenSavedSearches }: SiteHeaderProps) {
+  const [savedSearchCount, setSavedSearchCount] = useState(0)
+
+  useEffect(() => {
+    const update = () => {
+      try {
+        const raw = localStorage.getItem(LS_KEYS.SAVED_SEARCHES)
+        const searches = raw ? JSON.parse(raw) : []
+        setSavedSearchCount(Array.isArray(searches) ? searches.length : 0)
+      } catch {
+        setSavedSearchCount(0)
+      }
+    }
+    update()
+    window.addEventListener('pm-saved-searches-updated', update)
+    window.addEventListener('storage', update)
+    return () => {
+      window.removeEventListener('pm-saved-searches-updated', update)
+      window.removeEventListener('storage', update)
+    }
+  }, [])
   const { setTheme, resolvedTheme } = useTheme()
   const { favorites, currentPage, navigateTo } = useAppStore()
   const { user, signOut } = useAuth()
@@ -137,6 +159,16 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          {/* Saved Searches */}
+          <Button variant="ghost" size="icon" className="relative" aria-label="Cautari salvate" onClick={onOpenSavedSearches}>
+            <Bookmark className="h-5 w-5" />
+            {savedSearchCount > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-primary text-primary-foreground border-0">
+                {savedSearchCount > 9 ? '9+' : savedSearchCount}
+              </Badge>
+            )}
+          </Button>
+
           {/* Favorites */}
           <Button variant="ghost" size="icon" className="relative" aria-label="Favorite" onClick={onOpenFavorites}>
             <Heart className="h-5 w-5" />
@@ -187,6 +219,10 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                 <DropdownMenuItem onClick={() => navigateTo('dashboard')} className="gap-2">
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigateTo('profil')} className="gap-2">
+                  <User className="h-4 w-4" />
+                  Profilul Meu
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigateTo('adauga-proprietate')} className="gap-2">
                   <Plus className="h-4 w-4" />
@@ -302,6 +338,22 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                   <Bell className="h-4 w-4" />
                   Alerte Pret
                 </span>
+              </button>
+              <button
+                type="button"
+                className="flex items-center justify-between w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  onOpenSavedSearches?.()
+                }}
+              >
+                <span className="flex items-center gap-2">
+                  <Bookmark className="h-4 w-4" />
+                  Cautari Salvate
+                </span>
+                {savedSearchCount > 0 && (
+                  <Badge variant="secondary" className="text-xs">{savedSearchCount}</Badge>
+                )}
               </button>
               <button
                 type="button"

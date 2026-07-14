@@ -4,6 +4,7 @@ export type PageKey =
   | 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator'
   | 'login' | 'admin' | 'adauga-proprietate' | 'dashboard'
   | 'programare-vizionare' | 'disponibilitate-staff' | 'vizionarile-mele' | 'documente'
+  | 'evaluare' | 'profil'
 
 export interface NavigationSlice {
   currentPage: PageKey

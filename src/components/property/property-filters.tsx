@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, SlidersHorizontal, LayoutGrid, List, ChevronDown } from 'lucide-react'
+import { X, SlidersHorizontal, LayoutGrid, List, ChevronDown, Bookmark, Map } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -49,12 +49,17 @@ interface ActiveFilter {
   onRemove: () => void
 }
 
-export function PropertyFilters() {
+interface PropertyFiltersProps {
+  onSaveSearch?: () => void
+}
+
+export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
   const {
     selectedType, setSelectedType,
     selectedZone, setSelectedZone,
     priceRange, setPriceRange,
     viewMode, setViewMode,
+    mapViewMode, setMapViewMode,
     searchQuery, setSearchQuery,
     rooms, setRooms,
     transaction, setTransaction,
@@ -119,6 +124,18 @@ export function PropertyFilters() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Save Search */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={onSaveSearch}
+          >
+            <Bookmark className="h-4 w-4" />
+            <span className="hidden sm:inline">Salveaza Cautarea</span>
+            <span className="sm:hidden">Salveaza</span>
+          </Button>
+
           {/* Sort */}
           <Select value={sort} onValueChange={setSort}>
             <SelectTrigger className="w-48 h-9 text-sm">
@@ -136,22 +153,31 @@ export function PropertyFilters() {
           {/* View toggle */}
           <div className="flex items-center border rounded-md">
             <Button
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              variant={viewMode === 'grid' && !mapViewMode ? 'default' : 'ghost'}
               size="icon"
-              className="h-9 w-9 rounded-r-none"
-              onClick={() => setViewMode('grid')}
+              className="h-9 w-9 rounded-r-none rounded-l-md"
+              onClick={() => { setViewMode('grid'); setMapViewMode(false) }}
               aria-label="Vizualizare grila"
             >
               <LayoutGrid className="h-4 w-4" />
             </Button>
             <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              variant={viewMode === 'list' && !mapViewMode ? 'default' : 'ghost'}
               size="icon"
-              className="h-9 w-9 rounded-l-none"
-              onClick={() => setViewMode('list')}
+              className="h-9 w-9 rounded-none"
+              onClick={() => { setViewMode('list'); setMapViewMode(false) }}
               aria-label="Vizualizare lista"
             >
               <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={mapViewMode ? 'default' : 'ghost'}
+              size="icon"
+              className="h-9 w-9 rounded-l-none rounded-r-md"
+              onClick={() => setMapViewMode(!mapViewMode)}
+              aria-label="Vizualizare harta"
+            >
+              <Map className="h-4 w-4" />
             </Button>
           </div>
 

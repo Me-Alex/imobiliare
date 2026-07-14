@@ -573,3 +573,197 @@ Stage Summary:
 - ~5400 lines of duplication removed across the codebase
 - 109 files changed, 28121 insertions, 6140 deletions
 - Lint: 0 errors. Build: passes.
+---
+Task ID: 1-c
+Agent: main
+Task: Create User Profile Management Page
+
+Work Log:
+- **CREATED** `/src/views/profil-page.tsx` — Full user profile management page with:
+  - Auth guard (shows login prompt if not authenticated)
+  - Header section with back button to dashboard, large avatar with initials, name & email display
+  - Profile Form (glass-card): full name (pre-filled from user metadata), phone (optional, stored in localStorage), bio textarea (max 200 chars, stored in localStorage), "Salveaza" button
+  - Notification Preferences (glass-card): 5 toggle switches (newProperties, priceAlerts, viewingUpdates default ON; weeklyNewsletter, specialOffers default OFF), all stored in `pm-user-profile` LS key
+  - Display Preferences (glass-card): currency select (EUR/RON/USD), default sort select (4 options), default property type select (5 options), all stored in `pm-user-profile` LS key
+  - Account Statistics (glass-card): 4 read-only stat cards (favorites from store, vizionari from LS, documents from LS, saved searches from LS)
+  - Danger Zone: red-bordered card with "Sterge contul" (destructive, toast: "Functionalitate in dezvoltare") and "Exporta datele mele" (toast: "Datele au fost exportate") buttons
+  - Own footer: "© 2025 HQS Imobiliare. Toate drepturile rezervate."
+  - Uses framer-motion staggered animations, shadcn/ui components, responsive mobile-first layout
+  - UserProfile interface matches spec; lazy state initialization from localStorage avoids useEffect lint errors
+- **EDITED** `/src/app/page.tsx` — Added ProfilPage import, `profil: ProfilPage` to pageComponents, `profil` to fullBleedPages set
+- **EDITED** `/src/components/layout/site-header.tsx` — Added "Profilul Meu" dropdown menu item with User icon between Dashboard and Adauga Proprietate
+
+Key Decisions:
+- Used lazy `useState(() => ...)` initializers instead of `useEffect` to avoid React lint errors about setState in effects
+- Derived `fullName` from `user.user_metadata?.full_name` in the lazy initializer
+- Used `useMemo` to load profile from localStorage once on mount
+- Stats pull from multiple sources: favorites from Zustand store, vizionari/documents/saved-searches from localStorage via loadFromLS
+- The `profil` PageKey was already defined in navigation.ts, no changes needed there
+
+---
+Task ID: 1-b
+Agent: saved-searches-feature
+Task: Create a Saved Search Profiles Feature
+
+Work Log:
+- **NEW COMPONENT — SavedSearchesPanel**: Created `/src/components/panels/saved-searches-panel.tsx` — Right-side Sheet panel listing saved searches with name, date (relative time), and filter badges (type, zone, rooms, price range as compact badges). Each item has Load (applies filters to Zustand store + navigates to proprietati page) and Delete buttons. "Sterge Toate Cautarile" button at bottom. Empty state with descriptive Romanian message. framer-motion stagger/exit animations. Uses `loadFromLS`/`saveToLS` and `LS_KEYS.SAVED_SEARCHES`. Syncs via custom `pm-saved-searches-updated` window events.
+- **NEW COMPONENT — SaveSearchDialog**: Created `/src/components/dialogs/save-search-dialog.tsx` — Dialog with name input (max 50 chars, validated non-empty), live char counter, filter preview badges showing current active filters, Save/Cancel buttons. Reads all filter values from useAppStore. Generates UUID via `uuid` package. Prepends to existing saved searches in localStorage and dispatches sync event.
+- **EDITED — PropertyFilters**: Added `onSaveSearch?: () => void` prop. Added "Salveaza Cautarea" button (Bookmark icon) in the filter bar, responsive with shortened text on mobile.
+- **EDITED — SiteHeader**: Added `onOpenSavedSearches?: () => void` prop. Added Bookmark icon button in the header right-side actions with badge count (reads from localStorage via `LS_KEYS.SAVED_SEARCHES`). Added "Cautari Salvate" item in the mobile menu with count badge. Listens to sync events for live count updates.
+- **EDITED — AcasaPage**: Added `onSaveSearch?: () => void` prop, passed through to `PropertyFilters`.
+- **EDITED — ProprietatiPage**: Added `onSaveSearch?: () => void` prop, passed through to `PropertyFilters`.
+- **EDITED — page.tsx**: Added state `savedSearchesOpen` and `saveSearchDialogOpen`. Imported `SavedSearchesPanel` and `SaveSearchDialog`. Passed `onOpenSavedSearches` to both SiteHeader instances (fullBleed and normal). Passed `onSaveSearch` to all page components via the `pageComponents` map (typed as `Record<string, React.ComponentType<Record<string, unknown>>>`). Rendered `<SavedSearchesPanel>` and `<SaveSearchDialog>` in both fullBleed and normal render paths.
+
+Key Decisions:
+- Used `Record<string, React.ComponentType<Record<string, unknown>>>` for pageComponents map to allow passing `onSaveSearch` prop without TypeScript errors (only AcasaPage and ProprietatiPage consume it)
+- Used lazy `useState(() => loadFromLS(...))` initializer + event listener pattern instead of direct setState in useEffect, to satisfy the `react-hooks/set-state-in-effect` lint rule
+- Used custom window events (`pm-saved-searches-updated`) for cross-component synchronization between SaveSearchDialog, SavedSearchesPanel, and SiteHeader badge count
+- Used `useAppStore.getState()` directly in the load handler (not React hook) to avoid stale closures when applying saved filters
+- Toast messages in Romanian: "Cautarea a fost salvata!", "Cautarea a fost incarcata!", "Cautarea a fost stearsa!"
+
+---
+Task ID: 1-a
+Agent: main
+Task: Create Property Valuation Estimator Page + API
+
+Work Log:
+- **API Route — /api/valuation**: Created POST endpoint using `z-ai-web-dev-sdk` LLM. System prompt in Romanian acts as real estate valuation expert. Returns JSON with estimatedValue, pricePerSqm, confidenceRange, marketTrend, zoneAnalysis, recommendations, comparableProperties. Includes rate-limiting (8 req/min), JSON extraction with fallback regex, and structured fallback response when AI fails. Follows same pattern as `/api/ai-chat`.
+- **ValuationForm Component**: Comprehensive form with shadcn/ui Select, Input, Label, Button. Supports 7 property types, Vanzare/Inchiriere, all ZONES and SECTOARE from constants. Conditional floor input (only for apartment types). Validation with toast errors. Loader2 spinner during submission. glass-card styling, framer-motion animations.
+- **ValuationResult Component**: Beautiful result display with large estimated value (EUR with toLocaleString), price per m², visual confidence range bar with position marker, market trend badge (color-coded: emerald for crestere, red for scadere, amber for stabil), zone analysis card, recommendations list, comparable properties table, "Salvează în Istoric" and "Vezi Proprietăți Similare" action buttons.
+- **ValuationHistory Component**: localStorage-based history (key: `pm-valuation-history`). Uses `useSyncExternalStore` to avoid `react-hooks/set-state-in-effect` lint error. List of past valuations with type, zone, value, date. Click to re-display, delete individual items, clear all. AnimatePresence for smooth add/remove. Max 20 entries.
+- **EvaluarePage View**: Full page layout with PageHero (BadgeDollarSign icon, breadcrumb Acasa > Evaluare Imobiliara). Quick info cards (Evaluare AI, Date reale, Raport detaliat, Istoric evaluari). Two-column layout: form left, results right. Loading spinner state. Empty placeholder state. History section below. Extra info section with 3 glass-cards (Cum functioneaza, Factori de influenta, Precizia estimarii).
+- **page.tsx Registration**: Added `EvaluarePage` import and `evaluare: EvaluarePage` to pageComponents map. Page is NOT in fullBleedPages (shows header/footer/overlays). The `evaluare` PageKey already existed in navigation.ts.
+
+---
+Task ID: 4
+Agent: main
+Task: Add "Similar Properties" Section to Property Detail Dialog
+
+Work Log:
+- **Enhanced SimilarProperties component**: Rewrote the existing basic `SimilarProperties` in `property-detail-dialog.tsx` with full-featured implementation using `useQuery` from TanStack Query directly (replacing the previous `useProperties` hook call).
+- **Smart filtering with fallback**: Primary query fetches properties matching same zone + type within ±30% price range. If fewer than 3 results found (excluding current property), a secondary fallback query fetches by same zone only (within same price range). Results are merged, deduplicated, and limited to 4.
+- **Price range filtering**: Uses ±30% margin of current property price (`minPrice`/`maxPrice`) passed to `getProperties` API for relevant similar properties.
+- **Section header**: Added `Separator` with `my-6`, header with `Home` icon from lucide-react and "Proprietati Similare" text in `text-lg font-semibold`.
+- **Loading skeletons**: Shows 3 skeleton cards (image + title + subtitle) in the same grid layout while data loads.
+- **Conditional rendering**: Section is completely hidden (including header) when no similar properties are found after loading.
+- **Responsive grid**: Uses `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4` for proper responsive layout.
+- **Navigation**: Each `PropertyCard`'s `onSelect` calls `setSelectedPropertySlug` to open the selected property in the same dialog.
+- **Imports updated**: Added `Home` to lucide imports, added `useQuery` from `@tanstack/react-query`, added `getProperties` from `@/lib/api`. Removed unused `useProperties` import.
+
+---
+Task ID: 5
+Agent: main
+Task: Add Interactive Map View Toggle to the Properties Page
+
+Work Log:
+- **NEW COMPONENT — PropertyMapView** (`/src/components/property/property-map-view.tsx`):
+  - Custom SVG-based interactive map of Bucharest with 6 colored sector polygons (S1–S6)
+  - Property markers positioned via zone-based coordinate mapping (`ZONE_POSITIONS` lookup) with deterministic hash-based offsets to prevent overlap
+  - 5 property type marker colors: APARTMENT (emerald), HOUSE (amber), VILLA (rose), LAND (teal), COMMERCIAL (slate)
+  - shadcn/ui Tooltip on marker hover showing: property title, price, zone, area, rooms, featured badge
+  - Marker click calls `setSelectedPropertySlug` to open property detail dialog
+  - Featured properties get animated pulse rings (framer-motion infinite animation)
+  - Marker entrance animations with spring physics and staggered delays
+  - Zoom in/out buttons (stateful, clamped 0.6–3x)
+  - Toggleable sidebar panel (right-side overlay) listing all visible properties with ScrollArea
+  - Legend showing property type color mapping (bottom-left)
+  - Results count badge (top-left)
+  - Subtle grid background, Dambovita river path, Herastrau park area, sector labels, ring road
+  - "BUCURESTI" title watermark at top of map
+  - Fully responsive — map fills container width, min-height 520px
+
+- **UPDATED — PropertyFilters** (`/src/components/property/property-filters.tsx`):
+  - Added `Map` icon import from lucide-react
+  - Imported `mapViewMode` and `setMapViewMode` from `useAppStore`
+  - Added Map button as third option in view toggle group (after Grid and List)
+  - Clicking Grid/List deselects map view; clicking Map toggles map mode
+  - Proper border-radius handling: first button has `rounded-l-md`, middle has `rounded-none`, last has `rounded-r-md`
+
+- **UPDATED — ProprietatiPage** (`/src/views/proprietati-page.tsx`):
+  - Imported `PropertyMapView`, `AnimatePresence`, `Loader2`, `useProperties`, `PropertyFilters` type
+  - Reads `mapViewMode` and all filter state from store
+  - Builds `QueryPropertyFilters` object from store filters (only when map is active)
+  - Uses `useProperties` (non-paginated) to fetch all filtered properties for the map
+  - `AnimatePresence mode="wait"` for smooth transition between grid and map views
+  - Shows loading spinner (Loader2) while map data loads
+  - Conditionally renders `<PropertyMapView>` or `<PropertyGrid>` based on `mapViewMode`
+
+- **Lint**: Clean — no errors or warnings
+- **Dev server**: Compiles successfully
+
+---
+Task ID: 6
+Agent: main
+Task: Add Activity Timeline to the Dashboard Page
+
+Work Log:
+- **NEW COMPONENT — ActivityTimeline**: Created `/src/components/features/activity-timeline.tsx`
+  - Vertical timeline with left-side line and colored dots
+  - Aggregates activity from 5 localStorage sources: `hqs_vizionari`, `hqs_user_properties`, `pm-saved-searches`, `pm-valuation-history`, `hqs_documents`
+  - Each item shows: colored dot, icon badge, title, description, relative time Badge
+  - Color coding: blue (vizionare), emerald (property), amber (search_saved), purple (valuation), rose (document)
+  - Relative time formatting in Romanian: "acum X minute/ore/zile/saptamani/luni"
+  - Max 10 items, sorted newest first
+  - framer-motion stagger animation on mount (containerVariants + itemVariants)
+  - Empty state: "Nicio activitate recenta" with Clock icon
+  - Uses `loadFromLS` from `@/lib/storage`, `LS_KEYS` from `@/lib/constants`
+  - Fallback timestamp extraction from property ID for properties without `created_at`
+  - "Vezi toata activitatea" button via `onViewAll` prop
+
+- **DASHBOARD UPDATE**: Modified `/src/views/dashboard-page.tsx`
+  - Imported `ActivityTimeline` and `toast` from sonner
+  - Added full-width ActivityTimeline section below existing two-column grid
+  - Wrapped in `motion.div` with fade-in animation (delay 0.2)
+  - `onViewAll` triggers `toast.info('Toata activitatea — in curand disponibila!')`
+  - Consistent glass-card styling matching existing dashboard cards
+
+- **Lint**: Clean — no errors or warnings
+- **Dev server**: Compiles successfully
+
+
+---
+Task ID: 10 (Round 7 — Feature Expansion)
+Agent: main (coordinator) + 6 subagents
+Task: Add new features building on existing platform direction
+
+Work Log:
+- **PLANNING**: Analyzed existing codebase (14 pages, 30+ components, full real estate platform) and identified 6 high-impact new features that extend existing capabilities
+- **SHARED INFRASTRUCTURE**: Updated navigation slice (added 'evaluare' | 'profil' PageKeys), updated filters slice (added mapViewMode/setMapViewMode), added 3 new LS_KEYS (SAVED_SEARCHES, USER_PROFILE, VALUATION_HISTORY), added SavedSearch and ValuationResult types to types.ts
+
+## Feature 1: Property Valuation Estimator (evaluare page)
+- **API**: Created `/api/valuation/route.ts` — POST endpoint using z-ai-web-dev-sdk LLM with rate limiting (8 req/min), structured JSON parsing with regex fallback
+- **Form**: Created `valuation-form.tsx` — 8 fields (type, transaction, zone, sector, area, rooms, year, condition) with conditional floor input for apartments
+- **Results**: Created `valuation-result.tsx` — displays estimated value, price/m², confidence range bar, market trend badge, zone analysis, recommendations, comparable properties table, save/navigate actions
+- **History**: Created `valuation-history.tsx` — localStorage-based history with delete/clear, event-driven updates
+- **Page**: Created `evaluare-page.tsx` — full page with PageHero, quick info cards, 2-column form+results layout, history section, 3 info cards about valuation methodology
+- **FIX**: Fixed infinite re-render in valuation-history (replaced useSyncExternalStore with useState+useEffect pattern)
+
+## Feature 2: Saved Search Profiles
+- **Panel**: Created `saved-searches-panel.tsx` — right-side Sheet panel with saved search list, load/delete/clear actions, filter summary badges, framer-motion animations
+- **Dialog**: Created `save-search-dialog.tsx` — Dialog for naming current filters, preview of active filters as badges, UUID generation
+- **Integration**: Added "Salveaza Cautarea" button (Bookmark icon) to PropertyFilters, added Bookmark button with count badge to SiteHeader (desktop + mobile menu)
+- **Cross-component sync**: Custom `pm-saved-searches-updated` window events for real-time count updates
+
+## Feature 3: User Profile Management (profil page)
+- **Page**: Created `profil-page.tsx` — full-bleed page with auth guard, personal info form, notification preferences (5 toggles), display preferences (currency/sort/type), account statistics, danger zone
+- **Navigation**: Added "Profilul Meu" menu item to user dropdown in SiteHeader
+
+## Feature 4: Similar Properties in Detail Dialog
+- **Enhanced**: Modified `property-detail-dialog.tsx` — added dual-query similar properties (same zone+type, fallback to same zone only), loading skeletons, responsive grid, conditional rendering
+
+## Feature 5: Interactive Property Map View
+- **Map**: Created `property-map-view.tsx` — SVG map of Bucharest with 6 sector polygons, property markers by zone positions, hover tooltips, click-to-detail, zoom controls, toggleable property sidebar, legend
+- **Toggle**: Added Map button (from lucide-react) to PropertyFilters view toggle group (Grid | List | Map)
+- **Integration**: Updated proprietati-page.tsx with conditional map/grid rendering using AnimatePresence transitions
+
+## Feature 6: Dashboard Activity Timeline
+- **Component**: Created `activity-timeline.tsx` — vertical timeline aggregating data from 5 localStorage sources (vizionari, properties, saved searches, valuations, documents), color-coded activity types, Romanian relative time formatting
+- **Integration**: Added to dashboard-page.tsx below existing two-column layout with glass-card styling
+
+Stage Summary:
+- 6 major new features implemented across 10 new files and 8 modified files
+- All features: lint-clean, dev-server compiles successfully
+- QA verified via agent-browser: Evaluare page, Property Map View, Similar Properties, Saved Searches panel all render correctly
+- Navigation updated: "Evaluare" added to main nav, "Profilul Meu" added to user dropdown
+- New page keys: 'evaluare', 'profil' (profil is full-bleed, evaluare shows header/footer)
+- Total pages now: 16 (was 14)

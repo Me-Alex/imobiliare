@@ -3,6 +3,8 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Building2, CalendarCheck, FileText, Eye, Plus, ArrowRight } from 'lucide-react'
+import { toast } from 'sonner'
+import { ActivityTimeline } from '@/components/features/activity-timeline'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/auth-context'
@@ -168,6 +170,18 @@ export function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* Activity Timeline — full width */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mt-6"
+        >
+          <ActivityTimeline
+            onViewAll={() => toast.info('Toata activitatea — in curand disponibila!')}
+          />
+        </motion.div>
       </div>
 
       {/* Footer */}

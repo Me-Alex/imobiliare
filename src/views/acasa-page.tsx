@@ -10,7 +10,11 @@ import { PartnersSection } from '@/components/marketing/partners-section'
 import { CtaSection } from '@/components/marketing/cta-section'
 import { useAppStore } from '@/store/use-app-store'
 
-export function AcasaPage() {
+interface AcasaPageProps {
+  onSaveSearch?: () => void
+}
+
+export function AcasaPage({ onSaveSearch }: AcasaPageProps) {
   const { setSelectedPropertySlug, navigateTo } = useAppStore()
 
   const handleSelectProperty = useCallback((slug: string) => {
@@ -34,7 +38,7 @@ export function AcasaPage() {
               </span>
             </p>
           </div>
-          <PropertyFilters />
+          <PropertyFilters onSaveSearch={onSaveSearch} />
           <div className="mt-6">
             <PropertyGrid onSelectProperty={handleSelectProperty} />
           </div>

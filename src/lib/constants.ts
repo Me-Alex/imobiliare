@@ -97,6 +97,9 @@ export const LS_KEYS = {
   PRICE_ALERTS: 'pm-price-alerts',
   COOKIES_ACCEPTED: 'pm-cookies-accepted',
   ANNOUNCEMENT_DISMISSED: 'pm-announcement-dismissed',
+  SAVED_SEARCHES: 'pm-saved-searches',
+  USER_PROFILE: 'pm-user-profile',
+  VALUATION_HISTORY: 'pm-valuation-history',
 } as const
 
 // ─── Default staff members (hardcoded for MVP) ─────────────────────────────

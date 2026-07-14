@@ -1,19 +1,42 @@
 'use client'
 
 import { useCallback } from 'react'
-import { motion } from 'framer-motion'
-import { Search, Home, Building2, ChevronRight } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Search, Home, Building2, ChevronRight, Loader2 } from 'lucide-react'
 import { PropertyFilters } from '@/components/property/property-filters'
 import { PropertyGrid } from '@/components/property/property-grid'
+import { PropertyMapView } from '@/components/property/property-map-view'
 import { RecentlyViewed } from '@/components/panels/recently-viewed'
 import { useAppStore } from '@/store/use-app-store'
+import { useProperties, type PropertyFilters as QueryPropertyFilters } from '@/hooks/use-properties'
 
-export function ProprietatiPage() {
-  const { setSelectedPropertySlug } = useAppStore()
+interface ProprietatiPageProps {
+  onSaveSearch?: () => void
+}
+
+export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
+  const { setSelectedPropertySlug, mapViewMode, selectedType, selectedZone, searchQuery, priceRange, rooms, transaction, featuredOnly, sort, minArea, maxArea } = useAppStore()
 
   const handleSelectProperty = useCallback((slug: string) => {
     setSelectedPropertySlug(slug)
   }, [setSelectedPropertySlug])
+
+  // Build filters for the map view (uses non-paginated query to get all at once)
+  const mapFilters: QueryPropertyFilters = {}
+  if (selectedType) mapFilters.type = selectedType
+  if (selectedZone) mapFilters.zone = selectedZone
+  if (searchQuery) mapFilters.search = searchQuery
+  if (priceRange[0] > 0) mapFilters.minPrice = priceRange[0]
+  if (priceRange[1] < 1000000) mapFilters.maxPrice = priceRange[1]
+  if (rooms > 0) mapFilters.rooms = rooms
+  if (transaction) mapFilters.transaction = transaction
+  if (featuredOnly) mapFilters.featured = true
+  if (sort) mapFilters.sort = sort
+  if (minArea) mapFilters.minArea = Number(minArea)
+  if (maxArea) mapFilters.maxArea = Number(maxArea)
+
+  const { data: mapProperties, isLoading: mapLoading } = useProperties(mapViewMode ? mapFilters : {})
+  const mapData = mapViewMode ? (mapProperties ?? []) : []
 
   return (
     <>
@@ -68,9 +91,37 @@ export function ProprietatiPage() {
       {/* Properties Grid */}
       <section className="py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <PropertyFilters />
+          <PropertyFilters onSaveSearch={onSaveSearch} />
           <div className="mt-6">
-            <PropertyGrid onSelectProperty={handleSelectProperty} />
+            <AnimatePresence mode="wait">
+              {mapViewMode ? (
+                <motion.div
+                  key="map"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  {mapLoading ? (
+                    <div className="flex items-center justify-center py-20">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <PropertyMapView properties={mapData} />
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="grid"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <PropertyGrid onSelectProperty={handleSelectProperty} />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </section>

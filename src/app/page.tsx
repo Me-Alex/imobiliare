@@ -8,10 +8,12 @@ import { AnnouncementBanner } from '@/components/layout/announcement-banner'
 import { SiteHeader } from '@/components/layout/site-header'
 import { FavoritesPanel } from '@/components/panels/favorites-panel'
 import { PriceAlertsPanel } from '@/components/panels/price-alerts-panel'
+import { SavedSearchesPanel } from '@/components/panels/saved-searches-panel'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { PropertyDetailDialog } from '@/components/property/property-detail-dialog'
 import { PropertyCompare } from '@/components/property/property-compare'
 import { ContactFormDialog } from '@/components/dialogs/contact-form-dialog'
+import { SaveSearchDialog } from '@/components/dialogs/save-search-dialog'
 import { CookieConsent } from '@/components/layout/cookie-consent'
 import { GalleryLightbox } from '@/components/dialogs/gallery-lightbox'
 import { BackToTop } from '@/components/layout/back-to-top'
@@ -33,6 +35,8 @@ import { DocumentePage } from '@/views/documente-page'
 import { ProgramareVizionarePage } from '@/views/programare-vizionare-page'
 import { VizionarileMelePage } from '@/views/vizionarile-mele-page'
 import { DashboardPage } from '@/views/dashboard-page'
+import { ProfilPage } from '@/views/profil-page'
+import { EvaluarePage } from '@/views/evaluare-page'
 import { NotificationsPanel } from '@/components/panels/notifications-panel'
 
 const queryClient = new QueryClient({
@@ -44,7 +48,7 @@ const queryClient = new QueryClient({
   },
 })
 
-const pageComponents: Record<string, React.ComponentType> = {
+const pageComponents: Record<string, React.ComponentType<Record<string, unknown>>> = {
   acasa: AcasaPage,
   proprietati: ProprietatiPage,
   analiza: AnalizaPage,
@@ -59,10 +63,12 @@ const pageComponents: Record<string, React.ComponentType> = {
   'programare-vizionare': ProgramareVizionarePage,
   'vizionarile-mele': VizionarileMelePage,
   dashboard: DashboardPage,
+  profil: ProfilPage,
+  evaluare: EvaluarePage,
 }
 
 // Pages that should NOT show header/footer/overlays
-const fullBleedPages = new Set(['login', 'admin', 'adauga-proprietate', 'dashboard', 'programare-vizionare', 'disponibilitate-staff', 'vizionarile-mele', 'documente'])
+const fullBleedPages = new Set(['login', 'admin', 'adauga-proprietate', 'dashboard', 'profil', 'programare-vizionare', 'disponibilitate-staff', 'vizionarile-mele', 'documente'])
 
 function AppContent() {
   const {
@@ -78,6 +84,8 @@ function AppContent() {
   const [favoritesOpen, setFavoritesOpen] = useState(false)
   const [priceAlertsOpen, setPriceAlertsOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [savedSearchesOpen, setSavedSearchesOpen] = useState(false)
+  const [saveSearchDialogOpen, setSaveSearchDialogOpen] = useState(false)
 
   const handleContact = useCallback((propertyTitle: string) => {
     setContactPropertyTitle(propertyTitle)
@@ -91,7 +99,7 @@ function AppContent() {
     // Login and Admin pages have their own header/footer
     return (
       <div className="min-h-screen flex flex-col">
-        <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} />
+        <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} onOpenSavedSearches={() => setSavedSearchesOpen(true)} />
         <main className="flex-1">
           <AnimatePresence mode="wait">
             <motion.div
@@ -101,11 +109,13 @@ function AppContent() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
-              {PageComponent && <PageComponent />}
+              {PageComponent && <PageComponent onSaveSearch={() => setSaveSearchDialogOpen(true)} />}
             </motion.div>
           </AnimatePresence>
         </main>
         <NotificationsPanel open={notificationsOpen} onOpenChange={setNotificationsOpen} />
+        <SavedSearchesPanel open={savedSearchesOpen} onOpenChange={setSavedSearchesOpen} />
+        <SaveSearchDialog open={saveSearchDialogOpen} onOpenChange={setSaveSearchDialogOpen} />
         <Toaster richColors position="bottom-right" />
       </div>
     )
@@ -117,7 +127,7 @@ function AppContent() {
         Treci la continutul principal
       </a>
       <AnnouncementBanner />
-      <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} />
+      <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} onOpenSavedSearches={() => setSavedSearchesOpen(true)} />
       <main id="main-content" className="flex-1">
         <AnimatePresence mode="wait">
           <motion.div
@@ -127,7 +137,7 @@ function AppContent() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
-            {PageComponent && <PageComponent />}
+            {PageComponent && <PageComponent onSaveSearch={() => setSaveSearchDialogOpen(true)} />}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -142,6 +152,8 @@ function AppContent() {
       <FavoritesPanel open={favoritesOpen} onOpenChange={setFavoritesOpen} />
       <PriceAlertsPanel open={priceAlertsOpen} onOpenChange={setPriceAlertsOpen} />
       <NotificationsPanel open={notificationsOpen} onOpenChange={setNotificationsOpen} />
+      <SavedSearchesPanel open={savedSearchesOpen} onOpenChange={setSavedSearchesOpen} />
+      <SaveSearchDialog open={saveSearchDialogOpen} onOpenChange={setSaveSearchDialogOpen} />
       <CookieConsent />
       <GalleryLightbox
         key={lightboxImages.join(',')}
