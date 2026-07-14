@@ -18,7 +18,7 @@ interface D1PreparedStatement {
   run(): Promise<unknown>
 }
 
-interface D1Database {
+export interface D1Database {
   prepare(query: string): D1PreparedStatement
 }
 

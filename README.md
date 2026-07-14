@@ -38,8 +38,10 @@ bun run check
 ## Data and deployment
 
 - Local and standard Node.js development uses Prisma with SQLite.
-- Cloudflare builds use OpenNext and the D1 binding defined in `wrangler.toml`.
+- Cloudflare Workers builds use OpenNext and the D1 binding defined in `wrangler.toml`.
 - Supabase provides authentication and mirrors authenticated user-submitted listings to `public.properties`.
 - `supabase-setup.sql` is a reviewed bootstrap for a fresh Supabase project. Read it before applying it to an existing database.
 
 Build for Cloudflare with `bun run cf:build`. Preview with `bun run cf:preview`, or deploy with `bun run cf:deploy` after configuring Cloudflare credentials outside the repository.
+
+This project targets Cloudflare **Workers**, not the legacy static Pages export. For Workers Builds, use `bun run cf:build` as the build command and `bun run cf:deploy` as the deploy command. Remove or reconfigure any older Cloudflare Pages integration that still calls `pages:build`.
