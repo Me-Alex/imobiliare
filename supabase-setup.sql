@@ -1,88 +1,104 @@
--- =====================================================
--- HQS Imobiliare - Supabase Setup Script
--- Run this in: Supabase Dashboard → SQL Editor → New Query
--- =====================================================
+-- HQS Imobiliare - Supabase bootstrap
+-- Intended for a fresh project. Review before running against an existing schema.
 
--- 1. Create the user_properties table
-CREATE TABLE IF NOT EXISTS public.user_properties (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS public.properties (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
   description TEXT NOT NULL DEFAULT '',
-  type TEXT NOT NULL DEFAULT 'Apartament',
-  transaction TEXT NOT NULL DEFAULT 'VANZARE',
-  price DOUBLE PRECISION NOT NULL DEFAULT 0,
+  price NUMERIC NOT NULL CHECK (price >= 0),
   currency TEXT NOT NULL DEFAULT 'EUR',
-  area_sqm DOUBLE PRECISION NOT NULL DEFAULT 0,
-  rooms INTEGER NOT NULL DEFAULT 0,
-  bathrooms INTEGER NOT NULL DEFAULT 0,
+  type TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PUBLISHED',
+  city TEXT NOT NULL DEFAULT 'Bucuresti',
+  county TEXT,
+  address TEXT NOT NULL DEFAULT '',
+  area_sqm NUMERIC NOT NULL DEFAULT 0 CHECK (area_sqm >= 0),
+  rooms INTEGER NOT NULL DEFAULT 0 CHECK (rooms >= 0),
+  bathrooms INTEGER NOT NULL DEFAULT 0 CHECK (bathrooms >= 0),
   floor INTEGER,
-  total_floors INTEGER,
   year_built INTEGER,
-  address TEXT DEFAULT '',
-  zone TEXT DEFAULT '',
-  sector TEXT DEFAULT '',
-  city TEXT DEFAULT 'Bucuresti',
-  lat DOUBLE PRECISION,
-  lng DOUBLE PRECISION,
-  featured BOOLEAN DEFAULT FALSE,
-  cover_url TEXT DEFAULT '',
-  gallery_urls TEXT DEFAULT '[]',
-  price_per_sqm DOUBLE PRECISION,
-  status TEXT DEFAULT 'PUBLISHED',
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  user_email TEXT DEFAULT '',
-  user_name TEXT DEFAULT '',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  featured BOOLEAN NOT NULL DEFAULT FALSE,
+  amenities TEXT[] NOT NULL DEFAULT '{}',
+  cover_image_url TEXT,
+  gallery_urls TEXT[] NOT NULL DEFAULT '{}',
+  floorplan_urls TEXT[] NOT NULL DEFAULT '{}',
+  transaction_type TEXT NOT NULL,
+  agent_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  agent_email TEXT,
+  published_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 2. Enable Row Level Security
-ALTER TABLE public.user_properties ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
 
--- 3. Policy: anyone can read published properties
-CREATE POLICY "Public read access"
-  ON public.user_properties
+CREATE INDEX IF NOT EXISTS properties_status_idx ON public.properties(status);
+CREATE INDEX IF NOT EXISTS properties_city_idx ON public.properties(city);
+CREATE INDEX IF NOT EXISTS properties_type_idx ON public.properties(type);
+CREATE INDEX IF NOT EXISTS properties_transaction_type_idx ON public.properties(transaction_type);
+CREATE INDEX IF NOT EXISTS properties_agent_id_idx ON public.properties(agent_id);
+CREATE INDEX IF NOT EXISTS properties_price_idx ON public.properties(price);
+
+-- These names are app-specific so rerunning the bootstrap does not touch unrelated policies.
+DROP POLICY IF EXISTS "hqs_public_read_published" ON public.properties;
+DROP POLICY IF EXISTS "hqs_owner_read" ON public.properties;
+DROP POLICY IF EXISTS "hqs_owner_insert" ON public.properties;
+DROP POLICY IF EXISTS "hqs_owner_update" ON public.properties;
+DROP POLICY IF EXISTS "hqs_owner_delete" ON public.properties;
+
+CREATE POLICY "hqs_public_read_published"
+  ON public.properties
   FOR SELECT
+  TO anon, authenticated
   USING (status = 'PUBLISHED');
 
--- 4. Policy: authenticated users can insert their own properties
-CREATE POLICY "Users can insert own properties"
-  ON public.user_properties
+CREATE POLICY "hqs_owner_read"
+  ON public.properties
+  FOR SELECT
+  TO authenticated
+  USING ((SELECT auth.uid()) = agent_id);
+
+CREATE POLICY "hqs_owner_insert"
+  ON public.properties
   FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  TO authenticated
+  WITH CHECK ((SELECT auth.uid()) = agent_id);
 
--- 5. Policy: users can update their own properties
-CREATE POLICY "Users can update own properties"
-  ON public.user_properties
+CREATE POLICY "hqs_owner_update"
+  ON public.properties
   FOR UPDATE
-  USING (auth.uid() = user_id);
+  TO authenticated
+  USING ((SELECT auth.uid()) = agent_id)
+  WITH CHECK ((SELECT auth.uid()) = agent_id);
 
--- 6. Policy: users can delete their own properties
-CREATE POLICY "Users can delete own properties"
-  ON public.user_properties
+CREATE POLICY "hqs_owner_delete"
+  ON public.properties
   FOR DELETE
-  USING (auth.uid() = user_id);
+  TO authenticated
+  USING ((SELECT auth.uid()) = agent_id);
 
--- 7. Create index for faster queries
-CREATE INDEX IF NOT EXISTS idx_user_properties_zone ON public.user_properties(zone);
-CREATE INDEX IF NOT EXISTS idx_user_properties_type ON public.user_properties(type);
-CREATE INDEX IF NOT EXISTS idx_user_properties_transaction ON public.user_properties(transaction);
-CREATE INDEX IF NOT EXISTS idx_user_properties_user_id ON public.user_properties(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_properties_status ON public.user_properties(status);
-CREATE INDEX IF NOT EXISTS idx_user_properties_price ON public.user_properties(price);
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT ON public.properties TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.properties TO authenticated;
 
--- 8. Auto-update updated_at timestamp
-CREATE OR REPLACE FUNCTION public.handle_updated_at()
-RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION public.hqs_set_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = ''
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
-DROP TRIGGER IF EXISTS set_updated_at ON public.user_properties;
-CREATE TRIGGER set_updated_at
-  BEFORE UPDATE ON public.user_properties
+REVOKE ALL ON FUNCTION public.hqs_set_updated_at() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.hqs_set_updated_at() TO authenticated, service_role;
+
+DROP TRIGGER IF EXISTS hqs_properties_set_updated_at ON public.properties;
+CREATE TRIGGER hqs_properties_set_updated_at
+  BEFORE UPDATE ON public.properties
   FOR EACH ROW
-  EXECUTE FUNCTION public.handle_updated_at();
+  EXECUTE FUNCTION public.hqs_set_updated_at();

@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   const minPrice = searchParams.get('minPrice')
   const maxPrice = searchParams.get('maxPrice')
   const minRooms = searchParams.get('minRooms')
+  const rooms = searchParams.get('rooms') || minRooms
   const minArea = searchParams.get('minArea')
   const maxArea = searchParams.get('maxArea')
   const sort = searchParams.get('sort') || 'newest'
@@ -36,7 +37,6 @@ export async function GET(request: NextRequest) {
         if (maxPrice) where.price.lte = Number(maxPrice)
       }
 
-      const rooms = searchParams.get('rooms') || minRooms
       if (rooms) {
         where.rooms = { gte: Number(rooms) }
       }

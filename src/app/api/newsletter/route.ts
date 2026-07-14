@@ -4,7 +4,7 @@ import { isValidEmail } from '@/lib/validators'
 
 export async function POST(request: NextRequest) {
   // ── Parse & validate input ──────────────────────────────────
-  let email: string
+  let email: string | undefined
 
   try {
     const body = await request.json()

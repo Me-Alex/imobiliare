@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   ...(process.env.NEXT_PUBLIC_OUTPUT_EXPORT === '1'
     ? { output: 'export' as const, images: { unoptimized: true } }
     : {
@@ -9,10 +10,23 @@ const nextConfig: NextConfig = {
           unoptimized: true,
         },
       }),
-  typescript: {
-    ignoreBuildErrors: true,
+  reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+        ],
+      },
+    ]
   },
-  reactStrictMode: false,
 };
 
 export default nextConfig;

@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/use-app-store'
-import { formatPrice } from '@/lib/utils'
+import { formatBucharestLocation, formatPrice } from '@/lib/utils'
 import { LS_KEYS } from '@/lib/constants'
 import type { Property } from '@/lib/types'
 
@@ -176,8 +176,7 @@ export function RecentlyViewed() {
                     {property.title}
                   </h3>
                   <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
-                    {property.zone}
-                    {property.sector ? `, Sector ${property.sector}` : ''}
+                    {formatBucharestLocation(property.zone, property.sector)}
                   </p>
                   <p className="text-sm font-bold text-primary">
                     {formatPrice(property.price, property.currency)}

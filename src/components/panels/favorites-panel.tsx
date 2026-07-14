@@ -15,7 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppStore } from '@/store/use-app-store'
-import { formatPrice } from '@/lib/utils'
+import { formatBucharestLocation, formatPrice } from '@/lib/utils'
 import { getPropertiesByIds } from '@/lib/api'
 import type { Property } from '@/lib/types'
 
@@ -146,7 +146,7 @@ function FavoriteItem({
             <h3 className="font-semibold text-sm line-clamp-1">{property.title}</h3>
             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
               <MapPin className="h-3 w-3 shrink-0" />
-              <span className="line-clamp-1">{property.zone}{property.sector ? `, Sector ${property.sector}` : ''}</span>
+              <span className="line-clamp-1">{formatBucharestLocation(property.zone, property.sector)}</span>
             </div>
           </div>
 

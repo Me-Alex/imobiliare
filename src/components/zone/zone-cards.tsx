@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useZones } from '@/hooks/use-properties'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, formatSector } from '@/lib/utils'
 
 const demandColors: Record<string, string> = {
   Ridicata: 'bg-red-500',
@@ -132,7 +132,7 @@ export function ZoneCards() {
                           </div>
                           <div>
                             <h3 className="font-semibold text-sm leading-tight">{zone.name}</h3>
-                            {zone.sector && <p className="text-xs text-muted-foreground">Sector {zone.sector}</p>}
+                            {zone.sector && <p className="text-xs text-muted-foreground">{formatSector(zone.sector)}</p>}
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5">

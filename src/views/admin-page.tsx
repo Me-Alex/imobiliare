@@ -197,7 +197,10 @@ export function AdminPage() {
   }, [])
 
   useEffect(() => {
-    if (user) fetchDashboard()
+    if (user) {
+      const frame = requestAnimationFrame(() => void fetchDashboard())
+      return () => cancelAnimationFrame(frame)
+    }
   }, [user, fetchDashboard])
 
   const handleSignOut = async () => {
@@ -229,7 +232,7 @@ export function AdminPage() {
         variant="border"
         icon={Shield}
         title="Panou de Administrare"
-        description={`${user.email} \u00b7 Ultima actualizare: ${new Date().toLocaleTimeString('ro-RO')}`}
+        description={`${user?.email ?? 'Administrator'} \u00b7 Ultima actualizare: ${new Date().toLocaleTimeString('ro-RO')}`}
         breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Admin' }]}
       >
         <div className="flex items-center gap-2">

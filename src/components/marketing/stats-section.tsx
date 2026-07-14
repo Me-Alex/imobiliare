@@ -1,34 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { Building2, TrendingUp, MapPin, Users } from 'lucide-react'
-import { useProperties, useZones } from '@/hooks/use-properties'
-
-function useCountUp(target: number, inView: boolean, duration = 2000) {
-  const [count, setCount] = useState(0)
-
-  useEffect(() => {
-    if (!inView) return
-    let start = 0
-    const stepTime = 20
-    const steps = duration / stepTime
-    const increment = target / steps
-
-    const timer = setInterval(() => {
-      start += increment
-      if (start >= target) {
-        setCount(target)
-        clearInterval(timer)
-      } else {
-        setCount(Math.floor(start))
-      }
-    }, stepTime)
-    return () => clearInterval(timer)
-  }, [inView, target, duration])
-
-  return count
-}
+import { Building2, TrendingUp, MapPin, Star } from 'lucide-react'
+import { usePropertiesPaginated, useZones } from '@/hooks/use-properties'
 
 const statThemes = [
   { border: '#10b981', bg: 'rgba(16, 185, 129, 0.1)', icon: '#059669', darkIcon: '#34d399' },
@@ -56,7 +31,6 @@ function StatCard({
   inView: boolean
   index: number
 }) {
-  const count = useCountUp(value, inView)
   const theme = statThemes[index] || statThemes[0]
 
   return (
@@ -92,7 +66,7 @@ function StatCard({
           />
         </div>
         <div className="text-3xl font-bold tracking-tight mb-1 counter-value">
-          {prefix}{count.toLocaleString('ro-RO')}{suffix}
+          {prefix}{value.toLocaleString('ro-RO')}{suffix}
         </div>
         <div className="font-medium text-sm mb-0.5">{label}</div>
         <p className="text-xs text-muted-foreground">{description}</p>
@@ -104,17 +78,18 @@ function StatCard({
 export function StatsSection() {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-100px' })
-  const { data: properties } = useProperties()
+  const { data: propertyPages } = usePropertiesPaginated()
   const { data: zones } = useZones()
 
-  const totalProperties = properties?.length || 0
-  const avgPriceSqm = properties?.length
+  const properties = propertyPages?.pages.flatMap((page) => page.properties) ?? []
+  const totalProperties = propertyPages?.pages[0]?.total ?? 0
+  const avgPriceSqm = properties.length
     ? Math.round(
         properties.reduce((sum, p) => sum + (p.pricePerSqm || p.price / p.areaSqm), 0) / properties.length
       )
     : 0
   const activeZones = zones?.length || 0
-  const soldThisMonth = properties?.filter((p) => p.status === 'SOLD').length || Math.round((properties?.length || 0) * 0.15)
+  const featuredProperties = properties.filter((p) => p.featured).length
 
   return (
     <section ref={ref} className="py-16 relative overflow-hidden">
@@ -171,10 +146,10 @@ export function StatsSection() {
             index={2}
           />
           <StatCard
-            icon={Users}
-            value={soldThisMonth}
-            label="Vanzari Luna Aceasta"
-            description="Proprietati vandute recent"
+            icon={Star}
+            value={featuredProperties}
+            label="Oferte Populare"
+            description="Proprietati recomandate de echipa"
             inView={inView}
             index={3}
           />

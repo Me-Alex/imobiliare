@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 import { Handshake } from 'lucide-react'
 
 const bankPartners = [
@@ -19,7 +19,7 @@ const allPartners = [...bankPartners, ...realEstatePartners]
 // Duplicate for seamless infinite scroll
 const marqueeItems = [...allPartners, ...allPartners, ...allPartners]
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: {},
   visible: {
     transition: {
@@ -28,7 +28,7 @@ const containerVariants = {
   },
 }
 
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, y: 20, scale: 0.95 },
   visible: {
     opacity: 1,

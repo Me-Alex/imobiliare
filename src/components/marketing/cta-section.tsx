@@ -2,20 +2,23 @@
 
 import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
-import { ArrowRight, Building2, MapPin, Users, Shield } from 'lucide-react'
+import { ArrowRight, Building2, MapPin, Star, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/use-app-store'
-
-const trustItems = [
-  { icon: Building2, label: '248+ Proprietati' },
-  { icon: MapPin, label: '12 Zone' },
-  { icon: Users, label: '1450+ Clienti' },
-]
+import { usePropertiesPaginated, useZones } from '@/hooks/use-properties'
 
 export function CtaSection() {
   const ref = useRef<HTMLDivElement>(null)
   const isInView = useInView(ref, { once: true, margin: '-80px' })
   const navigateTo = useAppStore((s) => s.navigateTo)
+  const { data: propertyPages } = usePropertiesPaginated()
+  const { data: zones } = useZones()
+  const properties = propertyPages?.pages.flatMap((page) => page.properties) ?? []
+  const trustItems = [
+    { icon: Building2, label: `${propertyPages?.pages[0]?.total ?? 0} Proprietati active` },
+    { icon: MapPin, label: `${zones?.length ?? 0} Zone` },
+    { icon: Star, label: `${properties.filter((property) => property.featured).length} Oferte populare` },
+  ]
 
   return (
     <section
@@ -75,7 +78,7 @@ export function CtaSection() {
               transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
               className="mt-4 max-w-2xl mx-auto text-base sm:text-lg text-emerald-100/80 leading-relaxed"
             >
-              Alatura-te miilor de clienti care si-au gasit casa visurilor prin HQS Imobiliare.
+              Exploreaza oferte actualizate si gaseste locuinta potrivita cu ajutorul HQS Imobiliare.
             </motion.p>
 
             {/* CTA Buttons */}

@@ -100,8 +100,6 @@ export function StaffDatePickerStep({
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   onStaffSelect(member)
-                  onDateSelect(null)
-                  onSlotSelect({} as AvailabilitySlot)
                 }}
                 className={`
                   text-left rounded-xl border-2 p-4 transition-all duration-200
