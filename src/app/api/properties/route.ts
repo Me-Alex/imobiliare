@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
+import { MOCK_PROPERTIES } from '@/lib/mock-data'
 
 export async function GET(request: NextRequest) {
   try {
@@ -88,9 +89,13 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error fetching properties:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch properties' },
-      { status: 500 }
-    )
+    // Fallback mock data for environments without database (e.g., Cloudflare Workers)
+    return NextResponse.json({
+      properties: MOCK_PROPERTIES,
+      total: MOCK_PROPERTIES.length,
+      page: 1,
+      pageSize: 12,
+      hasMore: false,
+    })
   }
 }

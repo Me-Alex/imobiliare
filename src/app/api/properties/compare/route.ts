@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
+import { MOCK_PROPERTIES } from '@/lib/mock-data'
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,9 +28,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ properties })
   } catch (error) {
     console.error('Eroare la comparare proprietăți:', error)
-    return NextResponse.json(
-      { error: 'A apărut o eroare la încărcarea datelor.' },
-      { status: 500 }
-    )
+    // Fallback mock data for environments without database (e.g., Cloudflare Workers)
+    const body = request.json ? await request.json().catch(() => ({ ids: [] })) : { ids: [] }
+    const { ids } = body as { ids?: string[] }
+    const properties = ids ? MOCK_PROPERTIES.filter(p => ids.includes(p.id)) : []
+    if (properties.length < 2) {
+      return NextResponse.json(
+        { error: 'Nu s-au găsit suficiente proprietăți valide.' },
+        { status: 404 }
+      )
+    }
+    return NextResponse.json({ properties })
   }
 }

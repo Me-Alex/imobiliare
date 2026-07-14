@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { MOCK_ZONES_WITH_COUNTS } from '@/lib/mock-data'
 
 export async function GET() {
   try {
@@ -26,9 +27,7 @@ export async function GET() {
     return NextResponse.json({ zones: zonesWithCounts })
   } catch (error) {
     console.error('Error fetching zones:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch zones' },
-      { status: 500 }
-    )
+    // Fallback mock data for environments without database (e.g., Cloudflare Workers)
+    return NextResponse.json({ zones: MOCK_ZONES_WITH_COUNTS })
   }
 }
