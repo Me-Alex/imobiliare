@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { useAppStore, type PageKey } from '@/store/use-app-store'
 import { isValidEmail } from '@/lib/validators'
+import { useCoinActions } from '@/hooks/use-coin-actions'
 
 
 
@@ -29,6 +30,7 @@ export function SiteFooter() {
   const [emailError, setEmailError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { navigateTo, setSelectedType } = useAppStore()
+  const { onNewsletter } = useCoinActions()
 
   const handleNewsletterSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -57,6 +59,8 @@ export function SiteFooter() {
         description: 'Vei primi noutatile pe ' + email,
       })
       setEmail('')
+      // Earn coins for newsletter
+      onNewsletter()
     } catch (error) {
       toast.error('Eroare', {
         description: error instanceof Error ? error.message : 'Va rugam incercati din nou.',

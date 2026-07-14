@@ -54,3 +54,7 @@ server.log
 /skills/tool-results/
 .open-next/
 .wrangler/
+
+# temp files
+tool-results/
+agent-ctx/

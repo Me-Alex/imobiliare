@@ -1,4 +1,4 @@
-import type { StaffMember, Vizionare, DocTypeLabelMap } from './types'
+import type { StaffMember, Vizionare, DocTypeLabelMap, CoinReward } from './types'
 
 // ─── Document type labels ──────────────────────────────────────────────────
 
@@ -100,6 +100,10 @@ export const LS_KEYS = {
   SAVED_SEARCHES: 'pm-saved-searches',
   USER_PROFILE: 'pm-user-profile',
   VALUATION_HISTORY: 'pm-valuation-history',
+  COINS_BALANCE: 'pm-coins-balance',
+  COINS_TRANSACTIONS: 'pm-coins-transactions',
+  COINS_STREAK: 'pm-coins-streak',
+  COINS_REDEEMED: 'pm-coins-redeemed',
 } as const
 
 // ─── Default staff members (hardcoded for MVP) ─────────────────────────────
@@ -110,3 +114,77 @@ export const DEFAULT_STAFF: StaffMember[] = [
   { id: 'staff-3', name: 'Elena Dumitrescu', email: 'elena@hqs.ro', phone: '+40 723 345 678', role: 'Consilier Imobiliar', avatarInitials: 'ED', isActive: true },
   { id: 'staff-4', name: 'Cristian Marinescu', email: 'cristian@hqs.ro', phone: '+40 724 456 789', role: 'Director Vanzari', avatarInitials: 'CM', isActive: true },
 ]
+
+// ─── Coin rewards shop ──────────────────────────────────────────────────
+
+export const COIN_REWARDS: CoinReward[] = [
+  {
+    id: 'reward-featured-7',
+    title: 'Anunt Promovat',
+    description: 'Proprietatea ta apare in sectiunea "Recomandate" timp de 7 zile.',
+    cost: 500,
+    icon: 'Star',
+    category: 'listing',
+    duration: '7 zile',
+  },
+  {
+    id: 'reward-highlight-30',
+    title: 'Evidentiere Proprietate',
+    description: 'Proprietatea ta primeste un badge "Evidentiat" si apare mai sus in rezultate.',
+    cost: 150,
+    icon: 'Sparkles',
+    category: 'listing',
+    duration: '30 zile',
+  },
+  {
+    id: 'reward-priority',
+    title: 'Suport Prioritar',
+    description: 'Mesajele tale catre agenti sunt tratate cu prioritate timp de 30 zile.',
+    cost: 200,
+    icon: 'Headphones',
+    category: 'service',
+    duration: '30 zile',
+  },
+  {
+    id: 'reward-valuation',
+    title: 'Raport Evaluare Premium',
+    description: 'Obtine un raport detaliat de evaluare cu analiza de piata si comparatii.',
+    cost: 100,
+    icon: 'FileBarChart2',
+    category: 'service',
+  },
+  {
+    id: 'reward-voucher-5',
+    title: 'Voucher 5% Reducere',
+    description: 'Reduceri de 5% la comisionul agentiei pentru urmatoarea tranzactie.',
+    cost: 300,
+    icon: 'Ticket',
+    category: 'discount',
+    value: '5% reducere',
+  },
+  {
+    id: 'reward-voucher-10',
+    title: 'Voucher 10% Reducere',
+    description: 'Reduceri de 10% la comisionul agentiei pentru urmatoarea tranzactie.',
+    cost: 500,
+    icon: 'TicketPercent',
+    category: 'discount',
+    value: '10% reducere',
+  },
+]
+
+// ─── Coin earn actions ──────────────────────────────────────────────────
+
+export const COIN_EARN_RULES = {
+  daily_login: { coins: 5, label: 'Login zilnic', description: '+5 monede pentru accesarea zilnica' },
+  daily_streak_bonus: { coins: 10, label: 'Bonus streak', description: '+10 monede bonus pentru conexiune consecutiva' },
+  view_property: { coins: 1, label: 'Vizualizare proprietate', description: '+1 moneda pentru fiecare proprietate vizualizata' },
+  favorite: { coins: 3, label: 'Adaugare la favorite', description: '+3 monede pentru fiecare favorit nou' },
+  contact_form: { coins: 10, label: 'Formular de contact', description: '+10 monede pentru trimiterea unui mesaj' },
+  book_viewing: { coins: 15, label: 'Programare vizionare', description: '+15 monede pentru o vizionare programata' },
+  complete_viewing: { coins: 25, label: 'Vizionare finalizata', description: '+25 monede pentru o vizionare completata' },
+  newsletter: { coins: 20, label: 'Abonare newsletter', description: '+20 monede pentru abonarea la newsletter' },
+  add_property: { coins: 10, label: 'Adaugare proprietate', description: '+10 monede pentru fiecare proprietate adaugata' },
+  save_search: { coins: 5, label: 'Salvare cautare', description: '+5 monede pentru o cautare salvata' },
+  price_alert: { coins: 5, label: 'Alerta de pret', description: '+5 monede pentru setarea unei alerte' },
+} as const

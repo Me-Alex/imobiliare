@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
-import { Bell, Bookmark, Building2, CalendarCheck, FileText, Heart, LayoutDashboard, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User, Users } from 'lucide-react'
+import { Bell, Bookmark, Building2, CalendarCheck, CircleDollarSign, FileText, Heart, LayoutDashboard, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -71,9 +71,27 @@ interface SiteHeaderProps {
   onOpenPriceAlerts?: () => void
   onOpenNotifications?: () => void
   onOpenSavedSearches?: () => void
+  onOpenCoins?: () => void
 }
 
-export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotifications, onOpenSavedSearches }: SiteHeaderProps) {
+export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotifications, onOpenSavedSearches, onOpenCoins }: SiteHeaderProps) {
+  const [coinBalance, setCoinBalance] = useState(0)
+
+  useEffect(() => {
+    const update = () => {
+      try {
+        const raw = localStorage.getItem('pm-coins-balance')
+        setCoinBalance(raw ? Number(raw) : 0)
+      } catch { setCoinBalance(0) }
+    }
+    update()
+    window.addEventListener('pm-coins-updated', update)
+    window.addEventListener('storage', update)
+    return () => {
+      window.removeEventListener('pm-coins-updated', update)
+      window.removeEventListener('storage', update)
+    }
+  }, [])
   const [savedSearchCount, setSavedSearchCount] = useState(0)
 
   useEffect(() => {
@@ -165,6 +183,16 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
             {savedSearchCount > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-primary text-primary-foreground border-0">
                 {savedSearchCount > 9 ? '9+' : savedSearchCount}
+              </Badge>
+            )}
+          </Button>
+
+          {/* Coins */}
+          <Button variant="ghost" size="icon" className="relative" aria-label="HQS Monede" onClick={onOpenCoins}>
+            <CircleDollarSign className="h-5 w-5 text-amber-500" />
+            {coinBalance > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-amber-500 text-white border-0">
+                {coinBalance > 999 ? '999+' : coinBalance}
               </Badge>
             )}
           </Button>
@@ -325,6 +353,24 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                   <Bell className="h-4 w-4" />
                   Notificari
                 </span>
+              </button>
+              <button
+                type="button"
+                className="flex items-center justify-between w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  onOpenCoins?.()
+                }}
+              >
+                <span className="flex items-center gap-2">
+                  <CircleDollarSign className="h-4 w-4 text-amber-500" />
+                  HQS Monede
+                </span>
+                {coinBalance > 0 && (
+                  <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                    {coinBalance}
+                  </Badge>
+                )}
               </button>
               <button
                 type="button"

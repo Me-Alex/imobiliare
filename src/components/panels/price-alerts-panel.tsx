@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select'
 import { useZones } from '@/hooks/use-properties'
 import { isValidEmail } from '@/lib/validators'
+import { useCoinActions } from '@/hooks/use-coin-actions'
 
 const propertyTypes = [
   { label: 'Apartament', value: 'APARTMENT' },
@@ -64,6 +65,7 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
   const [alerts, setAlerts] = useState<PriceAlert[]>([])
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const { onPriceAlert } = useCoinActions()
 
   // Form state
   const [email, setEmail] = useState('')
@@ -141,6 +143,7 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
       }
 
       toast.success('Alerta de pret a fost creata cu succes!')
+      onPriceAlert()
       resetForm()
       fetchAlerts()
     } catch {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   Heart, Scale, MapPin, BedDouble, Maximize2, Bath, Building,
   Calendar, Phone, ChevronLeft, ChevronRight,
@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppStore } from '@/store/use-app-store'
 import { useProperty } from '@/hooks/use-properties'
+import { useCoinActions } from '@/hooks/use-coin-actions'
 import { useQuery } from '@tanstack/react-query'
 import { getProperties } from '@/lib/api'
 import { formatPrice, formatPricePerSqm } from '@/lib/utils'
@@ -27,6 +28,7 @@ import { toast } from 'sonner'
 import { PropertyCard } from '@/components/property/property-card'
 import { AuthRequiredDialog } from '@/components/dialogs/auth-required-dialog'
 import { useAuth } from '@/contexts/auth-context'
+
 
 const typeLabels: Record<string, string> = {
   APARTMENT: 'Apartament', HOUSE: 'Casa', VILLA: 'Vila', LAND: 'Teren', COMMERCIAL: 'Comercial',
@@ -42,12 +44,20 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const { user } = useAuth()
   const { data: property, isLoading } = useProperty(selectedPropertySlug)
+  const { onViewProperty, onFavorite, onBookViewing } = useCoinActions()
 
   const open = !!selectedPropertySlug
 
   const handleOpenChange = useCallback((v: boolean) => {
     if (!v) setSelectedPropertySlug(null)
   }, [setSelectedPropertySlug])
+
+  // Earn coins for viewing property (once per session per property)
+  useEffect(() => {
+    if (property) {
+      onViewProperty(property.id, property.title)
+    }
+  }, [property?.id])
 
   if (!open) return null
 
@@ -130,7 +140,11 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
           <div className="flex flex-wrap gap-3">
             <Button
               variant={isFav ? 'default' : 'outline'}
-              onClick={() => toggleFavorite(property.id)}
+              onClick={() => {
+                const wasFav = favorites.includes(property.id)
+                toggleFavorite(property.id)
+                if (!wasFav) onFavorite(property.title)
+              }}
               className="gap-2"
             >
               <Heart className={`h-4 w-4 ${isFav ? 'fill-current' : ''}`} />
@@ -154,6 +168,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
                 setVizionareProperty(property.id, property.title)
                 setSelectedPropertySlug(null)
                 navigateTo('programare-vizionare')
+                onBookViewing(property.title)
               }}
             >
               <CalendarCheck className="h-4 w-4" />

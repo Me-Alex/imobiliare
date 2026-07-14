@@ -38,6 +38,8 @@ import { DashboardPage } from '@/views/dashboard-page'
 import { ProfilPage } from '@/views/profil-page'
 import { EvaluarePage } from '@/views/evaluare-page'
 import { NotificationsPanel } from '@/components/panels/notifications-panel'
+import { CoinsPanel } from '@/components/panels/coins-panel'
+import { useCoinsHydration } from '@/hooks/use-coin-actions'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,6 +73,7 @@ const pageComponents: Record<string, React.ComponentType<Record<string, unknown>
 const fullBleedPages = new Set(['login', 'admin', 'adauga-proprietate', 'dashboard', 'profil', 'programare-vizionare', 'disponibilitate-staff', 'vizionarile-mele', 'documente'])
 
 function AppContent() {
+  useCoinsHydration()
   const {
     currentPage,
     lightboxImages,
@@ -86,6 +89,7 @@ function AppContent() {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [savedSearchesOpen, setSavedSearchesOpen] = useState(false)
   const [saveSearchDialogOpen, setSaveSearchDialogOpen] = useState(false)
+  const [coinsOpen, setCoinsOpen] = useState(false)
 
   const handleContact = useCallback((propertyTitle: string) => {
     setContactPropertyTitle(propertyTitle)
@@ -99,7 +103,7 @@ function AppContent() {
     // Login and Admin pages have their own header/footer
     return (
       <div className="min-h-screen flex flex-col">
-        <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} onOpenSavedSearches={() => setSavedSearchesOpen(true)} />
+        <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} onOpenSavedSearches={() => setSavedSearchesOpen(true)} onOpenCoins={() => setCoinsOpen(true)} />
         <main className="flex-1">
           <AnimatePresence mode="wait">
             <motion.div
@@ -115,6 +119,7 @@ function AppContent() {
         </main>
         <NotificationsPanel open={notificationsOpen} onOpenChange={setNotificationsOpen} />
         <SavedSearchesPanel open={savedSearchesOpen} onOpenChange={setSavedSearchesOpen} />
+        <CoinsPanel open={coinsOpen} onOpenChange={setCoinsOpen} />
         <SaveSearchDialog open={saveSearchDialogOpen} onOpenChange={setSaveSearchDialogOpen} />
         <Toaster richColors position="bottom-right" />
       </div>
@@ -127,7 +132,7 @@ function AppContent() {
         Treci la continutul principal
       </a>
       <AnnouncementBanner />
-      <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} onOpenSavedSearches={() => setSavedSearchesOpen(true)} />
+      <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} onOpenSavedSearches={() => setSavedSearchesOpen(true)} onOpenCoins={() => setCoinsOpen(true)} />
       <main id="main-content" className="flex-1">
         <AnimatePresence mode="wait">
           <motion.div
@@ -153,6 +158,7 @@ function AppContent() {
       <PriceAlertsPanel open={priceAlertsOpen} onOpenChange={setPriceAlertsOpen} />
       <NotificationsPanel open={notificationsOpen} onOpenChange={setNotificationsOpen} />
       <SavedSearchesPanel open={savedSearchesOpen} onOpenChange={setSavedSearchesOpen} />
+      <CoinsPanel open={coinsOpen} onOpenChange={setCoinsOpen} />
       <SaveSearchDialog open={saveSearchDialogOpen} onOpenChange={setSaveSearchDialogOpen} />
       <CookieConsent />
       <GalleryLightbox

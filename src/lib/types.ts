@@ -212,3 +212,49 @@ export interface ValuationResult {
     pricePerSqm: number
   }>
 }
+
+// ─── Coins / Loyalty System ───────────────────────────────────────────
+
+export type CoinTransactionType =
+  | 'daily_login'
+  | 'view_property'
+  | 'favorite'
+  | 'contact_form'
+  | 'book_viewing'
+  | 'complete_viewing'
+  | 'newsletter'
+  | 'add_property'
+  | 'save_search'
+  | 'price_alert'
+  | 'reward_featured'
+  | 'reward_priority'
+  | 'reward_valuation'
+  | 'reward_voucher_5'
+  | 'reward_voucher_10'
+  | 'reward_highlight'
+  | 'admin_bonus'
+
+export interface CoinTransaction {
+  id: string
+  type: CoinTransactionType
+  amount: number            // positive = earned, negative = spent
+  description: string
+  timestamp: string
+  relatedId?: string        // property id, reward id, etc.
+}
+
+export interface CoinReward {
+  id: string
+  title: string
+  description: string
+  cost: number              // coins needed
+  icon: string              // lucide icon name
+  category: 'listing' | 'service' | 'discount'
+  duration?: string         // e.g. "7 zile"
+  value?: string            // e.g. "5% reducere"
+}
+
+export interface CoinDailyStreak {
+  lastLoginDate: string     // YYYY-MM-DD
+  currentStreak: number
+}
