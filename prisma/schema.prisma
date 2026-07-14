@@ -129,3 +129,35 @@ model PriceAlert {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 }
+
+model Vizionare {
+  id             String   @id @default(cuid())
+  userId         String
+  userEmail      String
+  userName       String?
+  propertyId     String
+  propertyTitle  String
+  propertyZone   String?
+  staffId        String?
+  staffName      String?
+  date           String
+  startTime      String
+  endTime        String
+  status         String   @default("pending")
+  notes          String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model UserProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  email           String
+  fullName        String?
+  phone           String?
+  bio             String?
+  notificationPreferences String   @default("{}")
+  displayPreferences     String   @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}

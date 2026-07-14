@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import {
   Heart, Scale, MapPin, BedDouble, Maximize2, Bath, Building,
   Calendar, Phone, ChevronLeft, ChevronRight,
-  Share2, MessageCircle, Link, Check, Home,
+  Share2, MessageCircle, Link, Check, Home, CalendarCheck,
 } from 'lucide-react'
 import {
   Dialog,
@@ -25,6 +25,8 @@ import { formatPrice, formatPricePerSqm } from '@/lib/utils'
 import type { Property } from '@/lib/types'
 import { toast } from 'sonner'
 import { PropertyCard } from '@/components/property/property-card'
+import { AuthRequiredDialog } from '@/components/dialogs/auth-required-dialog'
+import { useAuth } from '@/contexts/auth-context'
 
 const typeLabels: Record<string, string> = {
   APARTMENT: 'Apartament', HOUSE: 'Casa', VILLA: 'Vila', LAND: 'Teren', COMMERCIAL: 'Comercial',
@@ -35,8 +37,10 @@ interface PropertyDetailDialogProps {
 }
 
 export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
-  const { selectedPropertySlug, setSelectedPropertySlug, favorites, compareList, toggleFavorite, toggleCompare, setLightbox } = useAppStore()
+  const { selectedPropertySlug, setSelectedPropertySlug, favorites, compareList, toggleFavorite, toggleCompare, setLightbox, setVizionareProperty, navigateTo } = useAppStore()
   const [copied, setCopied] = useState(false)
+  const [authDialogOpen, setAuthDialogOpen] = useState(false)
+  const { user } = useAuth()
   const { data: property, isLoading } = useProperty(selectedPropertySlug)
 
   const open = !!selectedPropertySlug
@@ -141,6 +145,22 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
               {isCompare ? 'In comparatie' : 'Compara'}
             </Button>
             <Button
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => {
+                if (!user) {
+                  setAuthDialogOpen(true)
+                  return
+                }
+                setVizionareProperty(property.id, property.title)
+                setSelectedPropertySlug(null)
+                navigateTo('programare-vizionare')
+              }}
+            >
+              <CalendarCheck className="h-4 w-4" />
+              Programeaza Vizionare
+            </Button>
+            <Button
+              variant="outline"
               className="gap-2 ml-auto"
               onClick={() => onContact?.(property.title)}
             >
@@ -197,6 +217,19 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
           <SimilarProperties currentId={property.id} zone={property.zone} type={property.type} price={property.price} onSelect={setSelectedPropertySlug} />
         </div>
       </DialogContent>
+      <AuthRequiredDialog
+        open={authDialogOpen}
+        onOpenChange={setAuthDialogOpen}
+        actionLabel="Programeaza o Vizionare"
+        actionIcon={CalendarCheck}
+        description="Pentru a programa o vizionare la aceasta proprietate, trebuie sa fii autentificat."
+        returnPage="programare-vizionare"
+        returnContext={{
+          vizionarePropertyId: property.id,
+          vizionarePropertyTitle: property.title,
+          fromProperty: property.slug,
+        }}
+      />
     </Dialog>
   )
 }

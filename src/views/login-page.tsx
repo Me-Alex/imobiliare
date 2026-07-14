@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Building2, Lock, Mail, Eye, EyeOff, ArrowRight, Loader2, Shield, User, AlertTriangle, ExternalLink, X, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,19 @@ export function LoginPage() {
   const [showSetupGuide, setShowSetupGuide] = useState(false)
   const { signIn, signUp, signInWithGoogle, user } = useAuth()
   const navigateTo = useAppStore((s) => s.navigateTo)
+
+  // Handle post-login redirect
+  useEffect(() => {
+    if (!user) return
+    const returnPage = sessionStorage.getItem('pm-auth-return-page')
+    if (returnPage) {
+      sessionStorage.removeItem('pm-auth-return-page')
+      sessionStorage.removeItem('pm-auth-return-property')
+      navigateTo(returnPage as 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator' | 'login' | 'admin' | 'adauga-proprietate' | 'dashboard' | 'programare-vizionare' | 'disponibilitate-staff' | 'vizionarile-mele' | 'documente' | 'evaluare' | 'profil')
+      return
+    }
+    navigateTo('dashboard')
+  }, [user, navigateTo])
 
   if (user) {
     navigateTo('adauga-proprietate')

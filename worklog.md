@@ -767,3 +767,28 @@ Stage Summary:
 - Navigation updated: "Evaluare" added to main nav, "Profilul Meu" added to user dropdown
 - New page keys: 'evaluare', 'profil' (profil is full-bleed, evaluare shows header/footer)
 - Total pages now: 16 (was 14)
+
+---
+Task ID: 11 (Round 8 — Vizionare Auth Gate + User System)
+Agent: main
+Task: Add "Programeaza Vizionare" button with auth requirement + build user functionality around it
+
+Work Log:
+- **SUPABASE CONFIG**: Updated `.env` with NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY from user-provided tokens
+- **PRISMA SCHEMA**: Added `Vizionare` model (userId, propertyId/Title/Zone, staffId/Name, date/startTime/endTime, status, notes) and `UserProfile` model (userId, email, fullName, phone, bio, notificationPreferences, displayPreferences). Ran `db:push`.
+- **AUTH REQUIRED DIALOG**: Created `/src/components/dialogs/auth-required-dialog.tsx` — reusable dialog that shows when unauthenticated user tries a gated action. Features: action-specific icon/label, benefits list (4 items), "Autentifica-te sau Creeaza Cont" button, auto-closes when user becomes authenticated, stores return page + context in sessionStorage for post-login redirect.
+- **VIZIONARI API**: Created `/src/app/api/vizionari/route.ts` — Full CRUD: GET (by userId), POST (with validation + conflict detection), PATCH (status/notes), DELETE. Uses Zod for validation, Prisma for DB persistence.
+- **PROPERTY DETAIL DIALOG**: Added emerald-green "Programeaza Vizionare" button (CalendarCheck icon) in the action bar. Auth-gated: if not logged in, opens AuthRequiredDialog; if logged in, sets vizionareProperty in store and navigates to programare-vizionare page.
+- **PROPERTY CARD (GRID)**: Added CalendarCheck icon button (emerald color) as first action button on card image overlay. Same auth-gate behavior.
+- **PROPERTY CARD (LIST)**: Added "Vizionare" text button in the action row below property details. Same auth-gate behavior.
+- **PROGRAMARE VIZIONARE PAGE**: Enhanced handleSubmit to also persist vizionare to database via `/api/vizionari` API (in addition to localStorage for backward compatibility).
+- **LOGIN PAGE**: Added post-login redirect handling — reads `pm-auth-return-page` from sessionStorage and navigates there after successful auth. Falls back to dashboard.
+- **STORE**: No changes needed — `setVizionareProperty` already existed in user slice.
+
+Stage Summary:
+- Auth-gate system works: unauthenticated users see a professional dialog explaining why login is needed
+- "Programeaza Vizionare" button visible on every property card (grid icon + list text) and in property detail dialog
+- Vizionari now persist to SQLite database via Prisma
+- Post-login redirect returns user to the vizionare scheduling flow with property pre-selected
+- QA verified via agent-browser: buttons appear on all 12 property cards, auth dialog shows from both card and detail, login page navigation works
+- Lint: clean, no errors

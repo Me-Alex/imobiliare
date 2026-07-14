@@ -129,10 +129,30 @@ export function ProgramareVizionarePage() {
       createdAt: new Date().toISOString(),
     }
 
-    // Save vizionare
+    // Save to localStorage (for backward compatibility)
     const existing = loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, [])
     existing.push(vizionare)
     saveToLS(LS_KEYS.VIZIONARI, existing)
+
+    // Persist to database
+    fetch('/api/vizionari', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user.id,
+        userEmail: user.email || '',
+        userName: user.user_metadata?.full_name || user.email || '',
+        propertyId: selectedProperty.id,
+        propertyTitle: selectedProperty.title,
+        propertyZone: (selectedProperty as Record<string, unknown>).zone as string || undefined,
+        staffId: selectedStaff.id,
+        staffName: selectedStaff.name,
+        date: selectedDate,
+        startTime: selectedSlot.startTime,
+        endTime: selectedSlot.endTime,
+        notes,
+      }),
+    }).catch((err) => console.error('Failed to persist vizionare to DB:', err))
 
     // Mark slot as booked
     const slots = loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])

@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Heart, Scale, Maximize2, Bath, BedDouble, MapPin, Star } from 'lucide-react'
+import { Heart, Scale, Maximize2, Bath, BedDouble, MapPin, Star, CalendarCheck } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/use-app-store'
 import { formatPrice, formatPricePerSqm } from '@/lib/utils'
-import type { Property } from '@/lib/types'
+import { useAuth } from '@/contexts/auth-context'
+import { AuthRequiredDialog } from '@/components/dialogs/auth-required-dialog'
+import { toast } from 'sonner'
 
 interface PropertyCardProps {
   property: Property
@@ -56,7 +58,9 @@ function MetricPill({ icon: Icon, value, label }: { icon: React.ElementType; val
 }
 
 export function PropertyCard({ property, onSelect, viewMode = 'grid' }: PropertyCardProps) {
-  const { favorites, compareList, toggleFavorite, toggleCompare } = useAppStore()
+  const { favorites, compareList, toggleFavorite, toggleCompare, setVizionareProperty, navigateTo } = useAppStore()
+  const { user } = useAuth()
+  const [authOpen, setAuthOpen] = useState(false)
   const isFav = favorites.includes(property.id)
   const isCompare = compareList.includes(property.id)
   const gallery: string[] = property.galleryUrls ? JSON.parse(property.galleryUrls) : []
@@ -139,6 +143,23 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
                 <Scale className={`h-4 w-4 mr-1 ${isCompare ? 'text-primary' : ''}`} />
                 {isCompare ? 'In comparatie' : 'Compara'}
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (!user) {
+                    setAuthOpen(true)
+                    return
+                  }
+                  setVizionareProperty(property.id, property.title)
+                  navigateTo('programare-vizionare')
+                }}
+              >
+                <CalendarCheck className="h-4 w-4" />
+                Vizionare
+              </Button>
             </div>
           </div>
         </div>
@@ -174,6 +195,24 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
 
         {/* Action buttons */}
         <div className="absolute top-3 right-3 flex gap-1.5 z-10">
+          <Button
+            variant="secondary"
+            size="icon"
+            className="h-8 w-8 bg-white/90 dark:bg-black/60 backdrop-blur-sm border-0 shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (!user) {
+                setAuthOpen(true)
+                return
+              }
+              setVizionareProperty(property.id, property.title)
+              navigateTo('programare-vizionare')
+              toast.success('Selecteaza data si ora pentru vizionare')
+            }}
+            aria-label="Programeaza vizionare"
+          >
+            <CalendarCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          </Button>
           <Button
             variant="secondary"
             size="icon"
@@ -219,6 +258,18 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
           <MetricPill icon={Bath} value={property.bathrooms} label="bai" />
         </div>
       </CardContent>
+      <AuthRequiredDialog
+        open={authOpen}
+        onOpenChange={setAuthOpen}
+        actionLabel="Programeaza o Vizionare"
+        actionIcon={CalendarCheck}
+        returnPage="programare-vizionare"
+        returnContext={{
+          vizionarePropertyId: property.id,
+          vizionarePropertyTitle: property.title,
+          fromProperty: property.slug,
+        }}
+      />
     </Card>
   )
 }
