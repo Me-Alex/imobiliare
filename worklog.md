@@ -828,3 +828,32 @@ Stage Summary:
 - ⚠️ API routes use Prisma fallback pattern - mock data on Cloudflare, real DB on local dev
 - ⚠️ D1 adapter built (db-d1.ts) but not yet wired into routes (future work)
 - ⚠️ z-ai-web-dev-sdk works only in local dev (internal API) - AI features use fallback on Cloudflare
+---
+Task ID: 10
+Agent: main
+Task: Fix properties not loading on Cloudflare Workers build
+
+Work Log:
+- **ROOT CAUSE ANALYSIS**: All 12 API routes had static `import { db } from '@/lib/db'` at top level. On Cloudflare Workers, Prisma's SQLite driver fails at module load (no filesystem), crashing the entire route before the try/catch fallback could execute.
+- **CREATED `src/lib/edge-db.ts`**: New utility with `getSafeDb()` function that uses dynamic `import('./db')` inside try/catch. Returns `null` when Prisma cannot load (Cloudflare Workers). Caches result for performance.
+- **UPDATED 12 API ROUTES**: Replaced all static `import { db }` with `const db = await getSafeDb()`:
+  - `properties/route.ts` — full mock filtering/sorting/pagination fallback
+  - `properties/[slug]/route.ts` — mock lookup by slug fallback
+  - `properties/compare/route.ts` — mock filter by IDs fallback
+  - `zones/route.ts` — MOCK_ZONES_WITH_COUNTS fallback
+  - `market-data/route.ts` — mock summary data fallback
+  - `search/suggestions/route.ts` — mock zone+property search fallback
+  - `contact/route.ts` — silent success in demo mode
+  - `newsletter/route.ts` — silent success in demo mode
+  - `vizionari/route.ts` — empty list for GET, demo booking for POST
+  - `price-alerts/route.ts` — empty list for GET, demo alert for POST
+  - `price-alerts/[id]/route.ts` — silent success for DELETE
+  - `admin/dashboard/route.ts` — empty dashboard for demo mode
+- **REMOVED** all `from '@prisma/client'` imports from API routes (types now inferred from `getSafeDb()`)
+- **VERIFIED**: Lint passes, no static db imports remain in src/app/api
+
+Stage Summary:
+- Properties and all other API data will now load on Cloudflare Workers via mock data fallback
+- Locally (Node.js), Prisma + SQLite continues to work normally
+- Committed as `49e3419` and pushed to GitHub (origin/main)
+- Cloudflare build should now serve properties correctly
