@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
 import { type User, type Session } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
+import { isSupabaseConfigured, supabase } from '@/lib/supabase'
 
 export interface GoogleAuthError {
   code: string
@@ -77,11 +77,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signInWithGoogle = useCallback(async (): Promise<{ error: GoogleAuthError | null }> => {
+    if (!isSupabaseConfigured || typeof window === 'undefined') {
+      return {
+        error: {
+          code: 'missing_configuration',
+          isProviderNotEnabled: false,
+          message: 'Autentificarea nu este configurata corect pentru acest deployment.',
+        },
+      }
+    }
+
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+          redirectTo: window.location.origin,
+          skipBrowserRedirect: true,
         },
       })
 
@@ -98,6 +109,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
         }
       }
+
+      if (!data.url) {
+        return {
+          error: {
+            code: 'missing_redirect_url',
+            isProviderNotEnabled: false,
+            message: 'Google nu a returnat o adresa de autentificare valida.',
+          },
+        }
+      }
+
+      window.location.assign(data.url)
 
       return { error: null }
     } catch {
