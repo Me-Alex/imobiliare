@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/use-app-store'
 import { formatBucharestLocation, formatPrice, formatPricePerSqm } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
+import { useCoinActions } from '@/hooks/use-coin-actions'
 import { AuthRequiredDialog } from '@/components/dialogs/auth-required-dialog'
 import { toast } from 'sonner'
 import type { Property } from '@/lib/types'
@@ -61,11 +62,18 @@ function MetricPill({ icon: Icon, value, label }: { icon: React.ElementType; val
 export function PropertyCard({ property, onSelect, viewMode = 'grid' }: PropertyCardProps) {
   const { favorites, compareList, toggleFavorite, toggleCompare, setVizionareProperty, navigateTo } = useAppStore()
   const { user } = useAuth()
+  const { onFavorite } = useCoinActions()
   const [authOpen, setAuthOpen] = useState(false)
   const isFav = favorites.includes(property.id)
   const isCompare = compareList.includes(property.id)
   const gallery: string[] = property.galleryUrls ? JSON.parse(property.galleryUrls) : []
   const coverImage = property.coverUrl || gallery[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&q=75'
+
+  const handleToggleFavorite = () => {
+    const wasFavorite = favorites.includes(property.id)
+    toggleFavorite(property.id)
+    if (!wasFavorite) onFavorite(property.title)
+  }
 
   if (viewMode === 'list') {
     return (
@@ -130,7 +138,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
                 variant="outline"
                 size="sm"
                 className="h-8"
-                onClick={(e) => { e.stopPropagation(); toggleFavorite(property.id) }}
+                onClick={(e) => { e.stopPropagation(); handleToggleFavorite() }}
               >
                 <FavoriteButton isFav={isFav} />
                 <span className="ml-1">{isFav ? 'Salvat' : 'Salveaza'}</span>
@@ -218,7 +226,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
             variant="secondary"
             size="icon"
             className="h-8 w-8 bg-white/90 dark:bg-black/60 backdrop-blur-sm border-0 shadow-sm hover:bg-white dark:hover:bg-black/80"
-            onClick={(e) => { e.stopPropagation(); toggleFavorite(property.id) }}
+            onClick={(e) => { e.stopPropagation(); handleToggleFavorite() }}
             aria-label={isFav ? 'Sterge de la favorite' : 'Adauga la favorite'}
           >
             <FavoriteButton isFav={isFav} />

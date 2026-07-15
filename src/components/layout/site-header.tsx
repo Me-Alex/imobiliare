@@ -75,23 +75,6 @@ interface SiteHeaderProps {
 }
 
 export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotifications, onOpenSavedSearches, onOpenCoins }: SiteHeaderProps) {
-  const [coinBalance, setCoinBalance] = useState(0)
-
-  useEffect(() => {
-    const update = () => {
-      try {
-        const raw = localStorage.getItem('pm-coins-balance')
-        setCoinBalance(raw ? Number(raw) : 0)
-      } catch { setCoinBalance(0) }
-    }
-    update()
-    window.addEventListener('pm-coins-updated', update)
-    window.addEventListener('storage', update)
-    return () => {
-      window.removeEventListener('pm-coins-updated', update)
-      window.removeEventListener('storage', update)
-    }
-  }, [])
   const [savedSearchCount, setSavedSearchCount] = useState(0)
 
   useEffect(() => {
@@ -113,7 +96,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
     }
   }, [])
   const { setTheme, resolvedTheme } = useTheme()
-  const { favorites, currentPage, navigateTo } = useAppStore()
+  const { favorites, currentPage, navigateTo, balance: coinBalance } = useAppStore()
   const { user, signOut } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -190,7 +173,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           {/* Coins */}
           <Button variant="ghost" size="icon" className="relative" aria-label="HQS Monede" onClick={onOpenCoins}>
             <CircleDollarSign className="h-5 w-5 text-amber-500" />
-            {coinBalance > 0 && (
+            {user && coinBalance > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-amber-500 text-white border-0">
                 {coinBalance > 999 ? '999+' : coinBalance}
               </Badge>
@@ -366,7 +349,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                   <CircleDollarSign className="h-4 w-4 text-amber-500" />
                   HQS Monede
                 </span>
-                {coinBalance > 0 && (
+                {user && coinBalance > 0 && (
                   <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
                     {coinBalance}
                   </Badge>

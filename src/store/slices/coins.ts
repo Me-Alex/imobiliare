@@ -4,6 +4,7 @@ import { LS_KEYS } from '@/lib/constants'
 import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
 
 export interface CoinsSlice {
+  ownerId: string | null
   balance: number
   transactions: CoinTransaction[]
   streak: CoinDailyStreak
@@ -22,13 +23,21 @@ function todayStr(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+function userCoinKey(key: string, userId: string): string {
+  return `${key}:${userId}`
+}
+
 export const createCoinsSlice: StateCreator<CoinsSlice> = (set, get) => ({
+  ownerId: null,
   balance: 0,
   transactions: [],
   streak: { lastLoginDate: '', currentStreak: 0 },
   earnedPropertyIds: new Set<string>(),
 
   earnCoins: (type, description, relatedId) => {
+    const ownerId = get().ownerId
+    if (!ownerId) return 0
+
     const rule = getCoinAmount(type)
     if (rule <= 0) return 0
 
@@ -45,8 +54,8 @@ export const createCoinsSlice: StateCreator<CoinsSlice> = (set, get) => ({
     const newTransactions = [tx, ...get().transactions].slice(0, 200) // keep last 200
 
     set({ balance: newBalance, transactions: newTransactions })
-    saveToLS(LS_KEYS.COINS_BALANCE, newBalance)
-    saveToLS(LS_KEYS.COINS_TRANSACTIONS, newTransactions)
+    saveToLS(userCoinKey(LS_KEYS.COINS_BALANCE, ownerId), newBalance)
+    saveToLS(userCoinKey(LS_KEYS.COINS_TRANSACTIONS, ownerId), newTransactions)
 
     // Dispatch event for badge updates
     window.dispatchEvent(new CustomEvent('pm-coins-updated', { detail: { balance: newBalance } }))
@@ -55,6 +64,8 @@ export const createCoinsSlice: StateCreator<CoinsSlice> = (set, get) => ({
   },
 
   spendCoins: (type, description, cost, relatedId) => {
+    const ownerId = get().ownerId
+    if (!ownerId) return false
     if (get().balance < cost) return false
 
     const tx: CoinTransaction = {
@@ -70,13 +81,14 @@ export const createCoinsSlice: StateCreator<CoinsSlice> = (set, get) => ({
     const newTransactions = [tx, ...get().transactions].slice(0, 200)
 
     set({ balance: newBalance, transactions: newTransactions })
-    saveToLS(LS_KEYS.COINS_BALANCE, newBalance)
-    saveToLS(LS_KEYS.COINS_TRANSACTIONS, newTransactions)
+    saveToLS(userCoinKey(LS_KEYS.COINS_BALANCE, ownerId), newBalance)
+    saveToLS(userCoinKey(LS_KEYS.COINS_TRANSACTIONS, ownerId), newTransactions)
 
     // Track redeemed rewards
-    const redeemed = loadFromLS<string[]>(LS_KEYS.COINS_REDEEMED, [])
+    const redeemedKey = userCoinKey(LS_KEYS.COINS_REDEEMED, ownerId)
+    const redeemed = loadFromLS<string[]>(redeemedKey, [])
     redeemed.push(tx.id)
-    saveToLS(LS_KEYS.COINS_REDEEMED, redeemed)
+    saveToLS(redeemedKey, redeemed)
 
     window.dispatchEvent(new CustomEvent('pm-coins-updated', { detail: { balance: newBalance } }))
 
@@ -84,6 +96,9 @@ export const createCoinsSlice: StateCreator<CoinsSlice> = (set, get) => ({
   },
 
   claimDailyLogin: () => {
+    const ownerId = get().ownerId
+    if (!ownerId) return { earned: 0, streak: 0 }
+
     const today = todayStr()
     const streak = { ...get().streak }
     let earned = 0
@@ -105,7 +120,7 @@ export const createCoinsSlice: StateCreator<CoinsSlice> = (set, get) => ({
 
     streak.lastLoginDate = today
     set({ streak })
-    saveToLS(LS_KEYS.COINS_STREAK, streak)
+    saveToLS(userCoinKey(LS_KEYS.COINS_STREAK, ownerId), streak)
 
     // Base daily reward
     earned = get().earnCoins('daily_login', `Login zilnic (ziua ${streak.currentStreak})`)
@@ -147,13 +162,30 @@ function getCoinAmount(type: CoinTransactionType): number {
 
 // ─── Hydration (call once on app mount) ─────────────────────────────
 
-export function hydrateCoinsState(setter: (partial: Partial<CoinsSlice>) => void) {
+export function hydrateCoinsState(
+  setter: (partial: Partial<CoinsSlice>) => void,
+  userId: string | null,
+) {
   if (typeof window === 'undefined') return
-  const balance = loadFromLS<number>(LS_KEYS.COINS_BALANCE, 0)
-  const transactions = loadFromLS<CoinTransaction[]>(LS_KEYS.COINS_TRANSACTIONS, [])
-  const streak = loadFromLS<CoinDailyStreak>(LS_KEYS.COINS_STREAK, {
+
+  if (!userId) {
+    setter({
+      ownerId: null,
+      balance: 0,
+      transactions: [],
+      streak: { lastLoginDate: '', currentStreak: 0 },
+      earnedPropertyIds: new Set<string>(),
+    })
+    window.dispatchEvent(new CustomEvent('pm-coins-updated', { detail: { balance: 0 } }))
+    return
+  }
+
+  const balance = loadFromLS<number>(userCoinKey(LS_KEYS.COINS_BALANCE, userId), 0)
+  const transactions = loadFromLS<CoinTransaction[]>(userCoinKey(LS_KEYS.COINS_TRANSACTIONS, userId), [])
+  const streak = loadFromLS<CoinDailyStreak>(userCoinKey(LS_KEYS.COINS_STREAK, userId), {
     lastLoginDate: '',
     currentStreak: 0,
   })
-  setter({ balance, transactions, streak })
+  setter({ ownerId: userId, balance, transactions, streak, earnedPropertyIds: new Set<string>() })
+  window.dispatchEvent(new CustomEvent('pm-coins-updated', { detail: { balance } }))
 }

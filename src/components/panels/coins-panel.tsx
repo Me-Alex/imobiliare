@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, createElement } from 'react'
+import { useState, useEffect, createElement } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
 import { ro } from 'date-fns/locale'
@@ -17,6 +17,8 @@ import {
   TicketPercent,
   PartyPopper,
   Coins,
+  LogIn,
+  ShieldCheck,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -32,7 +34,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { useAppStore } from '@/store/use-app-store'
-import { hydrateCoinsState } from '@/store/slices/coins'
+import { useAuth } from '@/contexts/auth-context'
 import { COIN_REWARDS, COIN_EARN_RULES } from '@/lib/constants'
 import type { CoinReward, CoinTransaction, CoinTransactionType } from '@/lib/types'
 
@@ -101,19 +103,11 @@ function formatTimestamp(isoString: string): string {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function CoinsPanel({ open, onOpenChange }: CoinsPanelProps) {
-  const hydrated = useRef(false)
   const [claiming, setClaiming] = useState(false)
+  const { user, loading } = useAuth()
 
-  const { balance, transactions, streak, earnCoins, spendCoins, canAfford, claimDailyLogin } =
+  const { balance, transactions, streak, spendCoins, canAfford, claimDailyLogin, navigateTo } =
     useAppStore()
-
-  // Hydrate coins state from localStorage on first open
-  useEffect(() => {
-    if (open && !hydrated.current) {
-      hydrated.current = true
-      hydrateCoinsState((partial) => useAppStore.setState(partial))
-    }
-  }, [open])
 
   const claimedToday = isTodayClaimed(streak.lastLoginDate)
   const { nextMilestone, progress } = getStreakProgress(streak.currentStreak)
@@ -169,6 +163,50 @@ export function CoinsPanel({ open, onOpenChange }: CoinsPanelProps) {
     const timer = setTimeout(() => setDisplayBalance(balance), 50)
     return () => clearTimeout(timer)
   }, [balance])
+
+  if (loading || !user) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+          <SheetHeader className="px-6 pt-6 pb-2">
+            <SheetTitle className="flex items-center gap-2 text-xl">
+              <Coins className="h-5 w-5 text-amber-500" />
+              HQS Monede
+            </SheetTitle>
+            <SheetDescription>
+              Portofelul de monede este disponibil numai utilizatorilor autentificati.
+            </SheetDescription>
+          </SheetHeader>
+
+          <Separator className="mt-2" />
+
+          <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
+              <ShieldCheck className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+            </div>
+            <h3 className="text-lg font-semibold">
+              {loading ? 'Se verifica sesiunea...' : 'Autentifica-te pentru HQS Monede'}
+            </h3>
+            <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+              Monedele, istoricul si streak-ul zilnic sunt pastrate separat pentru fiecare cont autentificat.
+            </p>
+            {!loading && (
+              <Button
+                className="mt-6 gap-2"
+                onClick={() => {
+                  onOpenChange(false)
+                  navigateTo('login')
+                }}
+              >
+                <LogIn className="h-4 w-4" />
+                Autentifica-te cu Google
+              </Button>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+    )
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

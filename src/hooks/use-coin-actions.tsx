@@ -1,29 +1,32 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useAppStore } from '@/store/use-app-store'
 import { hydrateCoinsState } from '@/store/slices/coins'
+import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 import { CircleDollarSign } from 'lucide-react'
 
 // ─── Hook to hydrate coins on first render (call in AppContent) ────────
 
 export function useCoinsHydration() {
-  const hydrated = useRef(false)
+  const { user, loading } = useAuth()
+
   useEffect(() => {
-    if (hydrated.current || typeof window === 'undefined') return
-    hydrated.current = true
-    hydrateCoinsState((partial) => useAppStore.setState(partial))
-  }, [])
+    if (loading || typeof window === 'undefined') return
+    hydrateCoinsState((partial) => useAppStore.setState(partial), user?.id ?? null)
+  }, [loading, user?.id])
 }
 
 // ─── Hook for triggering coin earning from anywhere ────────────────────
 
 export function useCoinActions() {
   const { earnCoins, balance } = useAppStore()
+  const { user } = useAuth()
 
   const earn = useCallback(
     (type: Parameters<typeof earnCoins>[0], description: string, relatedId?: string, silent = false) => {
+      if (!user) return 0
       const earned = earnCoins(type, description, relatedId)
       if (earned > 0 && !silent) {
         toast.success(`+${earned} monede!`, {
@@ -34,18 +37,19 @@ export function useCoinActions() {
       }
       return earned
     },
-    [earnCoins],
+    [earnCoins, user],
   )
 
   const onViewProperty = useCallback(
     (propertyId: string, propertyTitle: string) => {
+      if (!user) return 0
       // Only earn once per property per session
       const viewed = useAppStore.getState().earnedPropertyIds
       if (viewed.has(propertyId)) return 0
       viewed.add(propertyId)
       return earn('view_property', `Vizualizare: ${propertyTitle}`, propertyId, true) // silent
     },
-    [earn],
+    [earn, user],
   )
 
   const onFavorite = useCallback(
