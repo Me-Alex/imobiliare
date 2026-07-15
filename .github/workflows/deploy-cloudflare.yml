@@ -41,4 +41,7 @@ jobs:
         run: bun run cf:deploy
 
       - name: Redirect legacy Pages domain to the worker
-        run: bunx wrangler pages deploy legacy-pages-redirect --project-name=imobiliare2 --branch=main
+        run: |
+          PAGES_PRODUCTION_BRANCH=$(bunx wrangler pages project list --json | jq -r '.[] | select(.name == "imobiliare2") | .production_branch')
+          test -n "$PAGES_PRODUCTION_BRANCH"
+          bunx wrangler pages deploy legacy-pages-redirect --project-name=imobiliare2 --branch="$PAGES_PRODUCTION_BRANCH"
