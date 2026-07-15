@@ -3,6 +3,7 @@
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react'
 import { AlertCircle, Upload } from 'lucide-react'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import { DocumentTypeSelector, type DocType } from './document-type-selector'
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024
@@ -29,6 +30,7 @@ export const DocumentUploadArea = forwardRef<DocumentUploadAreaRef, DocumentUplo
   function DocumentUploadArea({ uploadedTypes, allowedTypes, onFileReady }, ref) {
     const [uploadingType, setUploadingType] = useState<DocType | null>(null)
     const [uploadProgress, setUploadProgress] = useState(0)
+    const [isDragging, setIsDragging] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const pendingTypeRef = useRef<DocType | null>(null)
 
@@ -44,20 +46,13 @@ export const DocumentUploadArea = forwardRef<DocumentUploadAreaRef, DocumentUplo
       fileInputRef.current?.click()
     }, [])
 
-    const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0]
-      const docType = pendingTypeRef.current
-      if (!file || !docType) return
-
+    const validateAndUpload = useCallback(async (file: File, docType: DocType) => {
       if (file.size > MAX_FILE_SIZE) {
         toast.error('Fisier prea mare (maximum 15MB).')
-        event.target.value = ''
         return
       }
-
       if (!ALLOWED_MIME_TYPES.has(file.type)) {
         toast.error('Format neacceptat. Foloseste PDF, JPG, PNG, WebP, DOC sau DOCX.')
-        event.target.value = ''
         return
       }
 
@@ -70,9 +65,43 @@ export const DocumentUploadArea = forwardRef<DocumentUploadAreaRef, DocumentUplo
         setUploadingType(null)
         setUploadProgress(0)
         pendingTypeRef.current = null
-        event.target.value = ''
       }
     }, [onFileReady])
+
+    const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      const docType = pendingTypeRef.current
+      if (!file || !docType) return
+      await validateAndUpload(file, docType)
+      event.target.value = ''
+    }, [validateAndUpload])
+
+    const handleDragOver = useCallback((event: React.DragEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+      setIsDragging(true)
+    }, [])
+
+    const handleDragLeave = useCallback((event: React.DragEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+      setIsDragging(false)
+    }, [])
+
+    const handleDrop = useCallback((event: React.DragEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+      setIsDragging(false)
+
+      const files = event.dataTransfer.files
+      if (!files || files.length === 0) return
+
+      const file = files[0]
+      // When dropping without explicit type selection, default to 'other'
+      const docType: DocType = 'other'
+      pendingTypeRef.current = docType
+      void validateAndUpload(file, docType)
+    }, [validateAndUpload])
 
     return (
       <div className="mb-8">
@@ -89,13 +118,35 @@ export const DocumentUploadArea = forwardRef<DocumentUploadAreaRef, DocumentUplo
           onChange={handleFileChange}
         />
 
-        <DocumentTypeSelector
-          uploadedTypes={uploadedTypes}
-          allowedTypes={allowedTypes}
-          uploadingType={uploadingType}
-          uploadProgress={uploadProgress}
-          onTypeClick={handleTypeClick}
-        />
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={cn(
+            'rounded-xl border-2 border-dashed p-6 transition-colors text-center',
+            isDragging
+              ? 'border-primary bg-primary/5'
+              : 'border-border bg-muted/30 hover:bg-muted/50',
+          )}
+        >
+          <Upload className={cn('h-8 w-8 mx-auto mb-2 transition-colors', isDragging ? 'text-primary' : 'text-muted-foreground')} />
+          <p className="text-sm font-medium">
+            {isDragging ? 'Lasa fisierul aici…' : 'Trage fisierele aici sau selecteaza tipul de mai jos'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Maximum 15MB. Formate: PDF, JPG, PNG, WebP, DOC, DOCX.
+          </p>
+        </div>
+
+        <div className="mt-4">
+          <DocumentTypeSelector
+            uploadedTypes={uploadedTypes}
+            allowedTypes={allowedTypes}
+            uploadingType={uploadingType}
+            uploadProgress={uploadProgress}
+            onTypeClick={handleTypeClick}
+          />
+        </div>
 
         <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5">
           <AlertCircle className="h-3 w-3" />

@@ -36,7 +36,9 @@ import {
   DocumentUploadArea,
   type DocumentUploadAreaRef,
 } from '@/components/features/documents/document-upload-area'
-import { DocumentCard } from '@/components/features/documents/document-card'
+import { DocumentTableRow, DocumentMobileCard } from '@/components/features/documents/document-card'
+import { DocumentSearchBar, filterDocuments, type DocumentFilterState } from '@/components/features/documents/document-search-bar'
+import { DocumentPreviewModal } from '@/components/features/documents/document-preview-modal'
 import { LegalCompliancePanel } from '@/components/features/documents/legal-compliance-panel'
 import { LegalDocumentBuilderDialog } from '@/components/features/documents/legal-document-builder-dialog'
 import { LegalDocumentRequestDialog } from '@/components/features/documents/legal-document-request-dialog'
@@ -99,6 +101,15 @@ export function DocumentePage() {
   const [signatureAccepted, setSignatureAccepted] = useState(false)
   const [signingBusy, setSigningBusy] = useState(false)
 
+  // Document preview modal state
+  const [previewDoc, setPreviewDoc] = useState<ViewingDocument | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+
+  // Search & filter state
+  const [filter, setFilter] = useState<DocumentFilterState>({ search: '', types: new Set(), statuses: new Set() })
+
   const selectedViewing = useMemo(
     () => viewings.find((viewing) => viewing.id === selectedId) ?? null,
     [selectedId, viewings],
@@ -109,6 +120,11 @@ export function DocumentePage() {
   const uploadedTypes = useMemo(
     () => new Set(documents.filter((document) => document.status !== 'SUPERSEDED').map((document) => document.docType)),
     [documents],
+  )
+
+  const filteredDocuments = useMemo(
+    () => filterDocuments(documents, filter),
+    [documents, filter],
   )
 
   const refreshDocuments = useCallback(async (appointmentId: string) => {
@@ -182,21 +198,27 @@ export function DocumentePage() {
     }
   }, [refreshDocuments, selectedViewing, user])
 
-  const handleView = async (document: ViewingDocument) => {
-    const preview = window.open('about:blank', '_blank')
+  const handleView = useCallback(async (document: ViewingDocument) => {
+    setPreviewDoc(document)
+    setPreviewLoading(true)
+    setPreviewError(null)
+    setPreviewUrl(null)
     try {
       const url = await createDocumentUrl(document)
-      if (preview) {
-        preview.opener = null
-        preview.location.href = url
-      } else {
-        window.open(url, '_blank', 'noopener,noreferrer')
-      }
+      setPreviewUrl(url)
     } catch (error) {
-      preview?.close()
-      toast.error(error instanceof Error ? error.message : 'Documentul nu poate fi deschis.')
+      setPreviewError(error instanceof Error ? error.message : 'Documentul nu poate fi deschis.')
+    } finally {
+      setPreviewLoading(false)
     }
-  }
+  }, [])
+
+  const handlePreviewClose = useCallback(() => {
+    setPreviewDoc(null)
+    setPreviewUrl(null)
+    setPreviewError(null)
+    setPreviewLoading(false)
+  }, [])
 
   const handleDownload = async (document: ViewingDocument) => {
     try {
@@ -530,15 +552,48 @@ export function DocumentePage() {
                 ) : documents.length === 0 ? (
                   <div className="py-14 px-4 text-center text-sm text-muted-foreground">Nu exista documente in acest dosar.</div>
                 ) : (
-                  <>
-                    <div className="hidden md:block overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead><tr className="border-b bg-muted/30 text-left"><th className="px-4 py-3 font-medium">Document</th><th className="px-4 py-3 font-medium">Tip</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Marime</th><th className="px-4 py-3 font-medium">Data</th><th className="px-4 py-3 font-medium text-right">Actiuni</th></tr></thead>
-                        <tbody>{documents.map((document) => <DocumentCard key={document.id} document={document} currentUserId={user.id} canDelete={!document.lockedAt && document.userId === user.id && !['SIGNED', 'PARTIALLY_SIGNED'].includes(document.status)} onView={handleView} onDownload={handleDownload} onDelete={handleDelete} onSign={openSigningDialog} />)}</tbody>
-                      </table>
-                    </div>
-                    <div className="md:hidden divide-y">{documents.map((document) => <DocumentCard key={document.id} document={document} currentUserId={user.id} canDelete={!document.lockedAt && document.userId === user.id && !['SIGNED', 'PARTIALLY_SIGNED'].includes(document.status)} onView={handleView} onDownload={handleDownload} onDelete={handleDelete} onSign={openSigningDialog} />)}</div>
-                  </>
+                  <div className="p-4 space-y-3">
+                    <DocumentSearchBar documents={documents} filter={filter} onFilterChange={setFilter} />
+                    {filteredDocuments.length === 0 ? (
+                      <div className="py-8 text-center text-sm text-muted-foreground">Niciun document nu corespunde filtrelor selectate.</div>
+                    ) : (
+                      <>
+                        <div className="hidden md:block overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead><tr className="border-b bg-muted/30 text-left"><th className="px-4 py-3 font-medium">Document</th><th className="px-4 py-3 font-medium">Tip</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Marime</th><th className="px-4 py-3 font-medium">Data</th><th className="px-4 py-3 font-medium text-right">Actiuni</th></tr></thead>
+                            <tbody>
+                              {filteredDocuments.map((document) => (
+                                <DocumentTableRow
+                                  key={document.id}
+                                  document={document}
+                                  currentUserId={user.id}
+                                  canDelete={!document.lockedAt && document.userId === user.id && !['SIGNED', 'PARTIALLY_SIGNED'].includes(document.status)}
+                                  onView={handleView}
+                                  onDownload={handleDownload}
+                                  onDelete={handleDelete}
+                                  onSign={openSigningDialog}
+                                />
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="md:hidden divide-y">
+                          {filteredDocuments.map((document) => (
+                            <DocumentMobileCard
+                              key={document.id}
+                              document={document}
+                              currentUserId={user.id}
+                              canDelete={!document.lockedAt && document.userId === user.id && !['SIGNED', 'PARTIALLY_SIGNED'].includes(document.status)}
+                              onView={handleView}
+                              onDownload={handleDownload}
+                              onDelete={handleDelete}
+                              onSign={openSigningDialog}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -584,6 +639,15 @@ export function DocumentePage() {
           }}
         />
       )}
+
+      <DocumentPreviewModal
+        document={previewDoc}
+        signedUrl={previewUrl}
+        loading={previewLoading}
+        error={previewError}
+        onClose={handlePreviewClose}
+        onDownload={() => previewDoc && void handleDownload(previewDoc)}
+      />
 
       <Dialog open={Boolean(signing)} onOpenChange={(open) => !open && !signingBusy && setSigning(null)}>
         <DialogContent>

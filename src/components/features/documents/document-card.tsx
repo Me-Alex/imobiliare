@@ -1,12 +1,14 @@
 'use client'
 
-import { Download, Eye, File, FileSignature, LockKeyhole, ShieldCheck, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { Download, Eye, File, FileSignature, LockKeyhole, ShieldCheck, Trash2, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DOC_TYPE_LABELS } from '@/lib/constants'
 import type { DocumentSigner, ViewingDocument } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { DOC_TYPE_CONFIG } from './document-type-selector'
+import { DocumentEventTimeline } from './document-event-timeline'
 
 const STATUS_LABELS: Record<ViewingDocument['status'], string> = {
   DRAFT: 'Ciorna',
@@ -45,7 +47,45 @@ function statusClass(status: ViewingDocument['status']): string {
   return 'border-border bg-muted/50 text-muted-foreground'
 }
 
-interface DocumentCardProps {
+// ─── Shared: Document meta info ────────────────────────────────────────────────
+
+function DocumentMeta({ doc }: { doc: ViewingDocument }) {
+  const config = DOC_TYPE_CONFIG.find((item) => item.type === doc.docType)
+  const Icon = config?.icon ?? File
+
+  return (
+    <div className="flex items-center gap-2.5 min-w-0">
+      <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', config?.bgColor ?? 'bg-muted')}>
+        <Icon className={cn('h-4 w-4', config?.color ?? 'text-muted-foreground')} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-medium truncate">{doc.title}</p>
+        <p className="text-[10px] text-muted-foreground truncate">{doc.fileName}</p>
+        {doc.legalVersion && <p className="text-[10px] text-muted-foreground">Versiune {doc.legalVersion}</p>}
+      </div>
+    </div>
+  )
+}
+
+function StatusBadge({ doc }: { doc: ViewingDocument }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Badge variant="outline" className={cn('text-[11px] w-fit', statusClass(doc.status))}>
+        {doc.lockedAt && <LockKeyhole className="h-3 w-3 mr-1" />}
+        {STATUS_LABELS[doc.status]}
+      </Badge>
+      {doc.signatureRequirement !== 'SIMPLE' && (
+        <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-300 w-fit">
+          <ShieldCheck className="mr-1 h-3 w-3" /> Semnatura avansata/calificata
+        </Badge>
+      )}
+    </div>
+  )
+}
+
+// ─── Shared: Actions ───────────────────────────────────────────────────────────
+
+interface DocumentActionsProps {
   document: ViewingDocument
   currentUserId: string
   canDelete: boolean
@@ -63,7 +103,7 @@ function DocumentActions({
   onDownload,
   onDelete,
   onSign,
-}: DocumentCardProps) {
+}: DocumentActionsProps) {
   const pendingSigner = document.signers.find(
     (signer) => signer.userId === currentUserId && signer.status === 'PENDING',
   )
@@ -98,64 +138,86 @@ function DocumentActions({
   )
 }
 
-export function DocumentCard(props: DocumentCardProps) {
-  const doc = props.document
+// ─── Desktop: Table Row ────────────────────────────────────────────────────────
+
+export interface DocumentTableRowProps extends DocumentActionsProps {}
+
+export function DocumentTableRow(props: DocumentTableRowProps) {
+  const { document: doc } = props
+
+  return (
+    <tr className="hover:bg-muted/30 transition-colors">
+      <td className="px-4 py-3">
+        <DocumentMeta doc={doc} />
+      </td>
+      <td className="px-4 py-3">
+        <Badge variant="outline" className="text-[11px]">{DOC_TYPE_LABELS[doc.docType]}</Badge>
+      </td>
+      <td className="px-4 py-3">
+        <StatusBadge doc={doc} />
+      </td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">{formatFileSize(doc.byteSize)}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">{formatUploadDate(doc.uploadedAt)}</td>
+      <td className="px-4 py-3 text-right">
+        <DocumentActions {...props} />
+      </td>
+    </tr>
+  )
+}
+
+// ─── Mobile: Card ──────────────────────────────────────────────────────────────
+
+export interface DocumentMobileCardProps extends DocumentActionsProps {}
+
+export function DocumentMobileCard(props: DocumentMobileCardProps) {
+  const { document: doc } = props
+  const [expanded, setExpanded] = useState(false)
   const config = DOC_TYPE_CONFIG.find((item) => item.type === doc.docType)
   const Icon = config?.icon ?? File
 
   return (
-    <>
-      <tr className="hover:bg-muted/30 transition-colors">
-        <td className="px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', config?.bgColor ?? 'bg-muted')}>
-              <Icon className={cn('h-4 w-4', config?.color ?? 'text-muted-foreground')} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate max-w-[220px]">{doc.title}</p>
-              <p className="text-[10px] text-muted-foreground truncate max-w-[220px]">{doc.fileName}</p>
-              {doc.legalVersion && <p className="text-[10px] text-muted-foreground">Versiune {doc.legalVersion}</p>}
-            </div>
-          </div>
-        </td>
-        <td className="px-4 py-3"><Badge variant="outline" className="text-[11px]">{DOC_TYPE_LABELS[doc.docType]}</Badge></td>
-        <td className="px-4 py-3">
-          <Badge variant="outline" className={cn('text-[11px]', statusClass(doc.status))}>
-            {doc.lockedAt && <LockKeyhole className="h-3 w-3 mr-1" />}
-            {STATUS_LABELS[doc.status]}
-          </Badge>
-          {doc.signatureRequirement !== 'SIMPLE' && (
-            <Badge variant="outline" className="mt-1 text-[10px] border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-300">
-              <ShieldCheck className="mr-1 h-3 w-3" /> Semnătură avansată/calificată
-            </Badge>
-          )}
-        </td>
-        <td className="px-4 py-3 text-sm text-muted-foreground">{formatFileSize(doc.byteSize)}</td>
-        <td className="px-4 py-3 text-sm text-muted-foreground">{formatUploadDate(doc.uploadedAt)}</td>
-        <td className="px-4 py-3 text-right"><DocumentActions {...props} /></td>
-      </tr>
-
-      <div className="p-4 space-y-3">
-        <div className="flex items-start gap-3">
-          <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', config?.bgColor ?? 'bg-muted')}>
-            <Icon className={cn('h-5 w-5', config?.color ?? 'text-muted-foreground')} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate">{doc.title}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{doc.fileName}</p>
-            <div className="flex flex-wrap items-center gap-1.5 mt-2">
-              <Badge variant="outline" className="text-[10px]">{DOC_TYPE_LABELS[doc.docType]}</Badge>
-              <Badge variant="outline" className={cn('text-[10px]', statusClass(doc.status))}>{STATUS_LABELS[doc.status]}</Badge>
-              {doc.signatureRequirement !== 'SIMPLE' && <Badge variant="outline" className="text-[10px]">Semnătură avansată/calificată</Badge>}
-              <span className="text-[10px] text-muted-foreground">{formatFileSize(doc.byteSize)}</span>
-            </div>
-          </div>
+    <div className="p-4 space-y-3">
+      <div className="flex items-start gap-3">
+        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', config?.bgColor ?? 'bg-muted')}>
+          <Icon className={cn('h-5 w-5', config?.color ?? 'text-muted-foreground')} />
         </div>
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] text-muted-foreground">{formatUploadDate(doc.uploadedAt)}</span>
-          <DocumentActions {...props} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium truncate">{doc.title}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{doc.fileName}</p>
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            <Badge variant="outline" className="text-[10px]">{DOC_TYPE_LABELS[doc.docType]}</Badge>
+            <Badge variant="outline" className={cn('text-[10px]', statusClass(doc.status))}>{STATUS_LABELS[doc.status]}</Badge>
+            {doc.signatureRequirement !== 'SIMPLE' && <Badge variant="outline" className="text-[10px]">Semnatura avansata/calificata</Badge>}
+            <span className="text-[10px] text-muted-foreground">{formatFileSize(doc.byteSize)}</span>
+          </div>
         </div>
       </div>
+      <div className="flex items-center justify-between gap-2">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronDown className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')} />
+          Istoric
+        </button>
+        <span className="text-[10px] text-muted-foreground">{formatUploadDate(doc.uploadedAt)}</span>
+        <DocumentActions {...props} />
+      </div>
+
+      {expanded && (
+        <DocumentEventTimeline document={doc} />
+      )}
+    </div>
+  )
+}
+
+// ─── Legacy export for backward compatibility ──────────────────────────────────
+
+export function DocumentCard(props: DocumentActionsProps) {
+  return (
+    <>
+      <DocumentTableRow {...props} />
+      <DocumentMobileCard {...props} />
     </>
   )
 }
