@@ -164,7 +164,7 @@ type QueryOptions = {
 
 type AggregateOptions = {
   _avg?: Record<string, boolean>
-  _count?: Record<string, boolean> | { _all: boolean }
+  _count?: true | Record<string, boolean> | { _all: boolean }
   _min?: Record<string, boolean>
   _max?: Record<string, boolean>
   _sum?: Record<string, boolean>
@@ -174,7 +174,7 @@ type AggregateOptions = {
 type GroupByOptions = {
   by: string[]
   _avg?: Record<string, boolean>
-  _count?: Record<string, boolean> | { _all: boolean }
+  _count?: true | Record<string, boolean> | { _all: boolean }
   _min?: Record<string, boolean>
   _max?: Record<string, boolean>
   _sum?: Record<string, boolean>
@@ -371,7 +371,7 @@ function createModelAdapter(tableName: string, d1: D1Database) {
         }
       }
       if (options._count) {
-        if (options._count && typeof options._count === 'object' && '_all' in options._count) {
+        if (options._count === true || (typeof options._count === 'object' && '_all' in options._count)) {
           selects.push('COUNT(*) as _count')
         } else if (typeof options._count === 'object') {
           for (const [field] of Object.entries(options._count)) {
@@ -414,7 +414,7 @@ function createModelAdapter(tableName: string, d1: D1Database) {
         }
       }
       if (options._count) {
-        if (options._count && typeof options._count === 'object' && '_all' in options._count) {
+        if (options._count === true || (typeof options._count === 'object' && '_all' in options._count)) {
           output._count = Number(result?._count || 0)
         } else {
           output._count = {}
@@ -458,7 +458,7 @@ function createModelAdapter(tableName: string, d1: D1Database) {
         }
       }
       if (options._count) {
-        if (options._count && typeof options._count === 'object' && '_all' in options._count) {
+        if (options._count === true || (typeof options._count === 'object' && '_all' in options._count)) {
           selects.push('COUNT(*) as _count')
         } else if (typeof options._count === 'object') {
           for (const [field] of Object.entries(options._count)) {
