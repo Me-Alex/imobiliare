@@ -2,7 +2,7 @@
 
 import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
-import { ArrowRight, Building2, MapPin, Star, Shield } from 'lucide-react'
+import { ArrowRight, Building2, Calculator, MapPin, Star, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/use-app-store'
 import { usePropertiesPaginated, useZones } from '@/hooks/use-properties'
@@ -99,9 +99,11 @@ export function CtaSection() {
               <Button
                 variant="outline"
                 size="lg"
+                onClick={() => navigateTo('calculator')}
                 className="border-emerald-400/40 text-white hover:bg-emerald-800/60 hover:text-white hover:border-emerald-300/60 font-semibold h-12 px-8 text-base transition-all"
               >
-                Contacteaza-ne
+                <Calculator className="h-4 w-4" />
+                Calculeaza rata
               </Button>
             </motion.div>
 

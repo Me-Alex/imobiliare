@@ -33,7 +33,6 @@ const navItems: { label: string; page: PageKey }[] = [
   { label: 'Zone', page: 'zone' },
   { label: 'Evaluare', page: 'evaluare' },
   { label: 'De Ce Noi', page: 'de-ce-noi' },
-  { label: 'Calculator', page: 'calculator' },
 ]
 
 function NotificationsBadge() {
