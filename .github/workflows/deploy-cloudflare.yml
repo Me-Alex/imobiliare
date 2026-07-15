@@ -39,3 +39,6 @@ jobs:
 
       - name: Build and deploy Cloudflare worker
         run: bun run cf:deploy
+
+      - name: Redirect legacy Pages domain to the worker
+        run: bunx wrangler pages deploy legacy-pages-redirect --project-name=imobiliare2 --branch=main

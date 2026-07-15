@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Redirectionare catre HQS Imobiliare</title>
+  </head>
+  <body>
+    <p>Te redirectionam catre HQS Imobiliare...</p>
+    <script>
+      (() => {
+        const destination = new URL(
+          '/',
+          'https://hqs-imobiliare.floreaalexandru2002.workers.dev',
+        )
+
+        destination.search = window.location.search
+        destination.hash = window.location.hash
+        window.location.replace(destination.toString())
+      })()
+    </script>
+    <noscript>
+      <p>
+        JavaScript este necesar pentru finalizarea autentificarii.
+        <a href="https://hqs-imobiliare.floreaalexandru2002.workers.dev/">
+          Continua catre HQS Imobiliare
+        </a>
+      </p>
+    </noscript>
+  </body>
+</html>
