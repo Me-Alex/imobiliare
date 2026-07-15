@@ -46,13 +46,6 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
   const { onViewProperty, onFavorite, onBookViewing } = useCoinActions()
 
   const open = !!selectedPropertySlug && currentPage !== 'proprietate'
-  const { selectedPropertySlug, setSelectedPropertySlug, favorites, compareList, toggleFavorite, toggleCompare, setLightbox, setVizionareProperty, navigateTo } = useAppStore()
-  const [authDialogOpen, setAuthDialogOpen] = useState(false)
-  const { user } = useAuth()
-  const { data: property, isLoading } = useProperty(selectedPropertySlug)
-  const { onViewProperty, onFavorite, onBookViewing } = useCoinActions()
-
-  const open = !!selectedPropertySlug
 
   const handleOpenChange = useCallback((v: boolean) => {
     if (!v) setSelectedPropertySlug(null)

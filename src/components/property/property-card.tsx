@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Heart, Scale, Bath, BedDouble, MapPin, Star, CalendarCheck } from 'lucide-react'
+import { Heart, Scale, Bath, BedDouble, MapPin, Star, CalendarCheck, Maximize2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
