@@ -149,25 +149,30 @@ export function VizionarileMelePage() {
 
   const handleReschedule = useCallback(async (v: Vizionare) => {
     try {
-      await cancelViewing(v.id)
-      const slots = loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
-      const slotIdx = slots.findIndex(
-        (s: AvailabilitySlot) =>
-          s.staffId === v.staffId &&
-          s.date === v.date &&
-          s.startTime === v.startTime &&
-          s.isBooked
-      )
-      if (slotIdx !== -1) {
-        slots[slotIdx].isBooked = false
-        slots[slotIdx].bookedBy = null
-        slots[slotIdx].bookedByName = null
-        saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
+      const activeAppointment = v.status === 'pending' || v.status === 'confirmed'
+      if (activeAppointment) {
+        await cancelViewing(v.id, 'Anulată pentru reprogramare')
+        const slots = loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
+        const slotIdx = slots.findIndex(
+          (s: AvailabilitySlot) =>
+            s.staffId === v.staffId &&
+            s.date === v.date &&
+            s.startTime === v.startTime &&
+            s.isBooked
+        )
+        if (slotIdx !== -1) {
+          slots[slotIdx].isBooked = false
+          slots[slotIdx].bookedBy = null
+          slots[slotIdx].bookedByName = null
+          saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
+        }
       }
       setVizionareProperty(v.propertyId, v.propertyTitle)
       navigateTo('programare-vizionare')
       toast.info('Reprogramare', {
-        description: 'Vizionarea anterioara a fost anulata. Alege o noua data.',
+        description: activeAppointment
+          ? 'Vizionarea anterioară a fost anulată. Alege o nouă dată.'
+          : 'Programarea din istoric rămâne în audit. Alege o nouă dată.',
       })
     } catch (error) {
       toast.error('Vizionarea nu a putut fi reprogramata.', {

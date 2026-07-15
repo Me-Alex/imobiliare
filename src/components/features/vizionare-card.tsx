@@ -211,7 +211,10 @@ export function VizionareCard({
             )}
 
             {/* Reschedule button — active vizionari */}
-            {canClientManage && (vizionare.status === 'pending' || vizionare.status === 'confirmed') && (
+            {canClientManage && [
+              'pending', 'confirmed', 'cancelled', 'cancelled_by_client',
+              'cancelled_by_agent', 'no_show',
+            ].includes(vizionare.status) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -219,7 +222,9 @@ export function VizionareCard({
                 onClick={() => onReschedule(vizionare)}
               >
                 <CalendarClock className="h-3.5 w-3.5" />
-                Reprogramare
+                {vizionare.status === 'pending' || vizionare.status === 'confirmed'
+                  ? 'Reprogramare'
+                  : 'Programează din nou'}
               </Button>
             )}
 
