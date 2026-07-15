@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import {
   Share2,
   MessageCircle,
@@ -27,7 +27,7 @@ export function PropertyShareButtons({ property }: PropertyShareButtonsProps) {
   const shareText = `🏠 ${property.title}\n💰 ${formatPrice(property.price)}\n📍 ${property.address}, ${property.zone}\n\nVezi detalii: ${shareUrl}`
   const shareTitle = `${property.title} — ${formatPrice(property.price)}`
 
-  const handleNativeShare = useCallback(async () => {
+  const handleNativeShare = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
@@ -42,18 +42,22 @@ export function PropertyShareButtons({ property }: PropertyShareButtonsProps) {
     }
     // Fallback: copy to clipboard
     handleCopyLink()
-  }, [shareUrl, shareText, shareTitle])
+  }
 
-  const handleCopyLink = useCallback(() => {
+  const handleCopyLink = () => {
     if (typeof navigator === 'undefined') return
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true)
-      toast.success('Link copiat!', { description: 'Link-ul a fost copiat în clipboard.' })
+      queueMicrotask(() => {
+        toast.success('Link copiat!', { description: 'Link-ul a fost copiat în clipboard.' })
+      })
       setTimeout(() => setCopied(false), 2500)
     }).catch(() => {
-      toast.error('Eroare', { description: 'Nu am putut copia link-ul.' })
+      queueMicrotask(() => {
+        toast.error('Eroare', { description: 'Nu am putut copia link-ul.' })
+      })
     })
-  }, [shareUrl])
+  }
 
   const openWindow = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer,width=600,height=500')

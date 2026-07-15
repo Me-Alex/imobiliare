@@ -140,7 +140,7 @@ function DocumentActions({
 
 // ─── Desktop: Table Row ────────────────────────────────────────────────────────
 
-export interface DocumentTableRowProps extends DocumentActionsProps {}
+export type DocumentTableRowProps = DocumentActionsProps
 
 export function DocumentTableRow(props: DocumentTableRowProps) {
   const { document: doc } = props
@@ -167,7 +167,7 @@ export function DocumentTableRow(props: DocumentTableRowProps) {
 
 // ─── Mobile: Card ──────────────────────────────────────────────────────────────
 
-export interface DocumentMobileCardProps extends DocumentActionsProps {}
+export type DocumentMobileCardProps = DocumentActionsProps
 
 export function DocumentMobileCard(props: DocumentMobileCardProps) {
   const { document: doc } = props

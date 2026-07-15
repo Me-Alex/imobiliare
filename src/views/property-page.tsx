@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Heart,
@@ -17,7 +17,6 @@ import {
   Home,
   CalendarCheck,
   Star,
-  Loader2,
   ArrowLeft,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -33,6 +32,7 @@ import { PropertyShareButtons } from '@/components/property/property-share-butto
 import { AuthRequiredDialog } from '@/components/dialogs/auth-required-dialog'
 import { formatBucharestLocation, formatPrice, formatPricePerSqm } from '@/lib/utils'
 import { toast } from 'sonner'
+import type { Property } from '@/lib/types'
 
 const typeLabels: Record<string, string> = {
   APARTMENT: 'Apartament',
@@ -57,28 +57,16 @@ export function PropertyPage() {
   const { user } = useAuth()
   const { onFavorite, onBookViewing } = useCoinActions()
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
-  const [currentImage, setCurrentImage] = useState(0)
 
   const slug = selectedPropertySlug
   const { data: property, isLoading } = useProperty(slug)
-
-  // Reset image index when property changes
-  useEffect(() => {
-    setCurrentImage(0)
-  }, [slug])
 
   if (isLoading || !property) {
     return <PropertyPageSkeleton />
   }
 
-  const gallery: string[] = property.galleryUrls ? JSON.parse(property.galleryUrls) : []
-  const coverImage = property.coverUrl || gallery[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80'
-  const images = [coverImage, ...gallery.filter((u) => u !== coverImage)]
   const isFav = favorites.includes(property.id)
   const isCompare = compareList.includes(property.id)
-
-  const nextImage = () => setCurrentImage((p) => (p + 1) % Math.max(images.length, 1))
-  const prevImage = () => setCurrentImage((p) => (p - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1))
 
   const handleBack = () => {
     setSelectedPropertySlug(null)
@@ -93,84 +81,13 @@ export function PropertyPage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)]">
-      {/* ── Image Gallery ── */}
-      <div className="relative bg-muted">
-        <div className="aspect-[21/9] sm:aspect-[21/8] lg:aspect-[21/7] relative overflow-hidden">
-          <motion.img
-            key={currentImage}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-            src={images[currentImage] || coverImage}
-            alt={`${property.title} - Imaginea ${currentImage + 1}`}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-
-          {/* Back button */}
-          <button
-            onClick={handleBack}
-            className="absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-black/70 backdrop-blur-sm px-3 py-1.5 text-sm font-medium text-foreground shadow-sm hover:bg-white dark:hover:bg-black/80 transition-colors z-10"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Inapoi
-          </button>
-
-          {/* Image counter */}
-          {images.length > 1 && (
-            <div className="absolute top-4 right-4 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm z-10">
-              {currentImage + 1} / {images.length}
-            </div>
-          )}
-
-          {/* Nav arrows */}
-          {images.length > 1 && (
-            <>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 bg-white/80 dark:bg-black/60 backdrop-blur-sm rounded-full border-0 hover:bg-white dark:hover:bg-black/80 transition-colors"
-                onClick={prevImage}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 bg-white/80 dark:bg-black/60 backdrop-blur-sm rounded-full border-0 hover:bg-white dark:hover:bg-black/80 transition-colors"
-                onClick={nextImage}
-              >
-                <ChevronRight className="h-5 w-5" />
-              </Button>
-            </>
-          )}
-
-          {/* Expand */}
-          <button
-            onClick={() => setLightbox(images, currentImage)}
-            className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 dark:bg-black/60 backdrop-blur-sm border-0 hover:bg-white dark:hover:bg-black/80 transition-colors shadow-sm z-10"
-          >
-            <Maximize2 className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Thumbnails */}
-        {images.length > 1 && (
-          <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-thin bg-background border-b">
-            {images.map((img, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentImage(i)}
-                className={`shrink-0 w-20 h-14 rounded-md overflow-hidden border-2 transition-all duration-200 ${
-                  i === currentImage ? 'border-primary ring-2 ring-primary/20' : 'border-transparent opacity-60 hover:opacity-100'
-                }`}
-              >
-                <img src={img} alt="" className="w-full h-full object-cover" />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Gallery with key remounts on property change, resetting image index */}
+      <PropertyGallery
+        key={property.id}
+        property={property}
+        onLightbox={(images, idx) => setLightbox(images, idx)}
+        onBack={handleBack}
+      />
 
       {/* ── Main Content ── */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
@@ -361,6 +278,107 @@ export function PropertyPage() {
           fromProperty: property.slug,
         }}
       />
+    </div>
+  )
+}
+
+// ─── Gallery Component (remounts via key to reset state) ──────────────────────
+
+function PropertyGallery({
+  property,
+  onLightbox,
+  onBack,
+}: {
+  property: Property
+  onLightbox: (images: string[], idx: number) => void
+  onBack: () => void
+}) {
+  const [currentImage, setCurrentImage] = useState(0)
+
+  const gallery: string[] = property.galleryUrls ? JSON.parse(property.galleryUrls) : []
+  const coverImage = property.coverUrl || gallery[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80'
+  const images = [coverImage, ...gallery.filter((u) => u !== coverImage)]
+
+  const nextImage = () => setCurrentImage((p) => (p + 1) % Math.max(images.length, 1))
+  const prevImage = () => setCurrentImage((p) => (p - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1))
+
+  return (
+    <div className="relative bg-muted">
+      <div className="aspect-[21/9] sm:aspect-[21/8] lg:aspect-[21/7] relative overflow-hidden">
+        <motion.img
+          key={currentImage}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          src={images[currentImage] || coverImage}
+          alt={`${property.title} - Imaginea ${currentImage + 1}`}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+
+        {/* Back button */}
+        <button
+          onClick={onBack}
+          className="absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-black/70 backdrop-blur-sm px-3 py-1.5 text-sm font-medium text-foreground shadow-sm hover:bg-white dark:hover:bg-black/80 transition-colors z-10"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Inapoi
+        </button>
+
+        {/* Image counter */}
+        {images.length > 1 && (
+          <div className="absolute top-4 right-4 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm z-10">
+            {currentImage + 1} / {images.length}
+          </div>
+        )}
+
+        {/* Nav arrows */}
+        {images.length > 1 && (
+          <>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 bg-white/80 dark:bg-black/60 backdrop-blur-sm rounded-full border-0 hover:bg-white dark:hover:bg-black/80 transition-colors"
+              onClick={prevImage}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 bg-white/80 dark:bg-black/60 backdrop-blur-sm rounded-full border-0 hover:bg-white dark:hover:bg-black/80 transition-colors"
+              onClick={nextImage}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </>
+        )}
+
+        {/* Expand */}
+        <button
+          onClick={() => onLightbox(images, currentImage)}
+          className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 dark:bg-black/60 backdrop-blur-sm border-0 hover:bg-white dark:hover:bg-black/80 transition-colors shadow-sm z-10"
+        >
+          <Maximize2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Thumbnails */}
+      {images.length > 1 && (
+        <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-thin bg-background border-b">
+          {images.map((img, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentImage(i)}
+              className={`shrink-0 w-20 h-14 rounded-md overflow-hidden border-2 transition-all duration-200 ${
+                i === currentImage ? 'border-primary ring-2 ring-primary/20' : 'border-transparent opacity-60 hover:opacity-100'
+              }`}
+            >
+              <img src={img} alt="" className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -276,6 +276,7 @@ function MonedeAuthenticatedPage() {
       userCoinKey(LS_KEYS.COINS_ACHIEVEMENTS, userId),
       {},
     )
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAchievements(saved)
   }, [userId])
 
@@ -332,7 +333,10 @@ function MonedeAuthenticatedPage() {
         changed = true
       }
     })
-    if (changed) saveAchievements(next)
+    if (changed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      saveAchievements(next)
+    }
   }, [computedAchievements])
 
   // ─── Challenges state ───────────────────────────────────────────────────────
@@ -345,6 +349,7 @@ function MonedeAuthenticatedPage() {
     const valid = saved.filter((c) => c.weekStart === currentWeek)
     if (valid.length === 0) {
       const fresh = getDefaultChallenges()
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setChallenges(fresh)
       saveToLS(userCoinKey(LS_KEYS.COINS_CHALLENGES, userId), fresh)
     } else {
