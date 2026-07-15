@@ -4,6 +4,10 @@ export type PageKey =
   | 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator'
   | 'login' | 'admin' | 'adauga-proprietate' | 'dashboard'
   | 'programare-vizionare' | 'disponibilitate-staff' | 'vizionarile-mele' | 'documente'
+  | 'evaluare' | 'profil' | 'monede' | 'proprietate'
+  | 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator'
+  | 'login' | 'admin' | 'adauga-proprietate' | 'dashboard'
+  | 'programare-vizionare' | 'disponibilitate-staff' | 'vizionarile-mele' | 'documente'
   | 'evaluare' | 'profil' | 'monede'
 
 export interface NavigationSlice {

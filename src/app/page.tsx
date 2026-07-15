@@ -40,6 +40,7 @@ import { DashboardPage } from '@/views/dashboard-page'
 import { ProfilPage } from '@/views/profil-page'
 import { EvaluarePage } from '@/views/evaluare-page'
 import { MonedePage } from '@/views/monede-page'
+import { PropertyPage } from '@/views/property-page'
 import { NotificationsPanel } from '@/components/panels/notifications-panel'
 import { CoinsPanel } from '@/components/panels/coins-panel'
 import { useCoinsHydration } from '@/hooks/use-coin-actions'
@@ -71,6 +72,7 @@ const pageComponents: Record<string, React.ComponentType<Record<string, unknown>
   profil: ProfilPage,
   evaluare: EvaluarePage,
   monede: MonedePage,
+  proprietate: PropertyPage,
 }
 
 // Pages that should NOT show header/footer/overlays
@@ -105,15 +107,12 @@ function AppContent() {
     const propertySlug = params.get('property')
     if (propertySlug) {
       setSelectedPropertySlug(propertySlug)
-      // Navigate to properties page so the dialog is visible
-      if (fullBleedPages.has(currentPage)) {
-        navigateTo('proprietati')
-      }
+      navigateTo('proprietate')
       // Clean the URL so it doesn't re-trigger on refresh
       const cleanUrl = window.location.pathname + window.location.hash
       window.history.replaceState({}, document.title, cleanUrl)
     }
-  }, [setSelectedPropertySlug, navigateTo, currentPage])
+  }, [setSelectedPropertySlug, navigateTo])
 
   const handleContact = useCallback((propertyTitle: string) => {
     setContactPropertyTitle(propertyTitle)

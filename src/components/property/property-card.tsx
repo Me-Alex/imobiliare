@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Heart, Scale, Maximize2, Bath, BedDouble, MapPin, Star, CalendarCheck } from 'lucide-react'
+import { Heart, Scale, Bath, BedDouble, MapPin, Star, CalendarCheck } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,7 @@ import type { Property } from '@/lib/types'
 
 interface PropertyCardProps {
   property: Property
-  onSelect: (slug: string) => void
+  onSelect?: (slug: string) => void
   viewMode?: 'grid' | 'list'
 }
 
@@ -60,7 +60,7 @@ function MetricPill({ icon: Icon, value, label }: { icon: React.ElementType; val
 }
 
 export function PropertyCard({ property, onSelect, viewMode = 'grid' }: PropertyCardProps) {
-  const { favorites, compareList, toggleFavorite, toggleCompare, setVizionareProperty, navigateTo } = useAppStore()
+  const { favorites, compareList, toggleFavorite, toggleCompare, setVizionareProperty, navigateTo, setSelectedPropertySlug } = useAppStore()
   const { user } = useAuth()
   const { onFavorite } = useCoinActions()
   const [authOpen, setAuthOpen] = useState(false)
@@ -75,11 +75,17 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
     if (!wasFavorite) onFavorite(property.title)
   }
 
+  const handleClick = () => {
+    setSelectedPropertySlug(property.slug)
+    navigateTo('proprietate')
+    onSelect?.(property.slug)
+  }
+
   if (viewMode === 'list') {
     return (
       <Card
         className={`card-hover overflow-hidden cursor-pointer group py-0 gap-0 press-scale border-l-[3px] ${property.transaction === 'RENT' ? 'border-l-amber-400' : 'border-l-emerald-500'}`}
-        onClick={() => onSelect(property.slug)}
+        onClick={handleClick}
       >
         <div className="flex flex-col sm:flex-row">
           {/* Image */}
@@ -179,7 +185,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
   return (
     <Card
       className={`card-hover overflow-hidden cursor-pointer group py-0 gap-0 relative press-scale border-l-[3px] ${property.transaction === 'RENT' ? 'border-l-amber-400' : 'border-l-emerald-500'}`}
-      onClick={() => onSelect(property.slug)}
+      onClick={handleClick}
     >
       {/* Image */}
       <div className="relative h-52 overflow-hidden card-shimmer">
