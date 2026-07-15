@@ -25,6 +25,7 @@ export interface AvailabilitySlot {
 export interface Vizionare {
   id: string
   clientId?: string | null
+  ownerId?: string | null
   propertyId: string
   propertyUuid?: string | null
   propertyTitle: string
@@ -159,6 +160,51 @@ export interface ViewingDocument {
   retentionUntil: string | null
   signers: DocumentSigner[]
   events: DocumentEvent[]
+}
+
+export type LegalDocumentRequestStatus =
+  | 'REQUESTED'
+  | 'IN_REVIEW'
+  | 'NEEDS_INFO'
+  | 'FULFILLED'
+  | 'CANCELLED'
+  | 'REJECTED'
+
+export interface LegalDocumentRequestEvent {
+  id: number
+  actorId: string | null
+  eventType:
+    | 'REQUESTED'
+    | 'DATA_UPDATED'
+    | 'IN_REVIEW'
+    | 'NEEDS_INFO'
+    | 'FULFILLED'
+    | 'CANCELLED'
+    | 'REJECTED'
+  metadata: Record<string, unknown>
+  createdAt: string
+}
+
+export interface LegalDocumentRequest {
+  id: string
+  appointmentId: string
+  requesterId: string
+  documentKind:
+    | 'brokerage_agreement'
+    | 'owner_mandate'
+    | 'reservation_offer'
+    | 'rental_contract'
+    | 'handover_protocol'
+  status: LegalDocumentRequestStatus
+  submittedData: Record<string, string>
+  notes: string
+  staffNote: string
+  fulfilledDocumentId: string | null
+  handledBy: string | null
+  handledAt: string | null
+  createdAt: string
+  updatedAt: string
+  events: LegalDocumentRequestEvent[]
 }
 
 // Document type labels (type only — value lives in @/lib/constants)

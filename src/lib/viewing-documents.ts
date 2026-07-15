@@ -55,6 +55,7 @@ function mapViewing(row: Record<string, unknown>): Vizionare {
   return {
     id: String(row.id),
     clientId: row.client_id ? String(row.client_id) : null,
+    ownerId: property?.owner_id ? String(property.owner_id) : null,
     propertyId: String(row.property_reference || row.property_id || ''),
     propertyUuid: row.property_id ? String(row.property_id) : null,
     propertyTitle: String(row.property_title || property?.title || 'Proprietate'),

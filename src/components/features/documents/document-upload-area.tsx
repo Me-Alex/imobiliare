@@ -21,11 +21,12 @@ export interface DocumentUploadAreaRef {
 
 interface DocumentUploadAreaProps {
   uploadedTypes: Set<DocType>
+  allowedTypes?: DocType[]
   onFileReady: (docType: DocType, file: File) => Promise<void>
 }
 
 export const DocumentUploadArea = forwardRef<DocumentUploadAreaRef, DocumentUploadAreaProps>(
-  function DocumentUploadArea({ uploadedTypes, onFileReady }, ref) {
+  function DocumentUploadArea({ uploadedTypes, allowedTypes, onFileReady }, ref) {
     const [uploadingType, setUploadingType] = useState<DocType | null>(null)
     const [uploadProgress, setUploadProgress] = useState(0)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -90,6 +91,7 @@ export const DocumentUploadArea = forwardRef<DocumentUploadAreaRef, DocumentUplo
 
         <DocumentTypeSelector
           uploadedTypes={uploadedTypes}
+          allowedTypes={allowedTypes}
           uploadingType={uploadingType}
           uploadProgress={uploadProgress}
           onTypeClick={handleTypeClick}

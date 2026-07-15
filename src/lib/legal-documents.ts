@@ -294,6 +294,79 @@ export const LEGAL_DOCUMENT_ORDER: LegalDocumentKind[] = [
   'handover_protocol',
 ]
 
+export type LegalDocumentRequestRole = 'CLIENT' | 'OWNER'
+
+const CLIENT_IDENTITY_FIELDS = [
+  'client_name', 'client_id_document', 'client_address', 'client_email', 'client_phone',
+] as const
+const OWNER_IDENTITY_FIELDS = [
+  'owner_name', 'owner_id_document', 'owner_address', 'owner_email', 'owner_phone',
+] as const
+
+const LEGAL_REQUEST_FIELD_KEYS: Record<
+  LegalDocumentRequestRole,
+  Partial<Record<LegalDocumentKind, readonly string[]>>
+> = {
+  CLIENT: {
+    brokerage_agreement: [
+      ...CLIENT_IDENTITY_FIELDS,
+      'transaction_type',
+    ],
+    reservation_offer: [
+      ...CLIENT_IDENTITY_FIELDS,
+      'offered_price', 'currency', 'offer_conditions', 'offer_valid_until',
+    ],
+    rental_contract: [
+      ...CLIENT_IDENTITY_FIELDS,
+      'rental_purpose', 'occupants', 'pets_policy',
+    ],
+  },
+  OWNER: {
+    owner_mandate: [
+      ...OWNER_IDENTITY_FIELDS,
+      'property_cadastral', 'ownership_title', 'property_encumbrances',
+      'transaction_type', 'asking_price', 'currency', 'marketing_channels',
+    ],
+    reservation_offer: [
+      ...OWNER_IDENTITY_FIELDS,
+      'property_cadastral',
+    ],
+    rental_contract: [
+      ...OWNER_IDENTITY_FIELDS,
+      'owner_payment_account', 'property_cadastral', 'property_description',
+      'ownership_title', 'property_encumbrances',
+    ],
+    handover_protocol: [
+      'owner_name', 'owner_id_document', 'property_cadastral',
+      'property_condition', 'existing_defects', 'photo_evidence_reference',
+      'electricity_meter', 'gas_meter', 'cold_water_meter', 'hot_water_meter',
+      'other_meters', 'keys_and_access_devices', 'remaining_key_holders',
+      'inventory', 'delivered_documents', 'handover_payments', 'notes',
+    ],
+  },
+}
+
+export const LEGAL_REQUEST_REQUIRED_ROLES: Record<LegalDocumentKind, LegalDocumentRequestRole[]> = {
+  viewing_report: [],
+  brokerage_agreement: ['CLIENT'],
+  owner_mandate: ['OWNER'],
+  reservation_offer: ['CLIENT', 'OWNER'],
+  rental_contract: ['CLIENT', 'OWNER'],
+  handover_protocol: ['OWNER'],
+}
+
+export function getLegalRequestKindsForRole(role: LegalDocumentRequestRole): LegalDocumentKind[] {
+  return LEGAL_DOCUMENT_ORDER.filter((kind) => Boolean(LEGAL_REQUEST_FIELD_KEYS[role][kind]))
+}
+
+export function getLegalRequestFields(
+  kind: LegalDocumentKind,
+  role: LegalDocumentRequestRole,
+): LegalDocumentField[] {
+  const keys = new Set(LEGAL_REQUEST_FIELD_KEYS[role][kind] || [])
+  return LEGAL_DOCUMENT_DEFINITIONS[kind].fields.filter((field) => keys.has(field.key))
+}
+
 export function getLegalDocumentDefinition(kind: LegalDocumentKind): LegalDocumentDefinition {
   return LEGAL_DOCUMENT_DEFINITIONS[kind]
 }

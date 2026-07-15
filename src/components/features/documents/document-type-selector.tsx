@@ -118,6 +118,7 @@ export const DOC_TYPE_CONFIG: Array<{
 
 interface DocumentTypeSelectorProps {
   uploadedTypes: Set<DocType>
+  allowedTypes?: DocType[]
   uploadingType: DocType | null
   uploadProgress: number
   onTypeClick: (type: DocType) => void
@@ -125,13 +126,14 @@ interface DocumentTypeSelectorProps {
 
 export function DocumentTypeSelector({
   uploadedTypes,
+  allowedTypes,
   uploadingType,
   uploadProgress,
   onTypeClick,
 }: DocumentTypeSelectorProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {DOC_TYPE_CONFIG.map((config) => {
+      {DOC_TYPE_CONFIG.filter((config) => !allowedTypes || allowedTypes.includes(config.type)).map((config) => {
         const isUploaded = uploadedTypes.has(config.type)
         const isUploading = uploadingType === config.type
         const Icon = config.icon

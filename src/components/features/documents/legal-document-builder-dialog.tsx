@@ -27,15 +27,18 @@ import {
   loadLegalDocumentContext,
   type LegalDocumentContext,
 } from '@/lib/viewing-documents'
-import type { Vizionare } from '@/lib/types'
+import type { LegalDocumentRequest, ViewingDocument, Vizionare } from '@/lib/types'
 
 interface LegalDocumentBuilderDialogProps {
   kind: LegalDocumentKind | null
   user: User
   viewing: Vizionare
+  requestSubmissions?: LegalDocumentRequest[]
   onOpenChange: (open: boolean) => void
-  onCreated: () => Promise<void> | void
+  onCreated: (document: ViewingDocument) => Promise<void> | void
 }
+
+const EMPTY_REQUEST_SUBMISSIONS: LegalDocumentRequest[] = []
 
 function FieldControl({
   field,
@@ -82,9 +85,11 @@ export function LegalDocumentBuilderDialog({
   kind,
   user,
   viewing,
+  requestSubmissions,
   onOpenChange,
   onCreated,
 }: LegalDocumentBuilderDialogProps) {
+  const submissions = requestSubmissions ?? EMPTY_REQUEST_SUBMISSIONS
   const open = Boolean(kind)
   const definition = kind ? getLegalDocumentDefinition(kind) : null
   const [context, setContext] = useState<LegalDocumentContext | null>(null)
@@ -104,7 +109,10 @@ export function LegalDocumentBuilderDialog({
         .then((next) => {
           if (cancelled) return
           setContext(next)
-          setValues(next.values)
+          setValues({
+            ...next.values,
+            ...Object.assign({}, ...submissions.map((request) => request.submittedData)),
+          })
           setConsumerContract(getLegalDocumentDefinition(kind).consumerWithdrawalRequired)
         })
         .catch((error) => {
@@ -115,7 +123,7 @@ export function LegalDocumentBuilderDialog({
         .finally(() => !cancelled && setLoading(false))
     })
     return () => { cancelled = true }
-  }, [kind, open, user, viewing])
+  }, [kind, open, submissions, user, viewing])
 
   const groups = useMemo(() => {
     if (!definition) return []
@@ -139,8 +147,8 @@ export function LegalDocumentBuilderDialog({
     if (!context) return
     setSubmitting(true)
     try {
-      await generateLegalDocument({ kind, user, viewing, values, consumerContract })
-      await onCreated()
+      const document = await generateLegalDocument({ kind, user, viewing, values, consumerContract })
+      await onCreated(document)
       onOpenChange(false)
       toast.success(reviewed
         ? 'Documentul juridic a fost generat.'
@@ -205,6 +213,16 @@ export function LegalDocumentBuilderDialog({
                 <AlertTitle>Document blocat pentru semnare</AlertTitle>
                 <AlertDescription>
                   Poți genera o ciornă pentru verificare. Semnarea va fi disponibilă numai după aprobarea nominală a unui revizor juridic.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {submissions.length > 0 && (
+              <Alert>
+                <FileCheck2 className="h-4 w-4" />
+                <AlertTitle>Date furnizate de participanți</AlertTitle>
+                <AlertDescription>
+                  Generatorul a preluat {submissions.length} {submissions.length === 1 ? 'declarație' : 'declarații'} auditate. Verifică fiecare câmp înainte de generare; declarațiile originale nu sunt modificate.
                 </AlertDescription>
               </Alert>
             )}

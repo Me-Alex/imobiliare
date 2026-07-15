@@ -39,11 +39,14 @@ import {
 import { DocumentCard } from '@/components/features/documents/document-card'
 import { LegalCompliancePanel } from '@/components/features/documents/legal-compliance-panel'
 import { LegalDocumentBuilderDialog } from '@/components/features/documents/legal-document-builder-dialog'
+import { LegalDocumentRequestDialog } from '@/components/features/documents/legal-document-request-dialog'
+import { LegalDocumentRequestPanel } from '@/components/features/documents/legal-document-request-panel'
 import type { DocType } from '@/components/features/documents/document-type-selector'
-import type { DocumentSigner, ViewingDocument, Vizionare } from '@/lib/types'
+import type { DocumentSigner, LegalDocumentRequest, ViewingDocument, Vizionare } from '@/lib/types'
 import {
   getLegalDocumentDefinition,
   LEGAL_DOCUMENT_ORDER,
+  LEGAL_REQUEST_REQUIRED_ROLES,
   type LegalDocumentKind,
 } from '@/lib/legal-documents'
 import { DOC_TYPE_LABELS, LS_KEYS } from '@/lib/constants'
@@ -56,11 +59,17 @@ import {
   signViewingDocument,
   uploadViewingDocument,
 } from '@/lib/viewing-documents'
+import {
+  cancelLegalDocumentRequest,
+  claimLegalDocumentRequests,
+  listLegalDocumentRequests,
+  setLegalDocumentRequestStatus,
+} from '@/lib/legal-document-requests'
 import { formatDateRO } from '@/lib/utils'
 
 const ROLE_COPY = {
-  CLIENT: 'Incarca actele solicitate, genereaza documentele vizionarii si semneaza-le in siguranta.',
-  OWNER: 'Vezi si semneaza documentele partajate pentru proprietatile tale.',
+  CLIENT: 'Completează datele, solicită documentele și semnează numai versiunea verificată de agent.',
+  OWNER: 'Confirmă datele proprietății și semnează documentele partajate care te privesc.',
   AGENT: 'Pregateste dosarele vizionarilor alocate si urmareste semnaturile participantilor.',
   ADMIN: 'Administreaza documentele, contractele si jurnalul de audit al tuturor vizionarilor.',
 } as const
@@ -77,9 +86,14 @@ export function DocumentePage() {
   const [viewings, setViewings] = useState<Vizionare[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [documents, setDocuments] = useState<ViewingDocument[]>([])
+  const [requests, setRequests] = useState<LegalDocumentRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [documentsLoading, setDocumentsLoading] = useState(false)
   const [builderKind, setBuilderKind] = useState<LegalDocumentKind | null>(null)
+  const [builderRequests, setBuilderRequests] = useState<LegalDocumentRequest[]>([])
+  const [requestKind, setRequestKind] = useState<Exclude<LegalDocumentKind, 'viewing_report'> | null>(null)
+  const [editingRequest, setEditingRequest] = useState<LegalDocumentRequest | null>(null)
+  const [requestBusyId, setRequestBusyId] = useState<string | null>(null)
   const [signing, setSigning] = useState<SigningState | null>(null)
   const [signatureName, setSignatureName] = useState('')
   const [signatureAccepted, setSignatureAccepted] = useState(false)
@@ -90,7 +104,8 @@ export function DocumentePage() {
     [selectedId, viewings],
   )
 
-  const canCreateDocuments = profile?.role === 'CLIENT' || profile?.role === 'AGENT' || profile?.role === 'ADMIN'
+  const canGenerateDocuments = profile?.role === 'AGENT' || profile?.role === 'ADMIN'
+  const canUploadDocuments = profile?.role === 'CLIENT' || profile?.role === 'AGENT' || profile?.role === 'ADMIN'
   const uploadedTypes = useMemo(
     () => new Set(documents.filter((document) => document.status !== 'SUPERSEDED').map((document) => document.docType)),
     [documents],
@@ -106,6 +121,16 @@ export function DocumentePage() {
       })
     } finally {
       setDocumentsLoading(false)
+    }
+  }, [])
+
+  const refreshRequests = useCallback(async (appointmentId: string) => {
+    try {
+      setRequests(await listLegalDocumentRequests(appointmentId))
+    } catch (error) {
+      toast.error('Solicitările de documente nu au putut fi încărcate.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
     }
   }, [])
 
@@ -134,11 +159,15 @@ export function DocumentePage() {
   useEffect(() => {
     if (!selectedId) {
       queueMicrotask(() => setDocuments([]))
+      queueMicrotask(() => setRequests([]))
       return
     }
     saveToLS(LS_KEYS.SELECTED_VIZIONARE, selectedId)
-    queueMicrotask(() => void refreshDocuments(selectedId))
-  }, [selectedId, refreshDocuments])
+    queueMicrotask(() => void Promise.all([
+      refreshDocuments(selectedId),
+      refreshRequests(selectedId),
+    ]))
+  }, [selectedId, refreshDocuments, refreshRequests])
 
   const handleFileReady = useCallback(async (docType: DocType, file: File) => {
     if (!user || !selectedViewing) throw new Error('Selecteaza o vizionare.')
@@ -190,6 +219,87 @@ export function DocumentePage() {
       toast.success('Document sters din dosar.')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Documentul nu poate fi sters.')
+    }
+  }
+
+  const activeRequestsForKind = (kind: LegalDocumentKind) => requests.filter((request) =>
+    request.documentKind === kind && ['REQUESTED', 'IN_REVIEW'].includes(request.status),
+  )
+
+  const requiredRequesterId = (role: 'CLIENT' | 'OWNER') =>
+    role === 'CLIENT' ? selectedViewing?.clientId : selectedViewing?.ownerId
+
+  const missingRequestRoles = (kind: LegalDocumentKind) => {
+    if (profile?.role === 'ADMIN' || kind === 'viewing_report') return []
+    const matching = activeRequestsForKind(kind)
+    return LEGAL_REQUEST_REQUIRED_ROLES[kind].filter((role) => {
+      const requesterId = requiredRequesterId(role)
+      return !requesterId || !matching.some((request) => request.requesterId === requesterId)
+    })
+  }
+
+  const handleOpenBuilder = async (kind: LegalDocumentKind) => {
+    if (!user || !selectedViewing || !canGenerateDocuments) return
+    if (kind === 'viewing_report' && selectedViewing.status !== 'completed') return
+    const missing = missingRequestRoles(kind)
+    if (missing.length > 0) {
+      toast.error('Lipsesc datele participanților.', {
+        description: `Așteaptă completarea de la: ${missing.map((role) => role === 'CLIENT' ? 'client' : 'proprietar').join(' și ')}.`,
+      })
+      return
+    }
+
+    const matching = activeRequestsForKind(kind)
+    try {
+      await claimLegalDocumentRequests(
+        matching.map((request) => request.id),
+      )
+      const claimed = matching.map((request) => ({
+        ...request,
+        status: 'IN_REVIEW' as const,
+        handledBy: user.id,
+      }))
+      setBuilderRequests(claimed)
+      setBuilderKind(kind)
+      await refreshRequests(selectedViewing.id)
+    } catch (error) {
+      toast.error('Solicitările nu au putut fi preluate.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    }
+  }
+
+  const handleCancelRequest = async (request: LegalDocumentRequest) => {
+    if (!selectedViewing) return
+    setRequestBusyId(request.id)
+    try {
+      await cancelLegalDocumentRequest(request.id)
+      await refreshRequests(selectedViewing.id)
+      toast.success('Solicitarea a fost anulată.')
+    } catch (error) {
+      toast.error('Solicitarea nu a putut fi anulată.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    } finally {
+      setRequestBusyId(null)
+    }
+  }
+
+  const handleStaffRequestStatus = async (
+    request: LegalDocumentRequest,
+    status: 'NEEDS_INFO' | 'REJECTED',
+    note: string,
+  ) => {
+    if (!selectedViewing) return
+    try {
+      await setLegalDocumentRequestStatus(request.id, status, note)
+      await refreshRequests(selectedViewing.id)
+      toast.success(status === 'NEEDS_INFO' ? 'Completările au fost solicitate.' : 'Solicitarea a fost respinsă.')
+    } catch (error) {
+      toast.error('Starea solicitării nu a putut fi schimbată.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
+      throw error
     }
   }
 
@@ -323,25 +433,47 @@ export function DocumentePage() {
               </CardContent>
             </Card>
 
-            {selectedViewing && canCreateDocuments && (
+            {selectedViewing && (
+              <LegalDocumentRequestPanel
+                role={profile.role}
+                requests={requests}
+                busyId={requestBusyId}
+                onCreate={(kind) => {
+                  setEditingRequest(null)
+                  setRequestKind(kind)
+                }}
+                onEdit={(request) => {
+                  setEditingRequest(request)
+                  setRequestKind(request.documentKind)
+                }}
+                onCancel={handleCancelRequest}
+                onStaffStatus={handleStaffRequestStatus}
+              />
+            )}
+
+            {selectedViewing && canGenerateDocuments && (
               <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 mb-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Documente juridice generate în proiect</CardTitle>
-                    <CardDescription>Fiecare document are câmpuri obligatorii, versiune juridică și traseu de semnare propriu.</CardDescription>
+                    <CardDescription>Agentul verifică datele furnizate de participanți înainte de a genera documentul oficial.</CardDescription>
                   </CardHeader>
                   <CardContent className="grid sm:grid-cols-2 gap-3">
                     {LEGAL_DOCUMENT_ORDER.map((kind) => {
                       const definition = getLegalDocumentDefinition(kind)
                       const viewingReportBlocked = kind === 'viewing_report'
                         && selectedViewing.status !== 'completed'
+                      const missingRoles = missingRequestRoles(kind)
+                      const requestBlocked = profile.role === 'AGENT' && missingRoles.length > 0
+                      const blocked = viewingReportBlocked || requestBlocked
+                      const readyRequests = activeRequestsForKind(kind)
                       return (
                         <Button
                           key={kind}
                           variant="outline"
                           className="h-auto min-h-20 py-4 justify-start gap-3 whitespace-normal"
-                          onClick={() => setBuilderKind(kind)}
-                          disabled={viewingReportBlocked}
+                          onClick={() => void handleOpenBuilder(kind)}
+                          disabled={blocked}
                         >
                           {kind === 'viewing_report'
                             ? <FileCheck2 className="h-5 w-5 shrink-0 text-primary" />
@@ -351,7 +483,11 @@ export function DocumentePage() {
                             <span className="block text-xs font-normal text-muted-foreground">
                               {viewingReportBlocked
                                 ? 'Disponibilă numai după confirmarea prezenței și finalizarea vizionării.'
-                                : definition.description}
+                                : requestBlocked
+                                  ? `Așteaptă datele de la: ${missingRoles.map((role) => role === 'CLIENT' ? 'client' : 'proprietar').join(' și ')}.`
+                                  : readyRequests.length > 0
+                                    ? 'Datele participanților sunt pregătite pentru verificare.'
+                                    : definition.description}
                             </span>
                           </span>
                         </Button>
@@ -370,10 +506,15 @@ export function DocumentePage() {
               </div>
             )}
 
-            {selectedViewing && canCreateDocuments && (
+            {selectedViewing && canUploadDocuments && (
               <Card className="mb-6">
                 <CardContent className="pt-6">
-                  <DocumentUploadArea ref={uploadAreaRef} uploadedTypes={uploadedTypes} onFileReady={handleFileReady} />
+                  <DocumentUploadArea
+                    ref={uploadAreaRef}
+                    uploadedTypes={uploadedTypes}
+                    allowedTypes={profile.role === 'CLIENT' ? ['id_card', 'proof_of_income', 'other'] : undefined}
+                    onFileReady={handleFileReady}
+                  />
                 </CardContent>
               </Card>
             )}
@@ -405,13 +546,42 @@ export function DocumentePage() {
         )}
       </div>
 
-      {user && selectedViewing && (
+      {user && profile && selectedViewing && (profile.role === 'CLIENT' || profile.role === 'OWNER') && (
+        <LegalDocumentRequestDialog
+          kind={requestKind}
+          role={profile.role}
+          user={user}
+          profile={profile}
+          viewing={selectedViewing}
+          request={editingRequest}
+          onOpenChange={(open) => {
+            if (!open) {
+              setRequestKind(null)
+              setEditingRequest(null)
+            }
+          }}
+          onSaved={() => refreshRequests(selectedViewing.id)}
+        />
+      )}
+
+      {user && selectedViewing && canGenerateDocuments && (
         <LegalDocumentBuilderDialog
           kind={builderKind}
           user={user}
           viewing={selectedViewing}
-          onOpenChange={(open) => !open && setBuilderKind(null)}
-          onCreated={() => refreshDocuments(selectedViewing.id)}
+          requestSubmissions={builderRequests}
+          onOpenChange={(open) => {
+            if (!open) {
+              setBuilderKind(null)
+              setBuilderRequests([])
+            }
+          }}
+          onCreated={async () => {
+            await Promise.all([
+              refreshDocuments(selectedViewing.id),
+              refreshRequests(selectedViewing.id),
+            ])
+          }}
         />
       )}
 
