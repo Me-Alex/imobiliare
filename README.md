@@ -42,6 +42,6 @@ bun run check
 - Supabase provides authentication and mirrors authenticated user-submitted listings to `public.properties`.
 - `supabase-setup.sql` is a reviewed bootstrap for a fresh Supabase project. Read it before applying it to an existing database.
 
-Build for Cloudflare with `bun run cf:build`. Preview with `bun run cf:preview`, or deploy with `bun run cf:deploy` after configuring Cloudflare credentials outside the repository.
+Build for Cloudflare with `bun run cf:build`. Preview with `bun run cf:preview`, or deploy with `bun run cf:deploy` after configuring Cloudflare credentials outside the repository. The `Deploy Cloudflare Worker` GitHub Actions workflow deploys every push to `main`; it requires the `CLOUDFLARE_API_TOKEN` repository secret and `CLOUDFLARE_ACCOUNT_ID` repository variable.
 
 This project targets Cloudflare **Workers**, not the legacy static Pages export. For Workers Builds, use `bun run cf:build` as the build command and `bun run cf:deploy` as the deploy command. Remove or reconfigure any older Cloudflare Pages integration that still calls `pages:build`.
