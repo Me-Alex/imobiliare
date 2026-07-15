@@ -1,19 +1,36 @@
 'use client'
 
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  FileText, Download, Trash2, Eye, CheckCircle2, X, Loader2, FolderOpen, Building2,
-  CalendarDays, User, Upload, FileSignature,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  FileCheck2,
+  FileSignature,
+  FileText,
+  FolderLock,
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
+  User,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuth } from '@/contexts/auth-context'
+import { useAppStore } from '@/store/use-app-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
-import { DOC_TYPE_LABELS, LS_KEYS } from '@/lib/constants'
-import type { UploadedDocument, Vizionare } from '@/lib/types'
-import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { PageHero } from '@/components/layout/page-hero'
 import {
   DocumentUploadArea,
@@ -21,566 +38,394 @@ import {
 } from '@/components/features/documents/document-upload-area'
 import { DocumentCard } from '@/components/features/documents/document-card'
 import type { DocType } from '@/components/features/documents/document-type-selector'
+import type { DocumentSigner, ViewingDocument, Vizionare } from '@/lib/types'
+import { DOC_TYPE_LABELS, LS_KEYS } from '@/lib/constants'
+import { loadFromLS, saveToLS } from '@/lib/storage'
+import {
+  createDocumentUrl,
+  deleteViewingDocument,
+  generateViewingDocument,
+  listViewingDocuments,
+  listViewings,
+  signViewingDocument,
+  uploadViewingDocument,
+} from '@/lib/viewing-documents'
+import { formatDateRO } from '@/lib/utils'
 
-// ─── Constants ──────────────────────────────────────────────────────────
+const ROLE_COPY = {
+  CLIENT: 'Incarca actele solicitate, genereaza documentele vizionarii si semneaza-le in siguranta.',
+  OWNER: 'Vezi si semneaza documentele partajate pentru proprietatile tale.',
+  AGENT: 'Pregateste dosarele vizionarilor alocate si urmareste semnaturile participantilor.',
+  ADMIN: 'Administreaza documentele, contractele si jurnalul de audit al tuturor vizionarilor.',
+} as const
 
-const LS_DOCS = LS_KEYS.DOCUMENTS
-const LS_VIZIONARI = LS_KEYS.VIZIONARI
-const LS_SELECTED_VIZIONARE = LS_KEYS.SELECTED_VIZIONARE
-
-const RENTAL_CONTRACT_TEMPLATE = `CONTRACT DE INCHIRIERE
-
-Nr. ___________ / ___________
-
-Incheiat intre:
-PARTILE:
-
-1. PROPRIETARUL: _______________________________
-   CNP: _______________________________________
-   Adresa: _____________________________________
-   Telefon: ____________________________________
-   E-mail: _____________________________________
-
-   denumit in continuare "PROPRIETARUL"
-
-2. LOCATARUL: __________________________________
-   CNP: _______________________________________
-   Seria/Numar CI: _____________________________
-   Adresa: _____________________________________
-   Telefon: ____________________________________
-   E-mail: _____________________________________
-
-   denumit in continuare "LOCATARUL"
-
-OBIECTUL CONTRACTULUI
-
-Art. 1. PROPRIETARUL inchiriaza LOCATARULUI urmatoarea proprietate:
-   - Adresa: ___________________________________
-   - Tip: Apartament / Casa / Spatiu comercial
-   - Suprafata: _______ mp
-   - Numar camere: _______
-
-Art. 2. Proprietatea este inchiriata in stare buna, curata si funcționala, echipata cu:
-   _______________________________________________
-
-DURATA CONTRACTULUI
-
-Art. 3. Contractul este incheiat pe o perioada de _______ luni, incepand cu data
-   de ___________ pana la data de ___________.
-
-CHIRIA SI GAZDUIREA
-
-Art. 4. Chiria lunara este de _______ EUR / RON, platibila in avans pana la
-   data de 5 a fiecarei luni, prin transfer bancar sau numerar.
-
-Art. 5. Depozitul de garantie este de _______ EUR / RON, achitat la semnarea
-   contractului si restituit la finalizarea acestuia, cu exceptia cazului in care
-   exista pagube sau datorii neachitate.
-
-Art. 6. Cheltuielile de utilitati (electricitate, gaz, apa, internet, etc.) sunt
-   suportate de LOCATAR.
-
-OBLIGATIILE PARTILOR
-
-Art. 7. PROPRIETARUL se obliga:
-   a) Sa predea proprietatea in stare buna de utilizare
-   b) Sa efectueze reparatiile necesare care nu sunt cauzate de LOCATAR
-   c) Sa respecte confidentialitatea datelor personale ale LOCATARULUI
-
-Art. 8. LOCATARUL se obliga:
-   a) Sa foloseasca proprietatea exclusiv in scop locativ
-   b) Sa plateasca chiria la timp
-   c) Sa mentina proprietatea in stare buna
-   d) Sa nu subinchirieze fara acordul scris al PROPRIETARULUI
-   e) Sa permita accesul PROPRIETARULUI pentru inspectii, cu preaviz de 48h
-
-REZILIEREA
-
-Art. 9. Contractul poate fi reziliat de oricare parte cu un preaviz de 30 de zile,
-   notificat in scris.
-
-DISPOZITII FINALE
-
-Art. 10. Orice modificari ale prezentului contract se fac prin act aditional
-   semnat de ambele parti.
-
-Art. 11. Litigiile se vor solutiona pe cale amiabila, iar in caz de nerezolvare,
-   de catre instantele judecatoresti competente.
-
-
-SEMNATURI:
-
-PROPRIETARUL                    LOCATARUL
-_______________                 _______________
-(Nume, Prenume)                 (Nume, Prenume)
-Data: ___/___/______            Data: ___/___/______
-`
-
-// ─── Page Component ────────────────────────────────────────────────────
+interface SigningState {
+  document: ViewingDocument
+  signer: DocumentSigner
+}
 
 export function DocumentePage() {
-  // ── State ────────────────────────────────────────────────────────────
-  const [documents, setDocuments] = useState<UploadedDocument[]>(() => {
-    if (typeof window === 'undefined') return []
-    return loadFromLS<UploadedDocument[]>(LS_DOCS, [])
-  })
-  const [allVizionari] = useState<Vizionare[]>(() => {
-    if (typeof window === 'undefined') return []
-    return loadFromLS<Vizionare[]>(LS_VIZIONARI, [])
-  })
-  const [vizionare, setVizionare] = useState<Vizionare | null>(() => {
-    if (typeof window === 'undefined') return null
-    const selectedId = loadFromLS<string | null>(LS_SELECTED_VIZIONARE, null)
-    if (!selectedId) return null
-    const vizionari = loadFromLS<Vizionare[]>(LS_VIZIONARI, [])
-    return vizionari.find((v) => v.id === selectedId) ?? null
-  })
-  const [contractSigning, setContractSigning] = useState(false)
-  const [mounted] = useState(() => typeof window !== 'undefined')
+  const { user, profile, loading: authLoading } = useAuth()
+  const navigateTo = useAppStore((state) => state.navigateTo)
   const uploadAreaRef = useRef<DocumentUploadAreaRef>(null)
+  const [viewings, setViewings] = useState<Vizionare[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [documents, setDocuments] = useState<ViewingDocument[]>([])
+  const [loading, setLoading] = useState(true)
+  const [documentsLoading, setDocumentsLoading] = useState(false)
+  const [generating, setGenerating] = useState<'viewing_report' | 'rental_contract' | null>(null)
+  const [signing, setSigning] = useState<SigningState | null>(null)
+  const [signatureName, setSignatureName] = useState('')
+  const [signatureAccepted, setSignatureAccepted] = useState(false)
+  const [signingBusy, setSigningBusy] = useState(false)
 
-  // ── Persist documents ────────────────────────────────────────────────
-  const persistDocuments = useCallback((newDocs: UploadedDocument[]) => {
-    setDocuments(newDocs)
-    saveToLS(LS_DOCS, newDocs)
+  const selectedViewing = useMemo(
+    () => viewings.find((viewing) => viewing.id === selectedId) ?? null,
+    [selectedId, viewings],
+  )
+
+  const canCreateDocuments = profile?.role === 'CLIENT' || profile?.role === 'AGENT' || profile?.role === 'ADMIN'
+  const uploadedTypes = useMemo(
+    () => new Set(documents.filter((document) => document.status !== 'SUPERSEDED').map((document) => document.docType)),
+    [documents],
+  )
+
+  const refreshDocuments = useCallback(async (appointmentId: string) => {
+    setDocumentsLoading(true)
+    try {
+      setDocuments(await listViewingDocuments(appointmentId))
+    } catch (error) {
+      toast.error('Documentele nu au putut fi incarcate.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    } finally {
+      setDocumentsLoading(false)
+    }
   }, [])
 
-  // ── Derived data ─────────────────────────────────────────────────────
-  const currentDocs = useMemo(
-    () => (vizionare ? documents.filter((d) => d.vizionareId === vizionare.id) : []),
-    [documents, vizionare],
-  )
+  const refreshViewings = useCallback(async () => {
+    if (!user) return
+    setLoading(true)
+    try {
+      const rows = await listViewings()
+      setViewings(rows)
+      const storedId = loadFromLS<string | null>(LS_KEYS.SELECTED_VIZIONARE, null)
+      const nextId = rows.some((row) => row.id === storedId) ? storedId : rows[0]?.id || null
+      setSelectedId(nextId)
+    } catch (error) {
+      toast.error('Vizionarile nu au putut fi incarcate.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
 
-  const docsByVizionare = useMemo(() => {
-    if (vizionare) return []
-    const groups: Record<string, UploadedDocument[]> = {}
-    documents.forEach((d) => {
-      if (!groups[d.vizionareId]) groups[d.vizionareId] = []
-      groups[d.vizionareId].push(d)
-    })
-    return Object.entries(groups).map(([vizId, docs]) => {
-      const v = allVizionari.find((viz) => viz.id === vizId)
-      return { vizionareId: vizId, vizionare: v ?? null, documents: docs }
-    })
-  }, [documents, allVizionari, vizionare])
+  useEffect(() => {
+    if (user) queueMicrotask(() => void refreshViewings())
+  }, [user, refreshViewings])
 
-  const uploadedTypes = useMemo(() => {
-    if (!vizionare) return new Set<DocType>()
-    return new Set(currentDocs.map((d) => d.docType))
-  }, [currentDocs, vizionare])
+  useEffect(() => {
+    if (!selectedId) {
+      queueMicrotask(() => setDocuments([]))
+      return
+    }
+    saveToLS(LS_KEYS.SELECTED_VIZIONARE, selectedId)
+    queueMicrotask(() => void refreshDocuments(selectedId))
+  }, [selectedId, refreshDocuments])
 
-  // ── Upload handler (called by DocumentUploadArea when file is ready) ─
-  const handleFileReady = useCallback(
-    (docType: DocType, fileData: string, fileName: string, fileType: string) => {
-      if (!vizionare) {
-        toast.error('Selecteaza o vizionare pentru a incarca documente')
-        return
-      }
+  const handleFileReady = useCallback(async (docType: DocType, file: File) => {
+    if (!user || !selectedViewing) throw new Error('Selecteaza o vizionare.')
+    try {
+      await uploadViewingDocument({ user, viewing: selectedViewing, docType, file })
+      await refreshDocuments(selectedViewing.id)
+      toast.success('Document incarcat in dosarul privat.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Incarcarea a esuat.'
+      toast.error('Documentul nu a putut fi incarcat.', { description: message })
+      throw error
+    }
+  }, [refreshDocuments, selectedViewing, user])
 
-      const newDoc: UploadedDocument = {
-        id: generateId(),
-        vizionareId: vizionare.id,
-        fileName,
-        fileType,
-        fileData,
-        filePreview: fileData,
-        docType,
-        uploadedAt: new Date().toISOString(),
-      }
+  const handleGenerate = async (kind: 'viewing_report' | 'rental_contract') => {
+    if (!user || !selectedViewing) return
+    if (!selectedViewing.clientId) {
+      toast.error('Vizionarea nu este legata de un profil de client.', {
+        description: 'Un administrator trebuie sa asocieze clientul inainte de generarea documentului.',
+      })
+      return
+    }
 
-      // Replace existing doc of same type for this vizionare
-      const filtered = documents.filter(
-        (d) => !(d.vizionareId === vizionare.id && d.docType === docType),
-      )
+    setGenerating(kind)
+    try {
+      await generateViewingDocument(kind, user, selectedViewing)
+      await refreshDocuments(selectedViewing.id)
+      toast.success(kind === 'viewing_report' ? 'Fisa de vizionare a fost generata.' : 'Modelul de contract a fost generat.')
+    } catch (error) {
+      toast.error('PDF-ul nu a putut fi generat.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    } finally {
+      setGenerating(null)
+    }
+  }
 
-      persistDocuments([...filtered, newDoc])
-      toast.success('Document incarcat cu succes!')
-    },
-    [vizionare, documents, persistDocuments],
-  )
-
-  // ── Document actions ─────────────────────────────────────────────────
-  const handleViewDocument = (doc: UploadedDocument) => {
-    const safeName = doc.fileName
-      .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-    const isImage = doc.fileType.startsWith('image/')
-    const isPdf = doc.fileType === 'application/pdf'
-    const win = window.open('')
-    if (win) {
-      if (isPdf) {
-        win.document.write(`
-          <!DOCTYPE html><html><head><title>${safeName}</title></head>
-          <body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;">
-            <iframe src="${doc.filePreview}" style="width:100%;height:100vh;border:none;"></iframe>
-          </body></html>`)
-      } else if (isImage) {
-        win.document.write(`
-          <!DOCTYPE html><html><head><title>${safeName}</title></head>
-          <body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;">
-            <img src="${doc.filePreview}" style="max-width:100%;max-height:100vh;" alt="${safeName}" />
-          </body></html>`)
+  const handleView = async (document: ViewingDocument) => {
+    const preview = window.open('about:blank', '_blank')
+    try {
+      const url = await createDocumentUrl(document)
+      if (preview) {
+        preview.opener = null
+        preview.location.href = url
       } else {
-        win.document.write(`
-          <!DOCTYPE html><html><head><title>${safeName}</title></head>
-          <body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;">
-            <p style="font-family:sans-serif;color:#666;">Previzualizare nu este disponibila pentru acest tip de fisier.</p>
-          </body></html>`)
+        window.open(url, '_blank', 'noopener,noreferrer')
       }
-      win.document.close()
+    } catch (error) {
+      preview?.close()
+      toast.error(error instanceof Error ? error.message : 'Documentul nu poate fi deschis.')
     }
   }
 
-  const handleDownloadDocument = (doc: UploadedDocument) => {
-    const link = document.createElement('a')
-    link.href = doc.filePreview
-    link.download = doc.fileName
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  const handleDeleteDocument = (docId: string) => {
-    persistDocuments(documents.filter((d) => d.id !== docId))
-    toast.success('Document sters')
-  }
-
-  // ── Contract actions ─────────────────────────────────────────────────
-  const handleDownloadContract = () => {
-    let contractText = RENTAL_CONTRACT_TEMPLATE
-    if (vizionare) {
-      contractText = contractText.replace(
-        '   - Adresa: ___________________________________',
-        `   - Adresa: ${vizionare.propertyTitle}`,
-      )
+  const handleDownload = async (document: ViewingDocument) => {
+    try {
+      const url = await createDocumentUrl(document, true)
+      const link = window.document.createElement('a')
+      link.href = url
+      link.download = document.fileName
+      link.rel = 'noopener'
+      link.click()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Documentul nu poate fi descarcat.')
     }
-    const blob = new Blob([contractText], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `contract_inchiriere_${vizionare?.id ?? 'template'}.txt`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    toast.success('Contract descarcat!')
   }
 
-  const handleSignContract = () => {
-    setContractSigning(true)
-    setTimeout(() => {
-      uploadAreaRef.current?.triggerUpload('rental_contract')
-      setContractSigning(false)
-    }, 100)
+  const handleDelete = async (document: ViewingDocument) => {
+    if (!selectedViewing) return
+    try {
+      await deleteViewingDocument(document)
+      await refreshDocuments(selectedViewing.id)
+      toast.success('Document sters din dosar.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Documentul nu poate fi sters.')
+    }
   }
 
-  // ── Navigation ───────────────────────────────────────────────────────
-  const handleSelectVizionare = (vizId: string) => {
-    saveToLS(LS_SELECTED_VIZIONARE, vizId)
-    const found = allVizionari.find((v) => v.id === vizId) ?? null
-    setVizionare(found)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  const openSigningDialog = (document: ViewingDocument, signer: DocumentSigner) => {
+    setSigning({ document, signer })
+    setSignatureName(profile?.fullName || user?.email?.split('@')[0] || '')
+    setSignatureAccepted(false)
   }
 
-  const handleBackToAll = () => {
-    saveToLS(LS_SELECTED_VIZIONARE, null)
-    setVizionare(null)
+  const handleSign = async () => {
+    if (!signing || !user || !selectedViewing) return
+    if (signatureName.trim().length < 3 || !signatureAccepted) return
+    setSigningBusy(true)
+    try {
+      await signViewingDocument(signing.signer.id, user.id, signatureName)
+      await refreshDocuments(selectedViewing.id)
+      setSigning(null)
+      toast.success('Semnatura a fost inregistrata in jurnalul documentului.')
+    } catch (error) {
+      toast.error('Documentul nu a putut fi semnat.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    } finally {
+      setSigningBusy(false)
+    }
   }
 
-  // ── Guard ────────────────────────────────────────────────────────────
-  if (!mounted) return null
+  if (authLoading) {
+    return <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+  }
 
-  // ── Render ───────────────────────────────────────────────────────────
+  if (!user || !profile) {
+    return (
+      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center px-4">
+        <Card className="max-w-md w-full text-center">
+          <CardHeader>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><User className="h-6 w-6" /></div>
+            <CardTitle>Autentifica-te</CardTitle>
+            <CardDescription>Documentele sunt disponibile numai utilizatorilor autentificati.</CardDescription>
+          </CardHeader>
+          <CardContent><Button onClick={() => navigateTo('login')}>Autentificare</Button></CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const pendingForUser = documents.filter((document) => document.signers.some((signer) => signer.userId === user.id && signer.status === 'PENDING')).length
+  const signedDocuments = documents.filter((document) => document.status === 'SIGNED').length
+
   return (
-    <>
-      <PageHero
-        icon={FileText}
-        title="Documente"
-        description="Incarca si gestioneaza documentele necesare pentru vizionari si contracte"
-        breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Documente' }]}
-      />
+    <div className="min-h-[calc(100vh-10rem)] py-8 px-4">
+      <div className="max-w-6xl mx-auto">
+        <PageHero
+          variant="simple"
+          title="Dosar digital"
+          description={ROLE_COPY[profile.role]}
+          showBackButton
+          onBack={() => navigateTo(profile.role === 'CLIENT' ? 'vizionarile-mele' : 'dashboard')}
+          backLabel="Inapoi"
+        />
 
-      <section className="py-12">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          {/* No vizionare selected — show all docs grouped */}
-          {!vizionare ? (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <FolderOpen className="h-5 w-5 text-muted-foreground" />
-                <h2 className="text-lg font-semibold">Toate Documentele</h2>
-                <Badge variant="secondary" className="ml-1">
-                  {documents.length}
-                </Badge>
-              </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          {[
+            { label: 'Vizionari accesibile', value: viewings.length, icon: CalendarDays },
+            { label: 'Documente', value: documents.length, icon: FileText },
+            { label: 'De semnat de tine', value: pendingForUser, icon: FileSignature },
+            { label: 'Dosare semnate', value: signedDocuments, icon: CheckCircle2 },
+          ].map((stat) => (
+            <Card key={stat.label} className="border-border/60">
+              <CardContent className="p-4">
+                <stat.icon className="h-4 w-4 text-primary mb-3" />
+                <p className="text-2xl font-bold">{stat.value}</p>
+                <p className="text-xs text-muted-foreground">{stat.label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-              {docsByVizionare.length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                    <FileText className="h-12 w-12 text-muted-foreground/40 mb-3" />
-                    <p className="text-muted-foreground font-medium">Nu exista documente incarcate</p>
-                    <p className="text-sm text-muted-foreground/70 mt-1">
-                      Selecteaza o vizionare din sectiunea de programari pentru a incarca documente
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-4">
-                  {docsByVizionare.map((group) => (
-                    <Card key={group.vizionareId} className="hover:shadow-md transition-shadow">
-                      <CardHeader
-                        className="cursor-pointer pb-3"
-                        onClick={() => handleSelectVizionare(group.vizionareId)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                              <Building2 className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-base">
-                                {group.vizionare?.propertyTitle ?? 'Vizionare stearsa'}
-                              </CardTitle>
-                              {group.vizionare && (
-                                <CardDescription className="text-xs">
-                                  <CalendarDays className="h-3 w-3 inline mr-1" />
-                                  {group.vizionare.date} · {group.vizionare.startTime}–{group.vizionare.endTime}
-                                  {' · '}
-                                  <User className="h-3 w-3 inline mr-1" />
-                                  {group.vizionare.staffName}
-                                </CardDescription>
-                              )}
-                            </div>
-                          </div>
-                          <Badge variant="secondary">{group.documents.length} doc</Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="flex flex-wrap gap-2">
-                          {group.documents.map((doc) => (
-                            <div
-                              key={doc.id}
-                              className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-1.5"
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                              <span className="text-xs font-medium">{DOC_TYPE_LABELS[doc.docType]}</span>
-                              <span className="text-[10px] text-muted-foreground">{doc.fileName}</span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleViewDocument(doc)
-                                }}
-                                className="text-muted-foreground hover:text-foreground"
-                                aria-label={`Vezi ${doc.fileName}`}
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          ) : (
-            /* Vizionare selected — show upload section + docs */
-            <>
-              {/* Vizionare context bar */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="glass-card rounded-xl p-4 mb-6"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Building2 className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h2 className="font-semibold text-sm">{vizionare.propertyTitle}</h2>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
-                        <span className="flex items-center gap-1">
-                          <CalendarDays className="h-3 w-3" />
-                          {vizionare.date}, {vizionare.startTime}–{vizionare.endTime}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {vizionare.staffName}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'text-[10px] px-1.5 py-0',
-                            vizionare.status === 'completed' && 'border-emerald-200 text-emerald-600 bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:bg-emerald-950/30',
-                            vizionare.status === 'confirmed' && 'border-blue-200 text-blue-600 bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:bg-blue-950/30',
-                            vizionare.status === 'pending' && 'border-amber-200 text-amber-600 bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:bg-amber-950/30',
-                            vizionare.status === 'cancelled' && 'border-red-200 text-red-600 bg-red-50 dark:border-red-800 dark:text-red-400 dark:bg-red-950/30',
-                          )}
-                        >
-                          {vizionare.status === 'pending' && 'In asteptare'}
-                          {vizionare.status === 'confirmed' && 'Confirmata'}
-                          {vizionare.status === 'completed' && 'Finalizata'}
-                          {vizionare.status === 'cancelled' && 'Anulata'}
-                        </Badge>
-                      </div>
-                    </div>
+        {loading ? (
+          <div className="py-20 flex justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+        ) : viewings.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="py-16 text-center">
+              <FolderLock className="h-10 w-10 mx-auto text-muted-foreground/50 mb-4" />
+              <h2 className="font-semibold">Nu exista vizionari asociate contului</h2>
+              <p className="text-sm text-muted-foreground mt-1 mb-5">Dosarul digital va fi creat dupa programarea unei vizionari.</p>
+              {profile.role === 'CLIENT' && <Button onClick={() => navigateTo('programare-vizionare')}>Programeaza o vizionare</Button>}
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base">Selecteaza vizionarea</CardTitle>
+                    <CardDescription>Fiecare vizionare are propriul dosar si propriul jurnal.</CardDescription>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={handleBackToAll}>
-                    <X className="h-4 w-4 mr-1" />
-                    Inapoi
+                  <Button variant="outline" size="sm" onClick={() => void refreshViewings()} className="gap-2">
+                    <RefreshCw className="h-3.5 w-3.5" /> Actualizeaza
                   </Button>
                 </div>
-              </motion.div>
-
-              {/* Document Upload Section */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-              >
-                <DocumentUploadArea
-                  ref={uploadAreaRef}
-                  uploadedTypes={uploadedTypes}
-                  onFileReady={handleFileReady}
-                />
-              </motion.div>
-
-              {/* Rental Contract Section — shown when completed */}
-              {vizionare.status === 'completed' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="mb-8"
+              </CardHeader>
+              <CardContent>
+                <select
+                  value={selectedId || ''}
+                  onChange={(event) => setSelectedId(event.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  aria-label="Vizionare selectata"
                 >
-                  <div className="flex items-center gap-2 mb-4">
-                    <FileSignature className="h-5 w-5 text-muted-foreground" />
-                    <h2 className="text-lg font-semibold">Contract de Inchiriere</h2>
-                  </div>
+                  {viewings.map((viewing) => (
+                    <option key={viewing.id} value={viewing.id}>
+                      {viewing.propertyTitle} - {formatDateRO(viewing.date)}, {viewing.startTime}
+                    </option>
+                  ))}
+                </select>
 
-                  <Card className="overflow-hidden">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Sabloan Contract</CardTitle>
-                      <CardDescription>
-                        Descarca sablonul, semneaza-l, apoi incarca versiunea semnata
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="rounded-lg border bg-muted/30 p-4 max-h-64 overflow-y-auto">
-                        <pre className="text-[11px] leading-relaxed text-muted-foreground font-mono whitespace-pre-wrap">
-                          {RENTAL_CONTRACT_TEMPLATE.slice(0, 800)}...
-                        </pre>
-                      </div>
-
-                      <div className="flex flex-wrap gap-3">
-                        <Button variant="outline" onClick={handleDownloadContract}>
-                          <Download className="h-4 w-4 mr-1.5" />
-                          Descarca Contract
-                        </Button>
-                        <Button onClick={handleSignContract} disabled={contractSigning}>
-                          {contractSigning ? (
-                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                          ) : (
-                            <FileSignature className="h-4 w-4 mr-1.5" />
-                          )}
-                          Semneaza si Incarca
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-
-              {/* Uploaded Documents List */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                  <h2 className="text-lg font-semibold">Documente Incarcate</h2>
-                  <Badge variant="secondary" className="ml-1">
-                    {currentDocs.length}
-                  </Badge>
-                </div>
-
-                {currentDocs.length === 0 ? (
-                  <Card className="border-dashed">
-                    <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-                      <Upload className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                      <p className="text-muted-foreground font-medium text-sm">
-                        Selecteaza o vizionare pentru a incarca documente
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card>
-                    <CardContent className="p-0">
-                      {/* Desktop table */}
-                      <div className="hidden sm:block overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b bg-muted/30">
-                              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                                Document
-                              </th>
-                              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                                Tip
-                              </th>
-                              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                                Dimensiune
-                              </th>
-                              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                                Data
-                              </th>
-                              <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-3">
-                                Actiuni
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y">
-                            {currentDocs.map((doc) => (
-                              <DocumentCard
-                                key={doc.id}
-                                document={doc}
-                                onView={handleViewDocument}
-                                onDownload={handleDownloadDocument}
-                                onDelete={handleDeleteDocument}
-                              />
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Mobile cards */}
-                      <div className="sm:hidden divide-y">
-                        {currentDocs.map((doc) => (
-                          <DocumentCard
-                            key={doc.id}
-                            document={doc}
-                            onView={handleViewDocument}
-                            onDownload={handleDownloadDocument}
-                            onDelete={handleDeleteDocument}
-                          />
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                {selectedViewing && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1.5"><Building2 className="h-4 w-4" /> {selectedViewing.propertyTitle}</span>
+                    <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> {formatDateRO(selectedViewing.date)}, {selectedViewing.startTime}-{selectedViewing.endTime}</span>
+                    <Badge variant="outline">{selectedViewing.staffName}</Badge>
+                  </motion.div>
                 )}
-              </motion.div>
-            </>
-          )}
-        </div>
-      </section>
-    </>
+              </CardContent>
+            </Card>
+
+            {selectedViewing && canCreateDocuments && (
+              <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 mb-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Documente generate in proiect</CardTitle>
+                    <CardDescription>Datele vizionarii sunt completate automat intr-un PDF privat.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid sm:grid-cols-2 gap-3">
+                    <Button variant="outline" className="h-auto py-4 justify-start gap-3" disabled={Boolean(generating)} onClick={() => void handleGenerate('viewing_report')}>
+                      {generating === 'viewing_report' ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileCheck2 className="h-5 w-5 text-primary" />}
+                      <span className="text-left"><span className="block font-medium">Genereaza fisa de vizionare</span><span className="block text-xs font-normal text-muted-foreground">Pregatita pentru semnare</span></span>
+                    </Button>
+                    <Button variant="outline" className="h-auto py-4 justify-start gap-3" disabled={Boolean(generating)} onClick={() => void handleGenerate('rental_contract')}>
+                      {generating === 'rental_contract' ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileSignature className="h-5 w-5 text-primary" />}
+                      <span className="text-left"><span className="block font-medium">Genereaza modelul de contract</span><span className="block text-xs font-normal text-muted-foreground">Model de lucru editabil ulterior</span></span>
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Alert>
+                  <ShieldCheck className="h-4 w-4" />
+                  <AlertTitle>Semnatura electronica simpla</AlertTitle>
+                  <AlertDescription>
+                    Aplicatia salveaza identitatea, data, consimtamantul si hash-ul documentului. Nu este prezentata ca semnatura calificata eIDAS.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
+            {selectedViewing && canCreateDocuments && (
+              <Card className="mb-6">
+                <CardContent className="pt-6">
+                  <DocumentUploadArea ref={uploadAreaRef} uploadedTypes={uploadedTypes} onFileReady={handleFileReady} />
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2"><FolderLock className="h-4 w-4 text-primary" /> Documentele dosarului</CardTitle>
+                <CardDescription>Fisiere private, disponibile numai participantilor autorizati.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {documentsLoading ? (
+                  <div className="py-14 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                ) : documents.length === 0 ? (
+                  <div className="py-14 px-4 text-center text-sm text-muted-foreground">Nu exista documente in acest dosar.</div>
+                ) : (
+                  <>
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead><tr className="border-b bg-muted/30 text-left"><th className="px-4 py-3 font-medium">Document</th><th className="px-4 py-3 font-medium">Tip</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Marime</th><th className="px-4 py-3 font-medium">Data</th><th className="px-4 py-3 font-medium text-right">Actiuni</th></tr></thead>
+                        <tbody>{documents.map((document) => <DocumentCard key={document.id} document={document} currentUserId={user.id} canDelete={!document.lockedAt && document.userId === user.id && !['SIGNED', 'PARTIALLY_SIGNED'].includes(document.status)} onView={handleView} onDownload={handleDownload} onDelete={handleDelete} onSign={openSigningDialog} />)}</tbody>
+                      </table>
+                    </div>
+                    <div className="md:hidden divide-y">{documents.map((document) => <DocumentCard key={document.id} document={document} currentUserId={user.id} canDelete={!document.lockedAt && document.userId === user.id && !['SIGNED', 'PARTIALLY_SIGNED'].includes(document.status)} onView={handleView} onDownload={handleDownload} onDelete={handleDelete} onSign={openSigningDialog} />)}</div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
+
+      <Dialog open={Boolean(signing)} onOpenChange={(open) => !open && !signingBusy && setSigning(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Semneaza documentul</DialogTitle>
+            <DialogDescription>{signing?.document.title}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+              Hash document: <span className="font-mono break-all text-foreground">{signing?.document.checksum || 'indisponibil'}</span>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="signature-name" className="text-sm font-medium">Numele complet</label>
+              <Input id="signature-name" value={signatureName} onChange={(event) => setSignatureName(event.target.value)} autoComplete="name" />
+            </div>
+            <label className="flex items-start gap-3 text-sm cursor-pointer">
+              <input type="checkbox" checked={signatureAccepted} onChange={(event) => setSignatureAccepted(event.target.checked)} className="mt-1 h-4 w-4 accent-primary" />
+              <span>Confirm ca am citit documentul, ca datele sunt corecte si ca doresc sa il semnez electronic.</span>
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={signingBusy} onClick={() => setSigning(null)}>Renunta</Button>
+            <Button disabled={signingBusy || !signatureAccepted || signatureName.trim().length < 3} onClick={() => void handleSign()} className="gap-2">
+              {signingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSignature className="h-4 w-4" />}
+              Semneaza
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

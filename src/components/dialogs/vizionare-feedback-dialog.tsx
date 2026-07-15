@@ -14,8 +14,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { loadFromLS, saveToLS } from '@/lib/storage'
-import { LS_KEYS, MONTH_NAMES_SHORT } from '@/lib/constants'
+import { MONTH_NAMES_SHORT } from '@/lib/constants'
 import type { Vizionare } from '@/lib/types'
 import { toast } from 'sonner'
 
@@ -82,7 +81,7 @@ interface VizionareFeedbackDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   vizionare: Vizionare | null
-  onSaved: () => void
+  onSaved: (input: { rating: number; feedback: string; wouldProceed: boolean; notes: string }) => Promise<void>
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────
@@ -113,7 +112,7 @@ export function VizionareFeedbackDialog({
     [vizionare, onOpenChange]
   )
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!vizionare) return
     if (rating === 0) {
       toast.error('Rating obligatoriu', {
@@ -124,20 +123,10 @@ export function VizionareFeedbackDialog({
 
     setSaving(true)
     try {
-      const all = loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, [])
-      const idx = all.findIndex((v) => v.id === vizionare.id)
-      if (idx !== -1) {
-        all[idx].rating = rating
-        all[idx].feedback = feedback.trim() || undefined
-        all[idx].wouldProceed = wouldProceed
-        all[idx].completedAt = vizionare.completedAt || new Date().toISOString()
-        all[idx].notes = notes.trim()
-        saveToLS(LS_KEYS.VIZIONARI, all)
-      }
+      await onSaved({ rating, feedback, wouldProceed, notes })
       toast.success('Feedback salvat', {
         description: 'Multumim pentru feedback-ul tau!',
       })
-      onSaved()
       onOpenChange(false)
     } catch {
       toast.error('Eroare', {

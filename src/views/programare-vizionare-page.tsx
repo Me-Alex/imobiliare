@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
 import { LS_KEYS, DEFAULT_STAFF } from '@/lib/constants'
-import type { StaffMember, AvailabilitySlot, Vizionare, UserProperty } from '@/lib/types'
+import type { StaffMember, AvailabilitySlot, UserProperty } from '@/lib/types'
 import { toast } from 'sonner'
 import { PageHero } from '@/components/layout/page-hero'
 import { toDateString } from '@/lib/utils'
@@ -16,6 +16,7 @@ import { StepIndicator } from '@/components/vizionare/step-indicator'
 import { PropertyPickerStep } from '@/components/vizionare/property-picker-step'
 import { StaffDatePickerStep } from '@/components/vizionare/staff-date-picker-step'
 import { ConfirmationStep } from '@/components/vizionare/confirmation-step'
+import { createViewing } from '@/lib/viewing-documents'
 
 // ─── Seed availability helper ────────────────────────────────────────────────
 
@@ -106,74 +107,46 @@ export function ProgramareVizionarePage() {
     setSelectedSlot(slot)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!user || !selectedProperty || !selectedStaff || !selectedDate || !selectedSlot) return
 
     setIsSubmitting(true)
-
-    // Create vizionare
-    const vizionare: Vizionare = {
-      id: generateId(),
-      propertyId: selectedProperty.id,
-      propertyTitle: selectedProperty.title,
-      userId: user.id,
-      userName: user.user_metadata?.full_name || user.email || '',
-      userEmail: user.email || '',
-      staffId: selectedStaff.id,
-      staffName: selectedStaff.name,
-      date: selectedDate,
-      startTime: selectedSlot.startTime,
-      endTime: selectedSlot.endTime,
-      status: 'pending',
-      notes,
-      createdAt: new Date().toISOString(),
-    }
-
-    // Save to localStorage (for backward compatibility)
-    const existing = loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, [])
-    existing.push(vizionare)
-    saveToLS(LS_KEYS.VIZIONARI, existing)
-
-    // Persist to database
-    fetch('/api/vizionari', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: user.id,
-        userEmail: user.email || '',
-        userName: user.user_metadata?.full_name || user.email || '',
+    try {
+      await createViewing({
+        user,
         propertyId: selectedProperty.id,
         propertyTitle: selectedProperty.title,
-        propertyZone: (selectedProperty as Record<string, unknown>).zone as string || undefined,
         staffId: selectedStaff.id,
         staffName: selectedStaff.name,
         date: selectedDate,
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
         notes,
-      }),
-    }).catch((err) => console.error('Failed to persist vizionare to DB:', err))
+      })
 
-    // Mark slot as booked
-    const slots = loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
-    const slotIndex = slots.findIndex(s => s.id === selectedSlot.id)
-    if (slotIndex !== -1) {
-      slots[slotIndex].isBooked = true
-      slots[slotIndex].bookedBy = user.id
-      slots[slotIndex].bookedByName = user.user_metadata?.full_name || user.email || ''
-      saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
-    }
+      // Availability remains local for the current MVP, while the appointment
+      // itself is now persisted and protected by Supabase RLS.
+      const slots = loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
+      const slotIndex = slots.findIndex(s => s.id === selectedSlot.id)
+      if (slotIndex !== -1) {
+        slots[slotIndex].isBooked = true
+        slots[slotIndex].bookedBy = user.id
+        slots[slotIndex].bookedByName = user.user_metadata?.full_name || user.email || ''
+        saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
+      }
 
-    // Clear context
-    setVizionareProperty(null, null)
-
-    setTimeout(() => {
-      setIsSubmitting(false)
+      setVizionareProperty(null, null)
       toast.success('Vizionare programata cu succes!', {
         description: `Vei fi contactat de ${selectedStaff.name} pentru confirmare.`,
       })
       navigateTo('vizionarile-mele')
-    }, 600)
+    } catch (error) {
+      toast.error('Vizionarea nu a putut fi programata.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const canProceedStep2 = !!selectedProperty

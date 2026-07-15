@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CalendarDays, Clock, User,
@@ -18,6 +18,11 @@ import { VizionareFeedbackDialog } from '@/components/dialogs/vizionare-feedback
 import { toast } from 'sonner'
 import { PageHero } from '@/components/layout/page-hero'
 import { VizionareCard } from '@/components/features/vizionare-card'
+import {
+  cancelViewing,
+  listViewings,
+  saveViewingFeedback,
+} from '@/lib/viewing-documents'
 
 // ─── Empty State ────────────────────────────────────────────────────────────
 
@@ -53,18 +58,31 @@ function TimelineDot({ status }: { status: Vizionare['status'] }) {
 export function VizionarileMelePage() {
   const { user, loading: authLoading } = useAuth()
   const { navigateTo, setVizionareProperty } = useAppStore()
-  const [refreshKey, setRefreshKey] = useState(0)
+  const [vizionari, setVizionari] = useState<Vizionare[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('active')
 
   // Feedback dialog state
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackVizionare, setFeedbackVizionare] = useState<Vizionare | null>(null)
 
-  const vizionari = useMemo(() => {
-    if (!user) return []
-    const all = loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, [])
-    return all.filter(v => v.userId === user.id)
-  }, [user, refreshKey])
+  const refreshViewings = useCallback(async () => {
+    if (!user) return
+    setDataLoading(true)
+    try {
+      setVizionari(await listViewings())
+    } catch (error) {
+      toast.error('Vizionarile nu au putut fi incarcate.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    } finally {
+      setDataLoading(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (user) queueMicrotask(() => void refreshViewings())
+  }, [user, refreshViewings])
 
   const activeVizionari = useMemo(
     () => vizionari.filter(v => v.status === 'pending' || v.status === 'confirmed')
@@ -78,56 +96,57 @@ export function VizionarileMelePage() {
     [vizionari]
   )
 
-  const handleCancel = useCallback((id: string) => {
-    const all = loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, [])
-    const idx = all.findIndex(v => v.id === id)
-    if (idx !== -1) {
-      all[idx].status = 'cancelled'
-      saveToLS(LS_KEYS.VIZIONARI, all)
-      // Also free the availability slot
-      const slots = loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
-      const slotIdx = slots.findIndex(
-        (s: AvailabilitySlot) =>
-          s.staffId === all[idx].staffId &&
-          s.date === all[idx].date &&
-          s.startTime === all[idx].startTime &&
-          s.isBooked
-      )
-      if (slotIdx !== -1) {
-        slots[slotIdx].isBooked = false
-        slots[slotIdx].bookedBy = null
-        slots[slotIdx].bookedByName = null
-        saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
+  const handleCancel = useCallback(async (id: string) => {
+    try {
+      await cancelViewing(id)
+      const cancelled = vizionari.find((viewing) => viewing.id === id)
+      if (cancelled) {
+        const slots = loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
+        const slotIdx = slots.findIndex((slot) =>
+          slot.staffId === cancelled.staffId && slot.date === cancelled.date &&
+          slot.startTime === cancelled.startTime && slot.isBooked
+        )
+        if (slotIdx !== -1) {
+          slots[slotIdx].isBooked = false
+          slots[slotIdx].bookedBy = null
+          slots[slotIdx].bookedByName = null
+          saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
+        }
       }
-      setRefreshKey(k => k + 1)
+      await refreshViewings()
       toast.success('Vizionare anulata', { description: 'Programarea a fost anulata cu succes.' })
+    } catch (error) {
+      toast.error('Vizionarea nu a putut fi anulata.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
     }
-  }, [])
+  }, [refreshViewings, vizionari])
 
   const handleAddFeedback = useCallback((v: Vizionare) => {
     setFeedbackVizionare(v)
     setFeedbackOpen(true)
   }, [])
 
-  const handleFeedbackSaved = useCallback(() => {
-    setRefreshKey(k => k + 1)
-  }, [])
+  const handleFeedbackSaved = useCallback(async (input: {
+    rating: number
+    feedback: string
+    wouldProceed: boolean
+    notes: string
+  }) => {
+    if (!feedbackVizionare) return
+    await saveViewingFeedback(feedbackVizionare.id, input)
+    await refreshViewings()
+  }, [feedbackVizionare, refreshViewings])
 
-  const handleReschedule = useCallback((v: Vizionare) => {
-    // Cancel the existing vizionare
-    const all = loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, [])
-    const idx = all.findIndex(item => item.id === v.id)
-    if (idx !== -1) {
-      all[idx].status = 'cancelled'
-      saveToLS(LS_KEYS.VIZIONARI, all)
-
-      // Free the availability slot
+  const handleReschedule = useCallback(async (v: Vizionare) => {
+    try {
+      await cancelViewing(v.id)
       const slots = loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
       const slotIdx = slots.findIndex(
         (s: AvailabilitySlot) =>
-          s.staffId === all[idx].staffId &&
-          s.date === all[idx].date &&
-          s.startTime === all[idx].startTime &&
+          s.staffId === v.staffId &&
+          s.date === v.date &&
+          s.startTime === v.startTime &&
           s.isBooked
       )
       if (slotIdx !== -1) {
@@ -136,17 +155,19 @@ export function VizionarileMelePage() {
         slots[slotIdx].bookedByName = null
         saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
       }
+      setVizionareProperty(v.propertyId, v.propertyTitle)
+      navigateTo('programare-vizionare')
+      toast.info('Reprogramare', {
+        description: 'Vizionarea anterioara a fost anulata. Alege o noua data.',
+      })
+    } catch (error) {
+      toast.error('Vizionarea nu a putut fi reprogramata.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
     }
-
-    // Pre-select the property and navigate
-    setVizionareProperty(v.propertyId, v.propertyTitle)
-    navigateTo('programare-vizionare')
-    toast.info('Reprogramare', {
-      description: 'Vizionarea anterioara a fost anulata. Alege o noua data.',
-    })
   }, [setVizionareProperty, navigateTo])
 
-  if (authLoading) {
+  if (authLoading || (user && dataLoading)) {
     return (
       <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />

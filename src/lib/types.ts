@@ -24,7 +24,9 @@ export interface AvailabilitySlot {
 // Vizionare (viewing appointment)
 export interface Vizionare {
   id: string
+  clientId?: string | null
   propertyId: string
+  propertyUuid?: string | null
   propertyTitle: string
   userId: string
   userName: string
@@ -53,6 +55,66 @@ export interface UploadedDocument {
   filePreview: string // data URL for preview
   docType: 'id_card' | 'proof_of_income' | 'vizionare_sign' | 'rental_contract' | 'other'
   uploadedAt: string
+}
+
+export type ViewingDocumentType = UploadedDocument['docType']
+
+export type ViewingDocumentStatus =
+  | 'DRAFT'
+  | 'PENDING'
+  | 'UPLOADED'
+  | 'READY_TO_SIGN'
+  | 'PARTIALLY_SIGNED'
+  | 'SIGNED'
+  | 'DECLINED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'SUPERSEDED'
+
+export interface DocumentSigner {
+  id: string
+  userId: string
+  role: 'CLIENT' | 'OWNER' | 'AGENT' | 'ADMIN'
+  status: 'PENDING' | 'SIGNED' | 'DECLINED'
+  required: boolean
+  signatureName: string | null
+  signatureMethod: 'TYPED' | 'EXTERNAL_PROVIDER' | null
+  documentChecksum: string | null
+  signedAt: string | null
+}
+
+export interface DocumentEvent {
+  id: number
+  actorId: string | null
+  eventType: 'CREATED' | 'UPLOADED' | 'SENT_FOR_SIGNATURE' | 'SIGNED' | 'DECLINED' | 'COMPLETED'
+  metadata: Record<string, unknown>
+  createdAt: string
+}
+
+export interface ViewingDocument {
+  id: string
+  appointmentId: string | null
+  propertyId: string | null
+  templateId: string | null
+  userId: string
+  title: string
+  docType: ViewingDocumentType
+  status: ViewingDocumentStatus
+  visibility: 'PRIVATE' | 'PARTICIPANTS' | 'AGENT' | 'OWNER'
+  storageBucket: string
+  storagePath: string | null
+  fileName: string
+  fileType: string
+  byteSize: number
+  checksum: string | null
+  version: number
+  uploadedAt: string
+  lockedAt: string | null
+  signedAt: string | null
+  signatureLevel: string | null
+  signers: DocumentSigner[]
+  events: DocumentEvent[]
 }
 
 // Document type labels (type only — value lives in @/lib/constants)
