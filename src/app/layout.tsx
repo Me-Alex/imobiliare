@@ -42,17 +42,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ro" suppressHydrationWarning>
-      <head>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+      >
         {/* OpenNext can reference this esbuild helper from next-themes' inline bootstrap. */}
         <script
+          id="open-next-name-helper"
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: "globalThis.__name=globalThis.__name||function(target){return target}",
           }}
         />
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
-      >
         {children}
       </body>
     </html>
