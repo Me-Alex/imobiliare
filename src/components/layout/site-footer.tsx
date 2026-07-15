@@ -243,7 +243,7 @@ export function SiteFooter() {
           <p className="animate-[fadeInUp_0.6s_ease-out_forwards]">&copy; {new Date().getFullYear()} HQS Imobiliare. Toate drepturile rezervate.</p>
           <div className="flex items-center gap-4">
             <a href="#" className="link-underline hover:text-foreground transition-colors">Termeni si conditii</a>
-            <a href="#" className="link-underline hover:text-foreground transition-colors">Politica de confidentialitate</a>
+            <a href="/confidentialitate" className="link-underline hover:text-foreground transition-colors">Politica de confidentialitate</a>
             <a href="#" className="link-underline hover:text-foreground transition-colors">Cookies</a>
             <Separator orientation="vertical" className="hidden sm:block h-4" />
             <button
