@@ -90,7 +90,7 @@ export function DashboardPage() {
   const vizionari = useMemo(() => loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, []), [])
   const documents = useMemo(() => loadFromLS<UploadedDocument[]>(LS_KEYS.DOCUMENTS, []), [])
   const savedSearches = useMemo(() => loadFromLS<Array<{ id: string }>>(LS_KEYS.SAVED_SEARCHES, []), [])
-  const activeVizionari = vizionari.filter((item) => item.status === 'pending' || item.status === 'confirmed')
+  const activeVizionari = vizionari.filter((item) => ['pending', 'confirmed', 'checked_in'].includes(item.status))
 
   if (loading) {
     return <div className="min-h-[calc(100vh-10rem)] animate-pulse bg-muted/10" />

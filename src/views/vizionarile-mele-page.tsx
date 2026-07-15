@@ -20,7 +20,12 @@ import { PageHero } from '@/components/layout/page-hero'
 import { VizionareCard } from '@/components/features/vizionare-card'
 import {
   cancelViewing,
+  cancelViewingByAgent,
+  checkInViewing,
+  completeViewing,
+  confirmViewing,
   listViewings,
+  markViewingNoShow,
   saveViewingFeedback,
 } from '@/lib/viewing-documents'
 
@@ -48,7 +53,11 @@ function TimelineDot({ status }: { status: Vizionare['status'] }) {
     pending: 'bg-yellow-400',
     confirmed: 'bg-emerald-500',
     completed: 'bg-blue-500',
+    checked_in: 'bg-violet-500',
     cancelled: 'bg-red-400',
+    cancelled_by_client: 'bg-red-400',
+    cancelled_by_agent: 'bg-red-400',
+    no_show: 'bg-orange-500',
   }
   return <div className={`w-3 h-3 rounded-full ${colorMap[status] || 'bg-muted'} ring-4 ring-background flex-shrink-0`} />
 }
@@ -56,7 +65,7 @@ function TimelineDot({ status }: { status: Vizionare['status'] }) {
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export function VizionarileMelePage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading } = useAuth()
   const { navigateTo, setVizionareProperty } = useAppStore()
   const [vizionari, setVizionari] = useState<Vizionare[]>([])
   const [dataLoading, setDataLoading] = useState(true)
@@ -85,13 +94,13 @@ export function VizionarileMelePage() {
   }, [user, refreshViewings])
 
   const activeVizionari = useMemo(
-    () => vizionari.filter(v => v.status === 'pending' || v.status === 'confirmed')
+    () => vizionari.filter(v => ['pending', 'confirmed', 'checked_in'].includes(v.status))
       .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime)),
     [vizionari]
   )
 
   const historyVizionari = useMemo(
-    () => vizionari.filter(v => v.status === 'completed' || v.status === 'cancelled')
+    () => vizionari.filter(v => ['completed', 'cancelled', 'cancelled_by_client', 'cancelled_by_agent', 'no_show'].includes(v.status))
       .sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime)),
     [vizionari]
   )
@@ -167,6 +176,30 @@ export function VizionarileMelePage() {
     }
   }, [setVizionareProperty, navigateTo])
 
+  const runOperationalAction = useCallback(async (
+    id: string,
+    action: () => Promise<void>,
+    success: string,
+  ) => {
+    try {
+      await action()
+      await refreshViewings()
+      toast.success(success)
+    } catch (error) {
+      toast.error('Starea vizionării nu a putut fi schimbată.', {
+        description: error instanceof Error ? error.message : undefined,
+      })
+    }
+  }, [refreshViewings])
+
+  const handleCancelByAgent = useCallback((id: string) => {
+    const reason = window.prompt('Motivul anulării de către agenție:')
+    if (!reason) return
+    void runOperationalAction(id, () => cancelViewingByAgent(id, reason), 'Vizionarea a fost anulată de agenție.')
+  }, [runOperationalAction])
+
+  const canManage = profile?.role === 'AGENT' || profile?.role === 'ADMIN'
+
   if (authLoading || (user && dataLoading)) {
     return (
       <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
@@ -203,8 +236,10 @@ export function VizionarileMelePage() {
       <div className="max-w-3xl mx-auto">
         <PageHero
           variant="simple"
-          title="Vizionarile Mele"
-          description="Gestioneaza programarile tale de vizionare."
+          title={canManage ? 'Agenda vizionărilor' : 'Vizionările mele'}
+          description={canManage
+            ? 'Confirmă programările, prezența, finalizarea sau neprezentarea, cu jurnal de audit.'
+            : 'Gestionează programările tale de vizionare.'}
           showBackButton
           onBack={() => navigateTo('acasa')}
           backLabel="Inapoi"
@@ -215,7 +250,7 @@ export function VizionarileMelePage() {
           {[
             { label: 'Active', count: activeVizionari.length, icon: CalendarCheck, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' },
             { label: 'In asteptare', count: activeVizionari.filter(v => v.status === 'pending').length, icon: Clock, color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' },
-            { label: 'Confirmate', count: activeVizionari.filter(v => v.status === 'confirmed').length, icon: CalendarDays, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' },
+            { label: 'Confirmate / prezenți', count: activeVizionari.filter(v => v.status === 'confirmed' || v.status === 'checked_in').length, icon: CalendarDays, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' },
             { label: 'Istoric', count: historyVizionari.length, icon: CalendarX2, color: 'text-muted-600 bg-muted/50' },
           ].map(stat => (
             <div key={stat.label} className="glass-card rounded-xl p-3 sm:p-4 text-center">
@@ -260,9 +295,16 @@ export function VizionarileMelePage() {
                     <VizionareCard
                       key={v.id}
                       vizionare={v}
+                      canManage={canManage}
+                      currentUserId={user.id}
                       onCancel={handleCancel}
                       onAddFeedback={handleAddFeedback}
                       onReschedule={handleReschedule}
+                      onConfirm={(id) => void runOperationalAction(id, () => confirmViewing(id), 'Programarea a fost confirmată.')}
+                      onCheckIn={(id) => void runOperationalAction(id, () => checkInViewing(id), 'Prezența clientului a fost confirmată.')}
+                      onComplete={(id) => void runOperationalAction(id, () => completeViewing(id), 'Vizionarea a fost finalizată. Fișa poate fi generată.')}
+                      onNoShow={(id) => void runOperationalAction(id, () => markViewingNoShow(id), 'Neprezentarea a fost consemnată fără penalizare automată.')}
+                      onCancelByAgent={handleCancelByAgent}
                     />
                   ))}
                 </div>
@@ -274,7 +316,7 @@ export function VizionarileMelePage() {
               )}
             </AnimatePresence>
 
-            {activeVizionari.length > 0 && (
+            {activeVizionari.length > 0 && !canManage && (
               <div className="mt-6 text-center">
                 <Button
                   variant="outline"
@@ -302,9 +344,16 @@ export function VizionarileMelePage() {
                         <TimelineDot status={v.status} />
                         <VizionareCard
                           vizionare={v}
+                          canManage={canManage}
+                          currentUserId={user.id}
                           onCancel={handleCancel}
                           onAddFeedback={handleAddFeedback}
                           onReschedule={handleReschedule}
+                          onConfirm={(id) => void runOperationalAction(id, () => confirmViewing(id), 'Programarea a fost confirmată.')}
+                          onCheckIn={(id) => void runOperationalAction(id, () => checkInViewing(id), 'Prezența clientului a fost confirmată.')}
+                          onComplete={(id) => void runOperationalAction(id, () => completeViewing(id), 'Vizionarea a fost finalizată. Fișa poate fi generată.')}
+                          onNoShow={(id) => void runOperationalAction(id, () => markViewingNoShow(id), 'Neprezentarea a fost consemnată fără penalizare automată.')}
+                          onCancelByAgent={handleCancelByAgent}
                         />
                       </div>
                     ))}

@@ -5,8 +5,14 @@ import type { StaffMember, Vizionare, DocTypeLabelMap, CoinReward } from './type
 export const DOC_TYPE_LABELS: DocTypeLabelMap = {
   id_card: 'Carte de Identitate',
   proof_of_income: 'Adeverinta de Venit',
-  vizionare_sign: 'Semnatura Vizionare',
+  vizionare_sign: 'Fisa de Vizionare',
+  brokerage_contract: 'Contract de Intermediere',
+  owner_mandate: 'Mandat Proprietar',
+  reservation_offer: 'Oferta / Rezervare',
   rental_contract: 'Contract de Inchiriere',
+  handover_protocol: 'Predare-Primire',
+  addendum: 'Act Aditional',
+  termination_notice: 'Incetare Contract',
   other: 'Alt Document',
 }
 
@@ -71,6 +77,11 @@ export const VIZIONARE_STATUS_CONFIG: Record<
     variant: 'default',
     className: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700',
   },
+  checked_in: {
+    label: 'Client prezent',
+    variant: 'default',
+    className: 'bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-700',
+  },
   completed: {
     label: 'Finalizata',
     variant: 'secondary',
@@ -81,7 +92,33 @@ export const VIZIONARE_STATUS_CONFIG: Record<
     variant: 'destructive',
     className: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700',
   },
+  cancelled_by_client: {
+    label: 'Anulată de client',
+    variant: 'destructive',
+    className: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700',
+  },
+  cancelled_by_agent: {
+    label: 'Anulată de agenție',
+    variant: 'destructive',
+    className: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700',
+  },
+  no_show: {
+    label: 'Neprezentat',
+    variant: 'outline',
+    className: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-700',
+  },
 }
+
+export const VIEWING_BOOKING_TERMS_VERSION = 'RO-VIEWING-BOOKING-1.0'
+
+export const VIEWING_BOOKING_TERMS = {
+  actual_viewing_required: true,
+  no_automatic_penalty: true,
+  cancellation_rule: 'Clientul anunță anularea cât mai curând; reprogramarea se face printr-o programare nouă.',
+  no_show_rule: 'Neprezentarea este consemnată de agent numai după sfârșitul intervalului și 15 minute de grație.',
+  viewing_report_rule: 'Fișa de vizionare se generează numai după confirmarea prezenței și finalizarea vizionării efective.',
+  grace_minutes: 15,
+} as const
 
 // ─── localStorage keys ────────────────────────────────────────────────────
 

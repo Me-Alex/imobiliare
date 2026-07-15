@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, Eye, File, FileSignature, LockKeyhole, Trash2 } from 'lucide-react'
+import { Download, Eye, File, FileSignature, LockKeyhole, ShieldCheck, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DOC_TYPE_LABELS } from '@/lib/constants'
@@ -67,10 +67,13 @@ function DocumentActions({
   const pendingSigner = document.signers.find(
     (signer) => signer.userId === currentUserId && signer.status === 'PENDING',
   )
+  const canSignHere = pendingSigner
+    && document.signatureRequirement === 'SIMPLE'
+    && ['READY_TO_SIGN', 'PARTIALLY_SIGNED'].includes(document.status)
 
   return (
     <div className="flex items-center justify-end gap-1">
-      {pendingSigner && (
+      {canSignHere && (
         <Button
           size="sm"
           onClick={() => onSign(document, pendingSigner)}
@@ -111,6 +114,7 @@ export function DocumentCard(props: DocumentCardProps) {
             <div className="min-w-0">
               <p className="text-sm font-medium truncate max-w-[220px]">{doc.title}</p>
               <p className="text-[10px] text-muted-foreground truncate max-w-[220px]">{doc.fileName}</p>
+              {doc.legalVersion && <p className="text-[10px] text-muted-foreground">Versiune {doc.legalVersion}</p>}
             </div>
           </div>
         </td>
@@ -120,6 +124,11 @@ export function DocumentCard(props: DocumentCardProps) {
             {doc.lockedAt && <LockKeyhole className="h-3 w-3 mr-1" />}
             {STATUS_LABELS[doc.status]}
           </Badge>
+          {doc.signatureRequirement !== 'SIMPLE' && (
+            <Badge variant="outline" className="mt-1 text-[10px] border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-300">
+              <ShieldCheck className="mr-1 h-3 w-3" /> Semnătură avansată/calificată
+            </Badge>
+          )}
         </td>
         <td className="px-4 py-3 text-sm text-muted-foreground">{formatFileSize(doc.byteSize)}</td>
         <td className="px-4 py-3 text-sm text-muted-foreground">{formatUploadDate(doc.uploadedAt)}</td>
@@ -137,6 +146,7 @@ export function DocumentCard(props: DocumentCardProps) {
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
               <Badge variant="outline" className="text-[10px]">{DOC_TYPE_LABELS[doc.docType]}</Badge>
               <Badge variant="outline" className={cn('text-[10px]', statusClass(doc.status))}>{STATUS_LABELS[doc.status]}</Badge>
+              {doc.signatureRequirement !== 'SIMPLE' && <Badge variant="outline" className="text-[10px]">Semnătură avansată/calificată</Badge>}
               <span className="text-[10px] text-muted-foreground">{formatFileSize(doc.byteSize)}</span>
             </div>
           </div>

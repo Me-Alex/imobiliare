@@ -64,8 +64,12 @@ const TYPE_STYLES: Record<ActivityItem['type'], { dot: string; icon: string; bad
 const VIZIONARE_ACTION_LABELS: Record<Vizionare['status'], string> = {
   pending: 'Vizionare creata',
   confirmed: 'Vizionare confirmata',
+  checked_in: 'Prezență confirmată',
   completed: 'Vizionare finalizata',
   cancelled: 'Vizionare anulata',
+  cancelled_by_client: 'Vizionare anulată de client',
+  cancelled_by_agent: 'Vizionare anulată de agenție',
+  no_show: 'Neprezentare consemnată',
 }
 
 // ─── Relative time formatting ───────────────────────────────────────────────

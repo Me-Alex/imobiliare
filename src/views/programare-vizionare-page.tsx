@@ -16,7 +16,7 @@ import { StepIndicator } from '@/components/vizionare/step-indicator'
 import { PropertyPickerStep } from '@/components/vizionare/property-picker-step'
 import { StaffDatePickerStep } from '@/components/vizionare/staff-date-picker-step'
 import { ConfirmationStep } from '@/components/vizionare/confirmation-step'
-import { createViewing } from '@/lib/viewing-documents'
+import { createViewing, getAgencyLegalProfile } from '@/lib/viewing-documents'
 
 // ─── Seed availability helper ────────────────────────────────────────────────
 
@@ -77,11 +77,28 @@ export function ProgramareVizionarePage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null)
   const [notes, setNotes] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [privacyAccepted, setPrivacyAccepted] = useState(false)
+  const [privacyNoticeUrl, setPrivacyNoticeUrl] = useState<string | null>(null)
+  const [privacyNoticeVersion, setPrivacyNoticeVersion] = useState<string | null>(null)
+  const [complianceLoading, setComplianceLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Seed availability on first render
   useEffect(() => {
     seedAvailability()
+    getAgencyLegalProfile()
+      .then((agency) => {
+        if (agency?.status === 'ACTIVE' && agency.privacyNoticeUrl) {
+          setPrivacyNoticeUrl(agency.privacyNoticeUrl)
+          setPrivacyNoticeVersion(agency.privacyNoticeVersion)
+        }
+      })
+      .catch(() => {
+        setPrivacyNoticeUrl(null)
+        setPrivacyNoticeVersion(null)
+      })
+      .finally(() => setComplianceLoading(false))
   }, [])
 
   const handlePropertySelect = (prop: UserProperty) => {
@@ -90,6 +107,8 @@ export function ProgramareVizionarePage() {
     setSelectedDate(null)
     setSelectedSlot(null)
     setNotes('')
+    setTermsAccepted(false)
+    setPrivacyAccepted(false)
   }
 
   const handleStaffSelect = (staff: StaffMember) => {
@@ -109,6 +128,10 @@ export function ProgramareVizionarePage() {
 
   const handleSubmit = async () => {
     if (!user || !selectedProperty || !selectedStaff || !selectedDate || !selectedSlot) return
+    if (!termsAccepted || !privacyAccepted || !privacyNoticeUrl) {
+      toast.error('Acceptă regulile programării și informarea de confidențialitate.')
+      return
+    }
 
     setIsSubmitting(true)
     try {
@@ -122,6 +145,8 @@ export function ProgramareVizionarePage() {
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
         notes,
+        termsAccepted,
+        privacyAccepted,
       })
 
       // Availability remains local for the current MVP, while the appointment
@@ -232,6 +257,13 @@ export function ProgramareVizionarePage() {
                   slot={selectedSlot}
                   notes={notes}
                   onNotesChange={setNotes}
+                  termsAccepted={termsAccepted}
+                  onTermsAcceptedChange={setTermsAccepted}
+                  privacyAccepted={privacyAccepted}
+                  onPrivacyAcceptedChange={setPrivacyAccepted}
+                  privacyNoticeUrl={privacyNoticeUrl}
+                  privacyNoticeVersion={privacyNoticeVersion}
+                  complianceLoading={complianceLoading}
                   isSubmitting={isSubmitting}
                   onSubmit={handleSubmit}
                 />

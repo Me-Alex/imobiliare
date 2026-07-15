@@ -36,13 +36,26 @@ export interface Vizionare {
   date: string
   startTime: string
   endTime: string
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'checked_in'
+    | 'completed'
+    | 'cancelled'
+    | 'cancelled_by_client'
+    | 'cancelled_by_agent'
+    | 'no_show'
   notes: string
   createdAt: string
   rating?: number
   feedback?: string
   wouldProceed?: boolean
   completedAt?: string
+  checkedInAt?: string
+  cancellationReason?: string
+  noShowMarkedAt?: string
+  noShowEligibleAt?: string
+  bookingTermsAcceptedAt?: string
 }
 
 // Uploaded Document
@@ -53,7 +66,18 @@ export interface UploadedDocument {
   fileType: string
   fileData: string // base64
   filePreview: string // data URL for preview
-  docType: 'id_card' | 'proof_of_income' | 'vizionare_sign' | 'rental_contract' | 'other'
+  docType:
+    | 'id_card'
+    | 'proof_of_income'
+    | 'vizionare_sign'
+    | 'brokerage_contract'
+    | 'owner_mandate'
+    | 'reservation_offer'
+    | 'rental_contract'
+    | 'handover_protocol'
+    | 'addendum'
+    | 'termination_notice'
+    | 'other'
   uploadedAt: string
 }
 
@@ -87,7 +111,20 @@ export interface DocumentSigner {
 export interface DocumentEvent {
   id: number
   actorId: string | null
-  eventType: 'CREATED' | 'UPLOADED' | 'SENT_FOR_SIGNATURE' | 'SIGNED' | 'DECLINED' | 'COMPLETED'
+  eventType:
+    | 'CREATED'
+    | 'UPLOADED'
+    | 'GENERATED'
+    | 'VALIDATED'
+    | 'CONSENT_RECORDED'
+    | 'APPROVED'
+    | 'SENT_FOR_SIGNATURE'
+    | 'SIGNED'
+    | 'DECLINED'
+    | 'COMPLETED'
+    | 'SUPERSEDED'
+    | 'EXPIRED'
+    | 'EXTERNAL_SIGNATURE_ATTACHED'
   metadata: Record<string, unknown>
   createdAt: string
 }
@@ -113,6 +150,13 @@ export interface ViewingDocument {
   lockedAt: string | null
   signedAt: string | null
   signatureLevel: string | null
+  signatureRequirement: 'SIMPLE' | 'ADVANCED_OR_QUALIFIED' | 'QUALIFIED'
+  templateName: string | null
+  templateVersion: number | null
+  legalVersion: string | null
+  consumerContract: boolean
+  fiscalRegistrationDueAt: string | null
+  retentionUntil: string | null
   signers: DocumentSigner[]
   events: DocumentEvent[]
 }

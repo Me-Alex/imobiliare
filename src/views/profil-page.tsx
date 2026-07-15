@@ -174,7 +174,7 @@ export function ProfilPage() {
   const role = profile.role
   const roleDefinition = ACCOUNT_ROLE_DEFINITIONS[role]
   const showProfessionalFields = role === 'OWNER' || role === 'AGENT'
-  const activeVizionari = vizionari.filter((item) => item.status === 'pending' || item.status === 'confirmed').length
+  const activeVizionari = vizionari.filter((item) => ['pending', 'confirmed', 'checked_in'].includes(item.status)).length
 
   const stats = role === 'CLIENT'
     ? [

@@ -37,14 +37,20 @@ import {
   type DocumentUploadAreaRef,
 } from '@/components/features/documents/document-upload-area'
 import { DocumentCard } from '@/components/features/documents/document-card'
+import { LegalCompliancePanel } from '@/components/features/documents/legal-compliance-panel'
+import { LegalDocumentBuilderDialog } from '@/components/features/documents/legal-document-builder-dialog'
 import type { DocType } from '@/components/features/documents/document-type-selector'
 import type { DocumentSigner, ViewingDocument, Vizionare } from '@/lib/types'
+import {
+  getLegalDocumentDefinition,
+  LEGAL_DOCUMENT_ORDER,
+  type LegalDocumentKind,
+} from '@/lib/legal-documents'
 import { DOC_TYPE_LABELS, LS_KEYS } from '@/lib/constants'
 import { loadFromLS, saveToLS } from '@/lib/storage'
 import {
   createDocumentUrl,
   deleteViewingDocument,
-  generateViewingDocument,
   listViewingDocuments,
   listViewings,
   signViewingDocument,
@@ -73,7 +79,7 @@ export function DocumentePage() {
   const [documents, setDocuments] = useState<ViewingDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [documentsLoading, setDocumentsLoading] = useState(false)
-  const [generating, setGenerating] = useState<'viewing_report' | 'rental_contract' | null>(null)
+  const [builderKind, setBuilderKind] = useState<LegalDocumentKind | null>(null)
   const [signing, setSigning] = useState<SigningState | null>(null)
   const [signatureName, setSignatureName] = useState('')
   const [signatureAccepted, setSignatureAccepted] = useState(false)
@@ -146,29 +152,6 @@ export function DocumentePage() {
       throw error
     }
   }, [refreshDocuments, selectedViewing, user])
-
-  const handleGenerate = async (kind: 'viewing_report' | 'rental_contract') => {
-    if (!user || !selectedViewing) return
-    if (!selectedViewing.clientId) {
-      toast.error('Vizionarea nu este legata de un profil de client.', {
-        description: 'Un administrator trebuie sa asocieze clientul inainte de generarea documentului.',
-      })
-      return
-    }
-
-    setGenerating(kind)
-    try {
-      await generateViewingDocument(kind, user, selectedViewing)
-      await refreshDocuments(selectedViewing.id)
-      toast.success(kind === 'viewing_report' ? 'Fisa de vizionare a fost generata.' : 'Modelul de contract a fost generat.')
-    } catch (error) {
-      toast.error('PDF-ul nu a putut fi generat.', {
-        description: error instanceof Error ? error.message : undefined,
-      })
-    } finally {
-      setGenerating(null)
-    }
-  }
 
   const handleView = async (document: ViewingDocument) => {
     const preview = window.open('about:blank', '_blank')
@@ -253,7 +236,11 @@ export function DocumentePage() {
     )
   }
 
-  const pendingForUser = documents.filter((document) => document.signers.some((signer) => signer.userId === user.id && signer.status === 'PENDING')).length
+  const pendingForUser = documents.filter((document) =>
+    document.signatureRequirement === 'SIMPLE'
+    && ['READY_TO_SIGN', 'PARTIALLY_SIGNED'].includes(document.status)
+    && document.signers.some((signer) => signer.userId === user.id && signer.status === 'PENDING'),
+  ).length
   const signedDocuments = documents.filter((document) => document.status === 'SIGNED').length
 
   return (
@@ -284,6 +271,8 @@ export function DocumentePage() {
             </Card>
           ))}
         </div>
+
+        {profile.role === 'ADMIN' && <LegalCompliancePanel userId={user.id} />}
 
         {loading ? (
           <div className="py-20 flex justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
@@ -338,26 +327,44 @@ export function DocumentePage() {
               <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 mb-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Documente generate in proiect</CardTitle>
-                    <CardDescription>Datele vizionarii sunt completate automat intr-un PDF privat.</CardDescription>
+                    <CardTitle className="text-base">Documente juridice generate în proiect</CardTitle>
+                    <CardDescription>Fiecare document are câmpuri obligatorii, versiune juridică și traseu de semnare propriu.</CardDescription>
                   </CardHeader>
                   <CardContent className="grid sm:grid-cols-2 gap-3">
-                    <Button variant="outline" className="h-auto py-4 justify-start gap-3" disabled={Boolean(generating)} onClick={() => void handleGenerate('viewing_report')}>
-                      {generating === 'viewing_report' ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileCheck2 className="h-5 w-5 text-primary" />}
-                      <span className="text-left"><span className="block font-medium">Genereaza fisa de vizionare</span><span className="block text-xs font-normal text-muted-foreground">Pregatita pentru semnare</span></span>
-                    </Button>
-                    <Button variant="outline" className="h-auto py-4 justify-start gap-3" disabled={Boolean(generating)} onClick={() => void handleGenerate('rental_contract')}>
-                      {generating === 'rental_contract' ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileSignature className="h-5 w-5 text-primary" />}
-                      <span className="text-left"><span className="block font-medium">Genereaza modelul de contract</span><span className="block text-xs font-normal text-muted-foreground">Model de lucru editabil ulterior</span></span>
-                    </Button>
+                    {LEGAL_DOCUMENT_ORDER.map((kind) => {
+                      const definition = getLegalDocumentDefinition(kind)
+                      const viewingReportBlocked = kind === 'viewing_report'
+                        && selectedViewing.status !== 'completed'
+                      return (
+                        <Button
+                          key={kind}
+                          variant="outline"
+                          className="h-auto min-h-20 py-4 justify-start gap-3 whitespace-normal"
+                          onClick={() => setBuilderKind(kind)}
+                          disabled={viewingReportBlocked}
+                        >
+                          {kind === 'viewing_report'
+                            ? <FileCheck2 className="h-5 w-5 shrink-0 text-primary" />
+                            : <FileSignature className="h-5 w-5 shrink-0 text-primary" />}
+                          <span className="text-left">
+                            <span className="block font-medium">{definition.shortTitle}</span>
+                            <span className="block text-xs font-normal text-muted-foreground">
+                              {viewingReportBlocked
+                                ? 'Disponibilă numai după confirmarea prezenței și finalizarea vizionării.'
+                                : definition.description}
+                            </span>
+                          </span>
+                        </Button>
+                      )
+                    })}
                   </CardContent>
                 </Card>
 
                 <Alert>
                   <ShieldCheck className="h-4 w-4" />
-                  <AlertTitle>Semnatura electronica simpla</AlertTitle>
+                  <AlertTitle>Nivelul semnăturii este impus de șablon</AlertTitle>
                   <AlertDescription>
-                    Aplicatia salveaza identitatea, data, consimtamantul si hash-ul documentului. Nu este prezentata ca semnatura calificata eIDAS.
+                    Fișa de vizionare poate utiliza semnătura simplă auditată. Contractele și documentele cu obligații financiare rămân blocate pentru semnătură avansată sau calificată.
                   </AlertDescription>
                 </Alert>
               </div>
@@ -397,6 +404,16 @@ export function DocumentePage() {
           </>
         )}
       </div>
+
+      {user && selectedViewing && (
+        <LegalDocumentBuilderDialog
+          kind={builderKind}
+          user={user}
+          viewing={selectedViewing}
+          onOpenChange={(open) => !open && setBuilderKind(null)}
+          onCreated={() => refreshDocuments(selectedViewing.id)}
+        />
+      )}
 
       <Dialog open={Boolean(signing)} onOpenChange={(open) => !open && !signingBusy && setSigning(null)}>
         <DialogContent>

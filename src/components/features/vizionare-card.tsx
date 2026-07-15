@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import {
   CalendarDays, Clock, Star, CalendarClock, MessageSquarePlus,
-  Upload, XCircle,
+  Upload, XCircle, CheckCircle2, UserCheck, UserX,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -30,19 +30,38 @@ export function VizionareCard({
   onCancel,
   onAddFeedback,
   onReschedule,
+  onConfirm,
+  onCheckIn,
+  onComplete,
+  onNoShow,
+  onCancelByAgent,
+  canManage,
+  currentUserId,
 }: {
   vizionare: Vizionare
   onCancel: (id: string) => void
   onAddFeedback: (v: Vizionare) => void
   onReschedule: (v: Vizionare) => void
+  onConfirm: (id: string) => void
+  onCheckIn: (id: string) => void
+  onComplete: (id: string) => void
+  onNoShow: (id: string) => void
+  onCancelByAgent: (id: string) => void
+  canManage: boolean
+  currentUserId: string
 }) {
   const { navigateTo } = useAppStore()
   const staff = getStaffById(vizionare.staffId)
   const statusCfg = VIZIONARE_STATUS_CONFIG[vizionare.status]
-  const isPast = vizionare.status === 'completed' || vizionare.status === 'cancelled'
-  const isActive = vizionare.status === 'pending' || vizionare.status === 'confirmed'
+  const isCancelled = ['cancelled', 'cancelled_by_client', 'cancelled_by_agent'].includes(vizionare.status)
+  const isPast = vizionare.status === 'completed' || vizionare.status === 'no_show' || isCancelled
+  const isActive = ['pending', 'confirmed', 'checked_in'].includes(vizionare.status)
   const isCompleted = vizionare.status === 'completed'
   const hasFeedback = typeof vizionare.rating === 'number' && vizionare.rating > 0
+  const canClientManage = !canManage && vizionare.clientId === currentUserId
+  const noShowEligible = Boolean(
+    vizionare.noShowEligibleAt && Date.now() >= new Date(vizionare.noShowEligibleAt).getTime(),
+  )
 
   const handleUploadDocs = () => {
     saveToLS(LS_KEYS.SELECTED_VIZIONARE, vizionare.id)
@@ -142,6 +161,14 @@ export function VizionareCard({
             </p>
           )}
 
+          {(vizionare.cancellationReason || vizionare.status === 'no_show') && (
+            <p className="text-xs text-muted-foreground mb-3 rounded-lg border border-orange-200 bg-orange-50 p-2.5 dark:border-orange-900 dark:bg-orange-950/20">
+              {vizionare.status === 'no_show'
+                ? 'Neprezentarea a fost consemnată după expirarea perioadei de grație. Fișa de vizionare nu se generează.'
+                : `Motiv anulare: ${vizionare.cancellationReason}`}
+            </p>
+          )}
+
           {/* Documents */}
           <VizionareDocumentsSection vizionareId={vizionare.id} />
 
@@ -184,7 +211,7 @@ export function VizionareCard({
             )}
 
             {/* Reschedule button — active vizionari */}
-            {isActive && (
+            {canClientManage && (vizionare.status === 'pending' || vizionare.status === 'confirmed') && (
               <Button
                 variant="outline"
                 size="sm"
@@ -197,7 +224,7 @@ export function VizionareCard({
             )}
 
             {/* Cancel button — pending vizionari */}
-            {vizionare.status === 'pending' && (
+            {canClientManage && (vizionare.status === 'pending' || vizionare.status === 'confirmed') && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -206,6 +233,48 @@ export function VizionareCard({
               >
                 <XCircle className="h-3.5 w-3.5" />
                 Anuleaza
+              </Button>
+            )}
+
+            {canManage && vizionare.status === 'pending' && (
+              <Button size="sm" className="gap-1.5 text-xs h-8" onClick={() => onConfirm(vizionare.id)}>
+                <CheckCircle2 className="h-3.5 w-3.5" /> Confirmă
+              </Button>
+            )}
+
+            {canManage && vizionare.status === 'confirmed' && (
+              <Button size="sm" className="gap-1.5 text-xs h-8" onClick={() => onCheckIn(vizionare.id)}>
+                <UserCheck className="h-3.5 w-3.5" /> Client prezent
+              </Button>
+            )}
+
+            {canManage && vizionare.status === 'checked_in' && (
+              <Button size="sm" className="gap-1.5 text-xs h-8" onClick={() => onComplete(vizionare.id)}>
+                <CheckCircle2 className="h-3.5 w-3.5" /> Finalizează vizionarea
+              </Button>
+            )}
+
+            {canManage && (vizionare.status === 'pending' || vizionare.status === 'confirmed') && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!noShowEligible}
+                title={noShowEligible ? 'Consemnează neprezentarea' : 'Disponibil după interval și cele 15 minute de grație'}
+                className="gap-1.5 text-xs h-8 text-orange-700 border-orange-300"
+                onClick={() => onNoShow(vizionare.id)}
+              >
+                <UserX className="h-3.5 w-3.5" /> Nu s-a prezentat
+              </Button>
+            )}
+
+            {canManage && isActive && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs h-8 text-red-600 ml-auto"
+                onClick={() => onCancelByAgent(vizionare.id)}
+              >
+                <XCircle className="h-3.5 w-3.5" /> Anulează agenția
               </Button>
             )}
           </div>

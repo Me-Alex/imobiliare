@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  CalendarDays, Building2, CalendarCheck, Loader2,
+  CalendarDays, Building2, CalendarCheck, Loader2, ShieldCheck, AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { StaffMember, AvailabilitySlot, UserProperty } from '@/lib/types'
 import { formatDateRO } from '@/lib/utils'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 interface ConfirmationStepProps {
   property: UserProperty
@@ -18,6 +19,13 @@ interface ConfirmationStepProps {
   slot: AvailabilitySlot
   notes: string
   onNotesChange: (notes: string) => void
+  termsAccepted: boolean
+  onTermsAcceptedChange: (accepted: boolean) => void
+  privacyAccepted: boolean
+  onPrivacyAcceptedChange: (accepted: boolean) => void
+  privacyNoticeUrl: string | null
+  privacyNoticeVersion: string | null
+  complianceLoading: boolean
   isSubmitting: boolean
   onSubmit: () => void
 }
@@ -29,6 +37,13 @@ export function ConfirmationStep({
   slot,
   notes,
   onNotesChange,
+  termsAccepted,
+  onTermsAcceptedChange,
+  privacyAccepted,
+  onPrivacyAcceptedChange,
+  privacyNoticeUrl,
+  privacyNoticeVersion,
+  complianceLoading,
   isSubmitting,
   onSubmit,
 }: ConfirmationStepProps) {
@@ -101,10 +116,58 @@ export function ConfirmationStep({
         />
       </div>
 
+      <div className="space-y-3 rounded-xl border p-4">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <ShieldCheck className="h-4 w-4 text-primary" />
+          Reguli și informare înainte de programare
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Programarea nu dovedește că vizionarea a avut loc. Agentul confirmă prezența la întâlnire,
+          iar fișa de vizionare se generează abia după finalizarea vizionării efective.
+        </p>
+        <label className="flex items-start gap-3 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={termsAccepted}
+            onChange={(event) => onTermsAcceptedChange(event.target.checked)}
+            className="mt-1 h-4 w-4 accent-primary"
+          />
+          <span>
+            Am citit regulile programării: voi anunța anularea cât mai curând; neprezentarea poate fi
+            consemnată după interval și 15 minute de grație; nu se aplică automat o taxă sau o penalizare.
+          </span>
+        </label>
+        <label className="flex items-start gap-3 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={privacyAccepted}
+            disabled={!privacyNoticeUrl || complianceLoading}
+            onChange={(event) => onPrivacyAcceptedChange(event.target.checked)}
+            className="mt-1 h-4 w-4 accent-primary"
+          />
+          <span>
+            Am primit informarea privind prelucrarea datelor
+            {privacyNoticeUrl && (
+              <>{' '}(<a href={privacyNoticeUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">versiunea {privacyNoticeVersion || 'curentă'}</a>)</>
+            )}.
+          </span>
+        </label>
+      </div>
+
+      {!complianceLoading && !privacyNoticeUrl && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Programările sunt temporar blocate</AlertTitle>
+          <AlertDescription>
+            Administratorul trebuie să completeze profilul juridic și să publice informarea GDPR.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Submit */}
       <Button
         onClick={onSubmit}
-        disabled={isSubmitting}
+        disabled={isSubmitting || complianceLoading || !privacyNoticeUrl || !termsAccepted || !privacyAccepted}
         className="w-full h-12 text-base font-semibold gap-2"
         size="lg"
       >

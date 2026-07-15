@@ -1,6 +1,20 @@
 'use client'
 
-import { IdCard, FileCheck, FileSignature, FileText, File, CheckCircle2, Loader2 } from 'lucide-react'
+import {
+  Ban,
+  CheckCircle2,
+  ClipboardCheck,
+  File,
+  FileCheck,
+  FilePlus2,
+  FileSignature,
+  FileText,
+  Handshake,
+  IdCard,
+  KeyRound,
+  Loader2,
+  ScrollText,
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -48,6 +62,48 @@ export const DOC_TYPE_CONFIG: Array<{
     color: 'text-purple-600 dark:text-purple-400',
     bgColor: 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800',
     description: 'Contract de inchiriere semnat',
+  },
+  {
+    type: 'brokerage_contract',
+    icon: Handshake,
+    color: 'text-cyan-700 dark:text-cyan-300',
+    bgColor: 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-200 dark:border-cyan-800',
+    description: 'Intermediere client / cumparator',
+  },
+  {
+    type: 'owner_mandate',
+    icon: ScrollText,
+    color: 'text-indigo-700 dark:text-indigo-300',
+    bgColor: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800',
+    description: 'Reprezentare si promovare proprietate',
+  },
+  {
+    type: 'reservation_offer',
+    icon: ClipboardCheck,
+    color: 'text-orange-700 dark:text-orange-300',
+    bgColor: 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800',
+    description: 'Oferta, conditii si suma de rezervare',
+  },
+  {
+    type: 'handover_protocol',
+    icon: KeyRound,
+    color: 'text-teal-700 dark:text-teal-300',
+    bgColor: 'bg-teal-50 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800',
+    description: 'Stare, inventar, contoare si chei',
+  },
+  {
+    type: 'addendum',
+    icon: FilePlus2,
+    color: 'text-sky-700 dark:text-sky-300',
+    bgColor: 'bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800',
+    description: 'Modificare a unui contract existent',
+  },
+  {
+    type: 'termination_notice',
+    icon: Ban,
+    color: 'text-rose-700 dark:text-rose-300',
+    bgColor: 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800',
+    description: 'Notificare sau acord de incetare',
   },
   {
     type: 'other',
