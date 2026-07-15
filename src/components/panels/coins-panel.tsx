@@ -34,7 +34,7 @@ import { Separator } from '@/components/ui/separator'
 import { useAppStore } from '@/store/use-app-store'
 import { hydrateCoinsState } from '@/store/slices/coins'
 import { COIN_REWARDS, COIN_EARN_RULES } from '@/lib/constants'
-import type { CoinTransaction, CoinTransactionType } from '@/lib/types'
+import type { CoinReward, CoinTransaction, CoinTransactionType } from '@/lib/types'
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
 
@@ -111,11 +111,7 @@ export function CoinsPanel({ open, onOpenChange }: CoinsPanelProps) {
   useEffect(() => {
     if (open && !hydrated.current) {
       hydrated.current = true
-      useAppStore.setState((s) => {
-        hydrateCoinsState((partial) => {
-          Object.assign(s, partial)
-        })
-      })
+      hydrateCoinsState((partial) => useAppStore.setState(partial))
     }
   }, [open])
 

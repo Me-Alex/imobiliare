@@ -1,7 +1,7 @@
 'use client'
 
 import { Building2, Calendar, Home, MapPin, Users } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 
 const stats = [
   { icon: Calendar, value: '5+', label: 'Ani Experienta' },
@@ -10,7 +10,7 @@ const stats = [
   { icon: Users, value: '1450+', label: 'Clienti Multumiti' },
 ]
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: {},
   visible: {
     transition: {
@@ -19,7 +19,7 @@ const containerVariants = {
   },
 }
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: {
     opacity: 1,

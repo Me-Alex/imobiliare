@@ -30,6 +30,7 @@ function generateSlug(title: string): string {
     .toLowerCase()
     .split('')
     .map((c) => roMap[c] || c)
+    .join('')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     + '-' + Date.now().toString(36)
@@ -46,6 +47,7 @@ export function AdaugaProprietatePage() {
   const [editProperty, setEditProperty] = useState<UserProperty | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const previewDataRef = useRef<PropertyFormData | null>(null)
+  const [previewData, setPreviewData] = useState<PropertyFormData | null>(null)
 
   const loadMyProperties = useCallback(() => {
     try {
@@ -54,7 +56,10 @@ export function AdaugaProprietatePage() {
     } catch { setMyProperties([]) }
   }, [])
 
-  useEffect(() => { loadMyProperties() }, [loadMyProperties])
+  useEffect(() => {
+    const frame = requestAnimationFrame(loadMyProperties)
+    return () => cancelAnimationFrame(frame)
+  }, [loadMyProperties])
 
   const deleteProperty = useCallback((id: string) => {
     const stored = JSON.parse(localStorage.getItem(LS_KEYS.USER_PROPERTIES) || '[]')
@@ -77,7 +82,7 @@ export function AdaugaProprietatePage() {
       // Separate base64 images from URL images
       const base64Images = form.galleryUrls.filter(u => u.startsWith('data:'))
 
-      const newProp = {
+      const newProp: UserProperty = {
         id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         title: form.title,
         slug,
@@ -130,12 +135,38 @@ export function AdaugaProprietatePage() {
       // Try Supabase in background (only if configured AND no base64 images to avoid payload limits)
       const hasSupabaseConfig = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
       if (hasSupabaseConfig && base64Images.length === 0) {
-        const supabaseData = { ...newProp }
-        supabase.from('user_properties').insert([supabaseData]).then(({ error }) => {
-          if (error) console.warn('Supabase save skipped:', error.message)
-        }).catch(() => {
-          // Silently ignore — localStorage already saved
-        })
+        const supabaseData = {
+          id: newProp.id,
+          title: form.title,
+          slug,
+          description: form.description,
+          price: parseFloat(form.price) || 0,
+          currency: form.currency,
+          type: form.type,
+          status: 'PUBLISHED',
+          city: 'Bucuresti',
+          address: form.address,
+          area_sqm: parseFloat(form.areaSqm) || 0,
+          rooms: parseInt(form.rooms) || 0,
+          bathrooms: parseInt(form.bathrooms) || 0,
+          featured: form.featured,
+          agent_id: user.id,
+          agent_email: user.email || null,
+          floor: form.floor ? parseInt(form.floor) : null,
+          year_built: form.yearBuilt ? parseInt(form.yearBuilt) : null,
+          cover_image_url: form.galleryUrls[0] || form.coverUrl || null,
+          gallery_urls: form.galleryUrls,
+          transaction_type: form.transaction,
+        }
+
+        void (async () => {
+          try {
+            const { error } = await supabase.from('properties').insert([supabaseData])
+            if (error) console.warn('Supabase save skipped:', error.message)
+          } catch {
+            // localStorage already contains the listing
+          }
+        })()
       }
 
       toast.success('Proprietate adaugata cu succes!', {
@@ -186,7 +217,7 @@ export function AdaugaProprietatePage() {
   }
 
   if (previewMode) {
-    const form = previewDataRef.current
+    const form = previewData
     return (
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
@@ -265,7 +296,14 @@ export function AdaugaProprietatePage() {
               Proprietatile Mele ({myProperties.length})
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => setPreviewMode(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setPreviewData(previewDataRef.current)
+              setPreviewMode(true)
+            }}
+          >
             <Eye className="h-4 w-4 mr-1.5" />
             Preview
           </Button>

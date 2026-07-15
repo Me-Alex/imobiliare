@@ -6,10 +6,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/use-app-store'
-import { formatPrice, formatPricePerSqm } from '@/lib/utils'
+import { formatBucharestLocation, formatPrice, formatPricePerSqm } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
 import { AuthRequiredDialog } from '@/components/dialogs/auth-required-dialog'
 import { toast } from 'sonner'
+import type { Property } from '@/lib/types'
 
 interface PropertyCardProps {
   property: Property
@@ -102,7 +103,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
                   </h3>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
                     <MapPin className="h-3.5 w-3.5" />
-                    {property.zone}{property.sector ? `, Sector ${property.sector}` : ''}, Bucuresti
+                    {formatBucharestLocation(property.zone, property.sector)}
                   </div>
                 </div>
                 <div className="text-right shrink-0 pl-4 border-l-2 border-primary/30">
@@ -250,7 +251,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
         </h3>
         <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
           <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="line-clamp-1">{property.zone}{property.sector ? `, Sector ${property.sector}` : ''}, Bucuresti</span>
+          <span className="line-clamp-1">{formatBucharestLocation(property.zone, property.sector)}</span>
         </div>
         <div className="flex items-center gap-4 pt-3 border-t border-border/50">
           <MetricPill icon={BedDouble} value={property.rooms} label="camere" />

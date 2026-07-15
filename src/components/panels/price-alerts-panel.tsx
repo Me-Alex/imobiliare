@@ -92,7 +92,8 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
 
   useEffect(() => {
     if (open) {
-      fetchAlerts()
+      const frame = requestAnimationFrame(() => void fetchAlerts())
+      return () => cancelAnimationFrame(frame)
     }
   }, [open, fetchAlerts])
 

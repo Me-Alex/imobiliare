@@ -11,6 +11,17 @@ type D1Result<T = Record<string, unknown>> = {
   meta?: { changes?: number; duration?: number }
 }
 
+interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement
+  all<T = D1Result>(): Promise<T>
+  first<T = Record<string, unknown>>(): Promise<T | null>
+  run(): Promise<unknown>
+}
+
+export interface D1Database {
+  prepare(query: string): D1PreparedStatement
+}
+
 // ── Helpers ────────────────────────────────────────────────────
 
 function serializeValue(v: unknown): string {
@@ -62,19 +73,21 @@ function buildWhereClause(where: WhereClause, params: unknown[]): { sql: string;
         params.push(`%${ops.endsWith}`)
         conditions.push(`${key} LIKE ?${params.length}`)
       } else if ('in' in ops && Array.isArray(ops.in)) {
-        const placeholders = ops.in.map(() => {
+        const values = ops.in
+        const placeholders = values.map(() => {
           params.push(undefined)
           return `?${params.length}`
         })
         // Re-assign values
-        ops.in.forEach((v, i) => { params[params.length - ops.in.length + i] = v })
+        values.forEach((v, i) => { params[params.length - values.length + i] = v })
         conditions.push(`${key} IN (${placeholders.join(', ')})`)
       } else if ('notIn' in ops && Array.isArray(ops.notIn)) {
-        const placeholders = ops.notIn.map(() => {
+        const values = ops.notIn
+        const placeholders = values.map(() => {
           params.push(undefined)
           return `?${params.length}`
         })
-        ops.notIn.forEach((v, i) => { params[params.length - ops.notIn.length + i] = v })
+        values.forEach((v, i) => { params[params.length - values.length + i] = v })
         conditions.push(`${key} NOT IN (${placeholders.join(', ')})`)
       } else if ('gte' in ops) {
         params.push(ops.gte)
@@ -202,7 +215,7 @@ function createModelAdapter(tableName: string, d1: D1Database) {
   }
 
   return {
-    async findMany<T = Record<string, unknown>>(options: QueryOptions = {}): Promise<T[]> {
+    async findMany<T extends Record<string, unknown> = Record<string, unknown>>(options: QueryOptions = {}): Promise<T[]> {
       const params: unknown[] = []
       let sql = `SELECT `
 
@@ -230,7 +243,7 @@ function createModelAdapter(tableName: string, d1: D1Database) {
       if (options.skip) sql += ` OFFSET ${options.skip}`
 
       const result = await d1.prepare(sql).bind(...params).all<D1Result<T>>()
-      let rows = (result.results || []).map(r => deserializeRow(r))
+      let rows = (result.results || []).map(r => deserializeRow<T>(r))
 
       if (options.include) {
         rows = await Promise.all(
@@ -241,12 +254,12 @@ function createModelAdapter(tableName: string, d1: D1Database) {
       return rows
     },
 
-    async findFirst<T = Record<string, unknown>>(options: QueryOptions = {}): Promise<T | null> {
+    async findFirst<T extends Record<string, unknown> = Record<string, unknown>>(options: QueryOptions = {}): Promise<T | null> {
       const results = await this.findMany<T>({ ...options, take: 1 })
       return results[0] || null
     },
 
-    async findUnique<T = Record<string, unknown>>(options: { where: WhereClause; include?: Record<string, unknown> }): Promise<T | null> {
+    async findUnique<T extends Record<string, unknown> = Record<string, unknown>>(options: { where: WhereClause; include?: Record<string, unknown> }): Promise<T | null> {
       const params: unknown[] = []
       let sql = `SELECT * FROM ${tableName} WHERE `
 
@@ -258,7 +271,7 @@ function createModelAdapter(tableName: string, d1: D1Database) {
       sql += conditions.join(' AND ') + ' LIMIT 1'
 
       const result = await d1.prepare(sql).bind(...params).all<D1Result<T>>()
-      const rows = (result.results || []).map(r => deserializeRow(r))
+      const rows = (result.results || []).map(r => deserializeRow<T>(r))
       let row = rows[0] || null
 
       if (row && options.include) {
@@ -268,7 +281,7 @@ function createModelAdapter(tableName: string, d1: D1Database) {
       return row
     },
 
-    async create<T = Record<string, unknown>>(options: { data: Record<string, unknown> }): Promise<T> {
+    async create<T extends Record<string, unknown> = Record<string, unknown>>(options: { data: Record<string, unknown> }): Promise<T> {
       const keys = Object.keys(options.data)
       const values = Object.values(options.data)
       const id = crypto.randomUUID()
@@ -293,10 +306,10 @@ function createModelAdapter(tableName: string, d1: D1Database) {
 
       await d1.prepare(sql).bind(...values).run()
 
-      return { id, createdAt, ...options.data } as T
+      return { id, createdAt, ...options.data } as unknown as T
     },
 
-    async update<T = Record<string, unknown>>(options: { where: WhereClause; data: Record<string, unknown> }): Promise<T | null> {
+    async update<T extends Record<string, unknown> = Record<string, unknown>>(options: { where: WhereClause; data: Record<string, unknown> }): Promise<T | null> {
       const setKeys = Object.keys(options.data)
       const setValues = Object.values(options.data)
 
@@ -519,9 +532,9 @@ export function createD1Client(d1: D1Database) {
     userProfile: createModelAdapter('UserProfile', d1),
     propertyAnalytics: createModelAdapter('PropertyAnalytics', d1),
     // Raw query access
-    $queryRaw: async <T = Record<string, unknown>>(sql: string, ...params: unknown[]): Promise<T[]> => {
+    $queryRaw: async <T extends Record<string, unknown> = Record<string, unknown>>(sql: string, ...params: unknown[]): Promise<T[]> => {
       const result = await d1.prepare(sql).bind(...params).all<D1Result<T>>()
-      return (result.results || []).map(r => deserializeRow(r))
+      return (result.results || []).map(r => deserializeRow<T>(r))
     },
     $executeRaw: async (sql: string, ...params: unknown[]): Promise<void> => {
       await d1.prepare(sql).bind(...params).run()

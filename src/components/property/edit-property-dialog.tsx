@@ -247,16 +247,16 @@ export function EditPropertyDialog({
 
   // When property changes, populate the form
   useEffect(() => {
-    if (!open) {
-      // Reset when closed
-      setForm(emptyForm())
-      setInitialized(false)
-      return
-    }
-    if (property) {
-      setForm(propertyToForm(property))
-      setInitialized(true)
-    }
+    const frame = requestAnimationFrame(() => {
+      if (!open) {
+        setForm(emptyForm())
+        setInitialized(false)
+      } else if (property) {
+        setForm(propertyToForm(property))
+        setInitialized(true)
+      }
+    })
+    return () => cancelAnimationFrame(frame)
   }, [open, property])
 
   const updateField = useCallback(

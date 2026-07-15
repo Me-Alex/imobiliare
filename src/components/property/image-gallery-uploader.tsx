@@ -142,8 +142,8 @@ export function ImageGalleryUploader({ urls, onChange }: ImageGalleryUploaderPro
       <div
         role="button"
         tabIndex={0}
-        onClick={() => fileInputRef?.click()}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef?.click() }}
+        onClick={() => fileInputRef.current?.click()}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click() }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

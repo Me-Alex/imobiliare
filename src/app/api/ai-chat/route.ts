@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import ZAI from 'z-ai-web-dev-sdk'
 
 // ── ZAI singleton ─────────────────────────────────────────────
-let zaiInstance: InstanceType<typeof ZAI> | null = null
+let zaiPromise: ReturnType<typeof ZAI.create> | null = null
 
 function getZAI() {
-  if (!zaiInstance) {
-    zaiInstance = new ZAI()
-  }
-  return zaiInstance
+  zaiPromise ??= ZAI.create()
+  return zaiPromise
 }
 
 // ── Simple in-memory rate limiter ─────────────────────────────
@@ -64,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = 'Ești un asistent virtual pentru HQS Imobiliare, o platformă de analiză imobiliară din București. Răspunde scurt și util în limba română despre: proprietăți, zone, prețuri, piețe imobiliare, sfaturi de cumpărare/vânzare. Dacă ești întrebat despre alte subiecte, redirecționează politicos spre imobiliare. Max 3 propoziții.'
 
-    const zai = getZAI()
+    const zai = await getZAI()
     const completion = await zai.chat.completions.create({
       messages: [
         { role: 'system', content: systemPrompt },

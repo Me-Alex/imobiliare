@@ -4,26 +4,50 @@
  * On a standard Node.js runtime the dynamic `import()` of @/lib/db (Prisma + SQLite)
  * succeeds and every route works with the real database.
  *
- * On Cloudflare Workers the Prisma/SQLite import fails at module level because
- * there is no filesystem.  This helper catches that failure and returns `null`
- * so that every route can fall back to mock data gracefully.
+ * On Cloudflare Workers this resolves the configured D1 binding and wraps it in
+ * the Prisma-compatible adapter. On standard Node.js it uses Prisma + SQLite.
+ * If neither database is available, API routes can still fall back gracefully.
  */
 
 import type { PrismaClient } from '@prisma/client'
+import type { D1Database } from './db-d1'
 
-let _db: PrismaClient | null | undefined = undefined // undefined = not tried yet
+let _nodeDb: PrismaClient | null | undefined = undefined // undefined = not tried yet
+
+async function getD1Database(): Promise<PrismaClient | null> {
+  try {
+    const [{ getCloudflareContext }, { createD1Client }] = await Promise.all([
+      import('@opennextjs/cloudflare'),
+      import('./db-d1'),
+    ])
+    const { env } = getCloudflareContext()
+    const d1 = (env as unknown as { DB?: D1Database }).DB
+
+    if (d1) {
+      return createD1Client(d1) as unknown as PrismaClient
+    }
+  } catch {
+    // A Cloudflare request context is not available in the standard Node runtime.
+  }
+
+  return null
+}
 
 export async function getSafeDb(): Promise<PrismaClient | null> {
-  // Fast-path: already resolved
-  if (_db !== undefined) return _db
+  // Resolve D1 per request. Reusing request-bound I/O objects across Worker
+  // requests can fail in the Cloudflare runtime.
+  const d1Db = await getD1Database()
+  if (d1Db) return d1Db
+
+  // The Node Prisma client is safe to reuse across local requests.
+  if (_nodeDb !== undefined) return _nodeDb
 
   try {
     const mod = await import('./db')
-    _db = (mod as { db: PrismaClient }).db ?? null
+    _nodeDb = (mod as { db: PrismaClient }).db ?? null
   } catch {
-    // Prisma cannot load on edge runtimes (no fs, no native addons)
-    _db = null
+    _nodeDb = null
   }
 
-  return _db
+  return _nodeDb
 }

@@ -96,7 +96,7 @@ export function LoginPage() {
     }
   }
 
-  const supabaseDashboardUrl = 'https://supabase.com/dashboard/project/spmapzhlcwzfrxuvxgd/auth/providers'
+  const supabaseDashboardUrl = 'https://supabase.com/dashboard/project/spmapzhlcwhzfrxuvgxd/auth/providers'
   const googleConsoleUrl = 'https://console.cloud.google.com/apis/credentials'
 
   return (
@@ -263,7 +263,7 @@ export function LoginPage() {
                             Adauga Redirect URI
                           </p>
                           <div className="mt-1.5 rounded-md bg-background/80 border border-border px-3 py-2 font-mono text-[10px] break-all text-muted-foreground">
-                            https://spmapzhlcwzfrxuvxgd.supabase.co/auth/v1/callback
+                            https://spmapzhlcwhzfrxuvgxd.supabase.co/auth/v1/callback
                           </div>
                         </div>
                       </div>

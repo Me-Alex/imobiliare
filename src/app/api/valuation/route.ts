@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import ZAI from 'z-ai-web-dev-sdk'
 
 // ── ZAI singleton ─────────────────────────────────────────────
-let zaiInstance: InstanceType<typeof ZAI> | null = null
+let zaiPromise: ReturnType<typeof ZAI.create> | null = null
 
 function getZAI() {
-  if (!zaiInstance) {
-    zaiInstance = new ZAI()
-  }
-  return zaiInstance
+  zaiPromise ??= ZAI.create()
+  return zaiPromise
 }
 
 // ── Simple in-memory rate limiter ─────────────────────────────
@@ -147,7 +145,7 @@ ${condition ? `- Stare: ${condition}` : ''}
 
 Răspunde DOAR cu JSON-ul solicitat.`
 
-    const zai = getZAI()
+    const zai = await getZAI()
     const completion = await zai.chat.completions.create({
       messages: [
         { role: 'system', content: systemPrompt },

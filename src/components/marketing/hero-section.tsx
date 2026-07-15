@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, useSyncExternalStore } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, MapPin, Home, TrendingUp, Users, ArrowRight, Sparkles, Clock, Building2, Loader2 } from 'lucide-react'
+import { Search, MapPin, Home, TrendingUp, Star, ArrowRight, Sparkles, Clock, Building2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -13,54 +13,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAppStore } from '@/store/use-app-store'
-import { useZones, useSearchSuggestions } from '@/hooks/use-properties'
+import { usePropertiesPaginated, useZones, useSearchSuggestions } from '@/hooks/use-properties'
 import { formatPrice } from '@/lib/utils'
 import type { SearchSuggestion } from '@/lib/types'
-
-function AnimatedCounter({ target, suffix = '', prefix = '' }: { target: number; suffix?: string; prefix?: string }) {
-  const [count, setCount] = useState(0)
-  const [inView, setInView] = useState(false)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setInView(true), 300)
-    return () => clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
-    if (!inView) return
-    let start = 0
-    const duration = 2000
-    const stepTime = 20
-    const steps = duration / stepTime
-    const increment = target / steps
-
-    const timer = setInterval(() => {
-      start += increment
-      if (start >= target) {
-        setCount(target)
-        clearInterval(timer)
-      } else {
-        setCount(Math.floor(start))
-      }
-    }, stepTime)
-    return () => clearInterval(timer)
-  }, [inView, target])
-
-  return (
-    <span>
-      {prefix}
-      {count.toLocaleString('ro-RO')}
-      {suffix}
-    </span>
-  )
-}
-
-const stats = [
-  { icon: Home, label: 'Proprietati', value: 248, suffix: '+' },
-  { icon: TrendingUp, label: 'Pret mediu/m²', value: 2850, prefix: '€', suffix: '' },
-  { icon: MapPin, label: 'Zone acoperite', value: 12, suffix: '' },
-  { icon: Users, label: 'Clienti multumiti', value: 1450, suffix: '+' },
-]
 
 const typeLabels: Record<string, string> = {
   APARTMENT: 'Apartament',
@@ -104,6 +59,7 @@ export function HeroSection() {
     navigateTo,
   } = useAppStore()
   const { data: zones } = useZones()
+  const { data: propertyPages } = usePropertiesPaginated()
   const bgRef = useRef<HTMLDivElement>(null)
   const [offsetY, setOffsetY] = useState(0)
   const reducedMotion = useReducedMotion()
@@ -116,9 +72,25 @@ export function HeroSection() {
 
   const debouncedQuery = useDebounce(localQuery, 300)
 
+  const listedProperties = propertyPages?.pages.flatMap((page) => page.properties) ?? []
+  const averagePricePerSqm = listedProperties.length
+    ? Math.round(
+        listedProperties.reduce((sum, property) => (
+          sum + (property.pricePerSqm || property.price / property.areaSqm)
+        ), 0) / listedProperties.length
+      )
+    : 0
+  const stats = [
+    { icon: Home, label: 'Proprietati active', value: propertyPages?.pages[0]?.total ?? 0, suffix: '' },
+    { icon: TrendingUp, label: 'Pret mediu/m²', value: averagePricePerSqm, prefix: '€', suffix: '' },
+    { icon: MapPin, label: 'Zone acoperite', value: zones?.length ?? 0, suffix: '' },
+    { icon: Star, label: 'Oferte populare', value: listedProperties.filter((property) => property.featured).length, suffix: '' },
+  ]
+
   // Sync local state with store on external changes
   useEffect(() => {
-    setLocalQuery(searchQuery)
+    const frame = requestAnimationFrame(() => setLocalQuery(searchQuery))
+    return () => cancelAnimationFrame(frame)
   }, [searchQuery])
 
   const { data: suggestions, isLoading: suggestionsLoading } = useSearchSuggestions(debouncedQuery)
@@ -137,7 +109,8 @@ export function HeroSection() {
 
   // Reset active index when suggestions change
   useEffect(() => {
-    setActiveIndex(-1)
+    const frame = requestAnimationFrame(() => setActiveIndex(-1))
+    return () => cancelAnimationFrame(frame)
   }, [suggestions])
 
   // Close dropdown on click outside
@@ -154,7 +127,8 @@ export function HeroSection() {
   // Show dropdown when there are suggestions or loading
   useEffect(() => {
     if (debouncedQuery.length >= 2 && (suggestionsLoading || allItems.length > 0)) {
-      setIsOpen(true)
+      const frame = requestAnimationFrame(() => setIsOpen(true))
+      return () => cancelAnimationFrame(frame)
     }
   }, [debouncedQuery, suggestionsLoading, allItems.length])
 
@@ -479,11 +453,7 @@ export function HeroSection() {
             {stats.map((stat) => (
               <div key={stat.label} className="text-center sm:text-left">
                 <div className="text-2xl sm:text-3xl font-bold text-white">
-                  <AnimatedCounter
-                    target={stat.value}
-                    prefix={stat.prefix}
-                    suffix={stat.suffix}
-                  />
+                  {stat.prefix}{stat.value.toLocaleString('ro-RO')}{stat.suffix}
                 </div>
                 <div className="text-sm text-white/60 mt-1">{stat.label}</div>
               </div>

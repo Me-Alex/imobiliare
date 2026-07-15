@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
 import {
   CalendarCheck,
@@ -190,14 +190,14 @@ function buildActivityItems(): ActivityItem[] {
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: {},
   visible: {
     transition: { staggerChildren: 0.06 },
   },
 }
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, x: -12 },
   visible: { opacity: 1, x: 0, transition: { duration: 0.3, ease: 'easeOut' } },
 }

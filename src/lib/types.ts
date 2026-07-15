@@ -64,13 +64,13 @@ export interface UserProperty {
   title: string
   type?: string
   transaction?: string
-  price?: string
+  price?: string | number
   currency?: string
-  areaSqm?: string
-  rooms?: string
-  bathrooms?: string
-  floor?: string
-  yearBuilt?: string
+  areaSqm?: string | number
+  rooms?: string | number
+  bathrooms?: string | number
+  floor?: string | number | null
+  yearBuilt?: string | number | null
   address?: string
   zone?: string
   sector?: string
@@ -217,6 +217,7 @@ export interface ValuationResult {
 
 export type CoinTransactionType =
   | 'daily_login'
+  | 'daily_streak_bonus'
   | 'view_property'
   | 'favorite'
   | 'contact_form'

@@ -13,11 +13,7 @@ export function useCoinsHydration() {
   useEffect(() => {
     if (hydrated.current || typeof window === 'undefined') return
     hydrated.current = true
-    const partial: Record<string, unknown> = {}
-    hydrateCoinsState((p) => {
-      Object.assign(partial, p)
-    })
-    useAppStore.setState(partial as any)
+    hydrateCoinsState((partial) => useAppStore.setState(partial))
   }, [])
 }
 

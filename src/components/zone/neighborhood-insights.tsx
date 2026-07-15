@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useZones } from '@/hooks/use-properties'
 import { useAppStore } from '@/store/use-app-store'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, formatSector } from '@/lib/utils'
 import type { Zone } from '@/lib/types'
 
 const demandTextColors: Record<string, string> = {
@@ -75,7 +75,7 @@ function getDefaultProsCons(zoneName: string) {
 function getZoneDescription(zone: Zone): string {
   if (zone.description) return zone.description
 
-  const sectorLabel = zone.sector ? `Sectorul ${zone.sector}` : 'Bucuresti'
+  const sectorLabel = zone.sector ? formatSector(zone.sector) : 'Bucuresti'
   const popularFor: string[] = zone.popularFor ? JSON.parse(zone.popularFor) : []
   const popularText = popularFor.length > 0 ? `Zona este apreciata pentru ${popularFor.slice(0, 3).join(', ').toLowerCase()}.` : ''
 
@@ -113,7 +113,7 @@ function ZoneProfileCard({ zone }: { zone: Zone }) {
         </div>
         {zone.sector && (
           <Badge variant="outline" className="text-xs">
-            Sector {zone.sector}
+            {formatSector(zone.sector)}
           </Badge>
         )}
         <Badge variant={demandBadgeVariant} className="text-xs">

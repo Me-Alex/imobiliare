@@ -22,7 +22,7 @@ import { useProperty } from '@/hooks/use-properties'
 import { useCoinActions } from '@/hooks/use-coin-actions'
 import { useQuery } from '@tanstack/react-query'
 import { getProperties } from '@/lib/api'
-import { formatPrice, formatPricePerSqm } from '@/lib/utils'
+import { formatBucharestLocation, formatPrice, formatPricePerSqm } from '@/lib/utils'
 import type { Property } from '@/lib/types'
 import { toast } from 'sonner'
 import { PropertyCard } from '@/components/property/property-card'
@@ -99,7 +99,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
             <DialogTitle className="text-2xl">{property.title}</DialogTitle>
             <DialogDescription className="flex items-center gap-1.5 text-base">
               <MapPin className="h-4 w-4" />
-              {property.address}, {property.zone}{property.sector ? `, Sector ${property.sector}` : ''}, Bucuresti
+              {property.address}, {formatBucharestLocation(property.zone, property.sector)}
             </DialogDescription>
           </DialogHeader>
 

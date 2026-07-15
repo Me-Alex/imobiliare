@@ -4,10 +4,10 @@ import { isValidEmail } from '@/lib/validators'
 
 export async function POST(request: NextRequest) {
   // ── Parse & validate input ──────────────────────────────────
-  let name: string
-  let email: string
-  let phone: string
-  let message: string
+  let name: string | undefined
+  let email: string | undefined
+  let phone: string | undefined
+  let message: string | undefined
   let propertyTitle: string | undefined
 
   try {

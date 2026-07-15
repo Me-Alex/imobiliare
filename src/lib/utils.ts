@@ -24,6 +24,21 @@ export function formatPricePerSqm(price: number): string {
   }).format(price) + '/m²'
 }
 
+export function formatSector(sector?: string | null): string {
+  const value = sector?.trim()
+  if (!value) return ''
+
+  if (/^sector(?:ul)?\b/i.test(value)) {
+    return value.replace(/^sectorul\b/i, 'Sector')
+  }
+
+  return `Sector ${value}`
+}
+
+export function formatBucharestLocation(zone: string, sector?: string | null): string {
+  return [zone, formatSector(sector), 'Bucuresti'].filter(Boolean).join(', ')
+}
+
 // ─── Date utilities (Romanian locale) ───────────────────────────────────────
 
 /** Format a YYYY-MM-DD date string as "DD Month YYYY" using short Romanian month names */

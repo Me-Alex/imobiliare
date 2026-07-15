@@ -698,15 +698,13 @@ async function main() {
     },
   ]
 
-  // Add pricePerSqm to each property
-  for (const p of propertiesData) {
-    if (p.areaSqm > 0) {
-      p.pricePerSqm = Math.round((p.price / p.areaSqm) * 100) / 100
-    }
-  }
-
   const properties = await Promise.all(
-    propertiesData.map((p) => db.property.create({ data: p }))
+    propertiesData.map((p) => db.property.create({
+      data: {
+        ...p,
+        pricePerSqm: p.areaSqm > 0 ? Math.round((p.price / p.areaSqm) * 100) / 100 : null,
+      },
+    }))
   )
   console.log(`✅ Created ${properties.length} properties`)
 
