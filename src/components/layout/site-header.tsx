@@ -45,6 +45,7 @@ interface AccountMenuItem {
 
 const accountMenu: AccountMenuItem[] = [
   { label: 'Dashboard', page: 'dashboard', icon: LayoutDashboard },
+  { label: 'HQS Monede', page: 'monede', icon: CircleDollarSign },
   { label: 'Profilul meu', page: 'profil', icon: User },
   { label: 'Panou Admin', page: 'admin', icon: Shield, roles: ['ADMIN'] },
   { label: 'Adauga proprietate', page: 'adauga-proprietate', icon: Plus, roles: ['OWNER', 'AGENT', 'ADMIN'] },
@@ -92,7 +93,7 @@ interface SiteHeaderProps {
   onOpenCoins?: () => void
 }
 
-export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotifications, onOpenSavedSearches, onOpenCoins }: SiteHeaderProps) {
+export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotifications, onOpenSavedSearches }: SiteHeaderProps) {
   const [savedSearchCount, setSavedSearchCount] = useState(0)
 
   useEffect(() => {
@@ -191,8 +192,14 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
             )}
           </Button>
 
-          {/* Coins */}
-          <Button variant="ghost" size="icon" className="relative" aria-label="HQS Monede" onClick={onOpenCoins}>
+          {/* Coins — navigates to full page */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            aria-label="HQS Monede"
+            onClick={() => navigateTo('monede')}
+          >
             <CircleDollarSign className="h-5 w-5 text-amber-500" />
             {user && coinBalance > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-amber-500 text-white border-0">
@@ -343,7 +350,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                 className="flex items-center justify-between w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
                 onClick={() => {
                   setMobileMenuOpen(false)
-                  onOpenCoins?.()
+                  navigateTo('monede')
                 }}
               >
                 <span className="flex items-center gap-2">

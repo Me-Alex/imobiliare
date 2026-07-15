@@ -141,6 +141,8 @@ export const LS_KEYS = {
   COINS_TRANSACTIONS: 'pm-coins-transactions',
   COINS_STREAK: 'pm-coins-streak',
   COINS_REDEEMED: 'pm-coins-redeemed',
+  COINS_ACHIEVEMENTS: 'pm-coins-achievements',
+  COINS_CHALLENGES: 'pm-coins-challenges',
 } as const
 
 // ─── Default staff members (hardcoded for MVP) ─────────────────────────────
@@ -225,3 +227,184 @@ export const COIN_EARN_RULES = {
   save_search: { coins: 5, label: 'Salvare cautare', description: '+5 monede pentru o cautare salvata' },
   price_alert: { coins: 5, label: 'Alerta de pret', description: '+5 monede pentru setarea unei alerte' },
 } as const
+
+// ─── Coin Achievements ──────────────────────────────────────────────────
+
+import type { CoinAchievement } from './types'
+
+export const COIN_ACHIEVEMENTS: CoinAchievement[] = [
+  {
+    id: 'ach-first-steps',
+    title: 'Primii Pasi',
+    description: 'Castiga 50 de monede in total',
+    icon: 'Footprints',
+    tier: 'bronze',
+    target: 50,
+    metric: 'total_earned',
+    reward: 25,
+  },
+  {
+    id: 'ach-collector',
+    title: 'Colectionar',
+    description: 'Castiga 200 de monede in total',
+    icon: 'Gem',
+    tier: 'silver',
+    target: 200,
+    metric: 'total_earned',
+    reward: 50,
+  },
+  {
+    id: 'ach-mogul',
+    title: 'Magnat Imobiliar',
+    description: 'Castiga 500 de monede in total',
+    icon: 'Crown',
+    tier: 'gold',
+    target: 500,
+    metric: 'total_earned',
+    reward: 100,
+  },
+  {
+    id: 'ach-legend',
+    title: 'Legenda HQS',
+    description: 'Castiga 1000 de monede in total',
+    icon: 'Trophy',
+    tier: 'platinum',
+    target: 1000,
+    metric: 'total_earned',
+    reward: 250,
+  },
+  {
+    id: 'ach-week-warrior',
+    title: 'Razboinicul Saptamanii',
+    description: 'Mentine un streak de 7 zile',
+    icon: 'Flame',
+    tier: 'bronze',
+    target: 7,
+    metric: 'streak_days',
+    reward: 30,
+  },
+  {
+    id: 'ach-month-master',
+    title: 'Maestru al Constientei',
+    description: 'Mentine un streak de 30 de zile',
+    icon: 'Award',
+    tier: 'gold',
+    target: 30,
+    metric: 'streak_days',
+    reward: 100,
+  },
+  {
+    id: 'ach-curious',
+    title: 'Curios',
+    description: 'Vizualizeaza 20 de proprietati',
+    icon: 'Eye',
+    tier: 'bronze',
+    target: 20,
+    metric: 'properties_viewed',
+    reward: 20,
+  },
+  {
+    id: 'ach-explorer',
+    title: 'Explorator',
+    description: 'Vizualizeaza 50 de proprietati',
+    icon: 'Compass',
+    tier: 'silver',
+    target: 50,
+    metric: 'properties_viewed',
+    reward: 50,
+  },
+  {
+    id: 'ach-fan',
+    title: 'Fan',
+    description: 'Adauga 5 proprietati la favorite',
+    icon: 'Heart',
+    tier: 'bronze',
+    target: 5,
+    metric: 'favorites',
+    reward: 15,
+  },
+  {
+    id: 'ach-superfan',
+    title: 'Super Fan',
+    description: 'Adauga 15 proprietati la favorite',
+    icon: 'Star',
+    tier: 'silver',
+    target: 15,
+    metric: 'favorites',
+    reward: 40,
+  },
+  {
+    id: 'ach-visitor',
+    title: 'Vizitator Frecvent',
+    description: 'Programeaza 3 vizionari',
+    icon: 'CalendarCheck',
+    tier: 'bronze',
+    target: 3,
+    metric: 'viewings_booked',
+    reward: 20,
+  },
+  {
+    id: 'ach-organized',
+    title: 'Organizat',
+    description: 'Salveaza 5 cautari',
+    icon: 'Search',
+    tier: 'bronze',
+    target: 5,
+    metric: 'searches_saved',
+    reward: 15,
+  },
+]
+
+// ─── Tier styles ────────────────────────────────────────────────────────
+
+export const ACHIEVEMENT_TIER_STYLES: Record<string, { bg: string; border: string; text: string; iconBg: string; glow: string; label: string }> = {
+  bronze: {
+    bg: 'bg-amber-50 dark:bg-amber-950/20',
+    border: 'border-amber-200 dark:border-amber-800/40',
+    text: 'text-amber-700 dark:text-amber-400',
+    iconBg: 'bg-amber-100 dark:bg-amber-900/40',
+    glow: 'shadow-amber-400/20',
+    label: 'Bronz',
+  },
+  silver: {
+    bg: 'bg-slate-50 dark:bg-slate-900/20',
+    border: 'border-slate-200 dark:border-slate-700/40',
+    text: 'text-slate-600 dark:text-slate-400',
+    iconBg: 'bg-slate-100 dark:bg-slate-800/40',
+    glow: 'shadow-slate-400/20',
+    label: 'Argint',
+  },
+  gold: {
+    bg: 'bg-yellow-50 dark:bg-yellow-950/20',
+    border: 'border-yellow-200 dark:border-yellow-800/40',
+    text: 'text-yellow-700 dark:text-yellow-400',
+    iconBg: 'bg-yellow-100 dark:bg-yellow-900/40',
+    glow: 'shadow-yellow-400/20',
+    label: 'Aur',
+  },
+  platinum: {
+    bg: 'bg-emerald-50 dark:bg-emerald-950/20',
+    border: 'border-emerald-200 dark:border-emerald-800/40',
+    text: 'text-emerald-700 dark:text-emerald-400',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-900/40',
+    glow: 'shadow-emerald-400/20',
+    label: 'Platinum',
+  },
+}
+
+// ─── Mock Leaderboard ───────────────────────────────────────────────────
+
+import type { LeaderboardEntry } from './types'
+
+export const MOCK_LEADERBOARD: LeaderboardEntry[] = [
+  { rank: 1, name: 'Andrei M.', initials: 'AM', balance: 1245, streak: 18 },
+  { rank: 2, name: 'Maria I.', initials: 'MI', balance: 980, streak: 12 },
+  { rank: 3, name: 'Cristian D.', initials: 'CD', balance: 856, streak: 9 },
+  { rank: 4, name: 'Elena P.', initials: 'EP', balance: 720, streak: 7 },
+  { rank: 5, name: 'Alexandru B.', initials: 'AB', balance: 645, streak: 5 },
+  { rank: 6, name: 'Ioana R.', initials: 'IR', balance: 510, streak: 4 },
+  { rank: 7, name: 'Vlad T.', initials: 'VT', balance: 435, streak: 3 },
+  { rank: 8, name: 'Diana S.', initials: 'DS', balance: 320, streak: 2 },
+  { rank: 9, name: 'Mihai L.', initials: 'ML', balance: 280, streak: 1 },
+  { rank: 10, name: 'Ana C.', initials: 'AC', balance: 195, streak: 1 },
+]

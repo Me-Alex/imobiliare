@@ -411,3 +411,50 @@ export interface CoinDailyStreak {
   lastLoginDate: string     // YYYY-MM-DD
   currentStreak: number
 }
+
+// ─── Coin Achievements ────────────────────────────────────────────────
+
+export interface CoinAchievement {
+  id: string
+  title: string
+  description: string
+  icon: string              // lucide icon name
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum'
+  target: number            // count needed to unlock
+  metric: 'total_earned' | 'streak_days' | 'properties_viewed' | 'favorites' | 'viewings_booked' | 'searches_saved'
+  reward: number           // coins awarded on unlock
+  unlockedAt?: string
+}
+
+export interface UserAchievement {
+  achievementId: string
+  progress: number
+  unlockedAt: string | null
+}
+
+// ─── Weekly Challenges ────────────────────────────────────────────────
+
+export interface WeeklyChallenge {
+  id: string
+  title: string
+  description: string
+  icon: string
+  target: number
+  current: number
+  reward: number
+  type: 'view_properties' | 'save_favorites' | 'book_viewings' | 'share_search' | 'complete_profile'
+  weekStart: string        // YYYY-MM-DD
+  completed: boolean
+  claimed: boolean
+}
+
+// ─── Leaderboard Entry ────────────────────────────────────────────────
+
+export interface LeaderboardEntry {
+  rank: number
+  name: string
+  initials: string
+  balance: number
+  streak: number
+  isCurrentUser?: boolean
+}

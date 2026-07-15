@@ -1,20 +1,12 @@
 'use client'
 
-import { useState, useEffect, createElement } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { formatDistanceToNow } from 'date-fns'
-import { ro } from 'date-fns/locale'
 import {
   CircleDollarSign,
   Flame,
   Check,
   ShoppingBag,
-  Star,
-  Sparkles,
-  Headphones,
-  FileBarChart2,
-  Ticket,
-  TicketPercent,
   PartyPopper,
   Coins,
   LogIn,
@@ -36,7 +28,8 @@ import { Separator } from '@/components/ui/separator'
 import { useAppStore } from '@/store/use-app-store'
 import { useAuth } from '@/contexts/auth-context'
 import { COIN_REWARDS, COIN_EARN_RULES } from '@/lib/constants'
-import type { CoinReward, CoinTransaction, CoinTransactionType } from '@/lib/types'
+import { TransactionRow, RewardCard } from '@/components/monede'
+import type { CoinTransaction } from '@/lib/types'
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
 
@@ -45,36 +38,11 @@ interface CoinsPanelProps {
   onOpenChange: (open: boolean) => void
 }
 
-// ─── Icon mapping for rewards ──────────────────────────────────────────────────
-
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  Star,
-  Sparkles,
-  Headphones,
-  FileBarChart2,
-  Ticket,
-  TicketPercent,
-}
-
 // ─── Earn rules to show (exclude daily_login & streak_bonus) ───────────────────
 
 const QUICK_EARN_ENTRIES = Object.entries(COIN_EARN_RULES).filter(
   ([key]) => key !== 'daily_login' && key !== 'daily_streak_bonus',
 )
-
-// ─── Category badge colors ────────────────────────────────────────────────────
-
-const CATEGORY_STYLES: Record<string, string> = {
-  listing: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-300 dark:border-amber-700',
-  service: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400 border-violet-300 dark:border-violet-700',
-  discount: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700',
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  listing: 'Anunt',
-  service: 'Serviciu',
-  discount: 'Reducere',
-}
 
 // ─── Streak progress helper ───────────────────────────────────────────────────
 
@@ -89,15 +57,6 @@ function getStreakProgress(streak: number) {
 function isTodayClaimed(lastLoginDate: string): boolean {
   if (!lastLoginDate) return false
   return lastLoginDate === new Date().toISOString().slice(0, 10)
-}
-
-// ─── Relative time formatter ──────────────────────────────────────────────────
-
-function formatTimestamp(isoString: string): string {
-  return formatDistanceToNow(new Date(isoString), {
-    addSuffix: true,
-    locale: ro,
-  })
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -115,7 +74,6 @@ export function CoinsPanel({ open, onOpenChange }: CoinsPanelProps) {
   const handleClaimDaily = () => {
     if (claimedToday) return
     setClaiming(true)
-    // Small delay for visual feedback
     setTimeout(() => {
       const result = claimDailyLogin()
       setClaiming(false)
@@ -130,7 +88,7 @@ export function CoinsPanel({ open, onOpenChange }: CoinsPanelProps) {
     }, 300)
   }
 
-  const handleRedeem = (reward: CoinReward) => {
+  const handleRedeem = (reward: { id: string; title: string; cost: number; duration?: string; value?: string }) => {
     if (!canAfford(reward.cost)) {
       const deficit = reward.cost - balance
       toast.error(`Nu ai suficiente monede. Mai ai nevoie de ${deficit} monede.`)
@@ -252,17 +210,13 @@ export function CoinsPanel({ open, onOpenChange }: CoinsPanelProps) {
                   transition={{ duration: 0.4, ease: 'easeOut' }}
                   className="relative rounded-2xl bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/40 dark:via-yellow-950/30 dark:to-orange-950/40 border border-amber-200/60 dark:border-amber-800/40 p-6 text-center overflow-hidden"
                 >
-                  {/* Decorative glow */}
                   <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-amber-300/20 dark:bg-amber-500/10 blur-2xl" />
                   <div className="absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-yellow-300/20 dark:bg-yellow-500/10 blur-2xl" />
 
                   <div className="relative">
-                    {/* Coin icon */}
                     <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg shadow-amber-400/25">
                       <span className="text-lg font-extrabold text-white tracking-tight">HQS</span>
                     </div>
-
-                    {/* Balance */}
                     <p className="text-4xl font-extrabold bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 dark:from-amber-400 dark:via-yellow-400 dark:to-orange-400 bg-clip-text text-transparent">
                       {displayBalance.toLocaleString('ro-RO')}
                     </p>
@@ -290,7 +244,6 @@ export function CoinsPanel({ open, onOpenChange }: CoinsPanelProps) {
                     </span>
                   </div>
 
-                  {/* Progress bar */}
                   {streak.currentStreak > 0 && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -308,7 +261,6 @@ export function CoinsPanel({ open, onOpenChange }: CoinsPanelProps) {
                     </div>
                   )}
 
-                  {/* Claim button */}
                   {claimedToday ? (
                     <div className="flex items-center justify-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-4 py-2.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
                       <Check className="h-4 w-4" />
@@ -369,7 +321,7 @@ export function CoinsPanel({ open, onOpenChange }: CoinsPanelProps) {
                   <div className="space-y-2">
                     <AnimatePresence initial={false}>
                       {transactions.map((tx) => (
-                        <TransactionRow key={tx.id} transaction={tx} />
+                        <TransactionRow key={tx.id} transaction={tx} variant="bordered" />
                       ))}
                     </AnimatePresence>
                   </div>
@@ -429,185 +381,6 @@ function EarnActionItem({
       <span className="text-sm font-bold text-amber-600 dark:text-amber-400 shrink-0">
         +{coins}
       </span>
-    </motion.div>
-  )
-}
-
-// ─── Transaction Row ──────────────────────────────────────────────────────────
-
-function TransactionRow({ transaction }: { transaction: CoinTransaction }) {
-  const isEarned = transaction.amount > 0
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -20, transition: { duration: 0.2 } }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-      className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3"
-    >
-      {/* Icon */}
-      <div
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-          isEarned
-            ? 'bg-emerald-100 dark:bg-emerald-900/30'
-            : 'bg-red-100 dark:bg-red-900/30'
-        }`}
-      >
-        {isEarned ? (
-          <CircleDollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        ) : (
-          <ShoppingBag className="h-4 w-4 text-red-600 dark:text-red-400" />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium leading-tight line-clamp-1">{transaction.description}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {formatTimestamp(transaction.timestamp)}
-        </p>
-      </div>
-
-      {/* Amount */}
-      <span
-        className={`text-sm font-bold shrink-0 ${
-          isEarned
-            ? 'text-emerald-600 dark:text-emerald-400'
-            : 'text-red-600 dark:text-red-400'
-        }`}
-      >
-        {isEarned ? '+' : ''}{transaction.amount}
-      </span>
-    </motion.div>
-  )
-}
-
-// ─── Reward Card ──────────────────────────────────────────────────────────────
-
-function RewardCard({
-  reward,
-  canAfford,
-  balance,
-  onRedeem,
-}: {
-  reward: CoinReward
-  canAfford: boolean
-  balance: number
-  onRedeem: () => void
-}) {
-  const [redeeming, setRedeeming] = useState(false)
-  const [justRedeemed, setJustRedeemed] = useState(false)
-  const deficit = reward.cost - balance
-
-  const handleRedeem = () => {
-    setRedeeming(true)
-    setTimeout(() => {
-      onRedeem()
-      setRedeeming(false)
-      setJustRedeemed(true)
-      setTimeout(() => setJustRedeemed(false), 1500)
-    }, 400)
-  }
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{
-        opacity: 1,
-        scale: 1,
-        ...(justRedeemed
-          ? {
-              scale: [1, 1.05, 1],
-              transition: { duration: 0.5 },
-            }
-          : {}),
-      }}
-      className={`relative flex flex-col rounded-xl border bg-card overflow-hidden transition-shadow hover:shadow-md ${
-        justRedeemed ? 'ring-2 ring-amber-400' : ''
-      }`}
-    >
-      {/* Top accent */}
-      <div className="h-1 bg-gradient-to-r from-amber-400 to-yellow-500" />
-
-      <div className="p-4 flex flex-col gap-3 flex-1">
-        {/* Header */}
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
-            {createElement(ICON_MAP[reward.icon] ?? CircleDollarSign, { className: 'h-5 w-5 text-amber-600 dark:text-amber-400' })}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-semibold leading-tight">{reward.title}</h4>
-            <Badge
-              variant="outline"
-              className={`mt-1 text-[10px] font-medium ${CATEGORY_STYLES[reward.category] ?? ''}`}
-            >
-              {CATEGORY_LABELS[reward.category] ?? reward.category}
-            </Badge>
-          </div>
-        </div>
-
-        {/* Description */}
-        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-          {reward.description}
-        </p>
-
-        {/* Meta */}
-        <div className="flex items-center gap-2 mt-auto">
-          {reward.duration && (
-            <span className="text-xs text-muted-foreground bg-muted rounded-md px-2 py-0.5">
-              {reward.duration}
-            </span>
-          )}
-          {reward.value && (
-            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 rounded-md px-2 py-0.5">
-              {reward.value}
-            </span>
-          )}
-        </div>
-
-        {/* Redeem button */}
-        {canAfford ? (
-          <motion.div whileTap={{ scale: 0.97 }}>
-            <Button
-              size="sm"
-              className="w-full h-9 gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-0 text-xs font-semibold"
-              onClick={handleRedeem}
-              disabled={redeeming || justRedeemed}
-            >
-              {redeeming ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                >
-                  <Coins className="h-3.5 w-3.5" />
-                </motion.div>
-              ) : justRedeemed ? (
-                <Check className="h-3.5 w-3.5" />
-              ) : (
-                <CircleDollarSign className="h-3.5 w-3.5" />
-              )}
-              {redeeming
-                ? 'Se proceseaza...'
-                : justRedeemed
-                  ? 'Redemat!'
-                  : `Redeema — ${reward.cost} monede`}
-            </Button>
-          </motion.div>
-        ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full h-9 text-xs text-muted-foreground cursor-not-allowed"
-            disabled
-          >
-            <CircleDollarSign className="h-3.5 w-3.5 opacity-50" />
-            Nu ai suficiente monede ({deficit} in plus)
-          </Button>
-        )}
-      </div>
     </motion.div>
   )
 }

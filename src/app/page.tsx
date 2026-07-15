@@ -39,6 +39,7 @@ import { VizionarileMelePage } from '@/views/vizionarile-mele-page'
 import { DashboardPage } from '@/views/dashboard-page'
 import { ProfilPage } from '@/views/profil-page'
 import { EvaluarePage } from '@/views/evaluare-page'
+import { MonedePage } from '@/views/monede-page'
 import { NotificationsPanel } from '@/components/panels/notifications-panel'
 import { CoinsPanel } from '@/components/panels/coins-panel'
 import { useCoinsHydration } from '@/hooks/use-coin-actions'
@@ -69,6 +70,7 @@ const pageComponents: Record<string, React.ComponentType<Record<string, unknown>
   dashboard: DashboardPage,
   profil: ProfilPage,
   evaluare: EvaluarePage,
+  monede: MonedePage,
 }
 
 // Pages that should NOT show header/footer/overlays
