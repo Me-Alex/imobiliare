@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import {
   Heart, Scale, MapPin, BedDouble, Maximize2, Bath, Building,
   Calendar, Phone, ChevronLeft, ChevronRight,
-  Share2, MessageCircle, Link, Check, Home, CalendarCheck,
+  Home, CalendarCheck,
 } from 'lucide-react'
 import {
   Dialog,
@@ -24,8 +24,8 @@ import { useQuery } from '@tanstack/react-query'
 import { getProperties } from '@/lib/api'
 import { formatBucharestLocation, formatPrice, formatPricePerSqm } from '@/lib/utils'
 import type { Property } from '@/lib/types'
-import { toast } from 'sonner'
 import { PropertyCard } from '@/components/property/property-card'
+import { PropertyShareButtons } from '@/components/property/property-share-buttons'
 import { AuthRequiredDialog } from '@/components/dialogs/auth-required-dialog'
 import { useAuth } from '@/contexts/auth-context'
 
@@ -40,7 +40,6 @@ interface PropertyDetailDialogProps {
 
 export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
   const { selectedPropertySlug, setSelectedPropertySlug, favorites, compareList, toggleFavorite, toggleCompare, setLightbox, setVizionareProperty, navigateTo } = useAppStore()
-  const [copied, setCopied] = useState(false)
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const { user } = useAuth()
   const { data: property, isLoading } = useProperty(selectedPropertySlug)
@@ -185,48 +184,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
           </div>
 
           {/* Share buttons */}
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-              <Share2 className="h-4 w-4" />
-              Distribuie
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                onClick={() => {
-                  const text = `Proprietate: ${property.title} - ${formatPrice(property.price)} - ${window.location.origin}`
-                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
-                }}
-              >
-                <MessageCircle className="h-3.5 w-3.5" />
-                WhatsApp
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                onClick={() => {
-                  const link = `${window.location.origin}?property=${property.slug}`
-                  navigator.clipboard.writeText(link).then(() => {
-                    setCopied(true)
-                    toast.success('Link copiat!', { description: 'Link-ul a fost copiat in clipboard.' })
-                    setTimeout(() => setCopied(false), 2000)
-                  }).catch(() => {
-                    toast.error('Eroare', { description: 'Nu am putut copia link-ul.' })
-                  })
-                }}
-              >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5" />
-                ) : (
-                  <Link className="h-3.5 w-3.5" />
-                )}
-                {copied ? 'Copiat' : 'Copiaza link'}
-              </Button>
-            </div>
-          </div>
+          <PropertyShareButtons property={property} />
 
           {/* Similar properties section */}
           <SimilarProperties currentId={property.id} zone={property.zone} type={property.type} price={property.price} onSelect={setSelectedPropertySlug} />

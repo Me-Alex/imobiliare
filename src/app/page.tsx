@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
@@ -86,6 +86,8 @@ function AppContent() {
     clearLightbox,
     chatOpen,
     setChatOpen,
+    setSelectedPropertySlug,
+    navigateTo,
   } = useAppStore()
   const [contactOpen, setContactOpen] = useState(false)
   const [contactPropertyTitle, setContactPropertyTitle] = useState('')
@@ -95,6 +97,23 @@ function AppContent() {
   const [savedSearchesOpen, setSavedSearchesOpen] = useState(false)
   const [saveSearchDialogOpen, setSaveSearchDialogOpen] = useState(false)
   const [coinsOpen, setCoinsOpen] = useState(false)
+
+  // Handle shared property links: ?property=slug
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const propertySlug = params.get('property')
+    if (propertySlug) {
+      setSelectedPropertySlug(propertySlug)
+      // Navigate to properties page so the dialog is visible
+      if (fullBleedPages.has(currentPage)) {
+        navigateTo('proprietati')
+      }
+      // Clean the URL so it doesn't re-trigger on refresh
+      const cleanUrl = window.location.pathname + window.location.hash
+      window.history.replaceState({}, document.title, cleanUrl)
+    }
+  }, [setSelectedPropertySlug, navigateTo, currentPage])
 
   const handleContact = useCallback((propertyTitle: string) => {
     setContactPropertyTitle(propertyTitle)
