@@ -1,10 +1,17 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  ArrowLeft, Heart, CalendarCheck, FileText, Search, Trash2, Download,
-  User as UserIcon, Bell, Monitor, BarChart3, ShieldAlert,
+  ArrowLeft,
+  BadgeCheck,
+  Bell,
+  BriefcaseBusiness,
+  Building2,
+  Download,
+  Monitor,
+  ShieldCheck,
+  User as UserIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -12,7 +19,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -24,409 +30,341 @@ import {
 } from '@/components/ui/select'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
-import { loadFromLS, saveToLS } from '@/lib/storage'
+import { loadFromLS } from '@/lib/storage'
 import { LS_KEYS } from '@/lib/constants'
+import {
+  ACCOUNT_ROLE_DEFINITIONS,
+  type AccountRole,
+} from '@/lib/account-roles'
+import type { UploadedDocument, UserProperty, Vizionare } from '@/lib/types'
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-interface UserProfile {
-  phone?: string
-  bio?: string
-  notifications: {
-    newProperties: boolean
-    priceAlerts: boolean
-    viewingUpdates: boolean
-    weeklyNewsletter: boolean
-    specialOffers: boolean
-  }
-  display: {
-    currency: string
-    defaultSort: string
-    defaultType: string
-  }
+const DEFAULT_NOTIFICATIONS: Record<string, boolean> = {
+  newProperties: true,
+  priceAlerts: true,
+  viewingUpdates: true,
+  weeklyNewsletter: false,
+  specialOffers: false,
 }
 
-const DEFAULT_PROFILE: UserProfile = {
-  phone: '',
-  bio: '',
-  notifications: {
-    newProperties: true,
-    priceAlerts: true,
-    viewingUpdates: true,
-    weeklyNewsletter: false,
-    specialOffers: false,
-  },
-  display: {
-    currency: 'EUR',
-    defaultSort: 'newest',
-    defaultType: 'all',
-  },
+const DEFAULT_DISPLAY: Record<string, string> = {
+  currency: 'EUR',
+  defaultSort: 'newest',
+  defaultType: 'all',
 }
 
-// ─── Component ──────────────────────────────────────────────────────────────
+const NOTIFICATION_LABELS: Record<string, string> = {
+  newProperties: 'Email pentru proprietati noi',
+  priceAlerts: 'Alerte de pret',
+  viewingUpdates: 'Actualizari vizionari',
+  weeklyNewsletter: 'Newsletter saptamanal',
+  specialOffers: 'Oferte speciale',
+}
+
+function initials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase())
+    .slice(0, 2)
+    .join('')
+}
 
 export function ProfilPage() {
-  const { user } = useAuth()
-  const navigateTo = useAppStore((s) => s.navigateTo)
+  const { user, profile, loading, updateProfile } = useAuth()
+  const navigateTo = useAppStore((state) => state.navigateTo)
+  const favorites = useAppStore((state) => state.favorites)
 
-  // ── Stats from various LS keys ──────────────────────────────────────────
-  const favorites = useAppStore((s) => s.favorites)
-  const vizionari = useMemo(() => loadFromLS<Array<{ id: string; status: string }>>(LS_KEYS.VIZIONARI, []), [])
-  const documents = useMemo(() => loadFromLS<Array<{ id: string }>>(LS_KEYS.DOCUMENTS, []), [])
+  const properties = useMemo(() => loadFromLS<UserProperty[]>(LS_KEYS.USER_PROPERTIES, []), [])
+  const vizionari = useMemo(() => loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, []), [])
+  const documents = useMemo(() => loadFromLS<UploadedDocument[]>(LS_KEYS.DOCUMENTS, []), [])
   const savedSearches = useMemo(() => loadFromLS<Array<{ id: string }>>(LS_KEYS.SAVED_SEARCHES, []), [])
 
-  // ── Profile state (lazy init from localStorage) ─────────────────────────
-  const savedProfile = useMemo(() => loadFromLS<UserProfile>(LS_KEYS.USER_PROFILE, DEFAULT_PROFILE), [])
+  const [loadedProfileId, setLoadedProfileId] = useState<string | null>(null)
+  const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [bio, setBio] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [licenseNumber, setLicenseNumber] = useState('')
+  const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS)
+  const [display, setDisplay] = useState(DEFAULT_DISPLAY)
+  const [saving, setSaving] = useState(false)
+  const [changingRole, setChangingRole] = useState(false)
 
-  const [fullName, setFullName] = useState(
-    () => user?.user_metadata?.full_name || user?.email?.split('@')[0] || ''
-  )
-  const [phone, setPhone] = useState(() => savedProfile.phone ?? '')
-  const [bio, setBio] = useState(() => savedProfile.bio ?? '')
-  const [notifications, setNotifications] = useState(() => savedProfile.notifications)
-  const [display, setDisplay] = useState(() => savedProfile.display)
+  if (profile && loadedProfileId !== profile.id) {
+    setLoadedProfileId(profile.id)
+    setFullName(profile.fullName)
+    setPhone(profile.phone)
+    setBio(profile.bio)
+    setCompanyName(profile.companyName)
+    setLicenseNumber(profile.licenseNumber)
+    setNotifications({ ...DEFAULT_NOTIFICATIONS, ...profile.notificationPreferences })
+    setDisplay({ ...DEFAULT_DISPLAY, ...profile.displayPreferences })
+  }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────
-  const getInitials = useCallback((name: string) => {
-    return name
-      .split(' ')
-      .filter(Boolean)
-      .map((w) => w.charAt(0).toUpperCase())
-      .slice(0, 2)
-      .join('')
-  }, [])
-
-  const handleSave = useCallback(() => {
-    const profile: UserProfile = {
+  const handleSave = useCallback(async () => {
+    setSaving(true)
+    const { error } = await updateProfile({
+      fullName,
       phone,
       bio,
-      notifications,
-      display,
+      companyName,
+      licenseNumber,
+      notificationPreferences: notifications,
+      displayPreferences: display,
+    })
+    setSaving(false)
+
+    if (error) {
+      toast.error('Profilul nu a putut fi salvat', { description: error })
+      return
     }
-    saveToLS(LS_KEYS.USER_PROFILE, profile)
-    toast.success('Profil salvat cu succes!')
-  }, [phone, bio, notifications, display])
+    toast.success('Profil salvat in Supabase')
+  }, [bio, companyName, display, fullName, licenseNumber, notifications, phone, updateProfile])
 
-  const handleDeleteAccount = useCallback(() => {
-    toast.info('Functionalitate in dezvoltare')
-  }, [])
+  const switchClientOwnerRole = useCallback(async () => {
+    if (!profile || !['CLIENT', 'OWNER'].includes(profile.role)) return
+    const nextRole = profile.role === 'CLIENT' ? 'OWNER' : 'CLIENT'
+    setChangingRole(true)
+    const { error } = await updateProfile({ role: nextRole })
+    setChangingRole(false)
 
-  const handleExportData = useCallback(() => {
-    toast.success('Datele au fost exportate')
-  }, [])
+    if (error) {
+      toast.error('Tipul contului nu a putut fi schimbat', { description: error })
+      return
+    }
+    toast.success(nextRole === 'OWNER' ? 'Profilul Proprietar este activ' : 'Profilul Client este activ')
+    navigateTo('dashboard')
+  }, [navigateTo, profile, updateProfile])
 
-  const handleNotifChange = useCallback((key: keyof UserProfile['notifications']) => {
-    setNotifications((prev) => ({ ...prev, [key]: !prev[key] }))
-  }, [])
+  const handleExport = useCallback(() => {
+    if (!profile || typeof window === 'undefined') return
+    const exportData = {
+      profile,
+      favorites: favorites.length,
+      properties,
+      vizionari,
+      documents,
+      savedSearches,
+      exportedAt: new Date().toISOString(),
+    }
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'hqs-date-cont.json'
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success('Datele contului au fost exportate')
+  }, [documents, favorites.length, profile, properties, savedSearches, vizionari])
 
-  // ── Auth guard ──────────────────────────────────────────────────────────
-  if (!user) {
+  if (loading) return <div className="min-h-[calc(100vh-10rem)] animate-pulse bg-muted/10" />
+
+  if (!user || !profile) {
     return (
-      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center py-12 px-4">
-        <div className="text-center space-y-4">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <UserIcon className="h-7 w-7" />
-          </div>
+      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center px-4 py-12 text-center">
+        <div className="space-y-4">
+          <UserIcon className="mx-auto h-10 w-10 text-primary" />
           <h2 className="text-xl font-bold">Autentifica-te</h2>
-          <p className="text-sm text-muted-foreground">
-            Trebuie sa fii autentificat pentru a accesa profilul.
-          </p>
           <Button onClick={() => navigateTo('login')}>Autentifica-te</Button>
         </div>
       </div>
     )
   }
 
+  const role = profile.role
+  const roleDefinition = ACCOUNT_ROLE_DEFINITIONS[role]
+  const showProfessionalFields = role === 'OWNER' || role === 'AGENT'
+  const activeVizionari = vizionari.filter((item) => item.status === 'pending' || item.status === 'confirmed').length
+
+  const stats = role === 'CLIENT'
+    ? [
+        ['Favorite', favorites.length],
+        ['Vizionari active', activeVizionari],
+        ['Documente', documents.length],
+        ['Cautari salvate', savedSearches.length],
+      ]
+    : role === 'OWNER'
+      ? [
+          ['Proprietati proprii', properties.length],
+          ['Solicitari active', activeVizionari],
+          ['Documente', documents.length],
+          ['Rapoarte', 0],
+        ]
+      : role === 'AGENT'
+        ? [
+            ['Proprietati alocate', properties.length],
+            ['Vizionari', activeVizionari],
+            ['Documente clienti', documents.length],
+            ['Lead-uri', 0],
+          ]
+        : [
+            ['Proprietati', properties.length],
+            ['Vizionari', vizionari.length],
+            ['Documente', documents.length],
+            ['Module cont', 4],
+          ]
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="mx-auto max-w-3xl w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2 mb-4 -ml-2"
-            onClick={() => navigateTo('dashboard')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Inapoi la Dashboard
+    <div className="min-h-screen">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          <Button variant="ghost" size="sm" className="-ml-2 mb-4 gap-2" onClick={() => navigateTo('dashboard')}>
+            <ArrowLeft className="h-4 w-4" /> Inapoi la Dashboard
           </Button>
-
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
-            Profilul Meu
-          </h1>
-
-          <div className="flex items-center gap-4 mt-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <Avatar className="h-16 w-16">
-              <AvatarFallback className="text-xl bg-primary/10 text-primary font-semibold">
-                {getInitials(fullName || user.email || 'U')}
+              <AvatarFallback className="bg-primary/10 text-xl font-semibold text-primary">
+                {initials(profile.fullName || profile.email)}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <p className="text-lg font-semibold">{fullName || 'Utilizator'}</p>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="truncate text-2xl font-bold lg:text-3xl">{profile.fullName}</h1>
+                <Badge className="bg-primary/10 text-primary hover:bg-primary/10">{roleDefinition.label}</Badge>
+                {profile.isActive && <Badge variant="outline" className="gap-1 text-emerald-600"><BadgeCheck className="h-3 w-3" /> Activ</Badge>}
+              </div>
+              <p className="text-sm text-muted-foreground">{profile.email}</p>
             </div>
           </div>
         </motion.div>
 
-        {/* ── Profile Form ───────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="glass-card rounded-2xl p-6 mb-6"
-        >
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <UserIcon className="h-5 w-5 text-primary" />
-            Informatii Personale
-          </h2>
+        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card mb-6 rounded-2xl p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <ShieldCheck className="h-5 w-5 text-primary" /> {roleDefinition.title}
+              </h2>
+              <p className="mt-1 max-w-xl text-sm text-muted-foreground">{roleDefinition.description}</p>
+              <ul className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+                {roleDefinition.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2">
+                    <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {(role === 'CLIENT' || role === 'OWNER') && (
+              <Button variant="outline" onClick={switchClientOwnerRole} disabled={changingRole}>
+                {role === 'CLIENT' ? 'Activeaza profil Proprietar' : 'Foloseste profil Client'}
+              </Button>
+            )}
+          </div>
+        </motion.section>
 
-          <div className="space-y-4">
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {stats.map(([label, value]) => (
+            <div key={String(label)} className="rounded-xl border bg-card p-4">
+              <p className="text-2xl font-bold">{value}</p>
+              <p className="text-xs text-muted-foreground">{label}</p>
+            </div>
+          ))}
+        </div>
+
+        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card mb-6 rounded-2xl p-6">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+            <UserIcon className="h-5 w-5 text-primary" /> Informatii personale
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="fullName">Nume complet</Label>
-              <Input
-                id="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Numele tau complet"
-              />
+              <Input id="fullName" value={fullName} onChange={(event) => setFullName(event.target.value)} />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefon (optional)</Label>
-              <Input
-                id="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+40 7XX XXX XXX"
-                type="tel"
-              />
+              <Label htmlFor="phone">Telefon</Label>
+              <Input id="phone" type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+40 7XX XXX XXX" />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bio">Despre mine (optional)</Label>
-              <Textarea
-                id="bio"
-                value={bio}
-                onChange={(e) => setBio(e.target.value.slice(0, 200))}
-                placeholder="Scurta descriere despre tine..."
-                rows={3}
-                className="resize-none"
-              />
-              <p className="text-xs text-muted-foreground text-right">
-                {bio.length}/200
-              </p>
-            </div>
-
-            <Button onClick={handleSave} className="w-full sm:w-auto">
-              Salveaza
-            </Button>
-          </div>
-        </motion.div>
-
-        {/* ── Notification Preferences ────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="glass-card rounded-2xl p-6 mb-6"
-        >
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Bell className="h-5 w-5 text-primary" />
-            Preferinte Notificari
-          </h2>
-
-          <div className="space-y-4">
-            {([
-              { key: 'newProperties' as const, label: 'Email pentru noi proprietati' },
-              { key: 'priceAlerts' as const, label: 'Alerte de pret' },
-              { key: 'viewingUpdates' as const, label: 'Actualizari vizionari' },
-              { key: 'weeklyNewsletter' as const, label: 'Newsletter saptamanal' },
-              { key: 'specialOffers' as const, label: 'Oferte speciale' },
-            ]).map((item) => (
-              <div key={item.key} className="flex items-center justify-between">
-                <Label htmlFor={item.key} className="cursor-pointer text-sm">
-                  {item.label}
-                </Label>
-                <Switch
-                  id={item.key}
-                  checked={notifications[item.key]}
-                  onCheckedChange={() => handleNotifChange(item.key)}
-                />
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* ── Display Preferences ────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="glass-card rounded-2xl p-6 mb-6"
-        >
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Monitor className="h-5 w-5 text-primary" />
-            Preferinte Afisare
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Moneda</Label>
-              <Select
-                value={display.currency}
-                onValueChange={(v) => setDisplay((prev) => ({ ...prev, currency: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="RON">RON</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Sortare implicita</Label>
-              <Select
-                value={display.defaultSort}
-                onValueChange={(v) => setDisplay((prev) => ({ ...prev, defaultSort: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="price-asc">Pret crescator</SelectItem>
-                  <SelectItem value="price-desc">Pret descrescator</SelectItem>
-                  <SelectItem value="newest">Cele mai noi</SelectItem>
-                  <SelectItem value="surface">Suprafata</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Tip proprietate</Label>
-              <Select
-                value={display.defaultType}
-                onValueChange={(v) => setDisplay((prev) => ({ ...prev, defaultType: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Toate</SelectItem>
-                  <SelectItem value="Apartament">Apartament</SelectItem>
-                  <SelectItem value="Casa">Casa</SelectItem>
-                  <SelectItem value="Vila">Vila</SelectItem>
-                  <SelectItem value="Teren">Teren</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ── Account Statistics ──────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="glass-card rounded-2xl p-6 mb-6"
-        >
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-primary" />
-            Statistici Cont
-          </h2>
-
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              {
-                label: 'Proprietati salvate',
-                value: favorites.length,
-                icon: Heart,
-                color: 'text-rose-600 bg-rose-100 dark:text-rose-400 dark:bg-rose-900/30',
-              },
-              {
-                label: 'Vizionari programate',
-                value: vizionari.filter(
-                  (v) => v.status === 'pending' || v.status === 'confirmed'
-                ).length,
-                icon: CalendarCheck,
-                color: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30',
-              },
-              {
-                label: 'Documente incarcate',
-                value: documents.length,
-                icon: FileText,
-                color: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30',
-              },
-              {
-                label: 'Cautari salvate',
-                value: savedSearches.length,
-                icon: Search,
-                color: 'text-emerald-600 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/30',
-              },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="flex items-center gap-3 p-3 rounded-xl bg-muted/30"
-              >
-                <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${stat.color}`}
-                >
-                  <stat.icon className="h-5 w-5" />
+            {showProfessionalFields && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">{role === 'AGENT' ? 'Agentie / companie' : 'Companie (optional)'}</Label>
+                  <Input id="companyName" value={companyName} onChange={(event) => setCompanyName(event.target.value)} />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                <div className="space-y-2">
+                  <Label htmlFor="licenseNumber">{role === 'AGENT' ? 'Cod agent / licenta' : 'Cod fiscal (optional)'}</Label>
+                  <Input id="licenseNumber" value={licenseNumber} onChange={(event) => setLicenseNumber(event.target.value)} />
                 </div>
+              </>
+            )}
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="bio">Despre mine</Label>
+              <Textarea id="bio" value={bio} onChange={(event) => setBio(event.target.value.slice(0, 400))} rows={4} />
+              <p className="text-right text-xs text-muted-foreground">{bio.length}/400</p>
+            </div>
+          </div>
+        </motion.section>
+
+        <div className="mb-6 grid gap-6 lg:grid-cols-2">
+          <section className="glass-card rounded-2xl p-6">
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+              <Bell className="h-5 w-5 text-primary" /> Notificari
+            </h2>
+            <div className="space-y-4">
+              {Object.keys(DEFAULT_NOTIFICATIONS).map((key) => (
+                <div key={key} className="flex items-center justify-between gap-4">
+                  <Label htmlFor={key} className="text-sm">{NOTIFICATION_LABELS[key]}</Label>
+                  <Switch
+                    id={key}
+                    checked={Boolean(notifications[key])}
+                    onCheckedChange={() => setNotifications((current) => ({ ...current, [key]: !current[key] }))}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="glass-card rounded-2xl p-6">
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+              <Monitor className="h-5 w-5 text-primary" /> Afisare
+            </h2>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Moneda</Label>
+                <Select value={display.currency} onValueChange={(value) => setDisplay((current) => ({ ...current, currency: value }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="RON">RON</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            ))}
-          </div>
-        </motion.div>
+              <div className="space-y-2">
+                <Label>Sortare implicita</Label>
+                <Select value={display.defaultSort} onValueChange={(value) => setDisplay((current) => ({ ...current, defaultSort: value }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Cele mai noi</SelectItem>
+                    <SelectItem value="price-asc">Pret crescator</SelectItem>
+                    <SelectItem value="price-desc">Pret descrescator</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </section>
+        </div>
 
-        {/* ── Danger Zone ─────────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="rounded-2xl border-2 border-destructive/50 p-6 mb-6 bg-destructive/5"
-        >
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-destructive">
-            <ShieldAlert className="h-5 w-5" />
-            Zona Periculoasa
-          </h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Button onClick={handleSave} disabled={saving} className="gap-2">
+            <BadgeCheck className="h-4 w-4" /> {saving ? 'Se salveaza...' : 'Salveaza profilul'}
+          </Button>
+          <Button variant="outline" onClick={handleExport} className="gap-2">
+            <Download className="h-4 w-4" /> Exporta datele mele
+          </Button>
+        </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              variant="destructive"
-              className="gap-2"
-              onClick={handleDeleteAccount}
-            >
-              <Trash2 className="h-4 w-4" />
-              Sterge contul
-            </Button>
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={handleExportData}
-            >
-              <Download className="h-4 w-4" />
-              Exporta datele mele
-            </Button>
+        {role === 'AGENT' && (
+          <div className="mt-6 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-muted-foreground">
+            <BriefcaseBusiness className="mr-2 inline h-4 w-4 text-blue-600" />
+            Rolul Agent si datele profesionale sunt administrate de un administrator.
           </div>
-        </motion.div>
+        )}
+        {role === 'ADMIN' && (
+          <div className="mt-6 rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 text-sm text-muted-foreground">
+            <Building2 className="mr-2 inline h-4 w-4 text-violet-600" />
+            Rolul Administrator nu poate fi schimbat din profilul public.
+          </div>
+        )}
       </div>
-
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer className="mt-auto border-t py-6 text-center text-sm text-muted-foreground">
-        &copy; 2025 HQS Imobiliare. Toate drepturile rezervate.
-      </footer>
     </div>
   )
 }

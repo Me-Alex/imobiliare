@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSafeDb } from '@/lib/edge-db'
-import { supabase } from '@/lib/supabase'
+import { createAuthenticatedSupabaseClient, supabase } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   // ── Auth check ──────────────────────────────────────────────
@@ -10,9 +10,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const token = authHeader.slice(7)
-    const { error } = await supabase.auth.getUser(token)
-    if (error) {
+    const { data: authData, error } = await supabase.auth.getUser(token)
+    if (error || !authData.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const authenticatedSupabase = createAuthenticatedSupabaseClient(token)
+    const { data: profile, error: profileError } = await authenticatedSupabase
+      .from('profiles')
+      .select('role,is_active')
+      .eq('id', authData.user.id)
+      .maybeSingle()
+
+    if (profileError || !profile || profile.is_active === false || profile.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

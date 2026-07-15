@@ -18,7 +18,9 @@ import { CookieConsent } from '@/components/layout/cookie-consent'
 import { GalleryLightbox } from '@/components/dialogs/gallery-lightbox'
 import { BackToTop } from '@/components/layout/back-to-top'
 import { AIChatWidget } from '@/components/features/ai-chat-widget'
-import { AuthProvider } from '@/contexts/auth-context'
+import { AuthProvider, useAuth } from '@/contexts/auth-context'
+import { RoleAccessDenied } from '@/components/account/role-access-denied'
+import { canAccessAccountPage, getAllowedRolesForPage } from '@/lib/account-roles'
 import { useAppStore } from '@/store/use-app-store'
 import { Toaster } from 'sonner'
 import { AcasaPage } from '@/views/acasa-page'
@@ -74,6 +76,7 @@ const fullBleedPages = new Set(['login', 'admin', 'adauga-proprietate', 'dashboa
 
 function AppContent() {
   useCoinsHydration()
+  const { user, profile } = useAuth()
   const {
     currentPage,
     lightboxImages,
@@ -98,6 +101,11 @@ function AppContent() {
 
   const PageComponent = pageComponents[currentPage]
   const isFullBleed = fullBleedPages.has(currentPage)
+  const pageContent = user && profile && !canAccessAccountPage(profile.role, currentPage)
+    ? <RoleAccessDenied currentRole={profile.role} allowedRoles={getAllowedRolesForPage(currentPage)} />
+    : PageComponent
+      ? <PageComponent onSaveSearch={() => setSaveSearchDialogOpen(true)} />
+      : null
 
   if (isFullBleed) {
     // Login and Admin pages have their own header/footer
@@ -113,7 +121,7 @@ function AppContent() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
-              {PageComponent && <PageComponent onSaveSearch={() => setSaveSearchDialogOpen(true)} />}
+              {pageContent}
             </motion.div>
           </AnimatePresence>
         </main>
@@ -142,7 +150,7 @@ function AppContent() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
-            {PageComponent && <PageComponent onSaveSearch={() => setSaveSearchDialogOpen(true)} />}
+            {pageContent}
           </motion.div>
         </AnimatePresence>
       </main>

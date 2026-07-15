@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
 import { type User, type Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from '@/lib/supabase'
+import { normalizeAccountRole, type AccountRole } from '@/lib/account-roles'
 
 export interface GoogleAuthError {
   code: string
@@ -10,47 +11,184 @@ export interface GoogleAuthError {
   message: string
 }
 
+export interface AccountProfile {
+  id: string
+  email: string
+  fullName: string
+  phone: string
+  bio: string
+  avatarUrl: string
+  companyName: string
+  licenseNumber: string
+  role: AccountRole
+  isActive: boolean
+  notificationPreferences: Record<string, boolean>
+  displayPreferences: Record<string, string>
+}
+
+export interface AccountProfileUpdate {
+  fullName?: string
+  phone?: string
+  bio?: string
+  avatarUrl?: string
+  companyName?: string
+  licenseNumber?: string
+  role?: 'CLIENT' | 'OWNER'
+  notificationPreferences?: Record<string, boolean>
+  displayPreferences?: Record<string, string>
+}
+
 interface AuthContextType {
   user: User | null
   session: Session | null
+  profile: AccountProfile | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: string | null }>
+  signUp: (email: string, password: string, fullName?: string, role?: 'CLIENT' | 'OWNER') => Promise<{ error: string | null }>
   signInWithGoogle: () => Promise<{ error: GoogleAuthError | null }>
   signOut: () => Promise<void>
+  refreshProfile: () => Promise<void>
+  updateProfile: (updates: AccountProfileUpdate) => Promise<{ error: string | null }>
+  hasRole: (...roles: AccountRole[]) => boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+function fallbackProfile(user: User): AccountProfile {
+  return {
+    id: user.id,
+    email: user.email || '',
+    fullName: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Utilizator',
+    phone: '',
+    bio: '',
+    avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+    companyName: '',
+    licenseNumber: '',
+    role: 'CLIENT',
+    isActive: true,
+    notificationPreferences: {},
+    displayPreferences: {},
+  }
+}
+
+function mapProfile(user: User, row: Record<string, unknown>): AccountProfile {
+  const defaults = fallbackProfile(user)
+  return {
+    ...defaults,
+    id: String(row.id || user.id),
+    email: String(row.email || defaults.email),
+    fullName: String(row.full_name || row.name || defaults.fullName),
+    phone: String(row.phone || ''),
+    bio: String(row.bio || ''),
+    avatarUrl: String(row.avatar_url || defaults.avatarUrl),
+    companyName: String(row.company_name || ''),
+    licenseNumber: String(row.license_number || ''),
+    role: normalizeAccountRole(row.role),
+    isActive: row.is_active !== false,
+    notificationPreferences: (row.notification_preferences as Record<string, boolean> | null) || {},
+    displayPreferences: (row.display_preferences as Record<string, string> | null) || {},
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [profile, setProfile] = useState<AccountProfile | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s)
-      setUser(s?.user ?? null)
-      setLoading(false)
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession)
+      setUser(currentSession?.user ?? null)
+      setAuthLoading(false)
     }).catch(() => {
-      // Supabase not configured — treat as logged out
-      setLoading(false)
+      setAuthLoading(false)
     })
 
     let subscription: { unsubscribe: () => void } | null = null
     try {
-      const { data } = supabase.auth.onAuthStateChange((_event, s) => {
-        setSession(s)
-        setUser(s?.user ?? null)
-        setLoading(false)
+      const { data } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+        setSession(currentSession)
+        setUser(currentSession?.user ?? null)
+        if (!currentSession?.user) {
+          setProfile(null)
+          setProfileLoading(false)
+        }
+        setAuthLoading(false)
       })
       subscription = data.subscription
     } catch {
-      // Supabase not configured
+      // getSession above remains the source of truth if subscriptions are unavailable.
     }
 
     return () => subscription?.unsubscribe()
   }, [])
+
+  const fetchProfile = useCallback(async (currentUser: User) => {
+    setProfileLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id,email,name,full_name,phone,bio,avatar_url,company_name,license_number,role,is_active,notification_preferences,display_preferences')
+        .eq('id', currentUser.id)
+        .maybeSingle()
+
+      if (error || !data) {
+        setProfile(fallbackProfile(currentUser))
+        return
+      }
+
+      setProfile(mapProfile(currentUser, data as Record<string, unknown>))
+    } catch {
+      setProfile(fallbackProfile(currentUser))
+    } finally {
+      setProfileLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    const frame = requestAnimationFrame(() => void fetchProfile(user))
+    return () => cancelAnimationFrame(frame)
+  }, [user, fetchProfile])
+
+  const refreshProfile = useCallback(async () => {
+    if (user) await fetchProfile(user)
+  }, [user, fetchProfile])
+
+  const updateProfile = useCallback(async (updates: AccountProfileUpdate) => {
+    if (!user) return { error: 'Trebuie sa fii autentificat.' }
+
+    const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    if (updates.fullName !== undefined) {
+      payload.full_name = updates.fullName.trim()
+      payload.name = updates.fullName.trim()
+    }
+    if (updates.phone !== undefined) payload.phone = updates.phone.trim() || null
+    if (updates.bio !== undefined) payload.bio = updates.bio.trim() || null
+    if (updates.avatarUrl !== undefined) payload.avatar_url = updates.avatarUrl.trim() || null
+    if (updates.companyName !== undefined) payload.company_name = updates.companyName.trim() || null
+    if (updates.licenseNumber !== undefined) payload.license_number = updates.licenseNumber.trim() || null
+    if (updates.role !== undefined) payload.role = updates.role
+    if (updates.notificationPreferences !== undefined) payload.notification_preferences = updates.notificationPreferences
+    if (updates.displayPreferences !== undefined) payload.display_preferences = updates.displayPreferences
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(payload)
+        .eq('id', user.id)
+        .select('id,email,name,full_name,phone,bio,avatar_url,company_name,license_number,role,is_active,notification_preferences,display_preferences')
+        .single()
+
+      if (error) return { error: error.message }
+      setProfile(mapProfile(user, data as Record<string, unknown>))
+      return { error: null }
+    } catch {
+      return { error: 'Profilul nu a putut fi actualizat.' }
+    }
+  }, [user])
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
@@ -61,13 +199,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
+  const signUp = useCallback(async (
+    email: string,
+    password: string,
+    fullName?: string,
+    role: 'CLIENT' | 'OWNER' = 'CLIENT',
+  ) => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { full_name: fullName || email.split('@')[0] },
+          data: {
+            full_name: fullName || email.split('@')[0],
+            account_type: role,
+          },
         },
       })
       return { error: error?.message ?? null }
@@ -97,15 +243,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       if (error) {
-        const msg = error.message || ''
-        const isProviderNotEnabled = msg.includes('provider is not enabled') || msg.includes('Unsupported provider')
+        const message = error.message || ''
+        const isProviderNotEnabled = message.includes('provider is not enabled') || message.includes('Unsupported provider')
         return {
           error: {
             code: error.code || 'unknown',
             isProviderNotEnabled,
             message: isProviderNotEnabled
               ? 'Autentificarea Google nu este inca configurata. Urmeaza pasii de mai jos.'
-              : msg || 'Eroare la conectarea cu Google.',
+              : message || 'Eroare la conectarea cu Google.',
           },
         }
       }
@@ -121,7 +267,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       window.location.assign(data.url)
-
       return { error: null }
     } catch {
       return {
@@ -138,19 +283,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await supabase.auth.signOut()
     } catch {
-      // Ignore
+      // The local state is cleared by Supabase when possible.
     }
   }, [])
 
+  const hasRole = useCallback((...roles: AccountRole[]) => {
+    return Boolean(profile && profile.isActive && roles.includes(profile.role))
+  }, [profile])
+
+  const loading = authLoading || Boolean(user && (profileLoading || !profile))
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{
+      user,
+      session,
+      profile,
+      loading,
+      signIn,
+      signUp,
+      signInWithGoogle,
+      signOut,
+      refreshProfile,
+      updateProfile,
+      hasRole,
+    }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
+  const context = useContext(AuthContext)
+  if (!context) throw new Error('useAuth must be used within AuthProvider')
+  return context
 }

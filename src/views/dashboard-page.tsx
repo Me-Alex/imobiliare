@@ -2,79 +2,169 @@
 
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Building2, CalendarCheck, FileText, Eye, Plus, ArrowRight } from 'lucide-react'
-import { toast } from 'sonner'
-import { ActivityTimeline } from '@/components/features/activity-timeline'
+import {
+  ArrowRight,
+  BarChart3,
+  BriefcaseBusiness,
+  Building2,
+  CalendarCheck,
+  Calculator,
+  Eye,
+  FileText,
+  Heart,
+  Home,
+  Plus,
+  Search,
+  Settings,
+  ShieldCheck,
+  Users,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/auth-context'
-import { useAppStore } from '@/store/use-app-store'
+import { useAppStore, type PageKey } from '@/store/use-app-store'
 import { loadFromLS } from '@/lib/storage'
 import { LS_KEYS } from '@/lib/constants'
 import type { Vizionare, UserProperty, UploadedDocument } from '@/lib/types'
+import {
+  ACCOUNT_ROLE_DEFINITIONS,
+  type AccountRole,
+} from '@/lib/account-roles'
+
+interface DashboardAction {
+  label: string
+  description: string
+  page: PageKey
+  icon: React.ElementType
+}
+
+interface DashboardStat {
+  label: string
+  value: number
+  icon: React.ElementType
+  color: string
+}
+
+function getActions(role: AccountRole): DashboardAction[] {
+  if (role === 'OWNER') {
+    return [
+      { label: 'Adauga proprietate', description: 'Publica un anunt nou', page: 'adauga-proprietate', icon: Plus },
+      { label: 'Proprietatile mele', description: 'Editeaza portofoliul propriu', page: 'adauga-proprietate', icon: Home },
+      { label: 'Solicitari si vizionari', description: 'Urmareste interesul clientilor', page: 'vizionarile-mele', icon: CalendarCheck },
+      { label: 'Evaluare proprietate', description: 'Estimeaza valoarea de piata', page: 'evaluare', icon: BarChart3 },
+    ]
+  }
+
+  if (role === 'AGENT') {
+    return [
+      { label: 'Adauga proprietate', description: 'Adauga o proprietate in portofoliu', page: 'adauga-proprietate', icon: Plus },
+      { label: 'Agenda mea', description: 'Configureaza disponibilitatea', page: 'disponibilitate-staff', icon: CalendarCheck },
+      { label: 'Vizionari alocate', description: 'Gestioneaza intalnirile cu clientii', page: 'vizionarile-mele', icon: Users },
+      { label: 'Documente clienti', description: 'Verifica documentele active', page: 'documente', icon: FileText },
+    ]
+  }
+
+  if (role === 'ADMIN') {
+    return [
+      { label: 'Panou administrare', description: 'Utilizatori, continut si rapoarte', page: 'admin', icon: ShieldCheck },
+      { label: 'Adauga proprietate', description: 'Publica in numele platformei', page: 'adauga-proprietate', icon: Plus },
+      { label: 'Echipa si program', description: 'Gestioneaza disponibilitatea agentilor', page: 'disponibilitate-staff', icon: BriefcaseBusiness },
+      { label: 'Vezi platforma', description: 'Controleaza experienta publica', page: 'proprietati', icon: Eye },
+    ]
+  }
+
+  return [
+    { label: 'Cauta proprietati', description: 'Descopera ofertele disponibile', page: 'proprietati', icon: Search },
+    { label: 'Programeaza vizionare', description: 'Alege proprietatea si intervalul', page: 'programare-vizionare', icon: CalendarCheck },
+    { label: 'Calculator rata', description: 'Estimeaza creditul ipotecar', page: 'calculator', icon: Calculator },
+    { label: 'Documentele mele', description: 'Pastreaza actele intr-un singur loc', page: 'documente', icon: FileText },
+  ]
+}
 
 export function DashboardPage() {
-  const { user } = useAuth()
-  const navigateTo = useAppStore((s) => s.navigateTo)
+  const { user, profile, loading } = useAuth()
+  const navigateTo = useAppStore((state) => state.navigateTo)
+  const favorites = useAppStore((state) => state.favorites)
 
   const properties = useMemo(() => loadFromLS<UserProperty[]>(LS_KEYS.USER_PROPERTIES, []), [])
-  const vizionari = useMemo(() => loadFromLS<Array<Vizionare>>(LS_KEYS.VIZIONARI, []), [])
-  const documents = useMemo(() => loadFromLS<Array<UploadedDocument>>(LS_KEYS.DOCUMENTS, []), [])
+  const vizionari = useMemo(() => loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, []), [])
+  const documents = useMemo(() => loadFromLS<UploadedDocument[]>(LS_KEYS.DOCUMENTS, []), [])
+  const savedSearches = useMemo(() => loadFromLS<Array<{ id: string }>>(LS_KEYS.SAVED_SEARCHES, []), [])
+  const activeVizionari = vizionari.filter((item) => item.status === 'pending' || item.status === 'confirmed')
 
-  const activeVizionari = vizionari.filter(v => v.status === 'pending' || v.status === 'confirmed')
+  if (loading) {
+    return <div className="min-h-[calc(100vh-10rem)] animate-pulse bg-muted/10" />
+  }
 
-  if (!user) {
+  if (!user || !profile) {
     return (
-      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center py-12 px-4">
+      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center px-4 py-12">
         <div className="text-center space-y-4">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Eye className="h-7 w-7" />
-          </div>
+          <Eye className="mx-auto h-10 w-10 text-primary" />
           <h2 className="text-xl font-bold">Autentifica-te</h2>
-          <p className="text-sm text-muted-foreground">Trebuie sa fii autentificat pentru a accesa dashboard-ul.</p>
+          <p className="text-sm text-muted-foreground">Dashboard-ul este disponibil dupa autentificare.</p>
           <Button onClick={() => navigateTo('login')}>Autentifica-te</Button>
         </div>
       </div>
     )
   }
 
+  const role = profile.role
+  const roleDefinition = ACCOUNT_ROLE_DEFINITIONS[role]
+  const actions = getActions(role)
+
+  const stats: DashboardStat[] = role === 'CLIENT'
+    ? [
+        { label: 'Favorite', value: favorites.length, icon: Heart, color: 'text-rose-600 bg-rose-100 dark:bg-rose-900/30' },
+        { label: 'Vizionari active', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
+        { label: 'Documente', value: documents.length, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
+        { label: 'Cautari salvate', value: savedSearches.length, icon: Search, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+      ]
+    : role === 'OWNER'
+      ? [
+          { label: 'Proprietati proprii', value: properties.length, icon: Building2, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+          { label: 'Solicitari active', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
+          { label: 'Documente', value: documents.length, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
+          { label: 'Vizualizari', value: 0, icon: Eye, color: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30' },
+        ]
+      : role === 'AGENT'
+        ? [
+            { label: 'Portofoliu', value: properties.length, icon: Building2, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+            { label: 'Vizionari alocate', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
+            { label: 'Documente clienti', value: documents.length, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
+            { label: 'Lead-uri active', value: 0, icon: Users, color: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30' },
+          ]
+        : [
+            { label: 'Proprietati locale', value: properties.length, icon: Building2, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+            { label: 'Vizionari', value: vizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
+            { label: 'Documente', value: documents.length, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
+            { label: 'Module active', value: 4, icon: Settings, color: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30' },
+          ]
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 flex-1">
-        {/* Header */}
+    <div className="min-h-screen">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
-            Bine ai venit, {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Utilizator'}!
-          </h1>
-          <p className="text-muted-foreground mt-1">Iata un rezumat al activitatii tale.</p>
-          <div className="flex flex-wrap gap-3 mt-4">
-            <Button onClick={() => navigateTo('adauga-proprietate')} className="gap-2">
-              <Plus className="h-4 w-4" /> Adauga Proprietate
-            </Button>
-            <Button variant="outline" onClick={() => navigateTo('programare-vizionare')} className="gap-2">
-              <CalendarCheck className="h-4 w-4" /> Programeaza Vizionare
-            </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
+              Bine ai venit, {profile.fullName}!
+            </h1>
+            <Badge className="bg-primary/10 text-primary hover:bg-primary/10">{roleDefinition.label}</Badge>
           </div>
+          <p className="mt-2 max-w-2xl text-muted-foreground">{roleDefinition.description}</p>
         </motion.div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Proprietati', value: properties.length, icon: Building2, color: 'text-emerald-600 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/30' },
-            { label: 'Vizionari Active', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30' },
-            { label: 'Documente', value: documents.length, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30' },
-            { label: 'Vizualizari', value: 0, icon: Eye, color: 'text-purple-600 bg-purple-100 dark:text-purple-400 dark:bg-purple-900/30' },
-          ].map((stat) => (
+        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {stats.map((stat, index) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.04 }}
               className="glass-card rounded-2xl p-5"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.color}`}>
-                  <stat.icon className="h-5 w-5" />
-                </div>
+              <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${stat.color}`}>
+                <stat.icon className="h-5 w-5" />
               </div>
               <p className="text-3xl font-bold">{stat.value}</p>
               <p className="text-sm text-muted-foreground">{stat.label}</p>
@@ -82,112 +172,80 @@ export function DashboardPage() {
           ))}
         </div>
 
-        {/* Two Column */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Upcoming Vizionari */}
+        <section className="mb-8">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Instrumentele contului tau</h2>
+              <p className="text-sm text-muted-foreground">Actiunile sunt adaptate profilului {roleDefinition.label.toLowerCase()}.</p>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {actions.map((action) => (
+              <button
+                key={`${action.page}-${action.label}`}
+                type="button"
+                onClick={() => navigateTo(action.page)}
+                className="glass-card group rounded-2xl p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30"
+              >
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <action.icon className="h-5 w-5" />
+                </div>
+                <div className="flex items-center gap-2 font-semibold">
+                  {action.label}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">{action.description}</p>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <div className="grid gap-6 lg:grid-cols-2">
           <div className="glass-card rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
                 <CalendarCheck className="h-5 w-5 text-primary" />
-                Vizionari Viitoare
+                {role === 'AGENT' ? 'Agenda de vizionari' : role === 'OWNER' ? 'Solicitari recente' : 'Vizionari viitoare'}
               </h2>
-              {activeVizionari.length > 0 && (
-                <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => navigateTo('vizionarile-mele')}>
-                  Vezi toate <ArrowRight className="h-3 w-3" />
-                </Button>
-              )}
+              <Button variant="ghost" size="sm" onClick={() => navigateTo('vizionarile-mele')}>Vezi toate</Button>
             </div>
             {activeVizionari.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <CalendarCheck className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Nicio vizionare programata</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => navigateTo('programare-vizionare')}>
-                  Programeaza acum
-                </Button>
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                <CalendarCheck className="mx-auto mb-2 h-9 w-9 opacity-30" />
+                Nu exista vizionari active.
               </div>
             ) : (
-              <div className="space-y-3 max-h-72 overflow-y-auto">
-                {activeVizionari.slice(0, 3).map((v) => (
-                  <div key={v.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                      <CalendarCheck className="h-5 w-5" />
-                    </div>
+              <div className="space-y-3">
+                {activeVizionari.slice(0, 3).map((item) => (
+                  <div key={item.id} className="flex items-center gap-3 rounded-xl bg-muted/30 p-3">
+                    <CalendarCheck className="h-5 w-5 text-primary" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{v.propertyTitle}</p>
-                      <p className="text-xs text-muted-foreground">{v.staffName} · {v.date} {v.startTime}</p>
+                      <p className="truncate text-sm font-medium">{item.propertyTitle}</p>
+                      <p className="text-xs text-muted-foreground">{item.date} · {item.startTime}</p>
                     </div>
-                    <Badge variant={v.status === 'confirmed' ? 'default' : 'secondary'} className="text-[10px]">
-                      {v.status === 'confirmed' ? 'Confirmata' : 'In asteptare'}
-                    </Badge>
+                    <Badge variant="secondary">{item.status}</Badge>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* My Recent Properties */}
           <div className="glass-card rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
-                Proprietatile Mele
-              </h2>
-              {properties.length > 0 && (
-                <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => navigateTo('adauga-proprietate')}>
-                  Vezi toate <ArrowRight className="h-3 w-3" />
-                </Button>
-              )}
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+              {role === 'CLIENT' ? <Heart className="h-5 w-5 text-primary" /> : <Building2 className="h-5 w-5 text-primary" />}
+              {role === 'CLIENT' ? 'Experienta ta de cautare' : 'Portofoliu si responsabilitati'}
+            </h2>
+            <div className="space-y-3">
+              {roleDefinition.features.map((feature) => (
+                <div key={feature} className="flex items-start gap-3 rounded-xl bg-muted/30 p-3 text-sm">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  {feature}
+                </div>
+              ))}
             </div>
-            {properties.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Building2 className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Nu ai publicat nicio proprietate</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => navigateTo('adauga-proprietate')}>
-                  Adauga prima proprietate
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-72 overflow-y-auto">
-                {properties.slice(-3).reverse().map((prop) => (
-                  <div key={prop.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
-                    <div className="h-12 w-12 rounded-lg bg-primary/5 flex items-center justify-center shrink-0 overflow-hidden">
-                      {prop.cover_url ? (
-                        <img src={prop.cover_url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <Building2 className="h-5 w-5 text-primary/50" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{prop.title}</p>
-                      <p className="text-xs text-muted-foreground">{prop.zone ?? ''}{prop.sector ? `, ${prop.sector}` : ''}</p>
-                      <span className="text-sm font-semibold text-primary">
-                        {Number(prop.price ?? 0).toLocaleString('ro-RO')} {prop.currency ?? ''}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
-
-        {/* Activity Timeline — full width */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mt-6"
-        >
-          <ActivityTimeline
-            onViewAll={() => toast.info('Toata activitatea — in curand disponibila!')}
-          />
-        </motion.div>
       </div>
-
-      {/* Footer */}
-      <footer className="mt-auto border-t py-6 text-center text-sm text-muted-foreground">
-        © 2025 HQS Imobiliare. Toate drepturile rezervate.
-      </footer>
     </div>
   )
 }

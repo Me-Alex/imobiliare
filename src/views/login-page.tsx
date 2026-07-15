@@ -15,6 +15,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  const [accountRole, setAccountRole] = useState<'CLIENT' | 'OWNER'>('CLIENT')
   const [showPassword, setShowPassword] = useState(false)
   const [isLogin, setIsLogin] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
@@ -39,7 +40,6 @@ export function LoginPage() {
   }, [user, navigateTo])
 
   if (user) {
-    navigateTo('adauga-proprietate')
     return null
   }
 
@@ -52,7 +52,7 @@ export function LoginPage() {
     try {
       const result = isLogin
         ? await signIn(email, password)
-        : await signUp(email, password, fullName)
+        : await signUp(email, password, fullName, accountRole)
 
       if (result.error) {
         setError(result.error)
@@ -60,7 +60,7 @@ export function LoginPage() {
         toast.success('Autentificare reusita!', {
           description: 'Bine ai venit pe HQS Imobiliare.',
         })
-        navigateTo('adauga-proprietate')
+        navigateTo('dashboard')
       } else {
         toast.success('Cont creat cu succes!', {
           description: 'Verifica email-ul pentru confirmare.',
@@ -130,8 +130,8 @@ export function LoginPage() {
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
               {isLogin
-                ? 'Autentifica-te pentru a gestiona proprietatile tale'
-                : 'Inregistreaza-te pentru a publica proprietati pe HQS Imobiliare'}
+                ? 'Autentifica-te pentru a accesa spatiul contului tau'
+                : 'Alege tipul de cont potrivit pentru tine'}
             </p>
           </div>
 
@@ -154,6 +154,11 @@ export function LoginPage() {
             )}
             {googleLoading ? 'Se conecteaza...' : 'Continua cu Google'}
           </button>
+          {!isLogin && (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Conturile Google noi pornesc ca profil Client. Il poti schimba in Proprietar din profil.
+            </p>
+          )}
 
           {/* Google Auth Error - Provider not enabled */}
           <AnimatePresence>
@@ -358,24 +363,51 @@ export function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {!isLogin && (
-              <div className="space-y-2">
-                <label htmlFor="fullName" className="text-sm font-medium">
-                  Nume Complet
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="fullName"
-                    type="text"
-                    placeholder="Ion Popescu"
-                    value={fullName}
-                    onChange={(e) => { setFullName(e.target.value); if (error) setError('') }}
-                    className="pl-10 h-11"
-                    required={!isLogin}
-                    autoComplete="name"
-                  />
+              <>
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium">Tip de cont</legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { role: 'CLIENT' as const, label: 'Client', description: 'Caut o proprietate', icon: User },
+                      { role: 'OWNER' as const, label: 'Proprietar', description: 'Public o proprietate', icon: Building2 },
+                    ]).map((option) => {
+                      const Icon = option.icon
+                      const selected = accountRole === option.role
+                      return (
+                        <button
+                          key={option.role}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => setAccountRole(option.role)}
+                          className={`rounded-lg border p-3 text-left transition-colors ${selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent'}`}
+                        >
+                          <Icon className={`mb-2 h-4 w-4 ${selected ? 'text-primary' : 'text-muted-foreground'}`} />
+                          <span className="block text-sm font-medium">{option.label}</span>
+                          <span className="block text-[11px] text-muted-foreground">{option.description}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </fieldset>
+                <div className="space-y-2">
+                  <label htmlFor="fullName" className="text-sm font-medium">
+                    Nume Complet
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="fullName"
+                      type="text"
+                      placeholder="Ion Popescu"
+                      value={fullName}
+                      onChange={(e) => { setFullName(e.target.value); if (error) setError('') }}
+                      className="pl-10 h-11"
+                      required={!isLogin}
+                      autoComplete="name"
+                    />
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             <div className="space-y-2">

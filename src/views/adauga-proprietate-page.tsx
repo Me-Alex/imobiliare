@@ -20,6 +20,7 @@ import { PropertyForm } from '@/components/property/property-form'
 import type { PropertyFormData } from '@/components/property/property-form'
 import type { UserProperty } from '@/lib/types'
 import { LS_KEYS } from '@/lib/constants'
+import { RoleAccessDenied } from '@/components/account/role-access-denied'
 
 function generateSlug(title: string): string {
   const roMap: Record<string, string> = {
@@ -37,7 +38,7 @@ function generateSlug(title: string): string {
 }
 
 export function AdaugaProprietatePage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading } = useAuth()
   const navigateTo = useAppStore((s) => s.navigateTo)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [previewMode, setPreviewMode] = useState(false)
@@ -70,7 +71,7 @@ export function AdaugaProprietatePage() {
   }, [])
 
   const handleFormSubmit = async (form: PropertyFormData) => {
-    if (!user) return
+    if (!user || !profile || !['OWNER', 'AGENT', 'ADMIN'].includes(profile.role)) return
 
     setIsSubmitting(true)
     try {
@@ -150,8 +151,10 @@ export function AdaugaProprietatePage() {
           rooms: parseInt(form.rooms) || 0,
           bathrooms: parseInt(form.bathrooms) || 0,
           featured: form.featured,
-          agent_id: user.id,
-          agent_email: user.email || null,
+          agent_id: profile.role === 'OWNER' ? null : user.id,
+          agent_email: profile.role === 'OWNER' ? null : user.email || null,
+          owner_id: profile.role === 'OWNER' ? user.id : null,
+          owner_email: profile.role === 'OWNER' ? user.email || null : null,
           floor: form.floor ? parseInt(form.floor) : null,
           year_built: form.yearBuilt ? parseInt(form.yearBuilt) : null,
           cover_image_url: form.galleryUrls[0] || form.coverUrl || null,
@@ -214,6 +217,10 @@ export function AdaugaProprietatePage() {
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
+  }
+
+  if (profile && !['OWNER', 'AGENT', 'ADMIN'].includes(profile.role)) {
+    return <RoleAccessDenied currentRole={profile.role} allowedRoles={['OWNER', 'AGENT', 'ADMIN']} />
   }
 
   if (previewMode) {
@@ -285,8 +292,8 @@ export function AdaugaProprietatePage() {
       <PageHero
         variant="border"
         icon={Plus}
-        title="Adauga Proprietate"
-        description={`Publica o proprietate noua pe HQS Imobiliare${user ? ` (${user.email})` : ''}`}
+        title={profile?.role === 'OWNER' ? 'Publica proprietatea ta' : 'Adauga Proprietate'}
+        description={`${profile?.role === 'OWNER' ? 'Gestioneaza direct anuntul proprietatii tale' : 'Adauga o proprietate in portofoliul profesional'}${user ? ` (${user.email})` : ''}`}
         breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Adauga Proprietate' }]}
       >
         <div className="flex items-center gap-2">

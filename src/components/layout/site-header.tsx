@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
-import { Bell, Bookmark, Building2, CalendarCheck, CircleDollarSign, FileText, Heart, LayoutDashboard, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User, Users } from 'lucide-react'
+import { Bell, Bookmark, Building2, CalendarCheck, CircleDollarSign, FileText, Heart, LayoutDashboard, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User, Users, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -25,6 +25,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { LS_KEYS } from '@/lib/constants'
+import { ACCOUNT_ROLE_DEFINITIONS, type AccountRole } from '@/lib/account-roles'
 
 const navItems: { label: string; page: PageKey }[] = [
   { label: 'Acasa', page: 'acasa' },
@@ -33,6 +34,24 @@ const navItems: { label: string; page: PageKey }[] = [
   { label: 'Zone', page: 'zone' },
   { label: 'Evaluare', page: 'evaluare' },
   { label: 'De Ce Noi', page: 'de-ce-noi' },
+]
+
+interface AccountMenuItem {
+  label: string
+  page: PageKey
+  icon: LucideIcon
+  roles?: readonly AccountRole[]
+}
+
+const accountMenu: AccountMenuItem[] = [
+  { label: 'Dashboard', page: 'dashboard', icon: LayoutDashboard },
+  { label: 'Profilul meu', page: 'profil', icon: User },
+  { label: 'Panou Admin', page: 'admin', icon: Shield, roles: ['ADMIN'] },
+  { label: 'Adauga proprietate', page: 'adauga-proprietate', icon: Plus, roles: ['OWNER', 'AGENT', 'ADMIN'] },
+  { label: 'Programeaza vizionare', page: 'programare-vizionare', icon: CalendarCheck, roles: ['CLIENT', 'OWNER'] },
+  { label: 'Vizionari', page: 'vizionarile-mele', icon: Users },
+  { label: 'Documente', page: 'documente', icon: FileText },
+  { label: 'Disponibilitate staff', page: 'disponibilitate-staff', icon: CalendarCheck, roles: ['AGENT', 'ADMIN'] },
 ]
 
 function NotificationsBadge() {
@@ -96,12 +115,15 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
   }, [])
   const { setTheme, resolvedTheme } = useTheme()
   const { favorites, currentPage, navigateTo, balance: coinBalance } = useAppStore()
-  const { user, signOut } = useAuth()
+  const { user, profile, signOut } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const accountRole = profile?.role ?? 'CLIENT'
+  const roleDefinition = ACCOUNT_ROLE_DEFINITIONS[accountRole]
+  const accountMenuItems = accountMenu.filter((item) => !item.roles || item.roles.includes(accountRole))
 
   const handleAuthClick = () => {
     if (user) {
-      navigateTo('adauga-proprietate')
+      navigateTo('dashboard')
     } else {
       navigateTo('login')
     }
@@ -196,7 +218,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           </Button>
 
           {/* Add Property button (logged in) */}
-          {user && (
+          {user && ['OWNER', 'AGENT', 'ADMIN'].includes(accountRole) && (
             <Button
               variant="default"
               size="sm"
@@ -222,42 +244,22 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <div className="px-2 py-1.5">
-                  <p className="text-sm font-medium truncate">{user.user_metadata?.full_name || 'Utilizator'}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium truncate">{profile?.fullName || user.user_metadata?.full_name || 'Utilizator'}</p>
+                    <Badge variant="secondary" className="shrink-0 text-[10px]">{roleDefinition.label}</Badge>
+                  </div>
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigateTo('dashboard')} className="gap-2">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Dashboard
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigateTo('profil')} className="gap-2">
-                  <User className="h-4 w-4" />
-                  Profilul Meu
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigateTo('adauga-proprietate')} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Adauga Proprietate
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigateTo('programare-vizionare')} className="gap-2">
-                  <CalendarCheck className="h-4 w-4" />
-                  Programeaza Vizionare
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigateTo('vizionarile-mele')} className="gap-2">
-                  <Users className="h-4 w-4" />
-                  Vizionarile Mele
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigateTo('documente')} className="gap-2">
-                  <FileText className="h-4 w-4" />
-                  Documente
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigateTo('disponibilitate-staff')} className="gap-2">
-                  <CalendarCheck className="h-4 w-4" />
-                  Disponibilitate Staff
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigateTo('admin')} className="gap-2">
-                  <Shield className="h-4 w-4" />
-                  Panou Admin
-                </DropdownMenuItem>
+                {accountMenuItems.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <DropdownMenuItem key={item.page} onClick={() => navigateTo(item.page)} className="gap-2">
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </DropdownMenuItem>
+                  )
+                })}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="gap-2 text-destructive focus:text-destructive">
                   <LogOut className="h-4 w-4" />
@@ -399,7 +401,10 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                           {(user.user_metadata?.full_name || user.email || 'U').charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      {user.user_metadata?.full_name || 'Contul Meu'}
+                      <span className="flex min-w-0 flex-col items-start">
+                        <span className="max-w-32 truncate">{profile?.fullName || user.user_metadata?.full_name || 'Contul meu'}</span>
+                        <span className="text-[10px] text-muted-foreground">{roleDefinition.label}</span>
+                      </span>
                     </>
                   ) : (
                     <><LogIn className="h-4 w-4" />Autentificare</>
@@ -408,38 +413,20 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
               </button>
               {user && (
                 <>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
-                    onClick={() => { setMobileMenuOpen(false); navigateTo('dashboard') }}
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                  </button>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
-                    onClick={() => { setMobileMenuOpen(false); navigateTo('adauga-proprietate') }}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Adauga Proprietate
-                  </button>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
-                    onClick={() => { setMobileMenuOpen(false); navigateTo('programare-vizionare') }}
-                  >
-                    <CalendarCheck className="h-4 w-4" />
-                    Programeaza Vizionare
-                  </button>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
-                    onClick={() => { setMobileMenuOpen(false); navigateTo('vizionarile-mele') }}
-                  >
-                    <Users className="h-4 w-4" />
-                    Vizionarile Mele
-                  </button>
+                  {accountMenuItems.map((item) => {
+                    const Icon = item.icon
+                    return (
+                      <button
+                        key={item.page}
+                        type="button"
+                        className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
+                        onClick={() => handleMobileNav(item.page)}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </button>
+                    )
+                  })}
                   <button
                     type="button"
                     className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 mt-1"

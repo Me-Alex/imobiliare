@@ -18,6 +18,7 @@ import { useAppStore } from '@/store/use-app-store'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { PageHero } from '@/components/layout/page-hero'
+import { RoleAccessDenied } from '@/components/account/role-access-denied'
 
 interface DashboardData {
   contacts: Array<{
@@ -173,19 +174,24 @@ function DataTable<T extends { id: string }>({ data, columns, onDelete, emptyMes
 }
 
 export function AdminPage() {
-  const { user, signOut, loading: authLoading } = useAuth()
+  const { user, session, profile, signOut, loading: authLoading } = useAuth()
   const navigateTo = useAppStore((s) => s.navigateTo)
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
 
   const fetchDashboard = useCallback(async () => {
+    if (!session?.access_token) return
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/dashboard')
+      const res = await fetch('/api/admin/dashboard', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
       if (res.ok) {
         const json = await res.json()
         setData(json)
+      } else if (res.status === 403) {
+        toast.error('Contul tau nu are drepturi de administrator')
       } else {
         toast.error('Eroare la incarcarea datelor')
       }
@@ -194,14 +200,18 @@ export function AdminPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [session])
 
   useEffect(() => {
-    if (user) {
+    if (user && profile?.role === 'ADMIN' && session) {
       const frame = requestAnimationFrame(() => void fetchDashboard())
       return () => cancelAnimationFrame(frame)
     }
-  }, [user, fetchDashboard])
+  }, [user, profile, session, fetchDashboard])
+
+  useEffect(() => {
+    if (!authLoading && !user) navigateTo('login')
+  }, [authLoading, user, navigateTo])
 
   const handleSignOut = async () => {
     await signOut()
@@ -211,8 +221,11 @@ export function AdminPage() {
 
   // Not logged in — redirect to login
   if (!authLoading && !user) {
-    navigateTo('login')
     return null
+  }
+
+  if (!authLoading && profile && profile.role !== 'ADMIN') {
+    return <RoleAccessDenied currentRole={profile.role} allowedRoles={['ADMIN']} />
   }
 
   if (authLoading || !data) {
