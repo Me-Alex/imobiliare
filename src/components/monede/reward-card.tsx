@@ -45,22 +45,25 @@ interface RewardCardProps {
   reward: CoinReward
   canAfford: boolean
   balance: number
-  onRedeem: () => void
+  onRedeem: () => Promise<boolean>
+  disabled?: boolean
 }
 
-export function RewardCard({ reward, canAfford, balance, onRedeem }: RewardCardProps) {
+export function RewardCard({ reward, canAfford, balance, onRedeem, disabled = false }: RewardCardProps) {
   const [redeeming, setRedeeming] = useState(false)
   const [justRedeemed, setJustRedeemed] = useState(false)
   const deficit = reward.cost - balance
 
-  const handleRedeem = () => {
+  const handleRedeem = async () => {
     setRedeeming(true)
-    setTimeout(() => {
-      onRedeem()
-      setRedeeming(false)
+    try {
+      const success = await onRedeem()
+      if (!success) return
       setJustRedeemed(true)
-      setTimeout(() => setJustRedeemed(false), 1500)
-    }, 400)
+      window.setTimeout(() => setJustRedeemed(false), 1500)
+    } finally {
+      setRedeeming(false)
+    }
   }
 
   return (
@@ -114,8 +117,8 @@ export function RewardCard({ reward, canAfford, balance, onRedeem }: RewardCardP
             <Button
               size="sm"
               className="w-full h-9 gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-0 text-xs font-semibold"
-              onClick={handleRedeem}
-              disabled={redeeming || justRedeemed}
+              onClick={() => void handleRedeem()}
+              disabled={disabled || redeeming || justRedeemed}
             >
               {redeeming ? (
                 <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
@@ -126,7 +129,7 @@ export function RewardCard({ reward, canAfford, balance, onRedeem }: RewardCardP
               ) : (
                 <CircleDollarSign className="h-3.5 w-3.5" />
               )}
-              {redeeming ? 'Se proceseaza...' : justRedeemed ? 'Redemat!' : `Redeema — ${reward.cost} monede`}
+              {redeeming ? 'Se procesează...' : justRedeemed ? 'Solicitată!' : `Solicită — ${reward.cost} monede`}
             </Button>
           </motion.div>
         ) : (
@@ -137,7 +140,7 @@ export function RewardCard({ reward, canAfford, balance, onRedeem }: RewardCardP
             disabled
           >
             <CircleDollarSign className="h-3.5 w-3.5 opacity-50" />
-            Nu ai suficiente ({deficit} in plus)
+            Mai ai nevoie de {deficit}
           </Button>
         )}
       </div>

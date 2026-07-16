@@ -72,7 +72,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
   const handleToggleFavorite = () => {
     const wasFavorite = favorites.includes(property.id)
     toggleFavorite(property.id)
-    if (!wasFavorite) onFavorite(property.title)
+    if (!wasFavorite) void onFavorite(property.id, property.title)
   }
 
   const handleClick = () => {

@@ -7,7 +7,10 @@ import { CircleDollarSign, ShoppingBag } from 'lucide-react'
 import type { CoinTransaction } from '@/lib/types'
 
 function formatTimestamp(isoString: string): string {
-  return formatDistanceToNow(new Date(isoString), { addSuffix: true, locale: ro })
+  const date = new Date(isoString)
+  return Number.isNaN(date.getTime())
+    ? 'Data indisponibilă'
+    : formatDistanceToNow(date, { addSuffix: true, locale: ro })
 }
 
 interface TransactionRowProps {
@@ -64,6 +67,11 @@ export function TransactionRow({ transaction, variant = 'default' }: Transaction
       >
         {isEarned ? '+' : ''}
         {transaction.amount}
+        {typeof transaction.balanceAfter === 'number' && (
+          <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
+            Sold {transaction.balanceAfter}
+          </span>
+        )}
       </span>
     </motion.div>
   )

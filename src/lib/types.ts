@@ -368,6 +368,7 @@ export interface ValuationResult {
 // ─── Coins / Loyalty System ───────────────────────────────────────────
 
 export type CoinTransactionType =
+  | 'welcome_bonus'
   | 'daily_login'
   | 'daily_streak_bonus'
   | 'view_property'
@@ -379,6 +380,7 @@ export type CoinTransactionType =
   | 'add_property'
   | 'save_search'
   | 'price_alert'
+  | 'reward_redemption'
   | 'reward_featured'
   | 'reward_priority'
   | 'reward_valuation'
@@ -394,6 +396,7 @@ export interface CoinTransaction {
   description: string
   timestamp: string
   relatedId?: string        // property id, reward id, etc.
+  balanceAfter?: number
 }
 
 export interface CoinReward {
@@ -410,6 +413,36 @@ export interface CoinReward {
 export interface CoinDailyStreak {
   lastLoginDate: string     // YYYY-MM-DD
   currentStreak: number
+}
+
+export type CoinRedemptionStatus = 'REQUESTED' | 'FULFILLED' | 'REJECTED' | 'CANCELLED'
+
+export interface CoinRedemption {
+  id: string
+  rewardId: string
+  title: string
+  cost: number
+  status: CoinRedemptionStatus
+  requestedAt: string
+  resolvedAt?: string
+  resolutionNote?: string
+}
+
+export interface CoinAccountSnapshot {
+  wallet: {
+    balance: number
+    lifetimeEarned: number
+    lifetimeSpent: number
+    currentStreak: number
+    lastClaimDate: string
+  }
+  transactions: CoinTransaction[]
+  rewards: CoinReward[]
+  redemptions: CoinRedemption[]
+  earned?: number
+  alreadyClaimed?: boolean
+  reason?: 'awarded' | 'duplicate' | 'daily_limit'
+  redemptionId?: string
 }
 
 // ─── Coin Achievements ────────────────────────────────────────────────

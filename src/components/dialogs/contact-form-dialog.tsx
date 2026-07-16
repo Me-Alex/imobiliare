@@ -26,7 +26,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { toast } from 'sonner'
-import { useCoinActions } from '@/hooks/use-coin-actions'
 
 const contactSchema = z.object({
   name: z.string().min(2, 'Numele trebuie să aibă cel puțin 2 caractere.'),
@@ -46,7 +45,6 @@ interface ContactFormDialogProps {
 function ContactFormDialog({ open, onOpenChange, propertyTitle }: ContactFormDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
-  const { onContactForm } = useCoinActions()
 
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
@@ -94,8 +92,6 @@ function ContactFormDialog({ open, onOpenChange, propertyTitle }: ContactFormDia
       toast.success('Mesaj trimis cu succes!', {
         description: 'Vă vom contacta în cel mai scurt timp posibil.',
       })
-      // Earn coins for contact form
-      onContactForm()
     } catch (error) {
       toast.error('Eroare la trimitere', {
         description: error instanceof Error ? error.message : 'Vă rugăm încercați din nou.',

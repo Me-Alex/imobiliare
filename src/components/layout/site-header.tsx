@@ -90,7 +90,6 @@ interface SiteHeaderProps {
   onOpenPriceAlerts?: () => void
   onOpenNotifications?: () => void
   onOpenSavedSearches?: () => void
-  onOpenCoins?: () => void
 }
 
 export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotifications, onOpenSavedSearches }: SiteHeaderProps) {
@@ -183,7 +182,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
         {/* Right side */}
         <div className="flex items-center gap-2">
           {/* Saved Searches */}
-          <Button variant="ghost" size="icon" className="relative" aria-label="Cautari salvate" onClick={onOpenSavedSearches}>
+          <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Cautari salvate" onClick={onOpenSavedSearches}>
             <Bookmark className="h-5 w-5" />
             {savedSearchCount > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-primary text-primary-foreground border-0">
@@ -209,7 +208,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           </Button>
 
           {/* Favorites */}
-          <Button variant="ghost" size="icon" className="relative" aria-label="Favorite" onClick={onOpenFavorites}>
+          <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Favorite" onClick={onOpenFavorites}>
             <Heart className="h-5 w-5" />
             {favorites.length > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-primary text-primary-foreground border-0">
@@ -219,7 +218,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           </Button>
 
           {/* Notifications Bell */}
-          <Button variant="ghost" size="icon" className="relative" aria-label="Notificari" onClick={onOpenNotifications}>
+          <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Notificari" onClick={onOpenNotifications}>
             <Bell className="h-5 w-5" />
             <NotificationsBadge />
           </Button>
@@ -241,7 +240,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative" aria-label="Meniu utilizator">
+                <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Meniu utilizator">
                   <Avatar className="h-7 w-7">
                     <AvatarFallback className="text-xs bg-primary/10 text-primary">
                       {(user.user_metadata?.full_name || user.email || 'U').charAt(0).toUpperCase()}
@@ -275,7 +274,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button variant="ghost" size="icon" className="relative" aria-label="Autentificare" onClick={() => navigateTo('login')}>
+            <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Autentificare" onClick={() => navigateTo('login')}>
               <LogIn className="h-5 w-5" />
             </Button>
           )}
@@ -328,10 +327,20 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                 })}
               </nav>
               <Separator className="my-4" />
-              <div className="flex items-center justify-between px-3">
-                <span className="text-sm text-muted-foreground">Favorite</span>
-                <Badge variant="secondary">{favorites.length} proprietati</Badge>
-              </div>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  onOpenFavorites?.()
+                }}
+              >
+                <span className="flex items-center gap-2">
+                  <Heart className="h-4 w-4" />
+                  Favorite
+                </span>
+                <Badge variant="secondary">{favorites.length}</Badge>
+              </button>
               <button
                 type="button"
                 className="flex items-center justify-between w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"

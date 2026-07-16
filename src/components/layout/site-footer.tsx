@@ -61,7 +61,7 @@ export function SiteFooter() {
       })
       setEmail('')
       // Earn coins for newsletter
-      onNewsletter()
+      void onNewsletter()
     } catch (error) {
       toast.error('Eroare', {
         description: error instanceof Error ? error.message : 'Va rugam incercati din nou.',

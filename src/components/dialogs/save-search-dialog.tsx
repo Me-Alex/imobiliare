@@ -20,7 +20,6 @@ import { loadFromLS, saveToLS } from '@/lib/storage'
 import { LS_KEYS } from '@/lib/constants'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
-import { useCoinActions } from '@/hooks/use-coin-actions'
 import type { SavedSearch } from '@/lib/types'
 
 const propertyTypeLabels: Record<string, string> = {
@@ -44,7 +43,6 @@ interface SaveSearchDialogProps {
 export function SaveSearchDialog({ open, onOpenChange }: SaveSearchDialogProps) {
   const [name, setName] = useState('')
   const [error, setError] = useState('')
-  const { onSaveSearch } = useCoinActions()
 
   const {
     selectedType,
@@ -122,7 +120,6 @@ export function SaveSearchDialog({ open, onOpenChange }: SaveSearchDialogProps) 
     window.dispatchEvent(new Event('pm-saved-searches-updated'))
 
     toast.success('Cautarea a fost salvata!')
-    onSaveSearch()
     handleOpenChange(false)
   }
 

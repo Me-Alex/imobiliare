@@ -55,7 +55,7 @@ export function PropertyPage() {
     setLightbox,
   } = useAppStore()
   const { user } = useAuth()
-  const { onFavorite, onBookViewing } = useCoinActions()
+  const { onFavorite } = useCoinActions()
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
 
   const slug = selectedPropertySlug
@@ -76,7 +76,7 @@ export function PropertyPage() {
   const handleToggleFavorite = () => {
     const wasFavorite = favorites.includes(property.id)
     toggleFavorite(property.id)
-    if (!wasFavorite) onFavorite(property.title)
+    if (!wasFavorite) void onFavorite(property.id, property.title)
   }
 
   return (
@@ -219,7 +219,6 @@ export function PropertyPage() {
                       }
                       setVizionareProperty(property.id, property.title)
                       navigateTo('programare-vizionare')
-                      onBookViewing(property.title)
                     }}
                   >
                     <CalendarCheck className="h-4 w-4" />

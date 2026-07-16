@@ -43,7 +43,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const { user } = useAuth()
   const { data: property, isLoading } = useProperty(selectedPropertySlug)
-  const { onViewProperty, onFavorite, onBookViewing } = useCoinActions()
+  const { onViewProperty, onFavorite } = useCoinActions()
 
   const open = !!selectedPropertySlug && currentPage !== 'proprietate'
 
@@ -142,7 +142,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
               onClick={() => {
                 const wasFav = favorites.includes(property.id)
                 toggleFavorite(property.id)
-                if (!wasFav) onFavorite(property.title)
+                if (!wasFav) void onFavorite(property.id, property.title)
               }}
               className="gap-2"
             >
@@ -167,7 +167,6 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
                 setVizionareProperty(property.id, property.title)
                 setSelectedPropertySlug(null)
                 navigateTo('programare-vizionare')
-                onBookViewing(property.title)
               }}
             >
               <CalendarCheck className="h-4 w-4" />
