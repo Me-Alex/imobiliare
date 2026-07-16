@@ -1,3 +1,5 @@
+import type { VirtualTour } from '@/lib/virtual-tours'
+
 // Staff Member
 export interface StaffMember {
   id: string
@@ -232,6 +234,7 @@ export interface UserProperty {
   coverUrl?: string
   cover_url?: string
   galleryUrls?: string[]
+  virtual_tour?: VirtualTour | null
   [key: string]: unknown
 }
 
@@ -261,6 +264,7 @@ export interface Property {
   coverUrl: string | null
   galleryUrls: string
   pricePerSqm: number | null
+  virtualTour?: VirtualTour | null
   createdAt: string
   updatedAt: string
 }

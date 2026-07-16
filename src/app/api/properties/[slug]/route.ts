@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSafeDb } from '@/lib/edge-db'
 import { MOCK_PROPERTIES } from '@/lib/mock-data'
+import { getPublishedSupabasePropertyBySlug } from '@/lib/supabase-properties'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params
+
+  const supabaseProperty = await getPublishedSupabasePropertyBySlug(slug)
+  if (supabaseProperty) return NextResponse.json({ property: supabaseProperty })
 
   const db = await getSafeDb()
   if (db) {

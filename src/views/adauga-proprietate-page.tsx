@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import {
   Plus, Loader2, MapPin, Ruler, BedDouble, Bath, Calendar,
-  ArrowLeft, Eye, EyeOff, User, Check, List,
+  ArrowLeft, Eye, EyeOff, User, Check, List, Rotate3D,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,11 +17,14 @@ import { EditPropertyDialog } from '@/components/property/edit-property-dialog'
 import { PageHero } from '@/components/layout/page-hero'
 import { MyPropertiesList } from '@/components/property/my-properties-list'
 import { PropertyForm } from '@/components/property/property-form'
+import { VirtualTourViewer } from '@/components/property/virtual-tour-viewer'
 import type { PropertyFormData } from '@/components/property/property-form'
 import type { UserProperty } from '@/lib/types'
 import { LS_KEYS } from '@/lib/constants'
 import { RoleAccessDenied } from '@/components/account/role-access-denied'
 import { getMapEmbedUrl } from '@/lib/property-details'
+import { uploadListingImages, submitVirtualTour } from '@/lib/virtual-tour-publishing'
+import { parseExternalTourUrl, type VirtualTour } from '@/lib/virtual-tours'
 
 function generateSlug(title: string): string {
   const roMap: Record<string, string> = {
@@ -87,15 +90,108 @@ export function AdaugaProprietatePage() {
     setIsSubmitting(true)
     try {
       const slug = generateSlug(form.title)
+      const propertyId = crypto.randomUUID()
       const pricePerSqm = form.price && form.areaSqm
         ? (parseFloat(form.price) / parseFloat(form.areaSqm)).toFixed(0)
         : null
 
-      // Separate base64 images from URL images
-      const base64Images = form.galleryUrls.filter(u => u.startsWith('data:'))
+      const hasSupabaseConfig = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+      let publishedGalleryUrls = form.galleryUrls
+      let remotePropertySaved = false
+      let submittedTour: VirtualTour | null = null
+
+      if (hasSupabaseConfig && form.galleryUrls.some((url) => url.startsWith('data:'))) {
+        try {
+          publishedGalleryUrls = await uploadListingImages({
+            userId: user.id,
+            propertyId,
+            urls: form.galleryUrls,
+          })
+        } catch (error) {
+          console.warn('Listing image upload skipped:', error)
+          toast.warning('Fotografiile nu au ajuns în cloud', {
+            description: 'Anunțul rămâne salvat local; poți reîncerca publicarea după verificarea conexiunii.',
+          })
+        }
+      }
+
+      if (hasSupabaseConfig && publishedGalleryUrls.every((url) => !url.startsWith('data:'))) {
+        const supabaseData = {
+          id: propertyId,
+          title: form.title,
+          slug,
+          description: form.description,
+          price: parseFloat(form.price) || 0,
+          currency: form.currency,
+          type: toSupabasePropertyType(form.type),
+          status: 'PUBLISHED',
+          city: 'București',
+          address: form.address,
+          zone: form.zone,
+          sector: form.sector,
+          lat: form.lat,
+          lng: form.lng,
+          area_sqm: parseFloat(form.areaSqm) || 0,
+          rooms: parseInt(form.rooms) || 0,
+          bathrooms: parseInt(form.bathrooms) || 0,
+          featured: form.featured,
+          agent_id: profile.role === 'OWNER' ? null : user.id,
+          agent_email: profile.role === 'OWNER' ? null : user.email || null,
+          owner_id: profile.role === 'OWNER' ? user.id : null,
+          owner_email: profile.role === 'OWNER' ? user.email || null : null,
+          floor: form.floor ? parseInt(form.floor) : null,
+          year_built: form.yearBuilt ? parseInt(form.yearBuilt) : null,
+          cover_image_url: publishedGalleryUrls[0] || form.coverUrl || null,
+          gallery_urls: publishedGalleryUrls,
+          transaction_type: form.transaction,
+          published_at: new Date().toISOString(),
+        }
+
+        const { error: propertyError } = await supabase.from('properties').insert([supabaseData])
+        if (propertyError) {
+          console.warn('Supabase property save skipped:', propertyError.message)
+          toast.warning('Anunțul este salvat doar pe acest dispozitiv', {
+            description: propertyError.message,
+          })
+        } else {
+          remotePropertySaved = true
+          if (form.virtualTour.mode !== 'NONE') {
+            try {
+              submittedTour = await submitVirtualTour({
+                propertyId,
+                propertyTitle: form.title,
+                userId: user.id,
+                draft: form.virtualTour,
+              })
+            } catch (error) {
+              console.warn('Virtual tour submission skipped:', error)
+              toast.warning('Proprietatea a fost publicată fără tur', {
+                description: error instanceof Error ? error.message : 'Turul virtual nu a putut fi trimis la verificare.',
+              })
+            }
+          }
+        }
+      }
+
+      const parsedExternalTour = form.virtualTour.mode === 'EXTERNAL'
+        ? parseExternalTourUrl(form.virtualTour.externalUrl)
+        : null
+      const localTour: VirtualTour | null = submittedTour
+        ? submittedTour.provider === 'NATIVE'
+          ? { ...submittedTour, scenes: [] }
+          : submittedTour
+        : parsedExternalTour
+          ? {
+              provider: parsedExternalTour.provider,
+              status: remotePropertySaved ? 'IN_REVIEW' : 'DRAFT',
+              title: `Tur virtual · ${form.title}`,
+              externalUrl: parsedExternalTour.embedUrl,
+              scenes: [],
+            }
+          : null
 
       const newProp: UserProperty = {
-        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        id: propertyId,
         title: form.title,
         slug,
         description: form.description,
@@ -116,17 +212,17 @@ export function AdaugaProprietatePage() {
         lat: form.lat,
         lng: form.lng,
         featured: form.featured,
-        cover_url: form.galleryUrls[0] || form.coverUrl || '',
-        gallery_urls: JSON.stringify(form.galleryUrls),
+        cover_url: publishedGalleryUrls[0] || form.coverUrl || '',
+        gallery_urls: JSON.stringify(publishedGalleryUrls),
         price_per_sqm: pricePerSqm ? parseFloat(pricePerSqm) : null,
         status: 'PUBLISHED' as const,
         user_id: user.id,
         user_email: user.email || '',
         user_name: user.user_metadata?.full_name || user.email || '',
         created_at: new Date().toISOString(),
+        virtual_tour: localTour,
       }
 
-      // Save to localStorage FIRST (always works, instant)
       let stored: UserProperty[] = []
       try {
         stored = JSON.parse(localStorage.getItem(LS_KEYS.USER_PROPERTIES) || '[]')
@@ -146,49 +242,10 @@ export function AdaugaProprietatePage() {
         return
       }
 
-      // Try Supabase in background (only if configured AND no base64 images to avoid payload limits)
-      const hasSupabaseConfig = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-      if (hasSupabaseConfig && base64Images.length === 0) {
-        const supabaseData = {
-          id: newProp.id,
-          title: form.title,
-          slug,
-          description: form.description,
-          price: parseFloat(form.price) || 0,
-          currency: form.currency,
-          type: toSupabasePropertyType(form.type),
-          status: 'PUBLISHED',
-          city: 'Bucuresti',
-          address: form.address,
-          lat: form.lat,
-          lng: form.lng,
-          area_sqm: parseFloat(form.areaSqm) || 0,
-          rooms: parseInt(form.rooms) || 0,
-          bathrooms: parseInt(form.bathrooms) || 0,
-          featured: form.featured,
-          agent_id: profile.role === 'OWNER' ? null : user.id,
-          agent_email: profile.role === 'OWNER' ? null : user.email || null,
-          owner_id: profile.role === 'OWNER' ? user.id : null,
-          owner_email: profile.role === 'OWNER' ? user.email || null : null,
-          floor: form.floor ? parseInt(form.floor) : null,
-          year_built: form.yearBuilt ? parseInt(form.yearBuilt) : null,
-          cover_image_url: form.galleryUrls[0] || form.coverUrl || null,
-          gallery_urls: form.galleryUrls,
-          transaction_type: form.transaction,
-        }
-
-        void (async () => {
-          try {
-            const { error } = await supabase.from('properties').insert([supabaseData])
-            if (error) console.warn('Supabase save skipped:', error.message)
-          } catch {
-            // localStorage already contains the listing
-          }
-        })()
-      }
-
       toast.success('Proprietate adaugata cu succes!', {
-        description: `"${form.title}" este acum publica pe platforma.`,
+        description: submittedTour
+          ? `"${form.title}" este publică, iar turul a fost trimis administratorului pentru verificare.`
+          : `"${form.title}" este acum publică pe platformă.`,
       })
       setSubmittedCount((c) => c + 1)
       loadMyProperties()
@@ -240,6 +297,24 @@ export function AdaugaProprietatePage() {
 
   if (previewMode) {
     const form = previewData
+    const parsedPreviewTour = form?.virtualTour.mode === 'EXTERNAL'
+      ? parseExternalTourUrl(form.virtualTour.externalUrl)
+      : null
+    const previewTour: VirtualTour | null = form?.virtualTour.mode === 'NATIVE'
+      ? {
+          provider: 'NATIVE',
+          title: `Tur virtual · ${form.title || 'Proprietate'}`,
+          entrySceneId: form.virtualTour.entrySceneId,
+          scenes: form.virtualTour.scenes,
+        }
+      : parsedPreviewTour
+        ? {
+            provider: parsedPreviewTour.provider,
+            title: `Tur virtual · ${form?.title || 'Proprietate'}`,
+            externalUrl: parsedPreviewTour.embedUrl,
+            scenes: [],
+          }
+        : null
     return (
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
@@ -291,6 +366,16 @@ export function AdaugaProprietatePage() {
             <p className="text-sm text-muted-foreground leading-relaxed">
               {form?.description || 'Descriere ne specificata...'}
             </p>
+            {previewTour ? (
+              <div className="space-y-3 border-t pt-5">
+                <h3 className="flex items-center gap-2 text-base font-semibold">
+                  <Rotate3D className="h-4 w-4 text-primary" /> Tur virtual
+                </h3>
+                <div className="overflow-hidden rounded-xl border bg-slate-950">
+                  <VirtualTourViewer tour={previewTour} className="h-[460px]" title={`Tur virtual pentru ${form?.title || 'proprietate'}`} />
+                </div>
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               {form?.zone && <Badge variant="secondary" className="gap-1"><MapPin className="h-3 w-3" />{form.zone}</Badge>}
               {form?.sector && <Badge variant="secondary">{form.sector}</Badge>}

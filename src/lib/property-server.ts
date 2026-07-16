@@ -1,6 +1,7 @@
 import { MOCK_PROPERTIES } from '@/lib/mock-data'
 import type { D1Database } from '@/lib/db-d1'
 import type { Property } from '@/lib/types'
+import { getPublishedSupabasePropertyBySlug } from '@/lib/supabase-properties'
 
 type PropertyRow = Omit<Property, 'featured' | 'createdAt' | 'updatedAt'> & {
   featured: boolean | number
@@ -18,6 +19,9 @@ function normalizeProperty(value: PropertyRow): Property {
 }
 
 export async function getPropertyBySlugServer(slug: string): Promise<Property | null> {
+  const supabaseProperty = await getPublishedSupabasePropertyBySlug(slug)
+  if (supabaseProperty) return supabaseProperty
+
   try {
     const { getCloudflareContext } = await import('@opennextjs/cloudflare')
     const { env } = getCloudflareContext()

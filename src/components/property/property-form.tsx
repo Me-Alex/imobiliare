@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import {
   Plus, Loader2, MapPin, Building2, Ruler,
   BedDouble, Bath, Calendar, Euro, Tag, Upload, CheckCircle2,
-  Circle, Clock3, Lightbulb, Navigation,
+  Circle, Clock3, Lightbulb, Navigation, Rotate3D,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,7 +26,14 @@ import { PROPERTY_TYPES, TRANSACTIONS, CURRENCIES, SECTOARE, ZONES } from '@/lib
 import { ImageGalleryUploader } from '@/components/property/image-gallery-uploader'
 import { AiDescriptionGenerator } from '@/components/property/ai-description-generator'
 import { PropertyLocationPicker } from '@/components/property/property-location-picker'
+import { VirtualTourEditor } from '@/components/property/virtual-tour-editor'
 import { toast } from 'sonner'
+import {
+  EMPTY_VIRTUAL_TOUR_DRAFT,
+  isVirtualTourDraftValid,
+  virtualTourProviderLabel,
+  type VirtualTourDraft,
+} from '@/lib/virtual-tours'
 
 export interface PropertyFormData {
   title: string
@@ -49,6 +56,7 @@ export interface PropertyFormData {
   featured: boolean
   coverUrl: string
   galleryUrls: string[]
+  virtualTour: VirtualTourDraft
 }
 
 const INITIAL_FORM: PropertyFormData = {
@@ -57,6 +65,7 @@ const INITIAL_FORM: PropertyFormData = {
   floor: '', totalFloors: '', yearBuilt: '', address: '',
   zone: '', sector: '', lat: null, lng: null,
   featured: false, coverUrl: '', galleryUrls: [],
+  virtualTour: EMPTY_VIRTUAL_TOUR_DRAFT,
 }
 
 interface PropertyFormProps {
@@ -88,6 +97,7 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
 
   const isLand = /teren/i.test(form.type)
   const hasPin = form.lat !== null && form.lng !== null
+  const validVirtualTour = isVirtualTourDraftValid(form.virtualTour)
   const steps = [
     {
       id: 'property-step-basic',
@@ -114,6 +124,11 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
       label: 'Imagini',
       complete: form.galleryUrls.length > 0,
     },
+    {
+      id: 'property-step-virtual-tour',
+      label: 'Tur 360°',
+      complete: validVirtualTour,
+    },
   ]
   const completionSignals = [
     Boolean(form.title.trim()), Boolean(form.description.trim()), Boolean(form.type),
@@ -134,6 +149,7 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
     !form.sector ? 'sectorul' : '',
     !form.zone ? 'zona' : '',
     !form.address.trim() ? 'adresa' : '',
+    !validVirtualTour ? 'configurația turului virtual' : '',
   ].filter(Boolean)
 
   const handleSubmit = (e: FormEvent) => {
@@ -174,7 +190,7 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
               <Progress value={completionPercent} className="mt-3 h-2" />
             </div>
 
-            <div className="grid grid-cols-5 gap-1.5 lg:w-[430px]">
+            <div className="grid grid-cols-6 gap-1.5 lg:w-[520px]">
               {steps.map((step, index) => (
                 <button
                   key={step.id}
@@ -500,6 +516,23 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
               onChange={(urls) => updateField('galleryUrls', urls)}
             />
           </motion.section>
+
+          <motion.section id="property-step-virtual-tour" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="glass-card scroll-mt-28 rounded-2xl p-5 sm:p-6 space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-semibold">
+                  <Rotate3D className="h-5 w-5 text-primary" />
+                  Tur virtual
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">Importă Matterport/Kuula sau creează un tur 360° direct în HQS.</p>
+              </div>
+              <Badge variant="outline">Opțional</Badge>
+            </div>
+            <VirtualTourEditor
+              value={form.virtualTour}
+              onChange={(virtualTour) => updateField('virtualTour', virtualTour)}
+            />
+          </motion.section>
         </div>
 
         {/* Sidebar */}
@@ -565,6 +598,18 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Imagini</span>
                   <span>{form.galleryUrls.length > 0 ? `${form.galleryUrls.length} adaugate` : '—'}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Tur virtual</span>
+                  <span className="max-w-[155px] truncate text-right">
+                    {form.virtualTour.mode === 'NONE'
+                      ? 'Fără tur'
+                      : form.virtualTour.mode === 'NATIVE'
+                        ? `${form.virtualTour.scenes.length} camere 360°`
+                        : form.virtualTour.provider
+                          ? virtualTourProviderLabel(form.virtualTour.provider)
+                          : 'Link incomplet'}
+                  </span>
                 </div>
               </div>
 

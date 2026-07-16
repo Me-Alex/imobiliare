@@ -28,6 +28,8 @@ import {
   SearchX,
   ShieldCheck,
   ShoppingBag,
+  Play,
+  Rotate3D,
   Star,
   TrainFront,
   Wrench,
@@ -37,6 +39,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAppStore } from '@/store/use-app-store'
 import { useAuth } from '@/contexts/auth-context'
@@ -44,6 +47,7 @@ import { useCoinActions } from '@/hooks/use-coin-actions'
 import { useProperties, useProperty } from '@/hooks/use-properties'
 import { PropertyShareButtons } from '@/components/property/property-share-buttons'
 import { PropertyCard } from '@/components/property/property-card'
+import { VirtualTourViewer } from '@/components/property/virtual-tour-viewer'
 import { ContactFormDialog } from '@/components/dialogs/contact-form-dialog'
 import { AuthRequiredDialog } from '@/components/dialogs/auth-required-dialog'
 import { formatBucharestLocation, formatPrice, formatPricePerSqm } from '@/lib/utils'
@@ -58,6 +62,7 @@ import {
   TRANSACTION_LABELS,
 } from '@/lib/property-details'
 import type { Property } from '@/lib/types'
+import { virtualTourProviderLabel } from '@/lib/virtual-tours'
 
 interface PropertyPageProps {
   initialSlug?: string
@@ -84,6 +89,7 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const [contactOpen, setContactOpen] = useState(false)
   const [contactIntent, setContactIntent] = useState<ContactIntent>('general')
+  const [virtualTourOpen, setVirtualTourOpen] = useState(false)
 
   const slug = initialSlug || selectedPropertySlug
   const { data: property, isLoading, isError } = useProperty(slug, initialProperty)
@@ -174,6 +180,11 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
                 <Badge variant="outline" className="gap-1 border-emerald-500/40 text-emerald-700 dark:text-emerald-400">
                   <CheckCircle2 className="h-3 w-3" /> Anunț activ
                 </Badge>
+                {property.virtualTour ? (
+                  <Badge className="gap-1 border-0 bg-violet-600 text-white">
+                    <Rotate3D className="h-3 w-3" /> Tur virtual
+                  </Badge>
+                ) : null}
               </div>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">{property.title}</h1>
               <div className="mt-2 flex items-start gap-1.5 text-sm text-muted-foreground sm:text-base">
@@ -227,6 +238,31 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
                 {property.description}
               </p>
             </Section>
+
+            {property.virtualTour ? (
+              <Section title="Explorează proprietatea de oriunde" icon={Rotate3D}>
+                <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-violet-600 via-primary to-emerald-600 p-6 text-white shadow-lg sm:p-8">
+                  <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/15 blur-2xl" />
+                  <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="max-w-xl">
+                      <Badge className="border-white/20 bg-white/15 text-white hover:bg-white/15">
+                        {virtualTourProviderLabel(property.virtualTour.provider)}
+                      </Badge>
+                      <h3 className="mt-3 text-xl font-bold sm:text-2xl">Tur virtual interactiv</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-white/80">
+                        Parcurge camerele în format 360°, verifică spațiul și pregătește întrebările înainte de vizionarea fizică.
+                      </p>
+                      {property.virtualTour.provider === 'NATIVE' ? (
+                        <p className="mt-2 text-xs text-white/70">{property.virtualTour.scenes.length} camere conectate</p>
+                      ) : null}
+                    </div>
+                    <Button type="button" size="lg" variant="secondary" className="shrink-0 gap-2 bg-white text-slate-950 hover:bg-white/90" onClick={() => setVirtualTourOpen(true)}>
+                      <Play className="h-4 w-4 fill-current" /> Pornește turul
+                    </Button>
+                  </div>
+                </div>
+              </Section>
+            ) : null}
 
             <Section title="Dotări și facilități" icon={Wrench}>
               {features.length > 0 ? (
@@ -415,6 +451,21 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
         initialPhone={profile?.phone || ''}
         initialMessage={contactMessage}
       />
+      <Dialog open={virtualTourOpen} onOpenChange={setVirtualTourOpen}>
+        <DialogContent className="h-[min(92vh,900px)] max-w-[min(96vw,1440px)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0">
+          <DialogHeader className="border-b px-5 py-4 pr-14">
+            <DialogTitle className="flex items-center gap-2">
+              <Rotate3D className="h-5 w-5 text-primary" /> {property.virtualTour?.title || 'Tur virtual'}
+            </DialogTitle>
+            <DialogDescription>
+              Navighează prin proprietate și folosește modul ecran complet pentru o experiență imersivă.
+            </DialogDescription>
+          </DialogHeader>
+          {virtualTourOpen && property.virtualTour ? (
+            <VirtualTourViewer tour={property.virtualTour} className="h-full min-h-0" title={`Tur virtual pentru ${property.title}`} />
+          ) : null}
+        </DialogContent>
+      </Dialog>
       <AuthRequiredDialog
         open={authDialogOpen}
         onOpenChange={setAuthDialogOpen}

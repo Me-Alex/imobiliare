@@ -6,7 +6,7 @@ import {
   LogOut, Building2, Users, Mail, Bell, BarChart3,
   MessageSquare, ArrowUpRight, ArrowDownRight, Eye, Trash2, RefreshCw,
   Shield, Loader2, TrendingUp, AlertTriangle, CheckCircle2,
-  Table2, Search, Filter
+  Table2, Search, Filter, Rotate3D
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +19,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { PageHero } from '@/components/layout/page-hero'
 import { RoleAccessDenied } from '@/components/account/role-access-denied'
+import { VirtualTourReviewPanel } from '@/components/admin/virtual-tour-review-panel'
 
 interface DashboardData {
   contacts: Array<{
@@ -267,7 +268,7 @@ export function AdminPage() {
       {/* Dashboard Content */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 h-auto flex-wrap">
             <TabsTrigger value="overview" className="gap-1.5">
               <BarChart3 className="h-4 w-4" />
               Overview
@@ -293,6 +294,10 @@ export function AdminPage() {
             <TabsTrigger value="properties" className="gap-1.5">
               <Building2 className="h-4 w-4" />
               Proprietati
+            </TabsTrigger>
+            <TabsTrigger value="virtual-tours" className="gap-1.5">
+              <Rotate3D className="h-4 w-4" />
+              Tururi virtuale
             </TabsTrigger>
           </TabsList>
 
@@ -470,6 +475,10 @@ export function AdminPage() {
                 { key: 'createdAt', label: 'Creat', render: (item) => formatDate(item.createdAt) },
               ]}
             />
+          </TabsContent>
+
+          <TabsContent value="virtual-tours">
+            <VirtualTourReviewPanel accessToken={session?.access_token || ''} />
           </TabsContent>
         </Tabs>
       </div>
