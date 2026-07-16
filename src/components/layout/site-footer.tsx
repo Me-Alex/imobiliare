@@ -198,8 +198,9 @@ export function SiteFooter() {
             </p>
             <form onSubmit={handleNewsletterSubmit} noValidate>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
                 <Input
+                  id="newsletter-email"
                   type="email"
                   placeholder="adresa@email.ro"
                   value={email}
@@ -207,7 +208,10 @@ export function SiteFooter() {
                     setEmail(e.target.value)
                     if (emailError) setEmailError('')
                   }}
-                  className="h-10 pl-10 pr-12"
+                  className={`h-10 pl-10 pr-12 ${emailError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  aria-label="Adresa de email pentru newsletter"
+                  aria-invalid={!!emailError}
+                  aria-describedby={emailError ? 'newsletter-error' : undefined}
                 />
                 <Button
                   type="submit"
@@ -216,12 +220,16 @@ export function SiteFooter() {
                   aria-label="Aboneaza-te"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Send className="h-3.5 w-3.5" aria-hidden="true" />}
                 </Button>
               </div>
-              {emailError && (
-                <p className="mt-1.5 text-xs text-destructive">{emailError}</p>
-              )}
+              <div aria-live="assertive" className="min-h-[1.25rem]">
+                {emailError && (
+                  <p id="newsletter-error" className="mt-1.5 text-xs text-destructive" role="alert">
+                    {emailError}
+                  </p>
+                )}
+              </div>
             </form>
             <div className="flex gap-3 mt-6">
               <Button variant="ghost" size="icon" className="h-9 w-9 transition-transform hover:scale-110 hover:text-[#1877F2]" aria-label="Facebook">
