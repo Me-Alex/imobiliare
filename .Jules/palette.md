@@ -1,0 +1,3 @@
+## 2026-07-16 - Added aria-pressed and aria-hidden to Property Card
+**Learning:** Screen readers announce decorative icons if they are not explicitly hidden, causing noise. Additionally, toggle buttons like Favorite and Compare should use `aria-pressed` to denote their state instead of relying on dynamic `aria-label` alone (or dynamically changing labels when the button's action remains the same toggle concept).
+**Action:** When adding decorative icons to text or building icon-only toggle buttons, remember to apply `aria-hidden="true"` to the icon and use `aria-pressed` on the button container.

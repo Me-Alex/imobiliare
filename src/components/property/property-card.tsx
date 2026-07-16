@@ -42,7 +42,7 @@ const transactionLabels: Record<string, string> = {
 function FavoriteButton({ isFav }: { isFav: boolean }) {
   return (
     <span className="inline-flex">
-      <Heart className={`h-4 w-4 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
+      <Heart aria-hidden="true" className={`h-4 w-4 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
     </span>
   )
 }
@@ -51,7 +51,7 @@ function MetricPill({ icon: Icon, value, label }: { icon: React.ElementType; val
   return (
     <div className="flex flex-col items-center gap-0.5 min-w-[42px]">
       <div className="flex items-center gap-1 text-sm font-medium">
-        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+        <Icon aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
         <span>{value}</span>
       </div>
       <span className="text-[10px] text-muted-foreground leading-none">{label}</span>
@@ -102,7 +102,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
               </Badge>
               {property.featured && (
                 <Badge className="bg-amber-500 text-white border-0 gap-1">
-                  <Star className="h-3 w-3" /> Popular
+                <Star aria-hidden="true" className="h-3 w-3" /> Popular
                 </Badge>
               )}
             </div>
@@ -116,7 +116,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
                     {property.title}
                   </h3>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
-                    <MapPin className="h-3.5 w-3.5" />
+                    <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
                     {formatBucharestLocation(property.zone, property.sector)}
                   </div>
                 </div>
@@ -145,6 +145,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
                 size="sm"
                 className="h-8"
                 onClick={(e) => { e.stopPropagation(); handleToggleFavorite() }}
+                aria-pressed={isFav}
               >
                 <FavoriteButton isFav={isFav} />
                 <span className="ml-1">{isFav ? 'Salvat' : 'Salveaza'}</span>
@@ -154,8 +155,9 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
                 size="sm"
                 className="h-8"
                 onClick={(e) => { e.stopPropagation(); toggleCompare(property.id) }}
+                aria-pressed={isCompare}
               >
-                <Scale className={`h-4 w-4 mr-1 ${isCompare ? 'text-primary' : ''}`} />
+                <Scale aria-hidden="true" className={`h-4 w-4 mr-1 ${isCompare ? 'text-primary' : ''}`} />
                 {isCompare ? 'In comparatie' : 'Compara'}
               </Button>
               <Button
@@ -172,7 +174,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
                   navigateTo('programare-vizionare')
                 }}
               >
-                <CalendarCheck className="h-4 w-4" />
+                <CalendarCheck aria-hidden="true" className="h-4 w-4" />
                 Vizionare
               </Button>
             </div>
@@ -203,7 +205,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
           </Badge>
           {property.featured && (
             <Badge className="bg-amber-500 text-white border-0 gap-1">
-              <Star className="h-3 w-3" /> Popular
+              <Star aria-hidden="true" className="h-3 w-3" /> Popular
             </Badge>
           )}
         </div>
@@ -226,7 +228,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
             }}
             aria-label="Programeaza vizionare"
           >
-            <CalendarCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <CalendarCheck aria-hidden="true" className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           </Button>
           <Button
             variant="secondary"
@@ -234,6 +236,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
             className="h-8 w-8 bg-white/90 dark:bg-black/60 backdrop-blur-sm border-0 shadow-sm hover:bg-white dark:hover:bg-black/80"
             onClick={(e) => { e.stopPropagation(); handleToggleFavorite() }}
             aria-label={isFav ? 'Sterge de la favorite' : 'Adauga la favorite'}
+            aria-pressed={isFav}
           >
             <FavoriteButton isFav={isFav} />
           </Button>
@@ -243,8 +246,9 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
             className="h-8 w-8 bg-white/90 dark:bg-black/60 backdrop-blur-sm border-0 shadow-sm hover:bg-white dark:hover:bg-black/80"
             onClick={(e) => { e.stopPropagation(); toggleCompare(property.id) }}
             aria-label={isCompare ? 'Sterge din comparatie' : 'Adauga la comparatie'}
+            aria-pressed={isCompare}
           >
-            <Scale className={`h-4 w-4 ${isCompare ? 'text-primary' : ''}`} />
+            <Scale aria-hidden="true" className={`h-4 w-4 ${isCompare ? 'text-primary' : ''}`} />
           </Button>
         </div>
 
@@ -264,7 +268,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
           {property.title}
         </h3>
         <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
-          <MapPin className="h-3.5 w-3.5 shrink-0" />
+          <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
           <span className="line-clamp-1">{formatBucharestLocation(property.zone, property.sector)}</span>
         </div>
         <div className="flex items-center gap-4 pt-3 border-t border-border/50">
