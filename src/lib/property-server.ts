@@ -1,29 +1,40 @@
-import { getSafeDb } from '@/lib/edge-db'
 import { MOCK_PROPERTIES } from '@/lib/mock-data'
+import type { D1Database } from '@/lib/db-d1'
 import type { Property } from '@/lib/types'
 
-export async function getPropertyBySlugServer(slug: string): Promise<Property | null> {
-  const db = await getSafeDb()
+type PropertyRow = Omit<Property, 'featured' | 'createdAt' | 'updatedAt'> & {
+  featured: boolean | number
+  createdAt: string | Date
+  updatedAt: string | Date
+}
 
-  if (db) {
-    try {
-      const property = await db.property.findUnique({ where: { slug } })
-      if (property) {
-        const value = property as unknown as Omit<Property, 'createdAt' | 'updatedAt'> & {
-          createdAt: string | Date
-          updatedAt: string | Date
-        }
-        return {
-          ...value,
-          featured: Boolean(value.featured),
-          createdAt: value.createdAt instanceof Date ? value.createdAt.toISOString() : String(value.createdAt),
-          updatedAt: value.updatedAt instanceof Date ? value.updatedAt.toISOString() : String(value.updatedAt),
-        }
-      }
-    } catch (error) {
-      console.error('Nu am putut încărca proprietatea din baza de date:', error)
+function normalizeProperty(value: PropertyRow): Property {
+  return {
+    ...value,
+    featured: Boolean(value.featured),
+    createdAt: value.createdAt instanceof Date ? value.createdAt.toISOString() : String(value.createdAt),
+    updatedAt: value.updatedAt instanceof Date ? value.updatedAt.toISOString() : String(value.updatedAt),
+  }
+}
+
+export async function getPropertyBySlugServer(slug: string): Promise<Property | null> {
+  try {
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare')
+    const { env } = getCloudflareContext()
+    const d1 = (env as unknown as { DB?: D1Database }).DB
+
+    if (d1) {
+      const property = await d1
+        .prepare('SELECT * FROM Property WHERE slug = ?1 AND status = ?2 LIMIT 1')
+        .bind(slug, 'PUBLISHED')
+        .first<PropertyRow>()
+
+      return property ? normalizeProperty(property) : null
     }
+  } catch {
+    // Standard Node preview has no Cloudflare request context.
   }
 
-  return (MOCK_PROPERTIES.find((property) => property.slug === slug) as Property | undefined) ?? null
+  const fallback = MOCK_PROPERTIES.find((property) => property.slug === slug)
+  return fallback ? normalizeProperty(fallback as PropertyRow) : null
 }
