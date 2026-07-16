@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -47,8 +48,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         {/* OpenNext can reference this esbuild helper from next-themes' inline bootstrap. */}
-        <script
+        <Script
           id="open-next-name-helper"
+          strategy="beforeInteractive"
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: "globalThis.__name=globalThis.__name||function(target){return target}",

@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ThemeProvider } from 'next-themes'
 import { Toaster } from 'sonner'
 import { AnnouncementBanner } from '@/components/layout/announcement-banner'
 import { SiteHeader } from '@/components/layout/site-header'
@@ -26,7 +25,7 @@ interface PropertyRouteClientProps {
 
 function PropertyRouteContent({ property }: PropertyRouteClientProps) {
   useCoinsHydration()
-  const initialized = useRef(false)
+  const [navigationReady, setNavigationReady] = useState(false)
   const [favoritesOpen, setFavoritesOpen] = useState(false)
   const [priceAlertsOpen, setPriceAlertsOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -39,17 +38,18 @@ function PropertyRouteContent({ property }: PropertyRouteClientProps) {
   } = useAppStore()
 
   useEffect(() => {
-    if (!initialized.current) {
-      initialized.current = true
-      useAppStore.setState({ currentPage: 'proprietate', selectedPropertySlug: property.slug })
-      return
-    }
+    useAppStore.setState({ currentPage: 'proprietate', selectedPropertySlug: property.slug })
+    const readyTimer = window.setTimeout(() => setNavigationReady(true), 0)
+    return () => window.clearTimeout(readyTimer)
+  }, [property.slug])
 
+  useEffect(() => {
+    if (!navigationReady) return
     if (currentPage !== 'proprietate') {
       const destination = currentPage === 'acasa' ? '/' : `/?page=${encodeURIComponent(currentPage)}`
       window.location.assign(destination)
     }
-  }, [currentPage, property.slug])
+  }, [currentPage, navigationReady])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -92,11 +92,9 @@ export function PropertyRouteClient({ property }: PropertyRouteClientProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-        <AuthProvider>
-          <PropertyRouteContent property={property} />
-        </AuthProvider>
-      </ThemeProvider>
+      <AuthProvider>
+        <PropertyRouteContent property={property} />
+      </AuthProvider>
     </QueryClientProvider>
   )
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { PropertyRouteClient } from './property-route-client'
+import { PropertyRouteLoader } from './property-route-loader'
 import { getPropertyBySlugServer } from '@/lib/property-server'
 import { formatPrice } from '@/lib/utils'
 import { getPropertyImages, PROPERTY_TYPE_LABELS, TRANSACTION_LABELS } from '@/lib/property-details'
@@ -52,28 +52,5 @@ export default async function PropertyRoute({ params }: PropertyRouteProps) {
   const property = await getPropertyBySlugServer(slug)
   if (!property) notFound()
 
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: property.title,
-    description: property.description,
-    image: getPropertyImages(property),
-    url: `/proprietati/${property.slug}`,
-    offers: {
-      '@type': 'Offer',
-      price: property.price,
-      priceCurrency: property.currency,
-      availability: 'https://schema.org/InStock',
-    },
-  }
-
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }}
-      />
-      <PropertyRouteClient property={property} />
-    </>
-  )
+  return <PropertyRouteLoader property={property} />
 }
