@@ -21,6 +21,7 @@ import type { PropertyFormData } from '@/components/property/property-form'
 import type { UserProperty } from '@/lib/types'
 import { LS_KEYS } from '@/lib/constants'
 import { RoleAccessDenied } from '@/components/account/role-access-denied'
+import { getMapEmbedUrl } from '@/lib/property-details'
 
 function generateSlug(title: string): string {
   const roMap: Record<string, string> = {
@@ -35,6 +36,16 @@ function generateSlug(title: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     + '-' + Date.now().toString(36)
+}
+
+function toSupabasePropertyType(type: string): string {
+  const normalized = type.toLocaleLowerCase('ro-RO')
+  if (normalized.includes('teren')) return 'LAND'
+  if (normalized.includes('birou')) return 'OFFICE'
+  if (normalized.includes('comercial') || normalized.includes('depozit')) return 'COMMERCIAL'
+  if (normalized.includes('vil') || normalized.includes('pensiune')) return 'VILLA'
+  if (normalized.includes('cas')) return 'HOUSE'
+  return 'APARTMENT'
 }
 
 export function AdaugaProprietatePage() {
@@ -102,6 +113,8 @@ export function AdaugaProprietatePage() {
         zone: form.zone,
         sector: form.sector,
         city: 'Bucuresti',
+        lat: form.lat,
+        lng: form.lng,
         featured: form.featured,
         cover_url: form.galleryUrls[0] || form.coverUrl || '',
         gallery_urls: JSON.stringify(form.galleryUrls),
@@ -143,10 +156,12 @@ export function AdaugaProprietatePage() {
           description: form.description,
           price: parseFloat(form.price) || 0,
           currency: form.currency,
-          type: form.type,
+          type: toSupabasePropertyType(form.type),
           status: 'PUBLISHED',
           city: 'Bucuresti',
           address: form.address,
+          lat: form.lat,
+          lng: form.lng,
           area_sqm: parseFloat(form.areaSqm) || 0,
           rooms: parseInt(form.rooms) || 0,
           bathrooms: parseInt(form.bathrooms) || 0,
@@ -281,6 +296,17 @@ export function AdaugaProprietatePage() {
               {form?.sector && <Badge variant="secondary">{form.sector}</Badge>}
               {form?.address && <Badge variant="secondary">{form.address}</Badge>}
             </div>
+            {form?.lat !== null && form?.lat !== undefined && form.lng !== null && form.lng !== undefined && (
+              <div className="overflow-hidden rounded-xl border">
+                <iframe
+                  title="Poziția proprietății pe hartă"
+                  src={getMapEmbedUrl(form.lat, form.lng)}
+                  className="h-64 w-full"
+                  loading="lazy"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                />
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

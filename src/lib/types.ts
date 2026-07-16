@@ -226,6 +226,8 @@ export interface UserProperty {
   address?: string
   zone?: string
   sector?: string
+  lat?: number | null
+  lng?: number | null
   description?: string
   coverUrl?: string
   cover_url?: string

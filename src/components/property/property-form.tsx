@@ -4,11 +4,14 @@ import { useState, useCallback, useEffect, useRef, type FormEvent } from 'react'
 import { motion } from 'framer-motion'
 import {
   Plus, Loader2, MapPin, Building2, Ruler,
-  BedDouble, Bath, Calendar, Euro, Tag, Upload,
+  BedDouble, Bath, Calendar, Euro, Tag, Upload, CheckCircle2,
+  Circle, Clock3, Lightbulb, Navigation,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -22,6 +25,8 @@ import { Switch } from '@/components/ui/switch'
 import { PROPERTY_TYPES, TRANSACTIONS, CURRENCIES, SECTOARE, ZONES } from '@/lib/constants'
 import { ImageGalleryUploader } from '@/components/property/image-gallery-uploader'
 import { AiDescriptionGenerator } from '@/components/property/ai-description-generator'
+import { PropertyLocationPicker } from '@/components/property/property-location-picker'
+import { toast } from 'sonner'
 
 export interface PropertyFormData {
   title: string
@@ -39,6 +44,8 @@ export interface PropertyFormData {
   address: string
   zone: string
   sector: string
+  lat: number | null
+  lng: number | null
   featured: boolean
   coverUrl: string
   galleryUrls: string[]
@@ -48,7 +55,8 @@ const INITIAL_FORM: PropertyFormData = {
   title: '', description: '', type: '', transaction: 'VANZARE',
   price: '', currency: 'EUR', areaSqm: '', rooms: '', bathrooms: '',
   floor: '', totalFloors: '', yearBuilt: '', address: '',
-  zone: '', sector: '', featured: false, coverUrl: '', galleryUrls: [],
+  zone: '', sector: '', lat: null, lng: null,
+  featured: false, coverUrl: '', galleryUrls: [],
 }
 
 interface PropertyFormProps {
@@ -70,18 +78,124 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
     })
   }, [])
 
+  const updateFields = useCallback((fields: Partial<PropertyFormData>) => {
+    setForm((prev) => {
+      const next = { ...prev, ...fields }
+      onFormChangeRef.current?.(next)
+      return next
+    })
+  }, [])
+
+  const isLand = /teren/i.test(form.type)
+  const hasPin = form.lat !== null && form.lng !== null
+  const steps = [
+    {
+      id: 'property-step-basic',
+      label: 'Anunț',
+      complete: Boolean(form.title.trim() && form.description.trim() && form.type && form.transaction),
+    },
+    {
+      id: 'property-step-price',
+      label: 'Preț',
+      complete: Number(form.price) > 0 && Number(form.areaSqm) > 0,
+    },
+    {
+      id: 'property-step-details',
+      label: 'Detalii',
+      complete: isLand || Number(form.rooms) > 0,
+    },
+    {
+      id: 'property-step-location',
+      label: 'Localizare',
+      complete: Boolean(form.sector && form.zone && form.address.trim() && hasPin),
+    },
+    {
+      id: 'property-step-images',
+      label: 'Imagini',
+      complete: form.galleryUrls.length > 0,
+    },
+  ]
+  const completionSignals = [
+    Boolean(form.title.trim()), Boolean(form.description.trim()), Boolean(form.type),
+    Number(form.price) > 0, Number(form.areaSqm) > 0, isLand || Number(form.rooms) > 0,
+    Boolean(form.sector), Boolean(form.zone), Boolean(form.address.trim()), hasPin,
+    form.galleryUrls.length > 0,
+  ]
+  const completionPercent = Math.round(
+    (completionSignals.filter(Boolean).length / completionSignals.length) * 100,
+  )
+  const missingRequired = [
+    !form.title.trim() ? 'titlul' : '',
+    !form.description.trim() ? 'descrierea' : '',
+    !form.type ? 'tipul proprietății' : '',
+    !(Number(form.price) > 0) ? 'prețul' : '',
+    !(Number(form.areaSqm) > 0) ? 'suprafața' : '',
+    !isLand && !(Number(form.rooms) > 0) ? 'numărul de camere' : '',
+    !form.sector ? 'sectorul' : '',
+    !form.zone ? 'zona' : '',
+    !form.address.trim() ? 'adresa' : '',
+  ].filter(Boolean)
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
+    if (missingRequired.length > 0) {
+      const firstIncomplete = steps.find((step) => !step.complete)
+      document.getElementById(firstIncomplete?.id || 'property-step-basic')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      toast.error('Completează câmpurile obligatorii', {
+        description: `Mai lipsesc: ${missingRequired.join(', ')}.`,
+      })
+      return
+    }
     onSubmit(form)
   }
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-2xl p-4 sm:p-5 lg:col-span-3"
+        >
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold">Pregătește anunțul pentru publicare</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Datele complete cresc calitatea anunțului și precizia căutărilor.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="gap-1.5">
+                    <Clock3 className="h-3 w-3" /> 4–6 minute
+                  </Badge>
+                  <Badge className="tabular-nums">{completionPercent}%</Badge>
+                </div>
+              </div>
+              <Progress value={completionPercent} className="mt-3 h-2" />
+            </div>
+
+            <div className="grid grid-cols-5 gap-1.5 lg:w-[430px]">
+              {steps.map((step, index) => (
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={() => document.getElementById(step.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className="group flex min-w-0 flex-col items-center gap-1 rounded-lg px-1 py-2 text-center transition-colors hover:bg-muted"
+                >
+                  <span className={step.complete ? 'text-emerald-600' : 'text-muted-foreground'}>
+                    {step.complete ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                  </span>
+                  <span className="w-full truncate text-[10px] font-medium sm:text-xs">{index + 1}. {step.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
         {/* Main Form - 2 columns */}
         <div className="lg:col-span-2 space-y-8">
           {/* Basic Info */}
-          <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6 space-y-5">
+          <motion.section id="property-step-basic" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card scroll-mt-28 rounded-2xl p-5 sm:p-6 space-y-5">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Tag className="h-5 w-5 text-primary" />
               Informatii de Baza
@@ -158,7 +272,7 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
           </motion.section>
 
           {/* Pricing & Size */}
-          <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card rounded-2xl p-6 space-y-5">
+          <motion.section id="property-step-price" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card scroll-mt-28 rounded-2xl p-5 sm:p-6 space-y-5">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Euro className="h-5 w-5 text-primary" />
               Pret si Dimensiuni
@@ -224,7 +338,7 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
           </motion.section>
 
           {/* Rooms & Details */}
-          <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card rounded-2xl p-6 space-y-5">
+          <motion.section id="property-step-details" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card scroll-mt-28 rounded-2xl p-5 sm:p-6 space-y-5">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Building2 className="h-5 w-5 text-primary" />
               Detalii Imobil
@@ -243,7 +357,7 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
                     value={form.rooms}
                     onChange={(e) => updateField('rooms', e.target.value)}
                     className="pl-10 h-11"
-                    required
+                    required={!isLand}
                   />
                 </div>
               </div>
@@ -306,11 +420,19 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
           </motion.section>
 
           {/* Location */}
-          <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card rounded-2xl p-6 space-y-5">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-primary" />
-              Locatie
-            </h2>
+          <motion.section id="property-step-location" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card scroll-mt-28 rounded-2xl p-5 sm:p-6 space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  Adresă și poziție pe hartă
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">Caută adresa, apoi ajustează pinul pentru o poziționare exactă.</p>
+              </div>
+              <Badge variant={hasPin ? 'default' : 'outline'} className="gap-1.5">
+                <Navigation className="h-3 w-3" /> {hasPin ? 'Pin poziționat' : 'Pin recomandat'}
+              </Badge>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -342,19 +464,33 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="address">Adresa exacta</Label>
+              <Label htmlFor="address">Adresa exactă *</Label>
               <Input
                 id="address"
                 placeholder="Str. Example nr. 10, Bl. A3, Sc. 2, Et. 4, Ap. 12"
                 value={form.address}
                 onChange={(e) => updateField('address', e.target.value)}
                 className="h-11"
+                required
               />
             </div>
+
+            <PropertyLocationPicker
+              address={form.address}
+              zone={form.zone}
+              sector={form.sector}
+              lat={form.lat}
+              lng={form.lng}
+              onChange={(location) => updateFields({
+                ...(location.address ? { address: location.address } : {}),
+                lat: location.lat,
+                lng: location.lng,
+              })}
+            />
           </motion.section>
 
           {/* Images */}
-          <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card rounded-2xl p-6 space-y-5">
+          <motion.section id="property-step-images" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card scroll-mt-28 rounded-2xl p-5 sm:p-6 space-y-5">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Upload className="h-5 w-5 text-primary" />
               Imagini
@@ -371,6 +507,19 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
           {/* Submit Card */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6 sticky top-24">
             <div className="space-y-4">
+              <div className="rounded-xl border bg-primary/5 p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold">Starea anunțului</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {missingRequired.length === 0 ? 'Câmpurile obligatorii sunt complete.' : `${missingRequired.length} câmpuri obligatorii rămase.`}
+                    </p>
+                  </div>
+                  <span className="text-xl font-bold text-primary tabular-nums">{completionPercent}%</span>
+                </div>
+                <Progress value={completionPercent} className="mt-3 h-1.5" />
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Proprietate Evidentiata</span>
                 <Switch
@@ -408,6 +557,12 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
                   <span className="text-right truncate max-w-[150px]">{form.zone || '—'}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pin hartă</span>
+                  <span className={hasPin ? 'font-medium text-emerald-600' : 'text-muted-foreground'}>
+                    {hasPin ? 'Poziționat' : 'Nesetat'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">Imagini</span>
                   <span>{form.galleryUrls.length > 0 ? `${form.galleryUrls.length} adaugate` : '—'}</span>
                 </div>
@@ -436,7 +591,7 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
           {/* Tips */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card rounded-2xl p-5 space-y-3">
             <h3 className="text-sm font-semibold flex items-center gap-2">
-              💡 Sfaturi
+              <Lightbulb className="h-4 w-4 text-amber-500" /> Sfaturi pentru un anunț bun
             </h3>
             <ul className="text-xs text-muted-foreground space-y-2">
               <li className="flex gap-2">

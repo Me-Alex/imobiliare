@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS public.properties (
   city TEXT NOT NULL DEFAULT 'Bucuresti',
   county TEXT,
   address TEXT NOT NULL DEFAULT '',
+  lat DOUBLE PRECISION CHECK (lat IS NULL OR lat BETWEEN -90 AND 90),
+  lng DOUBLE PRECISION CHECK (lng IS NULL OR lng BETWEEN -180 AND 180),
   area_sqm NUMERIC NOT NULL DEFAULT 0 CHECK (area_sqm >= 0),
   rooms INTEGER NOT NULL DEFAULT 0 CHECK (rooms >= 0),
   bathrooms INTEGER NOT NULL DEFAULT 0 CHECK (bathrooms >= 0),

@@ -1,4 +1,14 @@
 @import "tailwindcss";
+
+.leaflet-container {
+  z-index: 0;
+  font-family: inherit;
+}
+
+.hqs-property-map-pin {
+  border: 0;
+  background: transparent;
+}
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
