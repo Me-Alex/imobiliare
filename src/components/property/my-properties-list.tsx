@@ -58,10 +58,10 @@ export function MyPropertiesList({ properties, visible, onEdit, onDelete }: MyPr
                         <Clock className="h-3 w-3" />
                         {new Date(prop.created_at as string).toLocaleDateString('ro-RO')}
                       </span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary" onClick={() => onEdit(prop)}>
+                      <Button variant="ghost" size="icon" aria-label="Editeaza proprietatea" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary" onClick={() => onEdit(prop)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => onDelete(prop.id as string)}>
+                      <Button variant="ghost" size="icon" aria-label="Sterge proprietatea" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => onDelete(prop.id as string)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
