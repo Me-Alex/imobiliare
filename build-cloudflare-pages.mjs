@@ -16,6 +16,7 @@ async function assertExists(target) {
 
 await assertExists(path.join(redirectDirectory, 'index.html'))
 await assertExists(path.join(redirectDirectory, '_headers'))
+await assertExists(path.join(redirectDirectory, '_redirects'))
 await rm(pagesOutputDirectory, { recursive: true, force: true })
 await mkdir(pagesOutputDirectory, { recursive: true })
 await cp(redirectDirectory, pagesOutputDirectory, { recursive: true })
