@@ -21,6 +21,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { PROPERTY_TYPES, TRANSACTIONS, CURRENCIES, SECTOARE, ZONES } from '@/lib/constants'
 import { ImageGalleryUploader } from '@/components/property/image-gallery-uploader'
+import { AiDescriptionGenerator } from '@/components/property/ai-description-generator'
 
 export interface PropertyFormData {
   title: string
@@ -99,7 +100,22 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Descriere *</Label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <Label htmlFor="description">Descriere *</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">Scrie manual sau pornește de la trei variante adaptate proprietății.</p>
+                </div>
+                <AiDescriptionGenerator
+                  form={form}
+                  onApply={({ title, description }) => {
+                    setForm((previous) => {
+                      const next = { ...previous, title, description }
+                      onFormChangeRef.current?.(next)
+                      return next
+                    })
+                  }}
+                />
+              </div>
               <Textarea
                 id="description"
                 placeholder="Descrie proprietatea detaliat: finisaje, dotari, vecinatate, acces transport etc."
@@ -214,7 +230,7 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
               Detalii Imobil
             </h2>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="rooms">Camere *</Label>
                 <div className="relative">
@@ -255,6 +271,18 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
                   placeholder="3"
                   value={form.floor}
                   onChange={(e) => updateField('floor', e.target.value)}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="totalFloors">Total etaje</Label>
+                <Input
+                  id="totalFloors"
+                  type="number"
+                  min="0"
+                  placeholder="8"
+                  value={form.totalFloors}
+                  onChange={(e) => updateField('totalFloors', e.target.value)}
                   className="h-11"
                 />
               </div>
