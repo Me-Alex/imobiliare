@@ -1,48 +1,73 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Heart,
-  Scale,
-  MapPin,
-  BedDouble,
-  Maximize2,
+  ArrowLeft,
   Bath,
+  BedDouble,
   Building,
-  Calendar,
-  Phone,
+  CalendarCheck,
+  Car,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Home,
-  CalendarCheck,
+  Clock3,
+  ExternalLink,
+  FileCheck2,
+  FileText,
+  GraduationCap,
+  Heart,
+  ImageIcon,
+  Info,
+  Mail,
+  MapPin,
+  Maximize2,
+  MessageSquare,
+  Scale,
+  SearchX,
+  ShieldCheck,
+  ShoppingBag,
   Star,
-  ArrowLeft,
+  TrainFront,
+  Wrench,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAppStore } from '@/store/use-app-store'
 import { useAuth } from '@/contexts/auth-context'
 import { useCoinActions } from '@/hooks/use-coin-actions'
-import { useProperty } from '@/hooks/use-properties'
+import { useProperties, useProperty } from '@/hooks/use-properties'
 import { PropertyShareButtons } from '@/components/property/property-share-buttons'
+import { PropertyCard } from '@/components/property/property-card'
+import { ContactFormDialog } from '@/components/dialogs/contact-form-dialog'
 import { AuthRequiredDialog } from '@/components/dialogs/auth-required-dialog'
 import { formatBucharestLocation, formatPrice, formatPricePerSqm } from '@/lib/utils'
-import { toast } from 'sonner'
+import {
+  formatPropertyUpdatedAt,
+  getMapEmbedUrl,
+  getNearbySearchUrl,
+  getPropertyFeatures,
+  getPropertyImages,
+  getRelatedProperties,
+  PROPERTY_TYPE_LABELS,
+  TRANSACTION_LABELS,
+} from '@/lib/property-details'
 import type { Property } from '@/lib/types'
 
-const typeLabels: Record<string, string> = {
-  APARTMENT: 'Apartament',
-  HOUSE: 'Casa',
-  VILLA: 'Vila',
-  LAND: 'Teren',
-  COMMERCIAL: 'Comercial',
+interface PropertyPageProps {
+  initialSlug?: string
+  initialProperty?: Property
+  standalone?: boolean
 }
 
-export function PropertyPage() {
+type ContactIntent = 'general' | 'documents'
+
+export function PropertyPage({ initialSlug, initialProperty, standalone = false }: PropertyPageProps = {}) {
   const {
     selectedPropertySlug,
     favorites,
@@ -54,22 +79,40 @@ export function PropertyPage() {
     setSelectedPropertySlug,
     setLightbox,
   } = useAppStore()
-  const { user } = useAuth()
-  const { onFavorite } = useCoinActions()
+  const { user, profile } = useAuth()
+  const { onFavorite, onViewProperty } = useCoinActions()
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
+  const [contactOpen, setContactOpen] = useState(false)
+  const [contactIntent, setContactIntent] = useState<ContactIntent>('general')
 
-  const slug = selectedPropertySlug
-  const { data: property, isLoading } = useProperty(slug)
+  const slug = initialSlug || selectedPropertySlug
+  const { data: property, isLoading, isError } = useProperty(slug, initialProperty)
+  const { data: candidateProperties = [] } = useProperties()
 
-  if (isLoading || !property) {
-    return <PropertyPageSkeleton />
-  }
+  useEffect(() => {
+    if (property) void onViewProperty(property.id, property.title)
+  }, [onViewProperty, property])
+
+  const relatedProperties = useMemo(
+    () => property ? getRelatedProperties(property, candidateProperties) : [],
+    [candidateProperties, property],
+  )
+
+  if (isLoading) return <PropertyPageSkeleton />
+  if (isError || !property) return <PropertyUnavailable standalone={standalone} />
 
   const isFav = favorites.includes(property.id)
   const isCompare = compareList.includes(property.id)
+  const typeLabel = PROPERTY_TYPE_LABELS[property.type] || property.type
+  const transactionLabel = TRANSACTION_LABELS[property.transaction] || property.transaction
+  const features = getPropertyFeatures(property)
 
   const handleBack = () => {
     setSelectedPropertySlug(null)
+    if (standalone) {
+      window.location.assign('/?page=proprietati')
+      return
+    }
     navigateTo('proprietati')
   }
 
@@ -79,197 +122,305 @@ export function PropertyPage() {
     if (!wasFavorite) void onFavorite(property.id, property.title)
   }
 
+  const handleSchedule = () => {
+    if (!user) {
+      setAuthDialogOpen(true)
+      return
+    }
+
+    setVizionareProperty(property.id, property.title)
+    sessionStorage.setItem('pm-route-viewing-context', JSON.stringify({
+      propertyId: property.id,
+      propertyTitle: property.title,
+      propertySlug: property.slug,
+    }))
+    navigateTo('programare-vizionare')
+  }
+
+  const openContact = (intent: ContactIntent = 'general') => {
+    setContactIntent(intent)
+    setContactOpen(true)
+  }
+
+  const contactMessage = contactIntent === 'documents'
+    ? `Bună ziua, doresc planul proprietății și informații despre documentele disponibile pentru „${property.title}”.`
+    : `Bună ziua, sunt interesat(ă) de proprietatea „${property.title}” și doresc mai multe detalii.`
+
   return (
-    <div className="min-h-[calc(100vh-4rem)]">
-      {/* Gallery with key remounts on property change, resetting image index */}
+    <div className="min-h-[calc(100vh-4rem)] pb-20 lg:pb-0">
       <PropertyGallery
         key={property.id}
         property={property}
-        onLightbox={(images, idx) => setLightbox(images, idx)}
+        onLightbox={(images, index) => setLightbox(images, index)}
         onBack={handleBack}
       />
 
-      {/* ── Main Content ── */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-[1fr_380px] gap-8">
-          {/* Left column */}
-          <div className="space-y-8">
-            {/* Header */}
-            <motion.div
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="min-w-0 space-y-8">
+            <motion.header
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
             >
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                <Badge variant="secondary">{typeLabels[property.type] || property.type}</Badge>
-                <Badge variant="secondary">{property.transaction === 'SALE' ? 'Vanzare' : 'Inchiriere'}</Badge>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">{typeLabel}</Badge>
+                <Badge variant="secondary">{transactionLabel}</Badge>
                 {property.featured && (
-                  <Badge className="bg-amber-500 text-white border-0 gap-1">
-                    <Star className="h-3 w-3" /> Popular
+                  <Badge className="gap-1 border-0 bg-amber-500 text-white">
+                    <Star className="h-3 w-3" /> Recomandată
                   </Badge>
                 )}
+                <Badge variant="outline" className="gap-1 border-emerald-500/40 text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="h-3 w-3" /> Anunț activ
+                </Badge>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{property.title}</h1>
-              <div className="flex items-center gap-1.5 text-muted-foreground mt-2">
-                <MapPin className="h-4 w-4" />
-                {property.address}, {formatBucharestLocation(property.zone, property.sector)}
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">{property.title}</h1>
+              <div className="mt-2 flex items-start gap-1.5 text-sm text-muted-foreground sm:text-base">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{property.address}, {formatBucharestLocation(property.zone, property.sector)}</span>
               </div>
-            </motion.div>
+            </motion.header>
 
-            {/* Price */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-              className="flex flex-wrap items-center gap-4"
+              transition={{ duration: 0.4, delay: 0.08 }}
+              className="flex flex-wrap items-end gap-x-4 gap-y-1"
             >
-              <div className="text-3xl sm:text-4xl font-bold text-primary">{formatPrice(property.price)}</div>
-              {property.pricePerSqm && (
-                <div className="text-muted-foreground">{formatPricePerSqm(property.pricePerSqm)}</div>
-              )}
+              <div>
+                <div className="text-3xl font-bold text-primary sm:text-4xl">
+                  {formatPrice(property.price, property.currency)}
+                </div>
+                {property.transaction === 'RENT' || property.transaction === 'INCHIRIERE' || property.transaction === 'Inchiriere' ? (
+                  <p className="mt-1 text-xs text-muted-foreground">pe lună, dacă anunțul nu precizează altfel</p>
+                ) : null}
+              </div>
+              {property.pricePerSqm ? (
+                <div className="pb-1 text-sm text-muted-foreground">{formatPricePerSqm(property.pricePerSqm)}</div>
+              ) : null}
             </motion.div>
 
-            {/* Metrics */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.15 }}
-              className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+              transition={{ duration: 0.4, delay: 0.12 }}
+              className="grid grid-cols-2 gap-3 sm:grid-cols-4"
             >
-              <MetricCard icon={BedDouble} label="Camere" value={String(property.rooms)} />
-              <MetricCard icon={Maximize2} label="Suprafata" value={`${property.areaSqm} m²`} />
-              <MetricCard icon={Bath} label="Bai" value={String(property.bathrooms)} />
-              <MetricCard icon={Building} label="Etaj" value={property.floor ? `Etaj ${property.floor}` : '-'} />
+              <MetricCard icon={BedDouble} label="Camere" value={property.rooms ? String(property.rooms) : '—'} />
+              <MetricCard icon={Maximize2} label="Suprafață utilă" value={`${property.areaSqm} m²`} />
+              <MetricCard icon={Bath} label="Băi" value={property.bathrooms ? String(property.bathrooms) : '—'} />
+              <MetricCard icon={Building} label="Etaj" value={property.floor === null ? '—' : String(property.floor)} />
             </motion.div>
 
-            {property.yearBuilt && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="flex items-center gap-2 text-sm text-muted-foreground"
-              >
-                <Calendar className="h-4 w-4" />
-                An constructie: {property.yearBuilt}
-              </motion.div>
-            )}
+            <div className="grid gap-2 sm:grid-cols-2 lg:hidden">
+              <Button className="h-11 gap-2 bg-emerald-600 text-white hover:bg-emerald-700" onClick={handleSchedule}>
+                <CalendarCheck className="h-4 w-4" /> Programează vizionare
+              </Button>
+              <Button variant="outline" className="h-11 gap-2" onClick={() => openContact()}>
+                <MessageSquare className="h-4 w-4" /> Întreabă agentul
+              </Button>
+            </div>
 
-            <Separator />
-
-            {/* Description */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-            >
-              <h2 className="text-lg font-semibold mb-3">Descriere</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+            <Section title="Descriere">
+              <p className="whitespace-pre-line text-sm leading-7 text-muted-foreground sm:text-base">
                 {property.description}
               </p>
-            </motion.div>
+            </Section>
+
+            <Section title="Dotări și facilități" icon={Wrench}>
+              {features.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {features.map((feature) => (
+                    <div key={feature.label} className="flex items-center gap-3 rounded-xl border bg-card p-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        {feature.category === 'Acces' ? <Car className="h-4 w-4 text-primary" /> : <CheckCircle2 className="h-4 w-4 text-primary" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{feature.label}</p>
+                        <p className="text-[11px] text-muted-foreground">{feature.category}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <InfoBox text="Dotările exacte nu sunt încă structurate în anunț. Solicită agentului lista completă înainte de programare." />
+              )}
+              <p className="mt-3 text-xs text-muted-foreground">
+                Facilitățile de mai sus sunt extrase din descrierea publicată și se reconfirmă la vizionare.
+              </p>
+            </Section>
+
+            <Section title="Detalii, costuri și verificări" icon={ShieldCheck}>
+              <div className="grid gap-4 md:grid-cols-2">
+                <DetailGroup title="Caracteristici">
+                  <DetailRow label="An construcție" value={property.yearBuilt ? String(property.yearBuilt) : 'Nespecificat'} />
+                  <DetailRow label="Tip proprietate" value={typeLabel} />
+                  <DetailRow label="Tranzacție" value={transactionLabel} />
+                  <DetailRow label="Disponibilitate" value="Se confirmă la programare" />
+                </DetailGroup>
+                <DetailGroup title="Costuri și documente">
+                  <DetailRow label="Comision" value="Se precizează în oferta/contractul de intermediere" />
+                  <DetailRow label="Costuri lunare" value="Disponibile la cerere" />
+                  <DetailRow label="Clasă energetică" value="Certificatul se solicită agentului" />
+                  <DetailRow label="Ultima actualizare" value={formatPropertyUpdatedAt(property.updatedAt)} />
+                </DetailGroup>
+              </div>
+              <InfoBox text="Informațiile juridice, cadastrale și costurile finale se validează documentar înainte de semnarea unei tranzacții. Publicarea anunțului nu reprezintă o garanție juridică." />
+            </Section>
+
+            <Section title={`Localizare în ${property.zone}`} icon={MapPin}>
+              {property.lat !== null && property.lng !== null ? (
+                <div className="overflow-hidden rounded-2xl border bg-muted">
+                  <iframe
+                    title={`Hartă orientativă pentru ${property.title}`}
+                    src={getMapEmbedUrl(property.lat, property.lng)}
+                    className="h-72 w-full border-0 sm:h-96"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-56 items-center justify-center rounded-2xl border bg-muted/40 text-center">
+                  <div>
+                    <MapPin className="mx-auto h-7 w-7 text-muted-foreground" />
+                    <p className="mt-2 text-sm font-medium">Poziția exactă nu este publicată</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Agentul o confirmă înainte de vizionare.</p>
+                  </div>
+                </div>
+              )}
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <NearbyLink icon={TrainFront} label="Transport în apropiere" href={getNearbySearchUrl('transport public', property)} />
+                <NearbyLink icon={GraduationCap} label="Școli în apropiere" href={getNearbySearchUrl('școli', property)} />
+                <NearbyLink icon={ShoppingBag} label="Magazine în apropiere" href={getNearbySearchUrl('magazine', property)} />
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Poziția și rezultatele externe sunt orientative. Adresa și timpii de deplasare se verifică înainte de vizionare.
+              </p>
+            </Section>
+
+            <Section title="Planuri și documente" icon={FileText}>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <DocumentStatus icon={ImageIcon} title="Plan proprietate" status="La cerere" />
+                <DocumentStatus icon={FileCheck2} title="Certificat energetic" status="De confirmat" />
+                <DocumentStatus icon={ShieldCheck} title="Acte și cadastru" status="Verificare înainte de tranzacție" />
+              </div>
+              <Button variant="outline" className="mt-4 gap-2" onClick={() => openContact('documents')}>
+                <Mail className="h-4 w-4" /> Solicită documentele disponibile
+              </Button>
+            </Section>
 
             <Separator />
-
-            {/* Share */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.25 }}
-            >
-              <PropertyShareButtons property={property} />
-            </motion.div>
+            <PropertyShareButtons property={property} />
           </div>
 
-          {/* Right sidebar */}
-          <motion.div
+          <motion.aside
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="space-y-4"
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="hidden lg:block"
           >
-            <Card className="sticky top-24">
-              <CardContent className="p-5 space-y-4">
-                <h3 className="font-semibold">Actiuni</h3>
-
+            <Card className="sticky top-24 overflow-hidden">
+              <CardContent className="space-y-5 p-5">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-12 w-12 border">
+                    <AvatarFallback className="bg-primary/10 font-semibold text-primary">HQS</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="font-semibold">Echipa HQS Imobiliare</p>
+                    <p className="text-xs text-muted-foreground">Consultanță pentru această proprietate</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                  <Clock3 className="h-4 w-4 shrink-0 text-primary" />
+                  Răspuns în timpul programului agenției
+                </div>
                 <div className="space-y-2">
-                  <Button
-                    variant={isFav ? 'default' : 'outline'}
-                    onClick={handleToggleFavorite}
-                    className="w-full gap-2"
+                  <Button className="h-11 w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-700" onClick={handleSchedule}>
+                    <CalendarCheck className="h-4 w-4" /> Programează vizionare
+                  </Button>
+                  <Button variant="outline" className="h-11 w-full gap-2" onClick={() => openContact()}>
+                    <MessageSquare className="h-4 w-4" /> Contactează agentul
+                  </Button>
+                  <a
+                    href="mailto:contact@hqsimobiliare.ro"
+                    className="flex h-10 items-center justify-center gap-2 rounded-md text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
+                    <Mail className="h-4 w-4" /> contact@hqsimobiliare.ro
+                  </a>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant={isFav ? 'default' : 'outline'} onClick={handleToggleFavorite} className="gap-2">
                     <Heart className={`h-4 w-4 ${isFav ? 'fill-current' : ''}`} />
-                    {isFav ? 'Salvat la favorite' : 'Salveaza la favorite'}
+                    {isFav ? 'Salvat' : 'Salvează'}
                   </Button>
-
-                  <Button
-                    variant={isCompare ? 'default' : 'outline'}
-                    onClick={() => toggleCompare(property.id)}
-                    className="w-full gap-2"
-                  >
-                    <Scale className="h-4 w-4" />
-                    {isCompare ? 'In comparatie' : 'Compara'}
-                  </Button>
-
-                  <Button
-                    className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={() => {
-                      if (!user) {
-                        setAuthDialogOpen(true)
-                        return
-                      }
-                      setVizionareProperty(property.id, property.title)
-                      navigateTo('programare-vizionare')
-                    }}
-                  >
-                    <CalendarCheck className="h-4 w-4" />
-                    Programeaza Vizionare
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2"
-                    onClick={() => toast.info('Contacteaza agentul', { description: 'Formularul de contact va fi disponibil in curand.' })}
-                  >
-                    <Phone className="h-4 w-4" />
-                    Contacteaza Agentul
+                  <Button variant={isCompare ? 'default' : 'outline'} onClick={() => toggleCompare(property.id)} className="gap-2">
+                    <Scale className="h-4 w-4" /> {isCompare ? 'Adăugat' : 'Compară'}
                   </Button>
                 </div>
-
                 <Separator />
-
-                {/* Quick info */}
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Tip</span>
-                    <span className="font-medium">{typeLabels[property.type] || property.type}</span>
+                  <DetailRow label="ID anunț" value={property.id.slice(0, 8).toUpperCase()} />
+                  <DetailRow label="Zonă" value={property.zone} />
+                  {property.sector ? <DetailRow label="Sector" value={property.sector} /> : null}
+                </div>
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs leading-relaxed text-muted-foreground">
+                  <div className="mb-1 flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-400">
+                    <ShieldCheck className="h-4 w-4" /> Proces transparent
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Tranzactie</span>
-                    <span className="font-medium">{property.transaction === 'SALE' ? 'Vanzare' : 'Inchiriere'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Zona</span>
-                    <span className="font-medium">{property.zone}</span>
-                  </div>
-                  {property.sector && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Sector</span>
-                      <span className="font-medium">{property.sector}</span>
-                    </div>
-                  )}
+                  Programarea, documentele și semnăturile sunt urmărite în contul tău HQS.
                 </div>
               </CardContent>
             </Card>
-          </motion.div>
+          </motion.aside>
+        </div>
+
+        {relatedProperties.length > 0 ? (
+          <section className="mt-14 border-t pt-10" aria-labelledby="similar-properties-title">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-primary">Alternative relevante</p>
+                <h2 id="similar-properties-title" className="mt-1 text-2xl font-bold">Proprietăți similare</h2>
+              </div>
+              <Button variant="ghost" className="hidden sm:inline-flex" onClick={() => standalone ? window.location.assign('/?page=proprietati') : navigateTo('proprietati')}>
+                Vezi toate
+              </Button>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {relatedProperties.map((item) => <PropertyCard key={item.id} property={item} />)}
+            </div>
+          </section>
+        ) : null}
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] backdrop-blur lg:hidden">
+        <div className="mx-auto grid max-w-lg grid-cols-[1fr_auto] gap-2">
+          <Button className="h-11 gap-2 bg-emerald-600 text-white hover:bg-emerald-700" onClick={handleSchedule}>
+            <CalendarCheck className="h-4 w-4" /> Programează vizionare
+          </Button>
+          <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => openContact()} aria-label="Trimite mesaj agentului">
+            <MessageSquare className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
+      <ContactFormDialog
+        open={contactOpen}
+        onOpenChange={setContactOpen}
+        propertyTitle={property.title}
+        propertyId={property.id}
+        initialName={profile?.fullName || user?.user_metadata?.full_name || ''}
+        initialEmail={user?.email || ''}
+        initialPhone={profile?.phone || ''}
+        initialMessage={contactMessage}
+      />
       <AuthRequiredDialog
         open={authDialogOpen}
         onOpenChange={setAuthDialogOpen}
-        actionLabel="Programeaza o Vizionare"
+        actionLabel="Programează o vizionare"
         actionIcon={CalendarCheck}
-        description="Pentru a programa o vizionare la aceasta proprietate, trebuie sa fii autentificat."
+        description="Pentru a programa o vizionare și a primi documentele aferente, trebuie să fii autentificat(ă)."
         returnPage="programare-vizionare"
         returnContext={{
           vizionarePropertyId: property.id,
@@ -281,144 +432,176 @@ export function PropertyPage() {
   )
 }
 
-// ─── Gallery Component (remounts via key to reset state) ──────────────────────
-
 function PropertyGallery({
   property,
   onLightbox,
   onBack,
 }: {
   property: Property
-  onLightbox: (images: string[], idx: number) => void
+  onLightbox: (images: string[], index: number) => void
   onBack: () => void
 }) {
   const [currentImage, setCurrentImage] = useState(0)
-
-  const gallery: string[] = property.galleryUrls ? JSON.parse(property.galleryUrls) : []
-  const coverImage = property.coverUrl || gallery[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80'
-  const images = [coverImage, ...gallery.filter((u) => u !== coverImage)]
-
-  const nextImage = () => setCurrentImage((p) => (p + 1) % Math.max(images.length, 1))
-  const prevImage = () => setCurrentImage((p) => (p - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1))
+  const images = getPropertyImages(property)
+  const nextImage = () => setCurrentImage((index) => (index + 1) % images.length)
+  const previousImage = () => setCurrentImage((index) => (index - 1 + images.length) % images.length)
 
   return (
-    <div className="relative bg-muted">
-      <div className="aspect-[21/9] sm:aspect-[21/8] lg:aspect-[21/7] relative overflow-hidden">
+    <section className="relative bg-muted" aria-label="Galerie foto proprietate">
+      <div className="relative aspect-[4/3] overflow-hidden sm:aspect-[16/8] lg:aspect-[21/7]">
         <motion.img
           key={currentImage}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          src={images[currentImage] || coverImage}
-          alt={`${property.title} - Imaginea ${currentImage + 1}`}
-          className="w-full h-full object-cover"
+          transition={{ duration: 0.25 }}
+          src={images[currentImage]}
+          alt={`${property.title} — fotografia ${currentImage + 1} din ${images.length}`}
+          className="h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/10" />
 
-        {/* Back button */}
-        <button
-          onClick={onBack}
-          className="absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-black/70 backdrop-blur-sm px-3 py-1.5 text-sm font-medium text-foreground shadow-sm hover:bg-white dark:hover:bg-black/80 transition-colors z-10"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Inapoi
+        <button type="button" onClick={onBack} className="absolute left-4 top-4 z-10 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-2 text-sm font-medium text-slate-900 shadow-sm backdrop-blur-sm transition-colors hover:bg-white">
+          <ArrowLeft className="h-4 w-4" /> Înapoi
         </button>
 
-        {/* Image counter */}
-        {images.length > 1 && (
-          <div className="absolute top-4 right-4 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm z-10">
-            {currentImage + 1} / {images.length}
-          </div>
-        )}
+        <div className="absolute right-4 top-4 z-10 rounded-full bg-black/65 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
+          {currentImage + 1} / {images.length}
+        </div>
 
-        {/* Nav arrows */}
-        {images.length > 1 && (
+        {images.length > 1 ? (
           <>
-            <Button
-              variant="secondary"
-              size="icon"
-              className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 bg-white/80 dark:bg-black/60 backdrop-blur-sm rounded-full border-0 hover:bg-white dark:hover:bg-black/80 transition-colors"
-              onClick={prevImage}
-            >
+            <Button type="button" variant="secondary" size="icon" className="absolute left-3 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full border-0 bg-white/85 text-slate-900 hover:bg-white" onClick={previousImage} aria-label="Fotografia precedentă">
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <Button
-              variant="secondary"
-              size="icon"
-              className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 bg-white/80 dark:bg-black/60 backdrop-blur-sm rounded-full border-0 hover:bg-white dark:hover:bg-black/80 transition-colors"
-              onClick={nextImage}
-            >
+            <Button type="button" variant="secondary" size="icon" className="absolute right-3 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full border-0 bg-white/85 text-slate-900 hover:bg-white" onClick={nextImage} aria-label="Fotografia următoare">
               <ChevronRight className="h-5 w-5" />
             </Button>
           </>
-        )}
+        ) : null}
 
-        {/* Expand */}
-        <button
-          onClick={() => onLightbox(images, currentImage)}
-          className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 dark:bg-black/60 backdrop-blur-sm border-0 hover:bg-white dark:hover:bg-black/80 transition-colors shadow-sm z-10"
-        >
+        <button type="button" onClick={() => onLightbox(images, currentImage)} className="absolute bottom-4 right-4 z-10 flex h-10 items-center justify-center gap-2 rounded-full bg-white/90 px-3 text-sm font-medium text-slate-900 shadow-sm backdrop-blur-sm transition-colors hover:bg-white" aria-label={`Deschide galeria cu ${images.length} fotografii`}>
           <Maximize2 className="h-4 w-4" />
+          <span className="hidden sm:inline">Vezi toate fotografiile</span>
         </button>
       </div>
 
-      {/* Thumbnails */}
-      {images.length > 1 && (
-        <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-thin bg-background border-b">
-          {images.map((img, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentImage(i)}
-              className={`shrink-0 w-20 h-14 rounded-md overflow-hidden border-2 transition-all duration-200 ${
-                i === currentImage ? 'border-primary ring-2 ring-primary/20' : 'border-transparent opacity-60 hover:opacity-100'
-              }`}
-            >
-              <img src={img} alt="" className="w-full h-full object-cover" />
+      {images.length > 1 ? (
+        <div className="flex gap-2 overflow-x-auto border-b bg-background px-4 py-3">
+          {images.map((image, index) => (
+            <button key={`${image}-${index}`} type="button" onClick={() => setCurrentImage(index)} aria-label={`Afișează fotografia ${index + 1}`} aria-current={index === currentImage} className={`h-14 w-20 shrink-0 overflow-hidden rounded-md border-2 transition-all ${index === currentImage ? 'border-primary ring-2 ring-primary/20' : 'border-transparent opacity-65 hover:opacity-100'}`}>
+              <img src={image} alt={`${property.title} — miniatura ${index + 1}`} className="h-full w-full object-cover" />
             </button>
           ))}
         </div>
-      )}
+      ) : null}
+    </section>
+  )
+}
+
+function Section({ title, icon: Icon, children }: { title: string; icon?: React.ElementType; children: React.ReactNode }) {
+  return (
+    <section className="border-t pt-8">
+      <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+        {Icon ? <Icon className="h-5 w-5 text-primary" /> : null}
+        {title}
+      </h2>
+      {children}
+    </section>
+  )
+}
+
+function MetricCard({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border bg-card p-3 sm:p-4">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+        <Icon className="h-5 w-5 text-primary" />
+      </div>
+      <div className="min-w-0">
+        <div className="truncate text-sm font-semibold">{value}</div>
+        <div className="truncate text-xs text-muted-foreground">{label}</div>
+      </div>
     </div>
   )
 }
 
-// ─── Skeleton Loading ─────────────────────────────────────────────────────────
+function DetailGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <h3 className="mb-3 text-sm font-semibold">{title}</h3>
+      <div className="space-y-3">{children}</div>
+    </div>
+  )
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 text-sm">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <span className="text-right font-medium">{value}</span>
+    </div>
+  )
+}
+
+function InfoBox({ text }: { text: string }) {
+  return (
+    <div className="mt-4 flex items-start gap-3 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm leading-relaxed text-muted-foreground">
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+      <p>{text}</p>
+    </div>
+  )
+}
+
+function NearbyLink({ icon: Icon, label, href }: { icon: React.ElementType; label: string; href: string }) {
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-2 rounded-xl border bg-card p-3 text-sm font-medium transition-colors hover:border-primary/40 hover:bg-accent">
+      <span className="flex items-center gap-2"><Icon className="h-4 w-4 text-primary" />{label}</span>
+      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+    </a>
+  )
+}
+
+function DocumentStatus({ icon: Icon, title, status }: { icon: React.ElementType; title: string; status: string }) {
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <Icon className="h-5 w-5 text-primary" />
+      <p className="mt-3 text-sm font-semibold">{title}</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{status}</p>
+    </div>
+  )
+}
+
+function PropertyUnavailable({ standalone }: { standalone: boolean }) {
+  return (
+    <div className="flex min-h-[70vh] items-center justify-center px-4">
+      <div className="max-w-md text-center">
+        <SearchX className="mx-auto h-10 w-10 text-muted-foreground" />
+        <h1 className="mt-4 text-2xl font-bold">Proprietatea nu este disponibilă</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Anunțul nu există, a fost retras sau nu mai este publicat.</p>
+        <Button className="mt-6" onClick={() => standalone ? window.location.assign('/?page=proprietati') : useAppStore.getState().navigateTo('proprietati')}>
+          Vezi proprietățile active
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 function PropertyPageSkeleton() {
   return (
     <div className="min-h-[calc(100vh-4rem)]">
-      <Skeleton className="aspect-[21/9] sm:aspect-[21/8] lg:aspect-[21/7] w-full" />
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-[1fr_380px] gap-8">
+      <Skeleton className="aspect-[4/3] w-full sm:aspect-[16/8] lg:aspect-[21/7]" />
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
           <div className="space-y-8">
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-6 w-1/2" />
-            <Skeleton className="h-12 w-48" />
-            <div className="grid grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full" />
-              ))}
+            <Skeleton className="h-9 w-3/4" />
+            <Skeleton className="h-12 w-56" />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-20 w-full" />)}
             </div>
-            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-36 w-full" />
+            <Skeleton className="h-72 w-full" />
           </div>
-          <Skeleton className="h-80 w-full" />
+          <Skeleton className="hidden h-[520px] w-full lg:block" />
         </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function MetricCard({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-lg border p-4">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-        <Icon className="h-5 w-5 text-primary" />
-      </div>
-      <div>
-        <div className="text-sm font-medium">{value}</div>
-        <div className="text-xs text-muted-foreground">{label}</div>
       </div>
     </div>
   )

@@ -9,15 +9,19 @@ export async function POST(request: NextRequest) {
   let phone: string | undefined
   let message: string | undefined
   let propertyTitle: string | undefined
+  let propertyId: string | undefined
+  let privacyAccepted: boolean | undefined
 
   try {
     const body = await request.json()
-    ;({ name, email, phone, message, propertyTitle } = body as {
+    ;({ name, email, phone, message, propertyTitle, propertyId, privacyAccepted } = body as {
       name?: string
       email?: string
       phone?: string
       message?: string
       propertyTitle?: string
+      propertyId?: string
+      privacyAccepted?: boolean
     })
   } catch {
     return NextResponse.json(
@@ -54,6 +58,13 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  if (privacyAccepted !== true) {
+    return NextResponse.json(
+      { error: 'Confirmarea informării privind protecția datelor este obligatorie.' },
+      { status: 400 }
+    )
+  }
+
   // ── Persist to database ─────────────────────────────────────
   const db = await getSafeDb()
   if (!db) {
@@ -67,7 +78,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
-        message: message.trim(),
+        message: `${message.trim()}\n\n[Consimțământ contact: ${new Date().toISOString()}${propertyId ? `; proprietate: ${propertyId}` : ''}]`,
         propertyTitle: propertyTitle?.trim() || null,
       },
     })

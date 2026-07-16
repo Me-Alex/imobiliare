@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://hqs-imobiliare.floreaalexandru2002.workers.dev"),
   title: "HQS Imobiliare | Analiza Imobiliara Bucuresti",
   description:
     "Platforma de analiza imobiliara pentru Bucuresti. Descopera proprietati verificate, tendinte de pret si statistici de piata in timp real.",

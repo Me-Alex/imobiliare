@@ -1,6 +1,5 @@
 'use client'
 
-import { useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Home, Building2, ChevronRight, Loader2 } from 'lucide-react'
 import { PropertyFilters } from '@/components/property/property-filters'
@@ -15,11 +14,7 @@ interface ProprietatiPageProps {
 }
 
 export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
-  const { setSelectedPropertySlug, mapViewMode, selectedType, selectedZone, searchQuery, priceRange, rooms, transaction, featuredOnly, sort, minArea, maxArea } = useAppStore()
-
-  const handleSelectProperty = useCallback((slug: string) => {
-    setSelectedPropertySlug(slug)
-  }, [setSelectedPropertySlug])
+  const { mapViewMode, selectedType, selectedZone, searchQuery, priceRange, rooms, transaction, featuredOnly, sort, minArea, maxArea } = useAppStore()
 
   // Build filters for the map view (uses non-paginated query to get all at once)
   const mapFilters: QueryPropertyFilters = {}
@@ -118,7 +113,7 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <PropertyGrid onSelectProperty={handleSelectProperty} />
+                  <PropertyGrid />
                 </motion.div>
               )}
             </AnimatePresence>

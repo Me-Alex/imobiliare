@@ -21,7 +21,7 @@ import { AIChatWidget } from '@/components/features/ai-chat-widget'
 import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { RoleAccessDenied } from '@/components/account/role-access-denied'
 import { canAccessAccountPage, getAllowedRolesForPage } from '@/lib/account-roles'
-import { useAppStore } from '@/store/use-app-store'
+import { useAppStore, type PageKey } from '@/store/use-app-store'
 import { Toaster } from 'sonner'
 import { AcasaPage } from '@/views/acasa-page'
 import { ProprietatiPage } from '@/views/proprietati-page'
@@ -87,7 +87,6 @@ function AppContent() {
     clearLightbox,
     chatOpen,
     setChatOpen,
-    setSelectedPropertySlug,
     navigateTo,
   } = useAppStore()
   const [contactOpen, setContactOpen] = useState(false)
@@ -98,19 +97,38 @@ function AppContent() {
   const [savedSearchesOpen, setSavedSearchesOpen] = useState(false)
   const [saveSearchDialogOpen, setSaveSearchDialogOpen] = useState(false)
 
-  // Handle shared property links: ?property=slug
+  // Restore direct links and route context when returning from a dedicated page.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     const propertySlug = params.get('property')
     if (propertySlug) {
-      setSelectedPropertySlug(propertySlug)
-      navigateTo('proprietate')
-      // Clean the URL so it doesn't re-trigger on refresh
-      const cleanUrl = window.location.pathname + window.location.hash
-      window.history.replaceState({}, document.title, cleanUrl)
+      window.location.replace(`/proprietati/${encodeURIComponent(propertySlug)}`)
+      return
     }
-  }, [setSelectedPropertySlug, navigateTo])
+
+    const routeContext = sessionStorage.getItem('pm-route-viewing-context')
+      || sessionStorage.getItem('pm-auth-return-context')
+    if (routeContext) {
+      try {
+        const context = JSON.parse(routeContext) as { propertyId?: string; propertyTitle?: string; vizionarePropertyId?: string; vizionarePropertyTitle?: string }
+        const propertyId = context.propertyId || context.vizionarePropertyId
+        const propertyTitle = context.propertyTitle || context.vizionarePropertyTitle
+        if (propertyId && propertyTitle) {
+          useAppStore.getState().setVizionareProperty(propertyId, propertyTitle)
+        }
+      } catch {
+        // Ignore stale route context and continue with the requested page.
+      }
+      sessionStorage.removeItem('pm-route-viewing-context')
+      sessionStorage.removeItem('pm-auth-return-context')
+    }
+
+    const requestedPage = params.get('page')
+    if (requestedPage && pageComponents[requestedPage]) {
+      navigateTo(requestedPage as PageKey)
+    }
+  }, [navigateTo])
 
   const handleContact = useCallback((propertyTitle: string) => {
     setContactPropertyTitle(propertyTitle)

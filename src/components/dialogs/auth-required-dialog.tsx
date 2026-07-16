@@ -56,6 +56,9 @@ export function AuthRequiredDialog({
     if (returnContext?.fromProperty) {
       sessionStorage.setItem('pm-auth-return-property', returnContext.fromProperty)
     }
+    if (returnContext) {
+      sessionStorage.setItem('pm-auth-return-context', JSON.stringify(returnContext))
+    }
 
     onOpenChange(false)
     navigateTo('login')

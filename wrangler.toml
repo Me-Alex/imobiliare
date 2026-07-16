@@ -16,3 +16,4 @@ database_id = "96fa755c-4fdf-4d45-98f3-933fedb4a97e"
 [vars]
 NEXT_PUBLIC_SUPABASE_URL = "https://spmapzhlcwhzfrxuvgxd.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_24oJXCI0JLY1VyLq_Ls-AA_-tYFf729"
+NEXT_PUBLIC_SITE_URL = "https://hqs-imobiliare.floreaalexandru2002.workers.dev"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -16,7 +16,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import {
   Form,
   FormControl,
@@ -32,6 +31,9 @@ const contactSchema = z.object({
   email: z.string().email('Adresa de email nu este validă.'),
   phone: z.string().min(10, 'Numărul de telefon trebuie să aibă cel puțin 10 caractere.'),
   message: z.string().min(10, 'Mesajul trebuie să aibă cel puțin 10 caractere.'),
+  privacyAccepted: z.boolean().refine((value) => value, {
+    message: 'Trebuie să confirmi informarea privind prelucrarea datelor.',
+  }),
 })
 
 type ContactFormValues = z.infer<typeof contactSchema>
@@ -40,37 +42,54 @@ interface ContactFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   propertyTitle?: string
+  propertyId?: string
+  initialName?: string
+  initialEmail?: string
+  initialPhone?: string
+  initialMessage?: string
 }
 
-function ContactFormDialog({ open, onOpenChange, propertyTitle }: ContactFormDialogProps) {
+function ContactFormDialog({
+  open,
+  onOpenChange,
+  propertyTitle,
+  propertyId,
+  initialName = '',
+  initialEmail = '',
+  initialPhone = '',
+  initialMessage,
+}: ContactFormDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
 
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
-      name: '',
-      email: '',
-      phone: '',
-      message: propertyTitle
+      name: initialName,
+      email: initialEmail,
+      phone: initialPhone,
+      message: initialMessage || (propertyTitle
         ? `Bună ziua, sunt interesat de proprietatea "${propertyTitle}". Aș dori mai multe detalii.`
-        : '',
+        : ''),
+      privacyAccepted: false,
     },
   })
 
-  // Reset form when property title changes or dialog opens
+  useEffect(() => {
+    if (!open) return
+    form.reset({
+      name: initialName,
+      email: initialEmail,
+      phone: initialPhone,
+      message: initialMessage || (propertyTitle
+        ? `Bună ziua, sunt interesat(ă) de proprietatea "${propertyTitle}" și doresc mai multe detalii.`
+        : ''),
+      privacyAccepted: false,
+    })
+  }, [form, initialEmail, initialMessage, initialName, initialPhone, open, propertyTitle])
+
   const handleOpenChange = (v: boolean) => {
-    if (v) {
-      setIsSuccess(false)
-      form.reset({
-        name: '',
-        email: '',
-        phone: '',
-        message: propertyTitle
-          ? `Bună ziua, sunt interesat de proprietatea "${propertyTitle}". Aș dori mai multe detalii.`
-          : '',
-      })
-    }
+    if (!v) setIsSuccess(false)
     onOpenChange(v)
   }
 
@@ -80,7 +99,7 @@ function ContactFormDialog({ open, onOpenChange, propertyTitle }: ContactFormDia
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, propertyTitle }),
+        body: JSON.stringify({ ...data, propertyTitle, propertyId }),
       })
 
       if (!res.ok) {
@@ -204,6 +223,36 @@ function ContactFormDialog({ open, onOpenChange, propertyTitle }: ContactFormDia
                           />
                         </FormControl>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="privacyAccepted"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              checked={field.value}
+                              onChange={(event) => field.onChange(event.target.checked)}
+                              className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                              aria-describedby="contact-privacy-description"
+                            />
+                          </FormControl>
+                          <div>
+                            <p id="contact-privacy-description" className="text-xs leading-relaxed text-muted-foreground">
+                              Confirm că am citit{' '}
+                              <a href="/confidentialitate" target="_blank" rel="noreferrer" className="font-medium text-primary underline-offset-4 hover:underline">
+                                informarea privind protecția datelor
+                              </a>{' '}
+                              și accept să fiu contactat(ă) pentru această solicitare.
+                            </p>
+                            <FormMessage />
+                          </div>
+                        </div>
                       </FormItem>
                     )}
                   />

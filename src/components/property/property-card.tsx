@@ -12,10 +12,10 @@ import { useCoinActions } from '@/hooks/use-coin-actions'
 import { AuthRequiredDialog } from '@/components/dialogs/auth-required-dialog'
 import { toast } from 'sonner'
 import type { Property } from '@/lib/types'
+import { getPropertyImages } from '@/lib/property-details'
 
 interface PropertyCardProps {
   property: Property
-  onSelect?: (slug: string) => void
   viewMode?: 'grid' | 'list'
 }
 
@@ -59,15 +59,15 @@ function MetricPill({ icon: Icon, value, label }: { icon: React.ElementType; val
   )
 }
 
-export function PropertyCard({ property, onSelect, viewMode = 'grid' }: PropertyCardProps) {
-  const { favorites, compareList, toggleFavorite, toggleCompare, setVizionareProperty, navigateTo, setSelectedPropertySlug } = useAppStore()
+export function PropertyCard({ property, viewMode = 'grid' }: PropertyCardProps) {
+  const { favorites, compareList, toggleFavorite, toggleCompare, setVizionareProperty, navigateTo } = useAppStore()
   const { user } = useAuth()
   const { onFavorite } = useCoinActions()
   const [authOpen, setAuthOpen] = useState(false)
   const isFav = favorites.includes(property.id)
   const isCompare = compareList.includes(property.id)
-  const gallery: string[] = property.galleryUrls ? JSON.parse(property.galleryUrls) : []
-  const coverImage = property.coverUrl || gallery[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&q=75'
+  const coverImage = getPropertyImages(property)[0]
+  const propertyHref = `/proprietati/${encodeURIComponent(property.slug)}`
 
   const handleToggleFavorite = () => {
     const wasFavorite = favorites.includes(property.id)
@@ -75,18 +75,28 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
     if (!wasFavorite) void onFavorite(property.id, property.title)
   }
 
-  const handleClick = () => {
-    setSelectedPropertySlug(property.slug)
-    navigateTo('proprietate')
-    onSelect?.(property.slug)
+  const handleSchedule = () => {
+    if (!user) {
+      setAuthOpen(true)
+      return
+    }
+    setVizionareProperty(property.id, property.title)
+    sessionStorage.setItem('pm-route-viewing-context', JSON.stringify({
+      propertyId: property.id,
+      propertyTitle: property.title,
+      propertySlug: property.slug,
+    }))
+    navigateTo('programare-vizionare')
   }
 
   if (viewMode === 'list') {
     return (
       <Card
-        className={`card-hover overflow-hidden cursor-pointer group py-0 gap-0 press-scale border-l-[3px] ${property.transaction === 'RENT' ? 'border-l-amber-400' : 'border-l-emerald-500'}`}
-        onClick={handleClick}
+        className={`card-hover relative overflow-hidden cursor-pointer group py-0 gap-0 press-scale border-l-[3px] ${property.transaction === 'RENT' ? 'border-l-amber-400' : 'border-l-emerald-500'}`}
       >
+        <a href={propertyHref} className="absolute inset-0 z-10 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" aria-label={`Vezi detaliile proprietății ${property.title}`}>
+          <span className="sr-only">Vezi detaliile proprietății {property.title}</span>
+        </a>
         <div className="flex flex-col sm:flex-row">
           {/* Image */}
           <div className="relative sm:w-72 h-48 sm:h-auto overflow-hidden shrink-0 card-shimmer">
@@ -139,7 +149,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2 mt-4">
+            <div className="relative z-20 flex items-center gap-2 mt-4">
               <Button
                 variant="outline"
                 size="sm"
@@ -164,12 +174,7 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
                 className="h-8 gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700"
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (!user) {
-                    setAuthOpen(true)
-                    return
-                  }
-                  setVizionareProperty(property.id, property.title)
-                  navigateTo('programare-vizionare')
+                  handleSchedule()
                 }}
               >
                 <CalendarCheck className="h-4 w-4" />
@@ -178,6 +183,18 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
             </div>
           </div>
         </div>
+        <AuthRequiredDialog
+          open={authOpen}
+          onOpenChange={setAuthOpen}
+          actionLabel="Programează o Vizionare"
+          actionIcon={CalendarCheck}
+          returnPage="programare-vizionare"
+          returnContext={{
+            vizionarePropertyId: property.id,
+            vizionarePropertyTitle: property.title,
+            fromProperty: property.slug,
+          }}
+        />
       </Card>
     )
   }
@@ -185,8 +202,10 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
   return (
     <Card
       className={`card-hover overflow-hidden cursor-pointer group py-0 gap-0 relative press-scale border-l-[3px] ${property.transaction === 'RENT' ? 'border-l-amber-400' : 'border-l-emerald-500'}`}
-      onClick={handleClick}
     >
+      <a href={propertyHref} className="absolute inset-0 z-10 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" aria-label={`Vezi detaliile proprietății ${property.title}`}>
+        <span className="sr-only">Vezi detaliile proprietății {property.title}</span>
+      </a>
       {/* Image */}
       <div className="relative h-52 overflow-hidden card-shimmer">
         <div
@@ -209,19 +228,14 @@ export function PropertyCard({ property, onSelect, viewMode = 'grid' }: Property
         </div>
 
         {/* Action buttons */}
-        <div className="absolute top-3 right-3 flex gap-1.5 z-10">
+        <div className="absolute top-3 right-3 flex gap-1.5 z-20">
           <Button
             variant="secondary"
             size="icon"
             className="h-8 w-8 bg-white/90 dark:bg-black/60 backdrop-blur-sm border-0 shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
             onClick={(e) => {
               e.stopPropagation()
-              if (!user) {
-                setAuthOpen(true)
-                return
-              }
-              setVizionareProperty(property.id, property.title)
-              navigateTo('programare-vizionare')
+              handleSchedule()
               toast.success('Selecteaza data si ora pentru vizionare')
             }}
             aria-label="Programeaza vizionare"

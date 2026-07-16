@@ -8,7 +8,7 @@ import { useAppStore } from '@/store/use-app-store'
 import { usePropertiesPaginated, type PropertyFilters } from '@/hooks/use-properties'
 import { PropertyCard } from '@/components/property/property-card'
 
-export function PropertyGrid({ onSelectProperty }: { onSelectProperty: (slug: string) => void }) {
+export function PropertyGrid() {
   const {
     selectedType, selectedZone, searchQuery, priceRange, viewMode,
     rooms, transaction, featuredOnly, sort, minArea, maxArea,
@@ -110,7 +110,6 @@ export function PropertyGrid({ onSelectProperty }: { onSelectProperty: (slug: st
           <PropertyCard
             key={property.id}
             property={property}
-            onSelect={onSelectProperty}
             viewMode={viewMode}
           />
         ))}

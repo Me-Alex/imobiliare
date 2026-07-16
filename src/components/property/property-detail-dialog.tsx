@@ -186,7 +186,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
           <PropertyShareButtons property={property} />
 
           {/* Similar properties section */}
-          <SimilarProperties currentId={property.id} zone={property.zone} type={property.type} price={property.price} onSelect={setSelectedPropertySlug} />
+          <SimilarProperties currentId={property.id} zone={property.zone} type={property.type} price={property.price} />
         </div>
       </DialogContent>
       <AuthRequiredDialog
@@ -317,7 +317,7 @@ function MetricCard({ icon: Icon, label, value }: { icon: React.ElementType; lab
   )
 }
 
-function SimilarProperties({ currentId, zone, type, price, onSelect }: { currentId: string; zone: string; type: string; price: number; onSelect: (slug: string) => void }) {
+function SimilarProperties({ currentId, zone, type, price }: { currentId: string; zone: string; type: string; price: number }) {
   const priceMargin = price * 0.3
   const minPrice = Math.max(0, Math.round(price - priceMargin))
   const maxPrice = Math.round(price + priceMargin)
@@ -373,7 +373,7 @@ function SimilarProperties({ currentId, zone, type, price, onSelect }: { current
       ) : similar.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
           {similar.map((prop) => (
-            <PropertyCard key={prop.id} property={prop} onSelect={onSelect} />
+            <PropertyCard key={prop.id} property={prop} />
           ))}
         </div>
       ) : null}

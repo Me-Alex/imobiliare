@@ -1,6 +1,5 @@
 'use client'
 
-import { useCallback } from 'react'
 import { HeroSection } from '@/components/marketing/hero-section'
 import { StatsSection } from '@/components/marketing/stats-section'
 import { RecentlyViewed } from '@/components/panels/recently-viewed'
@@ -15,11 +14,7 @@ interface AcasaPageProps {
 }
 
 export function AcasaPage({ onSaveSearch }: AcasaPageProps) {
-  const { setSelectedPropertySlug, navigateTo } = useAppStore()
-
-  const handleSelectProperty = useCallback((slug: string) => {
-    setSelectedPropertySlug(slug)
-  }, [setSelectedPropertySlug])
+  const navigateTo = useAppStore((state) => state.navigateTo)
 
   return (
     <>
@@ -40,7 +35,7 @@ export function AcasaPage({ onSaveSearch }: AcasaPageProps) {
           </div>
           <PropertyFilters onSaveSearch={onSaveSearch} />
           <div className="mt-6">
-            <PropertyGrid onSelectProperty={handleSelectProperty} />
+            <PropertyGrid />
           </div>
           <div className="mt-8 text-center">
             <button

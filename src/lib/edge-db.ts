@@ -42,6 +42,13 @@ export async function getSafeDb(): Promise<PrismaClient | null> {
   // The Node Prisma client is safe to reuse across local requests.
   if (_nodeDb !== undefined) return _nodeDb
 
+  // Local preview can intentionally run without SQLite configuration and use
+  // the route-level mock fallback. Avoid instantiating Prisma in that case.
+  if (!process.env.DATABASE_URL) {
+    _nodeDb = null
+    return null
+  }
+
   try {
     const mod = await import('./db')
     _nodeDb = (mod as { db: PrismaClient }).db ?? null

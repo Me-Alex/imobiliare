@@ -38,19 +38,19 @@ export function CookieConsent() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ duration: 0.4, ease: 'easeInOut' }}
-          className="fixed bottom-0 left-0 right-0 z-50"
+          className="fixed inset-x-3 bottom-3 z-50 sm:inset-x-6"
         >
-          <div className="bg-background/90 backdrop-blur-lg border-t border-border/50">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
+          <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border/70 bg-background/95 shadow-2xl backdrop-blur-lg">
+            <div className="px-4 py-3 sm:px-5 sm:py-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3">
                   <Cookie className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Acest site foloseste cookie-uri pentru a imbunatati experienta ta. Continuand, accepti
-                    politica noastra de cookie-uri.
+                  <p className="text-xs text-muted-foreground leading-relaxed sm:text-sm">
+                    Folosim cookie-uri necesare și, cu acordul tău, cookie-uri pentru îmbunătățirea experienței.{' '}
+                    <a href="/confidentialitate" className="font-medium text-foreground underline-offset-4 hover:underline">Detalii</a>
                   </p>
                 </div>
-                <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto">
+                <div className="grid w-full shrink-0 grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
                   <Button
                     variant="default"
                     size="sm"

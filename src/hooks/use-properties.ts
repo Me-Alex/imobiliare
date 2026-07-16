@@ -9,6 +9,7 @@ import {
   getPropertiesByIds,
 } from '@/lib/api'
 import type { PropertyFilters } from '@/lib/types'
+import type { Property } from '@/lib/types'
 
 export type { PropertyFilters } from '@/lib/types'
 
@@ -30,11 +31,12 @@ export function usePropertiesPaginated(filters: PropertyFilters = {}) {
   })
 }
 
-export function useProperty(slug: string | null) {
+export function useProperty(slug: string | null, initialData?: Property) {
   return useQuery({
     queryKey: ['property', slug],
     queryFn: () => getPropertyBySlug(slug!),
     enabled: !!slug,
+    initialData,
     staleTime: 60_000,
   })
 }

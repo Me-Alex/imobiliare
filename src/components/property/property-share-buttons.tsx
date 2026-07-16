@@ -23,7 +23,7 @@ interface PropertyShareButtonsProps {
 export function PropertyShareButtons({ property }: PropertyShareButtonsProps) {
   const [copied, setCopied] = useState(false)
 
-  const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/?property=${property.slug}`
+  const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/proprietati/${encodeURIComponent(property.slug)}`
   const shareText = `🏠 ${property.title}\n💰 ${formatPrice(property.price)}\n📍 ${property.address}, ${property.zone}\n\nVezi detalii: ${shareUrl}`
   const shareTitle = `${property.title} — ${formatPrice(property.price)}`
 
