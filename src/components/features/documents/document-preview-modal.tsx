@@ -44,8 +44,8 @@ export function DocumentPreviewModal({
               <span className="truncate">{document?.title}</span>
             </DialogTitle>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-                <X className="h-4 w-4" />
+              <Button variant="ghost" size="icon" aria-label="Inchide previzualizarea" className="h-8 w-8" onClick={onClose}>
+                <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -83,19 +83,19 @@ function DocumentPreviewInner({
   return (
     <>
       <div className="shrink-0 border-b px-4 py-2 flex items-center gap-2 bg-background">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomOut} disabled={!signedUrl || loading}>
-          <ZoomOut className="h-4 w-4" />
+        <Button variant="ghost" size="icon" aria-label="Micsoreaza" className="h-8 w-8" onClick={handleZoomOut} disabled={!signedUrl || loading}>
+          <ZoomOut className="h-4 w-4" aria-hidden="true" />
         </Button>
         <span className="text-xs text-muted-foreground w-12 text-center">{Math.round(scale * 100)}%</span>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomIn} disabled={!signedUrl || loading}>
-          <ZoomIn className="h-4 w-4" />
+        <Button variant="ghost" size="icon" aria-label="Mareste" className="h-8 w-8" onClick={handleZoomIn} disabled={!signedUrl || loading}>
+          <ZoomIn className="h-4 w-4" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRotate} disabled={!signedUrl || loading}>
-          <RotateCcw className="h-4 w-4" />
+        <Button variant="ghost" size="icon" aria-label="Roteste" className="h-8 w-8" onClick={handleRotate} disabled={!signedUrl || loading}>
+          <RotateCcw className="h-4 w-4" aria-hidden="true" />
         </Button>
         <div className="w-px h-5 bg-border mx-1" />
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDownload} disabled={!signedUrl || loading}>
-          <Download className="h-4 w-4" />
+        <Button variant="ghost" size="icon" aria-label="Descarca" className="h-8 w-8" onClick={onDownload} disabled={!signedUrl || loading}>
+          <Download className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
 
