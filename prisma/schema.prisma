@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,6 +9,8 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
+// ─── Legacy / core ────────────────────────────────────────────
 
 model User {
   id        String   @id @default(cuid())
@@ -60,17 +59,19 @@ model Property {
   updatedAt   DateTime @updatedAt
 
   analytics PropertyAnalytics[]
+  leads     Lead[]
+  offers    Offer[]
 }
 
 model PropertyAnalytics {
-  id          String   @id @default(cuid())
-  propertyId  String
-  property    Property @relation(fields: [propertyId], references: [id])
-  views       Int      @default(0)
-  inquiries   Int      @default(0)
-  saves       Int      @default(0)
-  week        String
-  recordedAt  DateTime @default(now())
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+  views      Int      @default(0)
+  inquiries  Int      @default(0)
+  saves      Int      @default(0)
+  week       String
+  recordedAt DateTime @default(now())
 
   @@unique([propertyId, week])
 }
@@ -103,13 +104,13 @@ model Zone {
 }
 
 model ContactSubmission {
-  id        String   @id @default(cuid())
-  name      String
-  email     String
-  phone     String
-  message   String
+  id            String   @id @default(cuid())
+  name          String
+  email         String
+  phone         String
+  message       String
   propertyTitle String?
-  createdAt DateTime @default(now())
+  createdAt     DateTime @default(now())
 }
 
 model NewsletterSubscription {
@@ -121,6 +122,7 @@ model NewsletterSubscription {
 model PriceAlert {
   id           String   @id @default(cuid())
   email        String
+  userId       String?
   zone         String?
   propertyType String?
   minPrice     Float?
@@ -131,33 +133,158 @@ model PriceAlert {
 }
 
 model Vizionare {
-  id             String   @id @default(cuid())
-  userId         String
-  userEmail      String
-  userName       String?
-  propertyId     String
-  propertyTitle  String
-  propertyZone   String?
-  staffId        String?
-  staffName      String?
-  date           String
-  startTime      String
-  endTime        String
-  status         String   @default("pending")
-  notes          String   @default("")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String
+  userEmail     String
+  userName      String?
+  propertyId    String
+  propertyTitle String
+  propertyZone  String?
+  staffId       String?
+  staffName     String?
+  date          String
+  startTime     String
+  endTime       String
+  status        String   @default("pending")
+  notes         String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model UserProfile {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  email           String
-  fullName        String?
-  phone           String?
-  bio             String?
+  id                      String   @id @default(cuid())
+  userId                  String   @unique
+  email                   String
+  fullName                String?
+  phone                   String?
+  bio                     String?
   notificationPreferences String   @default("{}")
-  displayPreferences     String   @default("{}")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  displayPreferences      String   @default("{}")
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+// ─── Staff (multi-agent) ──────────────────────────────────────
+
+model StaffMember {
+  id        String   @id @default(cuid())
+  userId    String?  @unique
+  name      String
+  email     String   @unique
+  phone     String?
+  role      String   @default("AGENT") // AGENT | ADMIN | DIRECTOR
+  isActive  Boolean  @default(true)
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leads  Lead[]  @relation("AssignedLeads")
+  offers Offer[] @relation("AgentOffers")
+}
+
+// ─── CRM Leads ────────────────────────────────────────────────
+
+/// Lead pipeline status:
+/// NEW → CONTACTED → QUALIFIED → VIEWING_SCHEDULED → OFFER → WON | LOST
+model Lead {
+  id              String    @id @default(cuid())
+  source          String    @default("website") // website | contact_form | phone | referral | portal
+  status          String    @default("NEW")
+  priority        String    @default("NORMAL") // LOW | NORMAL | HIGH | URGENT
+  name            String
+  email           String
+  phone           String?
+  notes           String    @default("")
+  budgetMin       Float?
+  budgetMax       Float?
+  preferredZones  String    @default("[]") // JSON array
+  preferredTypes  String    @default("[]") // JSON array
+  transaction     String?   // VANZARE | INCHIRIERE
+  propertyId      String?
+  property        Property? @relation(fields: [propertyId], references: [id])
+  assignedToId    String?
+  assignedTo      StaffMember? @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  clientUserId    String?   // linked authenticated user, if any
+  lostReason      String?
+  nextFollowUpAt  DateTime?
+  lastContactedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  activities LeadActivity[]
+  offers     Offer[]
+
+  @@index([status])
+  @@index([assignedToId])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model LeadActivity {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actorId   String?  // staff or system
+  actorName String?
+  type      String   // NOTE | STATUS_CHANGE | CALL | EMAIL | SMS | ASSIGNMENT | OFFER | VIEWING
+  body      String   @default("")
+  metadata  String   @default("{}") // JSON
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+}
+
+// ─── Offers / Negotiation ─────────────────────────────────────
+
+/// Offer status:
+/// DRAFT → SUBMITTED → COUNTERED → ACCEPTED | REJECTED | WITHDRAWN | EXPIRED
+model Offer {
+  id              String    @id @default(cuid())
+  propertyId      String
+  property        Property  @relation(fields: [propertyId], references: [id])
+  leadId          String?
+  lead            Lead?     @relation(fields: [leadId], references: [id])
+  buyerUserId     String?
+  buyerName       String
+  buyerEmail      String
+  buyerPhone      String?
+  agentId         String?
+  agent           StaffMember? @relation("AgentOffers", fields: [agentId], references: [id])
+  status          String    @default("SUBMITTED")
+  amount          Float
+  currency        String    @default("EUR")
+  message         String    @default("")
+  conditions      String    @default("") // financing, timeline, contingencies
+  validUntil      DateTime?
+  parentOfferId   String?   // for counter-offers chain
+  parentOffer     Offer?    @relation("OfferChain", fields: [parentOfferId], references: [id])
+  counterOffers   Offer[]   @relation("OfferChain")
+  respondedAt     DateTime?
+  responseNote    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([propertyId])
+  @@index([leadId])
+  @@index([status])
+  @@index([buyerUserId])
+}
+
+// ─── Notification log ─────────────────────────────────────────
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  channel   String   // email | sms | push | in_app
+  to        String
+  subject   String?
+  body      String
+  template  String?
+  status    String   @default("PENDING") // PENDING | SENT | FAILED | SKIPPED
+  error     String?
+  metadata  String   @default("{}")
+  createdAt DateTime @default(now())
+  sentAt    DateTime?
+
+  @@index([channel, status])
+  @@index([createdAt])
 }
