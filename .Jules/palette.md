@@ -1,0 +1,3 @@
+## 2024-03-20 - Adding ARIA labels to Icon-only Buttons
+**Learning:** Found multiple instances where `lucide-react` icons were used inside empty `<Button size="icon">` elements across document and property features without associated `aria-label`s, which causes screen readers to either ignore them or read confusing content. Adding dynamic template literals for lists helps provide context to the users ("Editeaza proprietatea [Nume]").
+**Action:** When creating icon-only buttons, always provide a localized (Romanian) `aria-label` explaining the action, and mark the interior icon with `aria-hidden="true"`.
