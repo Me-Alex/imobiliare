@@ -19,6 +19,7 @@ import {
   Handshake,
   Inbox,
   LayoutDashboard,
+  ListTodo,
   Loader2,
   LogOut,
   Mail,
@@ -26,10 +27,10 @@ import {
   RefreshCw,
   Rotate3D,
   Search,
+  Settings2,
   Shield,
   ShieldAlert,
   UserCheck,
-  UserCog,
   Users,
   UserX,
 } from 'lucide-react'
@@ -50,7 +51,7 @@ import { PageHero } from '@/components/layout/page-hero'
 import { RoleAccessDenied } from '@/components/account/role-access-denied'
 import { VirtualTourReviewPanel } from '@/components/admin/virtual-tour-review-panel'
 import { useAuth } from '@/contexts/auth-context'
-import { useAppStore, type PageKey } from '@/store/use-app-store'
+import { useAppStore } from '@/store/use-app-store'
 import { ACCOUNT_ROLES, ACCOUNT_ROLE_DEFINITIONS, type AccountRole } from '@/lib/account-roles'
 import {
   ADMIN_PROPERTY_STATUSES,
@@ -116,6 +117,41 @@ type Confirmation = {
   confirmLabel: string
   destructive?: boolean
   run: () => Promise<void>
+}
+
+type AdminTab =
+  | 'home'
+  | 'tasks'
+  | 'people'
+  | 'properties'
+  | 'transactions'
+  | 'settings'
+  | 'inbox'
+  | 'compliance'
+  | 'virtual-tours'
+  | 'audit'
+
+type WorkDestination = 'crm' | 'properties' | 'transactions' | 'documents' | 'compliance'
+
+type WorkItem = {
+  id: string
+  title: string
+  description: string
+  count: number
+  priority: 'urgent' | 'normal'
+  destination: WorkDestination
+  actionLabel: string
+  icon: ElementType
+}
+
+type GlobalSearchResult = {
+  id: string
+  label: string
+  meta: string
+  kind: string
+  tab: AdminTab
+  localSearch?: string
+  icon: ElementType
 }
 
 function formatDate(value?: string | null) {
@@ -225,7 +261,8 @@ export function AdminPage() {
   const [data, setData] = useState<AdminDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState<AdminTab>('home')
+  const [globalSearch, setGlobalSearch] = useState('')
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<'ALL' | AccountRole>('ALL')
   const [propertyFilter, setPropertyFilter] = useState<'ALL' | AdminPropertyStatus>('ALL')
@@ -329,6 +366,170 @@ export function AdminPage() {
     [data],
   )
 
+  const workItems = useMemo<WorkItem[]>(() => {
+    if (!data) return []
+
+    const items: WorkItem[] = []
+    const pendingAppointments = data.appointments.filter((item) => ['PENDING', 'REQUESTED'].includes(item.status)).length
+
+    if (data.stats.overdueLeads > 0) {
+      items.push({
+        id: 'overdue-leads',
+        title: 'Lead-uri fără răspuns la timp',
+        description: 'Repartizează un agent și stabilește următorul follow-up.',
+        count: data.stats.overdueLeads,
+        priority: 'urgent',
+        destination: 'crm',
+        actionLabel: 'Deschide CRM',
+        icon: Handshake,
+      })
+    }
+    if (!data.health.legalProfileReady) {
+      items.push({
+        id: 'legal-profile',
+        title: 'Profilul juridic trebuie verificat',
+        description: 'Datele firmei sau informarea GDPR nu sunt pregătite pentru documentele finale.',
+        count: 1,
+        priority: 'urgent',
+        destination: 'compliance',
+        actionLabel: 'Verifică profilul',
+        icon: ShieldAlert,
+      })
+    }
+    if (data.stats.templatesPendingReview > 0) {
+      items.push({
+        id: 'legal-templates',
+        title: 'Șabloane juridice fără aviz',
+        description: 'Contractele rămân ciorne până la aprobarea nominală a profesionistului juridic.',
+        count: data.stats.templatesPendingReview,
+        priority: 'urgent',
+        destination: 'compliance',
+        actionLabel: 'Vezi conformitatea',
+        icon: FileWarning,
+      })
+    }
+    if (data.stats.draftProperties > 0) {
+      items.push({
+        id: 'draft-properties',
+        title: 'Proprietăți în ciornă',
+        description: 'Verifică informațiile, agentul repartizat și starea publicării.',
+        count: data.stats.draftProperties,
+        priority: 'normal',
+        destination: 'properties',
+        actionLabel: 'Verifică proprietățile',
+        icon: Building2,
+      })
+    }
+    if (pendingAppointments > 0) {
+      items.push({
+        id: 'pending-appointments',
+        title: 'Vizionări care așteaptă confirmare',
+        description: 'Confirmă responsabilul, ora și documentele necesare vizionării.',
+        count: pendingAppointments,
+        priority: 'normal',
+        destination: 'transactions',
+        actionLabel: 'Vezi vizionările',
+        icon: CalendarDays,
+      })
+    }
+    if (data.stats.pendingDocuments > 0) {
+      items.push({
+        id: 'pending-documents',
+        title: 'Documente solicitate sau restante',
+        description: 'Verifică responsabilul și următorul termen în Deal Room.',
+        count: data.stats.pendingDocuments,
+        priority: 'normal',
+        destination: 'documents',
+        actionLabel: 'Deschide documentele',
+        icon: FileCheck2,
+      })
+    }
+    if (data.stats.pendingRedemptions > 0) {
+      items.push({
+        id: 'coin-redemptions',
+        title: 'Solicitări HQS Coins',
+        description: 'Onorează recompensa sau respinge cererea cu restituire automată.',
+        count: data.stats.pendingRedemptions,
+        priority: 'normal',
+        destination: 'transactions',
+        actionLabel: 'Soluționează cererile',
+        icon: Coins,
+      })
+    }
+
+    return items
+  }, [data])
+
+  const globalSearchResults = useMemo<GlobalSearchResult[]>(() => {
+    if (!data || globalSearch.trim().length < 2) return []
+    const query = globalSearch.trim().toLocaleLowerCase('ro-RO')
+    const includesQuery = (value: string) => value.toLocaleLowerCase('ro-RO').includes(query)
+    const results: GlobalSearchResult[] = []
+
+    data.users.forEach((account) => {
+      const label = account.full_name || account.name || account.email || 'Utilizator HQS'
+      if (includesQuery(`${label} ${account.email || ''} ${account.phone || ''}`)) {
+        results.push({ id: `user-${account.id}`, label, meta: `${ACCOUNT_ROLE_DEFINITIONS[account.role].label} · ${account.email || 'fără email'}`, kind: 'Persoană', tab: 'people', localSearch: account.email || label, icon: Users })
+      }
+    })
+    data.properties.forEach((property) => {
+      if (includesQuery(`${property.title} ${property.city || ''} ${property.zone || ''}`)) {
+        results.push({ id: `property-${property.id}`, label: property.title, meta: `${PROPERTY_STATUS_LABELS[property.status]} · ${property.city || property.zone || 'zonă nespecificată'}`, kind: 'Proprietate', tab: 'properties', localSearch: property.title, icon: Building2 })
+      }
+    })
+    data.leads.forEach((lead) => {
+      if (includesQuery(`${lead.name} ${lead.email} ${lead.phone || ''}`)) {
+        results.push({ id: `lead-${lead.id}`, label: lead.name, meta: `${STATUS_LABELS[lead.status] || lead.status} · ${lead.source}`, kind: 'Lead', tab: 'transactions', icon: Handshake })
+      }
+    })
+    data.deals.forEach((deal) => {
+      if (includesQuery(`${deal.title} ${deal.next_step || ''}`)) {
+        results.push({ id: `deal-${deal.id}`, label: deal.title, meta: `${STATUS_LABELS[deal.stage] || deal.stage} · ${deal.next_step || 'fără pas următor'}`, kind: 'Tranzacție', tab: 'transactions', icon: ClipboardCheck })
+      }
+    })
+
+    return results.slice(0, 8)
+  }, [data, globalSearch])
+
+  const pendingWorkCount = useMemo(
+    () => workItems.reduce((total, item) => total + item.count, 0),
+    [workItems],
+  )
+
+  const openTab = (tab: AdminTab) => {
+    setActiveTab(tab)
+    setSearch('')
+  }
+
+  const openWorkItem = (destination: WorkDestination) => {
+    if (destination === 'crm') {
+      navigateTo('crm')
+      return
+    }
+    if (destination === 'documents') {
+      navigateTo('documente')
+      return
+    }
+    if (destination === 'properties') {
+      setPropertyFilter('DRAFT')
+      openTab('properties')
+      return
+    }
+    if (destination === 'compliance') {
+      openTab('compliance')
+      return
+    }
+    openTab('transactions')
+  }
+
+  const openSearchResult = (result: GlobalSearchResult) => {
+    if (result.tab === 'people') setRoleFilter('ALL')
+    if (result.tab === 'properties') setPropertyFilter('ALL')
+    setSearch(result.localSearch || '')
+    setActiveTab(result.tab)
+    setGlobalSearch('')
+  }
+
   const handleSignOut = async () => {
     await signOut()
     navigateTo('acasa')
@@ -361,6 +562,7 @@ export function AdminPage() {
   }
 
   const stats = data.stats
+  const PrimaryWorkIcon = workItems[0]?.icon || ListTodo
 
   return (
     <div className="min-h-screen">
@@ -385,98 +587,117 @@ export function AdminPage() {
       </PageHero>
 
       <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_auto]">
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
-              <span className={cn('h-2 w-2 rounded-full', data.health.supabase === 'online' ? 'bg-emerald-500' : 'bg-amber-500')} />
-              Supabase {data.health.supabase === 'online' ? 'online' : 'degradat'}
-            </Badge>
-            <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
-              <span className={cn('h-2 w-2 rounded-full', data.health.d1 === 'online' ? 'bg-emerald-500' : 'bg-amber-500')} />
-              Mesaje D1 {data.health.d1 === 'online' ? 'online' : 'fallback'}
-            </Badge>
-            <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
-              <span className={cn('h-2 w-2 rounded-full', data.health.legalProfileReady ? 'bg-emerald-500' : 'bg-rose-500')} />
-              Profil juridic {data.health.legalProfileReady ? 'configurat' : 'incomplet'}
-            </Badge>
-          </div>
-          {data.health.warnings.length > 0 ? (
-            <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-300">
-              <AlertTriangle className="mr-1.5 h-3.5 w-3.5" /> {data.health.warnings.length} surse cu avertismente
-            </Badge>
+        <div className="relative z-20 mb-5">
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={globalSearch}
+            onChange={(event) => setGlobalSearch(event.target.value)}
+            placeholder="Caută un client, agent, proprietate sau tranzacție..."
+            aria-label="Căutare globală în administrare"
+            className="h-12 rounded-xl bg-card pl-12 text-base shadow-sm"
+          />
+          {globalSearch.trim().length >= 2 ? (
+            <div className="absolute inset-x-0 top-[calc(100%+0.5rem)] max-h-96 overflow-y-auto rounded-2xl border bg-popover p-2 shadow-xl">
+              {globalSearchResults.map((result) => (
+                <button
+                  key={result.id}
+                  type="button"
+                  onClick={() => openSearchResult(result)}
+                  className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-muted"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><result.icon className="h-4 w-4" /></div>
+                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{result.label}</p><p className="truncate text-xs text-muted-foreground">{result.meta}</p></div>
+                  <Badge variant="outline">{result.kind}</Badge>
+                </button>
+              ))}
+              {globalSearchResults.length === 0 ? <p className="px-3 py-6 text-center text-sm text-muted-foreground">Niciun rezultat. Încearcă un nume, email sau titlu.</p> : null}
+            </div>
           ) : null}
         </div>
 
-        <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch('') }}>
-          <TabsList className="mb-6 h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl bg-muted/60 p-1.5">
-            <TabsTrigger value="overview" className="gap-2"><LayoutDashboard className="h-4 w-4" /> Overview</TabsTrigger>
-            <TabsTrigger value="users" className="gap-2"><Users className="h-4 w-4" /> Utilizatori <Badge variant="secondary">{stats.totalUsers}</Badge></TabsTrigger>
-            <TabsTrigger value="properties" className="gap-2"><Building2 className="h-4 w-4" /> Proprietăți <Badge variant="secondary">{stats.totalProperties}</Badge></TabsTrigger>
-            <TabsTrigger value="operations" className="gap-2"><Activity className="h-4 w-4" /> Operațiuni</TabsTrigger>
-            <TabsTrigger value="inbox" className="gap-2"><Inbox className="h-4 w-4" /> Mesaje <Badge variant="secondary">{stats.totalContacts}</Badge></TabsTrigger>
-            <TabsTrigger value="compliance" className="gap-2"><FileCheck2 className="h-4 w-4" /> Conformitate <Badge variant="secondary">{stats.templatesPendingReview}</Badge></TabsTrigger>
-            <TabsTrigger value="virtual-tours" className="gap-2"><Rotate3D className="h-4 w-4" /> Tururi 360</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={(value) => openTab(value as AdminTab)}>
+          <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1.5 md:grid-cols-3 xl:grid-cols-6">
+            <TabsTrigger value="home" className="gap-2"><LayoutDashboard className="h-4 w-4" /> Acasă</TabsTrigger>
+            <TabsTrigger value="tasks" className="gap-2"><ListTodo className="h-4 w-4" /> De rezolvat {pendingWorkCount > 0 ? <Badge variant="destructive">{pendingWorkCount}</Badge> : null}</TabsTrigger>
+            <TabsTrigger value="properties" className="gap-2"><Building2 className="h-4 w-4" /> Proprietăți</TabsTrigger>
+            <TabsTrigger value="people" className="gap-2"><Users className="h-4 w-4" /> Clienți și agenți</TabsTrigger>
+            <TabsTrigger value="transactions" className="gap-2"><Handshake className="h-4 w-4" /> Tranzacții</TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2"><Settings2 className="h-4 w-4" /> Setări</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="home" className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard icon={Users} label="Utilizatori activi" value={stats.activeUsers} note={`${stats.agents} agenți · ${stats.owners} proprietari`} tone="bg-sky-500/10 text-sky-600" />
-              <MetricCard icon={Building2} label="Proprietăți publicate" value={stats.publishedProperties} note={`${stats.draftProperties} ciorne din ${stats.totalProperties} total`} tone="bg-emerald-500/10 text-emerald-600" />
+              <MetricCard icon={ListTodo} label="De rezolvat" value={pendingWorkCount} note={`${workItems.length} categorii de lucru`} tone="bg-rose-500/10 text-rose-600" />
               <MetricCard icon={Handshake} label="Lead-uri deschise" value={stats.openLeads} note={`${stats.overdueLeads} necesită răspuns`} tone="bg-amber-500/10 text-amber-600" />
-              <MetricCard icon={CalendarDays} label="Vizionări viitoare" value={stats.upcomingViewings} note={`${stats.activeDeals} tranzacții active`} tone="bg-violet-500/10 text-violet-600" />
-              <MetricCard icon={FileWarning} label="Documente restante" value={stats.pendingDocuments} note={`${stats.templatesPendingReview} șabloane fără aviz`} tone="bg-rose-500/10 text-rose-600" />
-              <MetricCard icon={Coins} label="Cereri Coins" value={stats.pendingRedemptions} note="recompense de soluționat" tone="bg-yellow-500/10 text-yellow-600" />
-              <MetricCard icon={MessageSquare} label="Contacte noi" value={stats.totalContacts} note={`${stats.totalNewsletters} abonați newsletter`} tone="bg-cyan-500/10 text-cyan-600" />
-              <MetricCard icon={Shield} label="Șabloane aprobate" value={stats.templatesApproved} note={`${stats.templatesPendingReview} blochează generarea finală`} tone="bg-indigo-500/10 text-indigo-600" />
+              <MetricCard icon={Building2} label="Proprietăți active" value={stats.publishedProperties} note={`${stats.draftProperties} așteaptă verificarea`} tone="bg-emerald-500/10 text-emerald-600" />
+              <MetricCard icon={CalendarDays} label="Tranzacții" value={stats.activeDeals} note={`${stats.upcomingViewings} vizionări viitoare`} tone="bg-violet-500/10 text-violet-600" />
             </div>
 
-            {stats.overdueLeads > 0 || stats.templatesPendingReview > 0 || !data.health.legalProfileReady ? (
-              <Card className="border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/10">
+            <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
+              <Card className={cn(workItems[0]?.priority === 'urgent' && 'border-amber-300/70 bg-amber-50/30 dark:bg-amber-950/10')}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-5 w-5 text-amber-600" /> Necesită atenție</CardTitle>
-                  <CardDescription>Elementele de mai jos pot bloca răspunsurile rapide sau documentele finale.</CardDescription>
+                  <CardTitle className="flex items-center gap-2 text-base"><ListTodo className="h-5 w-5 text-primary" /> Ce faci acum</CardTitle>
+                  <CardDescription>Următoarea acțiune recomandată, calculată din situația curentă.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-3 md:grid-cols-3">
-                  <button type="button" onClick={() => navigateTo('crm')} className="rounded-xl border bg-background p-4 text-left transition-colors hover:border-primary/50">
-                    <p className="font-semibold">{stats.overdueLeads} lead-uri depășite</p><p className="mt-1 text-xs text-muted-foreground">Deschide CRM și repartizează follow-up-ul.</p>
-                  </button>
-                  <button type="button" onClick={() => navigateTo('documente')} className="rounded-xl border bg-background p-4 text-left transition-colors hover:border-primary/50">
-                    <p className="font-semibold">{stats.templatesPendingReview} șabloane fără aviz</p><p className="mt-1 text-xs text-muted-foreground">Contractele rămân ciorne până la aprobarea juridică.</p>
-                  </button>
-                  <button type="button" onClick={() => setActiveTab('compliance')} className="rounded-xl border bg-background p-4 text-left transition-colors hover:border-primary/50">
-                    <p className="font-semibold">Profil juridic {data.health.legalProfileReady ? 'activ' : 'incomplet'}</p><p className="mt-1 text-xs text-muted-foreground">Verifică datele firmei și informarea GDPR.</p>
-                  </button>
+                <CardContent>
+                  {workItems[0] ? (
+                    <div className="flex flex-col gap-4 rounded-xl border bg-background p-4 sm:flex-row sm:items-center">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><PrimaryWorkIcon className="h-5 w-5" /></div>
+                      <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{workItems[0].title}</p><Badge variant={workItems[0].priority === 'urgent' ? 'destructive' : 'secondary'}>{workItems[0].count}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{workItems[0].description}</p></div>
+                      <Button onClick={() => openWorkItem(workItems[0].destination)}>{workItems[0].actionLabel}<ArrowRight className="ml-2 h-4 w-4" /></Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50/50 p-4 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200"><CheckCircle2 className="h-5 w-5" /><p className="text-sm font-medium">Nu există sarcini administrative restante.</p></div>
+                  )}
+                  {workItems.length > 1 ? <Button variant="link" className="mt-3 px-0" onClick={() => openTab('tasks')}>Vezi întreaga listă ({workItems.length} categorii)</Button> : null}
                 </CardContent>
               </Card>
-            ) : null}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Acțiuni rapide</CardTitle>
-                <CardDescription>Acces direct la toate fluxurile operaționale ale platformei.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {[
-                  { icon: Handshake, title: 'CRM și lead-uri', note: 'Pipeline, repartizare, follow-up', page: 'crm' },
-                  { icon: CalendarDays, title: 'Vizionări', note: 'Prezență, anulări, feedback', page: 'vizionarile-mele' },
-                  { icon: ClipboardCheck, title: 'Deal Rooms', note: 'Oferte, participanți, audit', page: 'deal-room' },
-                  { icon: FileCheck2, title: 'Documente', note: 'Contracte, semnături, avize', page: 'documente' },
-                  { icon: Building2, title: 'Publică proprietate', note: 'Anunț, hartă și tur virtual', page: 'adauga-proprietate' },
-                  { icon: UserCog, title: 'Disponibilitate agenți', note: 'Programul echipei', page: 'disponibilitate-staff' },
-                  { icon: Coins, title: 'HQS Coins', note: 'Catalog și istoric recompense', page: 'monede' },
-                  { icon: Activity, title: 'Performanță proprietari', note: 'Vizualizări, cereri, conversie', page: 'owner-dashboard' },
-                ].map((item) => (
-                  <button key={item.page} type="button" onClick={() => navigateTo(item.page as PageKey)} className="group flex items-start gap-3 rounded-xl border p-4 text-left transition-all hover:border-primary/50 hover:bg-muted/30">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><item.icon className="h-5 w-5" /></div>
-                    <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{item.title}</p><p className="mt-1 text-xs text-muted-foreground">{item.note}</p></div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                  </button>
-                ))}
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader><CardTitle className="text-base">Acțiuni rapide</CardTitle><CardDescription>Cele mai frecvente operațiuni, fără navigare inutilă.</CardDescription></CardHeader>
+                <CardContent className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    { icon: Handshake, title: 'Repartizează lead-uri', run: () => navigateTo('crm') },
+                    { icon: Building2, title: 'Verifică proprietăți', run: () => openTab('properties') },
+                    { icon: Users, title: 'Gestionează echipa', run: () => openTab('people') },
+                    { icon: FileCheck2, title: 'Documente și contracte', run: () => navigateTo('documente') },
+                  ].map((item) => (
+                    <button key={item.title} type="button" onClick={item.run} className="flex items-center gap-3 rounded-xl border p-3 text-left text-sm font-medium transition-colors hover:border-primary/50 hover:bg-muted/30"><item.icon className="h-4 w-4 text-primary" />{item.title}</button>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
-          <TabsContent value="users" className="space-y-5">
+          <TabsContent value="tasks" className="space-y-6">
+            <SectionHeader icon={ListTodo} title="De rezolvat" description="O singură listă cu tot ce necesită o decizie sau o acțiune administrativă." />
+            <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+              <div className="space-y-3">
+                {workItems.map((item) => (
+                  <Card key={item.id} className={cn(item.priority === 'urgent' && 'border-amber-300/70')}>
+                    <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
+                      <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', item.priority === 'urgent' ? 'bg-amber-500/10 text-amber-700' : 'bg-primary/10 text-primary')}><item.icon className="h-5 w-5" /></div>
+                      <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{item.title}</p><Badge variant={item.priority === 'urgent' ? 'destructive' : 'secondary'}>{item.count}</Badge>{item.priority === 'urgent' ? <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Prioritate ridicată</span> : null}</div><p className="mt-1 text-sm text-muted-foreground">{item.description}</p></div>
+                      <Button variant={item.priority === 'urgent' ? 'default' : 'outline'} onClick={() => openWorkItem(item.destination)}>{item.actionLabel}<ArrowRight className="ml-2 h-4 w-4" /></Button>
+                    </CardContent>
+                  </Card>
+                ))}
+                {workItems.length === 0 ? <EmptyState icon={CheckCircle2} title="Totul este la zi" description="Nu există proprietăți, documente, lead-uri sau cereri care să necesite intervenția administratorului." /> : null}
+              </div>
+              <Card className="h-fit lg:sticky lg:top-24">
+                <CardHeader><CardTitle className="text-base">Flux recomandat</CardTitle><CardDescription>Rezolvă lista în această ordine.</CardDescription></CardHeader>
+                <CardContent className="space-y-4">
+                  {[
+                    ['1', 'Deblochează', 'Rezolvă întâi elementele marcate cu prioritate ridicată.'],
+                    ['2', 'Repartizează', 'Confirmă agentul sau persoana responsabilă.'],
+                    ['3', 'Închide pasul', 'Actualizează statusul și termenul următor.'],
+                  ].map(([step, title, description]) => <div key={step} className="flex gap-3"><div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{step}</div><div><p className="text-sm font-semibold">{title}</p><p className="mt-0.5 text-xs text-muted-foreground">{description}</p></div></div>)}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="people" className="space-y-5">
             <SectionHeader icon={Users} title="Utilizatori și roluri" description="Controlează accesul fără a modifica datele de autentificare sau parolele." />
             <div className="flex flex-wrap gap-3">
               <div className="relative min-w-64 flex-1">
@@ -624,7 +845,7 @@ export function AdminPage() {
             {filteredProperties.length === 0 ? <EmptyState icon={Building2} title="Nicio proprietate găsită" description="Modifică filtrul sau publică o proprietate nouă." /> : null}
           </TabsContent>
 
-          <TabsContent value="operations" className="space-y-6">
+          <TabsContent value="transactions" className="space-y-6">
             <SectionHeader icon={Activity} title="Operațiuni în desfășurare" description="Lead-uri, vizionări, tranzacții, documente, Coins și audit într-un singur loc." />
             <div className="grid gap-5 xl:grid-cols-2">
               <Card>
@@ -664,17 +885,37 @@ export function AdminPage() {
               </Card>
             </div>
 
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6">
+            <SectionHeader icon={Settings2} title="Setări și instrumente avansate" description="Configurările folosite ocazional sunt grupate aici, separat de activitatea zilnică." />
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {[
+                { id: 'inbox' as const, icon: Inbox, title: 'Mesaje și abonamente', description: 'Contacte, newsletter și alerte de preț.', badge: `${stats.totalContacts} contacte` },
+                { id: 'compliance' as const, icon: FileCheck2, title: 'Juridic și GDPR', description: 'Profilul firmei și avizele șabloanelor.', badge: stats.templatesPendingReview ? `${stats.templatesPendingReview} de verificat` : 'La zi' },
+                { id: 'virtual-tours' as const, icon: Rotate3D, title: 'Tururi virtuale', description: 'Moderarea tururilor 360° încărcate.', badge: 'Moderare' },
+                { id: 'audit' as const, icon: Activity, title: 'Jurnal administrativ', description: 'Istoricul operațiunilor sensibile.', badge: `${data.audit.length} evenimente` },
+              ].map((item) => (
+                <button key={item.id} type="button" onClick={() => openTab(item.id)} className="group rounded-2xl border bg-card p-5 text-left shadow-sm transition-all hover:border-primary/50 hover:shadow-md">
+                  <div className="flex items-start justify-between gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><item.icon className="h-5 w-5" /></div><Badge variant="secondary">{item.badge}</Badge></div>
+                  <p className="mt-4 font-semibold">{item.title}</p><p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                  <span className="mt-4 inline-flex items-center text-sm font-medium text-primary">Deschide <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
+                </button>
+              ))}
+            </div>
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Activity className="h-5 w-5 text-primary" /> Jurnal administrativ</CardTitle><CardDescription>Ultimele acțiuni sensibile realizate din centrul de administrare.</CardDescription></CardHeader>
-              <CardContent className="space-y-2">
-                {data.audit.slice(0, 12).map((event) => <div key={event.id} className="flex items-start gap-3 rounded-xl border p-3"><div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Activity className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="text-sm font-medium">{event.action.replaceAll('_', ' ')}</p><p className="truncate text-xs text-muted-foreground">{event.entity} · {event.actor || 'sistem'}</p></div><span className="text-[11px] text-muted-foreground">{formatDate(event.created_at)}</span></div>)}
-                {data.audit.length === 0 ? <EmptyState icon={Activity} title="Jurnal gol" description="Prima acțiune administrativă va crea o înregistrare." /> : null}
+              <CardHeader><CardTitle className="text-base">Starea platformei</CardTitle><CardDescription>Aceste informații sunt tehnice și nu necesită verificare în activitatea zilnică.</CardDescription></CardHeader>
+              <CardContent className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="gap-1.5 px-3 py-1.5"><span className={cn('h-2 w-2 rounded-full', data.health.supabase === 'online' ? 'bg-emerald-500' : 'bg-amber-500')} />Supabase {data.health.supabase === 'online' ? 'online' : 'degradat'}</Badge>
+                <Badge variant="outline" className="gap-1.5 px-3 py-1.5"><span className={cn('h-2 w-2 rounded-full', data.health.d1 === 'online' ? 'bg-emerald-500' : 'bg-amber-500')} />Mesaje D1 {data.health.d1 === 'online' ? 'online' : 'fallback'}</Badge>
+                <Badge variant="outline" className="gap-1.5 px-3 py-1.5"><span className={cn('h-2 w-2 rounded-full', data.health.legalProfileReady ? 'bg-emerald-500' : 'bg-rose-500')} />Profil juridic {data.health.legalProfileReady ? 'configurat' : 'incomplet'}</Badge>
+                {data.health.warnings.length > 0 ? <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-300"><AlertTriangle className="mr-1.5 h-3.5 w-3.5" />{data.health.warnings.length} avertismente</Badge> : null}
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="inbox" className="space-y-6">
-            <SectionHeader icon={Inbox} title="Mesaje și abonamente" description="Contacte, newsletter și alerte de preț păstrate în baza operațională D1." />
+            <SectionHeader icon={Inbox} title="Mesaje și abonamente" description="Contacte, newsletter și alerte de preț păstrate în baza operațională D1." action={<Button variant="outline" onClick={() => openTab('settings')}><ArrowRight className="mr-2 h-4 w-4 rotate-180" /> Înapoi la setări</Button>} />
             <div className="grid gap-5 xl:grid-cols-3">
               <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><MessageSquare className="h-5 w-5 text-primary" /> Contacte <Badge variant="secondary">{data.contacts.length}</Badge></CardTitle></CardHeader><CardContent className="space-y-3">{data.contacts.slice(0, 30).map((contact) => <div key={contact.id} className="rounded-xl border p-3"><div className="flex justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-semibold">{contact.name}</p><a href={`mailto:${contact.email}`} className="truncate text-xs text-primary hover:underline">{contact.email}</a></div><Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmation({ title: 'Șterge mesajul', description: 'Mesajul va fi eliminat definitiv din D1.', confirmLabel: 'Șterge', destructive: true, run: () => runAction(`contact:${contact.id}`, { action: 'DELETE_LEGACY', entity: 'CONTACT', id: contact.id }, 'Mesajul a fost șters.') })}>Șterge</Button></div><p className="mt-2 line-clamp-3 text-xs text-muted-foreground">{contact.message}</p><p className="mt-2 text-[11px] text-muted-foreground">{formatDate(contact.createdAt)}</p></div>)}{data.contacts.length === 0 ? <EmptyState icon={MessageSquare} title="Fără mesaje" description="Cererile de contact vor apărea aici." /> : null}</CardContent></Card>
               <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Mail className="h-5 w-5 text-primary" /> Newsletter <Badge variant="secondary">{data.newsletters.length}</Badge></CardTitle></CardHeader><CardContent className="space-y-2">{data.newsletters.slice(0, 40).map((subscriber) => <div key={subscriber.id} className="flex items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{subscriber.email}</p><p className="text-[11px] text-muted-foreground">{formatDate(subscriber.createdAt)}</p></div><Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmation({ title: 'Dezabonează adresa', description: 'Adresa va fi eliminată din lista newsletter.', confirmLabel: 'Dezabonează', destructive: true, run: () => runAction(`newsletter:${subscriber.id}`, { action: 'DELETE_LEGACY', entity: 'NEWSLETTER', id: subscriber.id }, 'Adresa a fost dezabonată.') })}>Elimină</Button></div>)}{data.newsletters.length === 0 ? <EmptyState icon={Mail} title="Fără abonați" description="Abonările noi vor apărea aici." /> : null}</CardContent></Card>
@@ -683,7 +924,7 @@ export function AdminPage() {
           </TabsContent>
 
           <TabsContent value="compliance" className="space-y-6">
-            <SectionHeader icon={FileCheck2} title="Conformitate juridică și documente" description="Starea profilului agenției, informarea GDPR și avizele nominale ale șabloanelor." action={<Button variant="outline" onClick={() => navigateTo('documente')}><FileCheck2 className="mr-2 h-4 w-4" /> Deschide documentele</Button>} />
+            <SectionHeader icon={FileCheck2} title="Conformitate juridică și documente" description="Starea profilului agenției, informarea GDPR și avizele nominale ale șabloanelor." action={<div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => openTab('settings')}><ArrowRight className="mr-2 h-4 w-4 rotate-180" /> Înapoi la setări</Button><Button variant="outline" onClick={() => navigateTo('documente')}><FileCheck2 className="mr-2 h-4 w-4" /> Deschide documentele</Button></div>} />
             <div className="grid gap-5 lg:grid-cols-3">
               <Card className="lg:col-span-1"><CardHeader><CardTitle className="text-base">Profil juridic agenție</CardTitle><CardDescription>Date folosite în contracte și fișe de vizionare.</CardDescription></CardHeader><CardContent className="space-y-3">{data.legalProfile ? <><div className="flex justify-between gap-3"><span className="text-sm text-muted-foreground">Status</span><StatusBadge status={data.legalProfile.status} /></div><div><p className="text-xs text-muted-foreground">Denumire legală</p><p className="mt-1 text-sm font-medium">{data.legalProfile.legal_name || data.legalProfile.trade_name || 'Necompletată'}</p></div><div><p className="text-xs text-muted-foreground">CUI / Registrul Comerțului</p><p className="mt-1 text-sm">{[data.legalProfile.cui, data.legalProfile.trade_registry_number].filter(Boolean).join(' · ') || 'Necompletat'}</p></div><div><p className="text-xs text-muted-foreground">Informare GDPR</p>{data.legalProfile.privacy_notice_url ? <a href={data.legalProfile.privacy_notice_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm text-primary hover:underline">Deschide versiunea {data.legalProfile.privacy_notice_version || 'curentă'} <ExternalLink className="h-3.5 w-3.5" /></a> : <p className="mt-1 text-sm text-destructive">URL lipsă</p>}</div><p className="text-[11px] text-muted-foreground">Actualizat {formatDate(data.legalProfile.updated_at)}</p></> : <EmptyState icon={ShieldAlert} title="Profil juridic lipsă" description="Programările și contractele finale trebuie blocate până la completare." />}</CardContent></Card>
               <Card className="lg:col-span-2"><CardHeader><div className="flex items-center justify-between gap-3"><div><CardTitle className="text-base">Șabloane contractuale</CardTitle><CardDescription>Avizul trebuie să identifice nominal juristul sau avocatul.</CardDescription></div><Badge variant={stats.templatesPendingReview ? 'destructive' : 'default'}>{stats.templatesApproved} aprobate · {stats.templatesPendingReview} blocate</Badge></div></CardHeader><CardContent className="space-y-2">{data.templates.map((template) => <div key={template.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{template.name}</p><p className="text-xs text-muted-foreground">{template.type} · v{template.version} · versiune legală {template.legal_version || 'nespecificată'}</p>{template.legal_reviewer_name ? <p className="mt-1 text-xs text-muted-foreground">Revizuit de {template.legal_reviewer_name} · {formatDate(template.legal_reviewed_at)}</p> : null}</div><StatusBadge status={template.legal_review_status} /></div>)}{data.templates.length === 0 ? <EmptyState icon={FileCheck2} title="Fără șabloane" description="Adaugă șabloanele juridice înainte de generarea documentelor." /> : null}</CardContent></Card>
@@ -691,8 +932,19 @@ export function AdminPage() {
             {stats.templatesPendingReview > 0 ? <div className="flex items-start gap-3 rounded-2xl border border-rose-300 bg-rose-50/50 p-4 text-rose-800 dark:bg-rose-950/20 dark:text-rose-200"><ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" /><div><p className="font-semibold">Generarea documentelor finale rămâne blocată</p><p className="mt-1 text-sm">Administratorul poate pregăti ciornele, însă numai un profesionist juridic identificat nominal poate acorda avizul șablonului.</p></div></div> : <div className="flex items-start gap-3 rounded-2xl border border-emerald-300 bg-emerald-50/50 p-4 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /><div><p className="font-semibold">Șabloanele juridice sunt aprobate</p><p className="mt-1 text-sm">Verifică periodic termenele de valabilitate și versiunile informărilor.</p></div></div>}
           </TabsContent>
 
-          <TabsContent value="virtual-tours">
+          <TabsContent value="virtual-tours" className="space-y-5">
+            <div><Button variant="outline" onClick={() => openTab('settings')}><ArrowRight className="mr-2 h-4 w-4 rotate-180" /> Înapoi la setări</Button></div>
             <VirtualTourReviewPanel accessToken={session?.access_token || ''} />
+          </TabsContent>
+
+          <TabsContent value="audit" className="space-y-5">
+            <SectionHeader icon={Activity} title="Jurnal administrativ" description="Ultimele acțiuni sensibile realizate din centrul de administrare." action={<Button variant="outline" onClick={() => openTab('settings')}><ArrowRight className="mr-2 h-4 w-4 rotate-180" /> Înapoi la setări</Button>} />
+            <Card>
+              <CardContent className="space-y-2 p-4 sm:p-6">
+                {data.audit.slice(0, 50).map((event) => <div key={event.id} className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-start"><div className="flex min-w-0 flex-1 items-start gap-3"><div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Activity className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="text-sm font-medium">{event.action.replaceAll('_', ' ')}</p><p className="truncate text-xs text-muted-foreground">{event.entity} · {event.actor || 'sistem'}</p></div></div><span className="pl-11 text-[11px] text-muted-foreground sm:pl-0">{formatDate(event.created_at)}</span></div>)}
+                {data.audit.length === 0 ? <EmptyState icon={Activity} title="Jurnal gol" description="Prima acțiune administrativă va crea o înregistrare." /> : null}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
