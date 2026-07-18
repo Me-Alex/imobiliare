@@ -120,13 +120,14 @@ function ReviewCard({
 
       {previewTour ? (
         <div className="bg-slate-950">
-          <VirtualTourViewer tour={previewTour} activeSceneId={activeSceneId} className="h-[420px]" title={`Verificare ${tour.title}`} />
+          <VirtualTourViewer tour={previewTour} activeSceneId={activeSceneId} onSceneChange={setActiveSceneId} className="h-[420px]" title={`Verificare ${tour.title}`} />
           {tour.provider === 'NATIVE' && tour.virtual_tour_scenes.length > 1 ? (
             <div className="flex gap-2 overflow-x-auto border-t border-white/10 p-3">
               {tour.virtual_tour_scenes.map((scene) => (
                 <button
                   key={scene.id}
                   type="button"
+                  aria-pressed={activeSceneId === scene.id}
                   onClick={() => setActiveSceneId(scene.id)}
                   className={`shrink-0 rounded-full px-3 py-1.5 text-xs transition-colors ${activeSceneId === scene.id ? 'bg-white text-slate-950' : 'bg-white/10 text-white hover:bg-white/20'}`}
                 >

@@ -376,6 +376,7 @@ export function VirtualTourEditor({ value, onChange }: VirtualTourEditorProps) {
                   <button
                     key={scene.id}
                     type="button"
+                    aria-pressed={scene.id === selectedScene?.id}
                     onClick={() => setSelectedSceneId(scene.id)}
                     className={`group flex w-full items-center gap-3 rounded-xl border p-2 text-left transition-colors ${scene.id === selectedScene?.id ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}
                   >
@@ -395,6 +396,7 @@ export function VirtualTourEditor({ value, onChange }: VirtualTourEditorProps) {
                     ref={viewerRef}
                     tour={previewTour}
                     activeSceneId={selectedScene?.id}
+                    onSceneChange={setSelectedSceneId}
                     className="h-[460px]"
                     title="Editor tur 360°"
                     editing

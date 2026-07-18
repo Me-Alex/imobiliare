@@ -2,13 +2,14 @@
 
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
   useState,
 } from 'react'
-import { AlertTriangle, Loader2, Rotate3D } from 'lucide-react'
+import { AlertTriangle, DoorOpen, Loader2, Rotate3D } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { VirtualTour } from '@/lib/virtual-tours'
 
@@ -17,8 +18,13 @@ interface PannellumViewerApi {
   getYaw: () => number
   getPitch: () => number
   getHfov: () => number
-  loadScene: (sceneId: string) => void
-  on: (eventName: string, callback: () => void) => void
+  getScene: () => string
+  loadScene: (sceneId: string, pitch?: number, yaw?: number, hfov?: number) => PannellumViewerApi
+  on: {
+    (eventName: 'load', callback: () => void): PannellumViewerApi
+    (eventName: 'scenechange', callback: (sceneId: string) => void): PannellumViewerApi
+    (eventName: 'error', callback: (message?: string) => void): PannellumViewerApi
+  }
 }
 
 interface PannellumWindow extends Window {
@@ -80,19 +86,70 @@ interface VirtualTourViewerProps {
   activeSceneId?: string | null
   title?: string
   editing?: boolean
+  onSceneChange?: (sceneId: string) => void
+  showSceneSelector?: boolean
 }
 
 export const VirtualTourViewer = forwardRef<VirtualTourViewerHandle, VirtualTourViewerProps>(
-  function VirtualTourViewer({ tour, className, activeSceneId, title = 'Tur virtual', editing = false }, ref) {
+  function VirtualTourViewer({
+    tour,
+    className,
+    activeSceneId,
+    title = 'Tur virtual',
+    editing = false,
+    onSceneChange,
+    showSceneSelector,
+  }, ref) {
     const containerRef = useRef<HTMLDivElement>(null)
     const viewerRef = useRef<PannellumViewerApi | null>(null)
+    const activeSceneIdRef = useRef(activeSceneId)
+    const onSceneChangeRef = useRef(onSceneChange)
+    const loadingRef = useRef(tour.provider === 'NATIVE')
+    const pendingSceneIdRef = useRef<string | null>(null)
     const [loading, setLoading] = useState(tour.provider === 'NATIVE')
     const [error, setError] = useState<string | null>(null)
+    const [currentSceneId, setCurrentSceneId] = useState<string | null>(
+      activeSceneId || tour.entrySceneId || tour.scenes[0]?.id || null,
+    )
 
     const orderedScenes = useMemo(
       () => [...tour.scenes].sort((a, b) => a.sortOrder - b.sortOrder),
       [tour.scenes],
     )
+    const validSceneIds = useMemo(
+      () => new Set(orderedScenes.map((scene) => scene.id)),
+      [orderedScenes],
+    )
+    const shouldShowSceneSelector = (
+      showSceneSelector ?? activeSceneId === undefined
+    ) && orderedScenes.length > 1
+
+    useEffect(() => {
+      activeSceneIdRef.current = activeSceneId
+    }, [activeSceneId])
+
+    useEffect(() => {
+      onSceneChangeRef.current = onSceneChange
+    }, [onSceneChange])
+
+    const requestScene = useCallback((sceneId: string) => {
+      if (!validSceneIds.has(sceneId)) return
+      const viewer = viewerRef.current
+      if (!viewer) {
+        pendingSceneIdRef.current = sceneId
+        return
+      }
+      if (viewer.getScene() === sceneId) return
+      if (loadingRef.current) {
+        pendingSceneIdRef.current = sceneId
+        return
+      }
+      pendingSceneIdRef.current = null
+      loadingRef.current = true
+      setLoading(true)
+      setError(null)
+      viewer.loadScene(sceneId)
+    }, [validSceneIds])
 
     useImperativeHandle(ref, () => ({
       getView: () => {
@@ -104,8 +161,8 @@ export const VirtualTourViewer = forwardRef<VirtualTourViewerHandle, VirtualTour
           fov: viewer.getHfov(),
         }
       },
-      loadScene: (sceneId: string) => viewerRef.current?.loadScene(sceneId),
-    }), [])
+      loadScene: requestScene,
+    }), [requestScene])
 
     useEffect(() => {
       if (tour.provider !== 'NATIVE' || !containerRef.current || orderedScenes.length === 0) return
@@ -114,10 +171,20 @@ export const VirtualTourViewer = forwardRef<VirtualTourViewerHandle, VirtualTour
 
       const initialize = async () => {
         try {
+          loadingRef.current = true
+          pendingSceneIdRef.current = null
           setLoading(true)
           setError(null)
           const pannellum = await loadPannellumRuntime()
           if (cancelled || !containerRef.current) return
+
+          const requestedSceneId = activeSceneIdRef.current
+          const firstSceneId = requestedSceneId && validSceneIds.has(requestedSceneId)
+            ? requestedSceneId
+            : tour.entrySceneId && validSceneIds.has(tour.entrySceneId)
+              ? tour.entrySceneId
+              : orderedScenes[0].id
+          setCurrentSceneId(firstSceneId)
 
           const scenes = Object.fromEntries(orderedScenes.map((scene) => [
             scene.id,
@@ -129,21 +196,24 @@ export const VirtualTourViewer = forwardRef<VirtualTourViewerHandle, VirtualTour
               pitch: scene.initialPitch,
               hfov: scene.initialFov,
               crossOrigin: 'anonymous',
-              hotSpots: scene.hotspots.map((hotspot) => ({
-                id: hotspot.id,
-                type: 'scene',
-                pitch: hotspot.pitch,
-                yaw: hotspot.yaw,
-                text: hotspot.label,
-                sceneId: hotspot.targetSceneId,
-              })),
+              hotSpots: scene.hotspots
+                .filter((hotspot) => validSceneIds.has(hotspot.targetSceneId))
+                .map((hotspot) => ({
+                  id: hotspot.id,
+                  type: 'scene',
+                  pitch: hotspot.pitch,
+                  yaw: hotspot.yaw,
+                  text: hotspot.label,
+                  sceneId: hotspot.targetSceneId,
+                })),
             },
           ]))
 
           viewerRef.current?.destroy()
           const viewer = pannellum.viewer(containerRef.current, {
+            escapeHTML: true,
             default: {
-              firstScene: activeSceneId || tour.entrySceneId || orderedScenes[0].id,
+              firstScene: firstSceneId,
               autoLoad: true,
               sceneFadeDuration: 700,
               showControls: true,
@@ -154,10 +224,40 @@ export const VirtualTourViewer = forwardRef<VirtualTourViewerHandle, VirtualTour
           })
           viewerRef.current = viewer
           viewer.on('load', () => {
-            if (!cancelled) setLoading(false)
+            if (!cancelled) {
+              const pendingSceneId = pendingSceneIdRef.current
+              pendingSceneIdRef.current = null
+              if (pendingSceneId && pendingSceneId !== viewer.getScene()) {
+                loadingRef.current = true
+                setLoading(true)
+                setError(null)
+                viewer.loadScene(pendingSceneId)
+                return
+              }
+              loadingRef.current = false
+              setLoading(false)
+            }
+          })
+          viewer.on('scenechange', (sceneId) => {
+            if (!cancelled) {
+              loadingRef.current = true
+              setLoading(true)
+              setError(null)
+              setCurrentSceneId(sceneId)
+              onSceneChangeRef.current?.(sceneId)
+            }
+          })
+          viewer.on('error', (message) => {
+            if (!cancelled) {
+              loadingRef.current = false
+              pendingSceneIdRef.current = null
+              setLoading(false)
+              setError(message || 'Panorama acestei camere nu a putut fi încărcată.')
+            }
           })
         } catch (cause) {
           if (!cancelled) {
+            loadingRef.current = false
             setLoading(false)
             setError(cause instanceof Error ? cause.message : 'Turul 360° nu poate fi afișat.')
           }
@@ -167,10 +267,29 @@ export const VirtualTourViewer = forwardRef<VirtualTourViewerHandle, VirtualTour
       void initialize()
       return () => {
         cancelled = true
+        loadingRef.current = false
+        pendingSceneIdRef.current = null
         viewerRef.current?.destroy()
         viewerRef.current = null
       }
-    }, [activeSceneId, editing, orderedScenes, tour.entrySceneId, tour.provider])
+    }, [editing, orderedScenes, tour.entrySceneId, tour.provider, validSceneIds])
+
+    useEffect(() => {
+      if (!activeSceneId || !validSceneIds.has(activeSceneId)) return
+      const viewer = viewerRef.current
+      if (!viewer) {
+        pendingSceneIdRef.current = activeSceneId
+        return
+      }
+      if (viewer.getScene() === activeSceneId) return
+      if (loadingRef.current) {
+        pendingSceneIdRef.current = activeSceneId
+        return
+      }
+      pendingSceneIdRef.current = null
+      loadingRef.current = true
+      viewer.loadScene(activeSceneId)
+    }, [activeSceneId, validSceneIds])
 
     if (tour.provider !== 'NATIVE') {
       if (!tour.externalUrl) return null
@@ -206,6 +325,45 @@ export const VirtualTourViewer = forwardRef<VirtualTourViewerHandle, VirtualTour
           <div className="pointer-events-none absolute left-3 top-3 z-20 rounded-full border border-amber-300/40 bg-slate-950/85 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200 shadow-lg backdrop-blur">
             Demo · imagine sintetică
           </div>
+        ) : null}
+        {shouldShowSceneSelector && !error ? (
+          <nav
+            aria-label="Camerele turului virtual"
+            className="pointer-events-none absolute inset-x-0 bottom-3 z-20 px-3"
+          >
+            <div className="pointer-events-auto mx-auto w-fit max-w-full rounded-2xl border border-white/20 bg-slate-950/85 p-2 shadow-2xl backdrop-blur-md">
+              <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[11px] font-medium text-white/75">
+                <DoorOpen className="h-3.5 w-3.5" />
+                <span>Intră prin uși sau alege camera</span>
+              </div>
+              <div className="flex max-w-[calc(100vw-3rem)] gap-1 overflow-x-auto pb-0.5">
+                {orderedScenes.map((scene) => {
+                  const isActive = scene.id === currentSceneId
+                  return (
+                    <button
+                      key={scene.id}
+                      type="button"
+                      disabled={loading}
+                      aria-pressed={isActive}
+                      aria-label={`Mergi în ${scene.title}`}
+                      className={cn(
+                        'shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-wait disabled:opacity-60',
+                        isActive
+                          ? 'bg-white text-slate-950'
+                          : 'bg-white/10 text-white hover:bg-white/20',
+                      )}
+                      onClick={() => requestScene(scene.id)}
+                    >
+                      {scene.title}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <span className="sr-only" aria-live="polite">
+              Camera curentă: {orderedScenes.find((scene) => scene.id === currentSceneId)?.title || 'necunoscută'}
+            </span>
+          </nav>
         ) : null}
         {loading ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/80 text-white">

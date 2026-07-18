@@ -258,13 +258,13 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
                       </h3>
                       <p className="mt-2 text-sm leading-relaxed text-white/80">
                         {property.virtualTour.isDemo
-                          ? 'Testează experiența 360°. Panorama este sintetică și nu reprezintă interiorul real al proprietății.'
+                          ? 'Deplasează-te între camere într-un tur 360° complet. Imaginile sunt sintetice și nu reprezintă interiorul real al proprietății.'
                           : 'Parcurge camerele în format 360°, verifică spațiul și pregătește întrebările înainte de vizionarea fizică.'}
                       </p>
                       {property.virtualTour.provider === 'NATIVE' ? (
                         <p className="mt-2 text-xs text-white/70">
                           {property.virtualTour.isDemo
-                            ? 'Panoramă sintetică pentru testarea funcționalității'
+                            ? `${property.virtualTour.scenes.length} camere demonstrative conectate`
                             : `${property.virtualTour.scenes.length} camere conectate`}
                         </p>
                       ) : null}
@@ -472,7 +472,7 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
             </DialogTitle>
             <DialogDescription>
               {property.virtualTour?.isDemo
-                ? 'Demonstrație funcțională cu imagine sintetică; nu reprezintă interiorul real al anunțului.'
+                ? 'Demonstrație cu 4 camere sintetice conectate; deplasează-te prin uși sau folosește selectorul de camere.'
                 : 'Navighează prin proprietate și folosește modul ecran complet pentru o experiență imersivă.'}
             </DialogDescription>
           </DialogHeader>
