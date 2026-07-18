@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 
@@ -45,18 +44,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ro" suppressHydrationWarning>
+      <head>
+        {/* OpenNext/esbuild can add this helper to next-themes' inline bootstrap. */}
+        <script
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html:
+              'globalThis.__name=globalThis.__name||function(target,value){try{Object.defineProperty(target,"name",{value:value,configurable:true})}catch(error){}return target};',
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        {/* OpenNext can reference this esbuild helper from next-themes' inline bootstrap. */}
-        <Script
-          id="open-next-name-helper"
-          strategy="beforeInteractive"
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{
-            __html: "globalThis.__name=globalThis.__name||function(target){return target}",
-          }}
-        />
         {children}
       </body>
     </html>

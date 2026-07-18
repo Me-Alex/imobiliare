@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
-import { Bell, Bookmark, Building2, CalendarCheck, CircleDollarSign, FileText, Heart, LayoutDashboard, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User, Users, type LucideIcon } from 'lucide-react'
+import { BarChart3, Bell, Bookmark, BriefcaseBusiness, Building2, CalendarCheck, CircleDollarSign, FileText, Heart, LayoutDashboard, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User, Users, WalletCards, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -45,6 +45,9 @@ interface AccountMenuItem {
 
 const accountMenu: AccountMenuItem[] = [
   { label: 'Dashboard', page: 'dashboard', icon: LayoutDashboard },
+  { label: 'Deal Room', page: 'deal-room', icon: WalletCards },
+  { label: 'CRM agenți', page: 'crm', icon: BriefcaseBusiness, roles: ['AGENT', 'ADMIN'] },
+  { label: 'Performanță proprietate', page: 'owner-dashboard', icon: BarChart3, roles: ['OWNER', 'ADMIN'] },
   { label: 'HQS Monede', page: 'monede', icon: CircleDollarSign },
   { label: 'Profilul meu', page: 'profil', icon: User },
   { label: 'Panou Admin', page: 'admin', icon: Shield, roles: ['ADMIN'] },

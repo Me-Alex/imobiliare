@@ -49,6 +49,12 @@ const emptyCoinState = {
 }
 
 function snapshotState(snapshot: CoinAccountSnapshot) {
+  const earnedPropertyIds = new Set(
+    snapshot.transactions
+      .filter((transaction) => transaction.type === 'view_property' && transaction.relatedId)
+      .map((transaction) => transaction.relatedId as string),
+  )
+
   return {
     balance: snapshot.wallet.balance,
     lifetimeEarned: snapshot.wallet.lifetimeEarned,
@@ -60,6 +66,7 @@ function snapshotState(snapshot: CoinAccountSnapshot) {
       lastLoginDate: snapshot.wallet.lastClaimDate,
       currentStreak: snapshot.wallet.currentStreak,
     },
+    earnedPropertyIds,
     coinsError: null,
   }
 }

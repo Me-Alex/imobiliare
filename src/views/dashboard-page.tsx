@@ -48,36 +48,36 @@ interface DashboardStat {
 function getActions(role: AccountRole): DashboardAction[] {
   if (role === 'OWNER') {
     return [
+      { label: 'Performanta proprietatii', description: 'Vezi interesul, feedbackul si pretul', page: 'owner-dashboard', icon: BarChart3 },
+      { label: 'Deal Room', description: 'Urmareste tranzactiile active', page: 'deal-room', icon: BriefcaseBusiness },
       { label: 'Adauga proprietate', description: 'Publica un anunt nou', page: 'adauga-proprietate', icon: Plus },
-      { label: 'Proprietatile mele', description: 'Editeaza portofoliul propriu', page: 'adauga-proprietate', icon: Home },
       { label: 'Solicitari si vizionari', description: 'Urmareste interesul clientilor', page: 'vizionarile-mele', icon: CalendarCheck },
-      { label: 'Evaluare proprietate', description: 'Estimeaza valoarea de piata', page: 'evaluare', icon: BarChart3 },
     ]
   }
 
   if (role === 'AGENT') {
     return [
+      { label: 'CRM agent', description: 'Lead-uri, follow-up-uri si conversie', page: 'crm', icon: Users },
+      { label: 'Deal Room', description: 'Coordoneaza tranzactiile active', page: 'deal-room', icon: BriefcaseBusiness },
       { label: 'Adauga proprietate', description: 'Adauga o proprietate in portofoliu', page: 'adauga-proprietate', icon: Plus },
       { label: 'Agenda mea', description: 'Configureaza disponibilitatea', page: 'disponibilitate-staff', icon: CalendarCheck },
-      { label: 'Vizionari alocate', description: 'Gestioneaza intalnirile cu clientii', page: 'vizionarile-mele', icon: Users },
-      { label: 'Documente clienti', description: 'Verifica documentele active', page: 'documente', icon: FileText },
     ]
   }
 
   if (role === 'ADMIN') {
     return [
       { label: 'Panou administrare', description: 'Utilizatori, continut si rapoarte', page: 'admin', icon: ShieldCheck },
+      { label: 'CRM si repartizare', description: 'Pipeline si alocare automata lead-uri', page: 'crm', icon: Users },
+      { label: 'Deal Rooms', description: 'Auditul tuturor tranzactiilor', page: 'deal-room', icon: BriefcaseBusiness },
       { label: 'Adauga proprietate', description: 'Publica in numele platformei', page: 'adauga-proprietate', icon: Plus },
-      { label: 'Echipa si program', description: 'Gestioneaza disponibilitatea agentilor', page: 'disponibilitate-staff', icon: BriefcaseBusiness },
-      { label: 'Vezi platforma', description: 'Controleaza experienta publica', page: 'proprietati', icon: Eye },
     ]
   }
 
   return [
     { label: 'Cauta proprietati', description: 'Descopera ofertele disponibile', page: 'proprietati', icon: Search },
     { label: 'Programeaza vizionare', description: 'Alege proprietatea si intervalul', page: 'programare-vizionare', icon: CalendarCheck },
+    { label: 'Deal Room', description: 'Vizionari, oferte si documente intr-un loc', page: 'deal-room', icon: BriefcaseBusiness },
     { label: 'Calculator rata', description: 'Estimeaza creditul ipotecar', page: 'calculator', icon: Calculator },
-    { label: 'Documentele mele', description: 'Pastreaza actele intr-un singur loc', page: 'documente', icon: FileText },
   ]
 }
 

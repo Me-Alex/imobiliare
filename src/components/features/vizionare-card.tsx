@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import {
   CalendarDays, Clock, Star, CalendarClock, MessageSquarePlus,
-  Upload, XCircle, CheckCircle2, UserCheck, UserX,
+  Upload, XCircle, CheckCircle2, UserCheck, UserX, WalletCards,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -66,6 +66,11 @@ export function VizionareCard({
   const handleUploadDocs = () => {
     saveToLS(LS_KEYS.SELECTED_VIZIONARE, vizionare.id)
     navigateTo('documente')
+  }
+
+  const handleDealRoom = () => {
+    sessionStorage.setItem('hqs-selected-appointment-id', vizionare.id)
+    navigateTo('deal-room')
   }
 
   return (
@@ -174,6 +179,15 @@ export function VizionareCard({
 
           {/* Actions */}
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs h-8"
+              onClick={handleDealRoom}
+            >
+              <WalletCards className="h-3.5 w-3.5" />
+              Deal Room
+            </Button>
             <Button
               variant="outline"
               size="sm"

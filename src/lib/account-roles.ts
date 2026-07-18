@@ -43,6 +43,9 @@ const RESTRICTED_PAGE_ROLES: Partial<Record<string, readonly AccountRole[]>> = {
   'programare-vizionare': ['CLIENT', 'OWNER'],
   'vizionarile-mele': ['CLIENT', 'OWNER', 'AGENT', 'ADMIN'],
   documente: ['CLIENT', 'OWNER', 'AGENT', 'ADMIN'],
+  'deal-room': ['CLIENT', 'OWNER', 'AGENT', 'ADMIN'],
+  crm: ['AGENT', 'ADMIN'],
+  'owner-dashboard': ['OWNER', 'ADMIN'],
   dashboard: ACCOUNT_ROLES,
   profil: ACCOUNT_ROLES,
 }

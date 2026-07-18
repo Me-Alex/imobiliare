@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Heart, Scale, Bath, BedDouble, MapPin, Star, CalendarCheck, Maximize2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +18,7 @@ import { getPropertyImages } from '@/lib/property-details'
 interface PropertyCardProps {
   property: Property
   viewMode?: 'grid' | 'list'
+  eagerImage?: boolean
 }
 
 const typeLabels: Record<string, string> = {
@@ -59,10 +61,10 @@ function MetricPill({ icon: Icon, value, label }: { icon: React.ElementType; val
   )
 }
 
-export function PropertyCard({ property, viewMode = 'grid' }: PropertyCardProps) {
+export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }: PropertyCardProps) {
   const { favorites, compareList, toggleFavorite, toggleCompare, setVizionareProperty, navigateTo } = useAppStore()
   const { user } = useAuth()
-  const { onFavorite } = useCoinActions()
+  const { onFavorite, onUnfavorite } = useCoinActions()
   const [authOpen, setAuthOpen] = useState(false)
   const isFav = favorites.includes(property.id)
   const isCompare = compareList.includes(property.id)
@@ -73,6 +75,7 @@ export function PropertyCard({ property, viewMode = 'grid' }: PropertyCardProps)
     const wasFavorite = favorites.includes(property.id)
     toggleFavorite(property.id)
     if (!wasFavorite) void onFavorite(property.id, property.title)
+    else void onUnfavorite(property.id)
   }
 
   const handleSchedule = () => {
@@ -100,9 +103,14 @@ export function PropertyCard({ property, viewMode = 'grid' }: PropertyCardProps)
         <div className="flex flex-col sm:flex-row">
           {/* Image */}
           <div className="relative sm:w-72 h-48 sm:h-auto overflow-hidden shrink-0 card-shimmer">
-            <div
-              className="absolute inset-0 bg-cover bg-center img-zoom"
-              style={{ backgroundImage: `url(${coverImage})` }}
+            <Image
+              src={coverImage}
+              alt=""
+              fill
+              loading={eagerImage ? 'eager' : 'lazy'}
+              fetchPriority={eagerImage ? 'high' : 'auto'}
+              sizes="(min-width: 640px) 18rem, 100vw"
+              className="absolute inset-0 h-full w-full object-cover img-zoom"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
             <div className="absolute top-3 left-3 flex gap-2 z-10">
@@ -208,9 +216,14 @@ export function PropertyCard({ property, viewMode = 'grid' }: PropertyCardProps)
       </a>
       {/* Image */}
       <div className="relative h-52 overflow-hidden card-shimmer">
-        <div
-          className="absolute inset-0 bg-cover bg-center img-zoom"
-          style={{ backgroundImage: `url(${coverImage})` }}
+        <Image
+          src={coverImage}
+          alt=""
+          fill
+          loading={eagerImage ? 'eager' : 'lazy'}
+          fetchPriority={eagerImage ? 'high' : 'auto'}
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+          className="absolute inset-0 h-full w-full object-cover img-zoom"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 

@@ -22,6 +22,7 @@ import { AuthProvider, useAuth } from '@/contexts/auth-context'
 import { RoleAccessDenied } from '@/components/account/role-access-denied'
 import { canAccessAccountPage, getAllowedRolesForPage } from '@/lib/account-roles'
 import { useAppStore, type PageKey } from '@/store/use-app-store'
+import { isPageKey } from '@/store/slices/navigation'
 import { Toaster } from 'sonner'
 import { AcasaPage } from '@/views/acasa-page'
 import { ProprietatiPage } from '@/views/proprietati-page'
@@ -41,6 +42,9 @@ import { ProfilPage } from '@/views/profil-page'
 import { EvaluarePage } from '@/views/evaluare-page'
 import { MonedePage } from '@/views/monede-page'
 import { PropertyPage } from '@/views/property-page'
+import { DealRoomPage } from '@/views/deal-room-page'
+import { CrmPage } from '@/views/crm-page'
+import { OwnerDashboardPage } from '@/views/owner-dashboard-page'
 import { NotificationsPanel } from '@/components/panels/notifications-panel'
 import { useCoinsHydration } from '@/hooks/use-coin-actions'
 
@@ -72,12 +76,24 @@ const pageComponents: Record<string, React.ComponentType<Record<string, unknown>
   evaluare: EvaluarePage,
   monede: MonedePage,
   proprietate: PropertyPage,
+  'deal-room': DealRoomPage,
+  crm: CrmPage,
+  'owner-dashboard': OwnerDashboardPage,
 }
 
 // Pages that should NOT show header/footer/overlays
-const fullBleedPages = new Set(['login', 'admin', 'adauga-proprietate', 'dashboard', 'profil', 'programare-vizionare', 'disponibilitate-staff', 'vizionarile-mele', 'documente', 'monede'])
+const fullBleedPages = new Set(['login', 'admin', 'adauga-proprietate', 'dashboard', 'profil', 'programare-vizionare', 'disponibilitate-staff', 'vizionarile-mele', 'documente', 'monede', 'deal-room', 'crm', 'owner-dashboard'])
 
-function AppContent() {
+const PATH_PAGE_MAP: Record<string, PageKey> = {
+  '/': 'acasa',
+  '/proprietati': 'proprietati',
+  '/analiza-piata': 'analiza',
+  '/zone': 'zone',
+  '/evaluare': 'evaluare',
+  '/despre-noi': 'de-ce-noi',
+}
+
+function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
   useCoinsHydration()
   const { user, profile } = useAuth()
   const {
@@ -87,7 +103,6 @@ function AppContent() {
     clearLightbox,
     chatOpen,
     setChatOpen,
-    navigateTo,
   } = useAppStore()
   const [contactOpen, setContactOpen] = useState(false)
   const [contactPropertyTitle, setContactPropertyTitle] = useState('')
@@ -97,7 +112,7 @@ function AppContent() {
   const [savedSearchesOpen, setSavedSearchesOpen] = useState(false)
   const [saveSearchDialogOpen, setSaveSearchDialogOpen] = useState(false)
 
-  // Restore direct links and route context when returning from a dedicated page.
+  // Restore direct links and keep the SPA state in sync with browser Back/Forward.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
@@ -124,11 +139,22 @@ function AppContent() {
       sessionStorage.removeItem('pm-auth-return-context')
     }
 
-    const requestedPage = params.get('page')
-    if (requestedPage && pageComponents[requestedPage]) {
-      navigateTo(requestedPage as PageKey)
+    const syncPageFromUrl = () => {
+      const requestedPage = new URLSearchParams(window.location.search).get('page')
+      const pathPage = PATH_PAGE_MAP[window.location.pathname]
+      const nextPage: PageKey = isPageKey(requestedPage) && pageComponents[requestedPage]
+        ? requestedPage
+        : pathPage && pageComponents[pathPage]
+          ? pathPage
+          : initialPage
+      useAppStore.setState({ currentPage: nextPage })
+      window.scrollTo({ top: 0, behavior: 'auto' })
     }
-  }, [navigateTo])
+
+    syncPageFromUrl()
+    window.addEventListener('popstate', syncPageFromUrl)
+    return () => window.removeEventListener('popstate', syncPageFromUrl)
+  }, [initialPage])
 
   const handleContact = useCallback((propertyTitle: string) => {
     setContactPropertyTitle(propertyTitle)
@@ -147,8 +173,11 @@ function AppContent() {
     // Login and Admin pages have their own header/footer
     return (
       <div className="min-h-screen flex flex-col">
+        <a href="#main-content" className="skip-link">
+          Treci la continutul principal
+        </a>
         <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} onOpenSavedSearches={() => setSavedSearchesOpen(true)} />
-        <main className="flex-1">
+        <main id="main-content" className="flex-1">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentPage}
@@ -217,7 +246,7 @@ function AppContent() {
   )
 }
 
-export default function Home() {
+export function PlatformApp({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
@@ -227,9 +256,13 @@ export default function Home() {
         disableTransitionOnChange
       >
         <AuthProvider>
-          <AppContent />
+          <AppContent initialPage={initialPage} />
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   )
+}
+
+export default function Home() {
+  return <PlatformApp />
 }

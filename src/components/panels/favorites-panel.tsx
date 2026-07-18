@@ -18,6 +18,7 @@ import { useAppStore } from '@/store/use-app-store'
 import { formatBucharestLocation, formatPrice } from '@/lib/utils'
 import { getPropertiesByIds } from '@/lib/api'
 import type { Property } from '@/lib/types'
+import { useCoinActions } from '@/hooks/use-coin-actions'
 
 interface FavoritesPanelProps {
   open: boolean
@@ -26,6 +27,7 @@ interface FavoritesPanelProps {
 
 export function FavoritesPanel({ open, onOpenChange }: FavoritesPanelProps) {
   const { favorites, toggleFavorite, setSelectedPropertySlug } = useAppStore()
+  const { onUnfavorite } = useCoinActions()
   const [properties, setProperties] = useState<Property[] | null>(null)
 
   // Fetch property data when favorites change and sheet is open
@@ -61,6 +63,7 @@ export function FavoritesPanel({ open, onOpenChange }: FavoritesPanelProps) {
 
   const handleRemove = (id: string) => {
     toggleFavorite(id)
+    void onUnfavorite(id)
   }
 
   return (

@@ -63,6 +63,7 @@ import {
 } from '@/lib/property-details'
 import type { Property } from '@/lib/types'
 import { virtualTourProviderLabel } from '@/lib/virtual-tours'
+import { recordPropertyView } from '@/lib/transaction-workspace'
 
 interface PropertyPageProps {
   initialSlug?: string
@@ -85,7 +86,7 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
     setLightbox,
   } = useAppStore()
   const { user, profile } = useAuth()
-  const { onFavorite, onViewProperty } = useCoinActions()
+  const { onFavorite, onUnfavorite, onViewProperty } = useCoinActions()
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const [contactOpen, setContactOpen] = useState(false)
   const [contactIntent, setContactIntent] = useState<ContactIntent>('general')
@@ -96,7 +97,10 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
   const { data: candidateProperties = [] } = useProperties()
 
   useEffect(() => {
-    if (property) void onViewProperty(property.id, property.title)
+    if (property) {
+      void onViewProperty(property.id, property.title)
+      void recordPropertyView(property.id)
+    }
   }, [onViewProperty, property])
 
   const relatedProperties = useMemo(
@@ -126,6 +130,7 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
     const wasFavorite = favorites.includes(property.id)
     toggleFavorite(property.id)
     if (!wasFavorite) void onFavorite(property.id, property.title)
+    else void onUnfavorite(property.id)
   }
 
   const handleSchedule = () => {

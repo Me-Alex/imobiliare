@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { useAppStore, type PageKey } from '@/store/use-app-store'
 import { isValidEmail } from '@/lib/validators'
 import { useCoinActions } from '@/hooks/use-coin-actions'
+import { LS_KEYS } from '@/lib/constants'
 
 
 
@@ -19,18 +20,34 @@ const quickLinks: { label: string; page: PageKey }[] = [
   { label: 'Zone', page: 'zone' },
   { label: 'Calculator Ipotecar', page: 'calculator' },
   { label: 'Despre Noi', page: 'de-ce-noi' },
-  { label: 'Contact', page: 'acasa' },
 ]
 
 const propertyTypes = ['Apartamente', 'Case', 'Vile', 'Terenuri', 'Spatii Comerciale', 'Garsoniere']
 
-const searchTerms = ['Apartamente 2 camere', 'Garsoniere Pipera', 'Case Militari', 'Vile Nord', 'Terenuri Pipera', 'Inchiriere Floreasca', 'Apartamente 3 camere', 'Spatii Comerciale', 'Vanzare Dorobanti']
+const searchTerms = [
+  { label: 'Apartamente 2 camere', type: 'APARTMENT', rooms: 2 },
+  { label: 'Garsoniere Pipera', type: 'APARTMENT', rooms: 1, zone: 'Pipera' },
+  { label: 'Case Militari', type: 'HOUSE', zone: 'Militari' },
+  { label: 'Vile Nord', type: 'VILLA', query: 'Nord' },
+  { label: 'Terenuri Pipera', type: 'LAND', zone: 'Pipera' },
+  { label: 'Inchiriere Floreasca', transaction: 'RENT', zone: 'Floreasca' },
+  { label: 'Apartamente 3 camere', type: 'APARTMENT', rooms: 3 },
+  { label: 'Spatii Comerciale', type: 'COMMERCIAL' },
+  { label: 'Vanzare Dorobanti', transaction: 'SALE', zone: 'Dorobanti' },
+] as const
 
 export function SiteFooter() {
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { navigateTo, setSelectedType } = useAppStore()
+  const {
+    navigateTo,
+    setSelectedType,
+    setSelectedZone,
+    setSearchQuery,
+    setRooms,
+    setTransaction,
+  } = useAppStore()
   const { onNewsletter } = useCoinActions()
 
   const handleNewsletterSubmit = async (e: FormEvent) => {
@@ -81,14 +98,33 @@ export function SiteFooter() {
       'Garsoniere': 'APARTMENT',
     }
     const mappedType = typeMap[type] || ''
-    if (mappedType) {
-      setSelectedType(mappedType)
-    }
+    setSelectedType(mappedType)
+    setRooms(type === 'Garsoniere' ? 1 : 0)
+    setSelectedZone('')
+    setSearchQuery('')
+    setTransaction('')
     navigateTo('proprietati')
   }
 
-  const handleSearchTermClick = (term: string) => {
+  const handleSearchTermClick = (term: (typeof searchTerms)[number]) => {
+    setSelectedType('type' in term ? term.type : '')
+    setSelectedZone('zone' in term ? term.zone : '')
+    setSearchQuery('query' in term ? term.query : '')
+    setRooms('rooms' in term ? term.rooms : 0)
+    setTransaction('transaction' in term ? term.transaction : '')
     navigateTo('proprietati')
+  }
+
+  const handleContactClick = () => {
+    navigateTo('acasa')
+    window.requestAnimationFrame(() => {
+      document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })
+    })
+  }
+
+  const handleCookiePreferences = () => {
+    localStorage.removeItem(LS_KEYS.COOKIES_ACCEPTED)
+    window.dispatchEvent(new StorageEvent('storage', { key: LS_KEYS.COOKIES_ACCEPTED }))
   }
 
   return (
@@ -150,6 +186,14 @@ export function SiteFooter() {
                   </button>
                 </li>
               ))}
+              <li>
+                <button
+                  onClick={handleContactClick}
+                  className="link-underline text-sm text-muted-foreground hover:text-foreground transition-all duration-200 hover:pl-1 text-left"
+                >
+                  Contact
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -162,12 +206,12 @@ export function SiteFooter() {
             <div className="flex flex-wrap gap-2">
               {searchTerms.map((term) => (
                 <button
-                  key={term}
+                  key={term.label}
                   type="button"
                   onClick={() => handleSearchTermClick(term)}
                   className="text-xs px-3 py-1.5 rounded-full border border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 hover:pl-4"
                 >
-                  {term}
+                  {term.label}
                 </button>
               ))}
             </div>
@@ -242,9 +286,8 @@ export function SiteFooter() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <p className="animate-[fadeInUp_0.6s_ease-out_forwards]">&copy; {new Date().getFullYear()} HQS Imobiliare. Toate drepturile rezervate.</p>
           <div className="flex items-center gap-4">
-            <a href="#" className="link-underline hover:text-foreground transition-colors">Termeni si conditii</a>
             <a href="/confidentialitate" className="link-underline hover:text-foreground transition-colors">Politica de confidentialitate</a>
-            <a href="#" className="link-underline hover:text-foreground transition-colors">Cookies</a>
+            <button type="button" onClick={handleCookiePreferences} className="link-underline hover:text-foreground transition-colors">Preferinte cookies</button>
             <Separator orientation="vertical" className="hidden sm:block h-4" />
             <button
               type="button"

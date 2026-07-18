@@ -31,6 +31,7 @@ export function PropertyGrid() {
     data,
     isLoading,
     isError,
+    refetch,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -71,6 +72,9 @@ export function PropertyGrid() {
         <SearchX className="h-12 w-12 text-muted-foreground/40 mb-4" />
         <h3 className="text-lg font-semibold mb-1">Eroare la incarcare</h3>
         <p className="text-sm text-muted-foreground">Nu am putut incarca proprietatile. Va rugam reincercati.</p>
+        <Button variant="outline" className="mt-5" onClick={() => void refetch()}>
+          Reincearca
+        </Button>
       </div>
     )
   }
@@ -106,11 +110,12 @@ export function PropertyGrid() {
           : 'flex flex-col gap-4'
         }
       >
-        {properties.map((property) => (
+        {properties.map((property, index) => (
           <PropertyCard
             key={property.id}
             property={property}
             viewMode={viewMode}
+            eagerImage={index === 0}
           />
         ))}
       </motion.div>

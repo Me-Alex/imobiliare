@@ -123,7 +123,7 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           {/* Save Search */}
           <Button
             variant="outline"
@@ -138,7 +138,7 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
 
           {/* Sort */}
           <Select value={sort} onValueChange={setSort}>
-            <SelectTrigger className="w-48 h-9 text-sm">
+            <SelectTrigger className="h-9 min-w-0 flex-1 text-sm sm:w-48 sm:flex-none">
               <SelectValue placeholder="Sorteaza dupa..." />
             </SelectTrigger>
             <SelectContent>
@@ -182,9 +182,9 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
           </div>
 
           {/* Mobile filter toggle */}
-          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="w-full lg:hidden">
             <CollapsibleTrigger asChild>
-              <Button variant="outline" size="sm" className="lg:hidden gap-1.5">
+              <Button variant="outline" size="sm" className="w-full gap-1.5">
                 <SlidersHorizontal className="h-4 w-4" />
                 Filtre
                 {activeFilters.length > 0 && (
@@ -193,7 +193,7 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
                 <ChevronDown className={`h-3 w-3 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4 lg:hidden">
+            <CollapsibleContent className="mt-4">
               <FilterPanel
                 zones={zones}
                 selectedZone={selectedZone}

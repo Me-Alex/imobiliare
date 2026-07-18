@@ -5,6 +5,7 @@ import { CircleDollarSign } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
+import { supabase } from '@/lib/supabase'
 
 export function useCoinsHydration() {
   const { user, loading } = useAuth()
@@ -52,9 +53,7 @@ export function useCoinActions() {
       const viewed = useAppStore.getState().earnedPropertyIds
       if (viewed.has(propertyId)) return 0
       try {
-        const earned = await earnCoins('view_property', `Vizualizare: ${propertyTitle}`, propertyId)
-        viewed.add(propertyId)
-        return earned
+        return await earnCoins('view_property', `Vizualizare: ${propertyTitle}`, propertyId)
       } catch {
         return 0
       }
@@ -62,10 +61,26 @@ export function useCoinActions() {
     [earnCoins, user],
   )
 
-  const onFavorite = useCallback(
-    (propertyId: string, propertyTitle: string) =>
-      earn('favorite', `Favorit nou: ${propertyTitle}`, propertyId),
-    [earn],
+  const syncFavorite = useCallback(async (propertyId: string, active: boolean) => {
+    if (!user || !/^[0-9a-f-]{36}$/i.test(propertyId)) return
+    if (active) {
+      await supabase.from('client_favorites').upsert(
+        { user_id: user.id, property_id: propertyId, source: 'portal' },
+        { onConflict: 'user_id,property_id', ignoreDuplicates: true },
+      )
+      return
+    }
+    await supabase.from('client_favorites').delete().eq('user_id', user.id).eq('property_id', propertyId)
+  }, [user])
+
+  const onFavorite = useCallback(async (propertyId: string, propertyTitle: string) => {
+    await syncFavorite(propertyId, true)
+    return earn('favorite', `Favorit nou: ${propertyTitle}`, propertyId)
+  }, [earn, syncFavorite])
+
+  const onUnfavorite = useCallback(
+    (propertyId: string) => syncFavorite(propertyId, false),
+    [syncFavorite],
   )
 
   const onNewsletter = useCallback(
@@ -82,6 +97,7 @@ export function useCoinActions() {
     earn,
     onViewProperty,
     onFavorite,
+    onUnfavorite,
     onNewsletter,
     onAddProperty,
     balance,

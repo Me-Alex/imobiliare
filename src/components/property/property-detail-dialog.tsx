@@ -43,7 +43,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const { user } = useAuth()
   const { data: property, isLoading } = useProperty(selectedPropertySlug)
-  const { onViewProperty, onFavorite } = useCoinActions()
+  const { onViewProperty, onFavorite, onUnfavorite } = useCoinActions()
 
   const open = !!selectedPropertySlug && currentPage !== 'proprietate'
 
@@ -143,6 +143,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
                 const wasFav = favorites.includes(property.id)
                 toggleFavorite(property.id)
                 if (!wasFav) void onFavorite(property.id, property.title)
+                else void onUnfavorite(property.id)
               }}
               className="gap-2"
             >

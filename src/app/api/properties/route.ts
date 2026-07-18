@@ -4,8 +4,47 @@ import { MOCK_PROPERTIES } from '@/lib/mock-data'
 import { getPublishedSupabaseProperties } from '@/lib/supabase-properties'
 import type { Property } from '@/lib/types'
 
+const PROPERTY_TYPE_ALIASES: Record<string, string> = {
+  APARTAMENT: 'APARTMENT',
+  APARTMENT: 'APARTMENT',
+  CASA: 'HOUSE',
+  HOUSE: 'HOUSE',
+  VILA: 'VILLA',
+  VILLA: 'VILLA',
+  TEREN: 'LAND',
+  LAND: 'LAND',
+  COMERCIAL: 'COMMERCIAL',
+  'SPATIU COMERCIAL': 'COMMERCIAL',
+  COMMERCIAL: 'COMMERCIAL',
+}
+
+const TRANSACTION_ALIASES: Record<string, string> = {
+  VANZARE: 'SALE',
+  SALE: 'SALE',
+  INCHIRIERE: 'RENT',
+  RENT: 'RENT',
+}
+
+function comparableValue(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase()
+}
+
+function normalizeProperty(property: Property): Property {
+  const type = comparableValue(property.type)
+  const transaction = comparableValue(property.transaction)
+  return {
+    ...property,
+    type: PROPERTY_TYPE_ALIASES[type] ?? type,
+    transaction: TRANSACTION_ALIASES[transaction] ?? transaction,
+  }
+}
+
 function sameValue(value: string, expected: string): boolean {
-  return value.toLocaleLowerCase('ro-RO') === expected.toLocaleLowerCase('ro-RO')
+  return comparableValue(value) === comparableValue(expected)
 }
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -38,8 +77,8 @@ export async function GET(request: NextRequest) {
 
   const supabaseProperties = await getPublishedSupabaseProperties()
   const merged = new Map<string, Property>()
-  baseProperties.forEach((property) => merged.set(property.slug, property))
-  supabaseProperties.forEach((property) => merged.set(property.slug, property))
+  baseProperties.forEach((property) => merged.set(property.slug, normalizeProperty(property)))
+  supabaseProperties.forEach((property) => merged.set(property.slug, normalizeProperty(property)))
   let filtered = Array.from(merged.values()).filter((property) => property.status === 'PUBLISHED')
 
   if (type) filtered = filtered.filter((property) => sameValue(property.type, type))
