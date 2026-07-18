@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Notify team (non-blocking)
-    const teamEmails = parseList(process.env.CRM_TEAM_EMAILS) || []
+    const teamEmails = parseList(process.env.CRM_TEAM_EMAILS ?? null) || []
     if (teamEmails.length > 0) {
       void notifyNewLeadToTeam({
         leadName: name,
