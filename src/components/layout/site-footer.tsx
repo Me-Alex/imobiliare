@@ -18,6 +18,7 @@ const quickLinks: { label: string; page: PageKey }[] = [
   { label: 'Proprietati', page: 'proprietati' },
   { label: 'Analiza Piata', page: 'analiza' },
   { label: 'Zone', page: 'zone' },
+  { label: 'Servicii', page: 'servicii' },
   { label: 'Calculator Ipotecar', page: 'calculator' },
   { label: 'Despre Noi', page: 'de-ce-noi' },
 ]

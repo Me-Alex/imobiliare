@@ -4,7 +4,7 @@ export type PageKey =
   | 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator'
   | 'login' | 'admin' | 'adauga-proprietate' | 'dashboard'
   | 'programare-vizionare' | 'disponibilitate-staff' | 'vizionarile-mele' | 'documente'
-  | 'evaluare' | 'profil' | 'monede' | 'proprietate'
+  | 'servicii' | 'evaluare' | 'profil' | 'monede' | 'proprietate'
   | 'deal-room' | 'crm' | 'owner-dashboard'
 
 export interface NavigationSlice {
@@ -15,7 +15,7 @@ export interface NavigationSlice {
 export const PAGE_KEYS: readonly PageKey[] = [
   'acasa', 'proprietati', 'analiza', 'zone', 'de-ce-noi', 'calculator',
   'login', 'admin', 'adauga-proprietate', 'dashboard', 'programare-vizionare',
-  'disponibilitate-staff', 'vizionarile-mele', 'documente', 'evaluare', 'profil',
+  'disponibilitate-staff', 'vizionarile-mele', 'documente', 'servicii', 'evaluare', 'profil',
   'monede', 'proprietate', 'deal-room', 'crm', 'owner-dashboard',
 ]
 
@@ -28,6 +28,7 @@ const CANONICAL_PAGE_PATHS: Partial<Record<PageKey, string>> = {
   proprietati: '/proprietati',
   analiza: '/analiza-piata',
   zone: '/zone',
+  servicii: '/servicii',
   evaluare: '/evaluare',
   'de-ce-noi': '/despre-noi',
 }

@@ -40,6 +40,7 @@ import { VizionarileMelePage } from '@/views/vizionarile-mele-page'
 import { DashboardPage } from '@/views/dashboard-page'
 import { ProfilPage } from '@/views/profil-page'
 import { EvaluarePage } from '@/views/evaluare-page'
+import { ServiciiPage } from '@/views/servicii-page'
 import { MonedePage } from '@/views/monede-page'
 import { PropertyPage } from '@/views/property-page'
 import { DealRoomPage } from '@/views/deal-room-page'
@@ -73,6 +74,7 @@ const pageComponents: Record<string, React.ComponentType<Record<string, unknown>
   'vizionarile-mele': VizionarileMelePage,
   dashboard: DashboardPage,
   profil: ProfilPage,
+  servicii: ServiciiPage,
   evaluare: EvaluarePage,
   monede: MonedePage,
   proprietate: PropertyPage,
@@ -89,6 +91,7 @@ const PATH_PAGE_MAP: Record<string, PageKey> = {
   '/proprietati': 'proprietati',
   '/analiza-piata': 'analiza',
   '/zone': 'zone',
+  '/servicii': 'servicii',
   '/evaluare': 'evaluare',
   '/despre-noi': 'de-ce-noi',
 }

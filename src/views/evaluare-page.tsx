@@ -78,7 +78,7 @@ export function EvaluarePage() {
         icon={BadgeDollarSign}
         title="Evaluare Imobiliara"
         description="Estimeaza valoarea de piata a proprietatii tale cu ajutorul AI"
-        breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Evaluare Imobiliara' }]}
+        breadcrumb={[{ label: 'Acasă', page: 'acasa' }, { label: 'Servicii', page: 'servicii' }, { label: 'Evaluare imobiliară' }]}
       >
         {/* Quick info cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">

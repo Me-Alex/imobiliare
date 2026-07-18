@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { useAuth, type GoogleAuthError } from '@/contexts/auth-context'
-import { useAppStore } from '@/store/use-app-store'
+import { useAppStore, type PageKey } from '@/store/use-app-store'
 import { PageBreadcrumb } from '@/components/layout/page-hero'
 import { toast } from 'sonner'
 
@@ -33,7 +33,7 @@ export function LoginPage() {
     if (returnPage) {
       sessionStorage.removeItem('pm-auth-return-page')
       sessionStorage.removeItem('pm-auth-return-property')
-      navigateTo(returnPage as 'acasa' | 'proprietati' | 'analiza' | 'zone' | 'de-ce-noi' | 'calculator' | 'login' | 'admin' | 'adauga-proprietate' | 'dashboard' | 'programare-vizionare' | 'disponibilitate-staff' | 'vizionarile-mele' | 'documente' | 'evaluare' | 'profil')
+      navigateTo(returnPage as PageKey)
       return
     }
     navigateTo('dashboard')

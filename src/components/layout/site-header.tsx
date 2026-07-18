@@ -32,7 +32,7 @@ const navItems: { label: string; page: PageKey }[] = [
   { label: 'Proprietati', page: 'proprietati' },
   { label: 'Analiza', page: 'analiza' },
   { label: 'Zone', page: 'zone' },
-  { label: 'Evaluare', page: 'evaluare' },
+  { label: 'Servicii', page: 'servicii' },
   { label: 'De Ce Noi', page: 'de-ce-noi' },
 ]
 

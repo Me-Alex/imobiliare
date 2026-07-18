@@ -3,7 +3,7 @@ import type { MetadataRoute } from 'next'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://imobiliare2.pages.dev'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const routes = ['/', '/proprietati', '/analiza-piata', '/zone', '/evaluare', '/despre-noi', '/confidentialitate']
+  const routes = ['/', '/proprietati', '/analiza-piata', '/zone', '/servicii', '/evaluare', '/despre-noi', '/confidentialitate']
   return routes.map((route, index) => ({
     url: `${SITE_URL}${route}`,
     lastModified: new Date(),
