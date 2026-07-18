@@ -15,7 +15,7 @@ import { isValidEmail } from '@/lib/validators'
 
 export const dynamic = 'force-dynamic'
 
-function parseList(value: string | null): string[] | undefined {
+function parseList(value: string | null | undefined): string[] | undefined {
   if (!value) return undefined
   return value
     .split(',')
