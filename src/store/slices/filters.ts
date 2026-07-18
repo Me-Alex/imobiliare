@@ -27,6 +27,8 @@ export interface FiltersSlice {
   setMinArea: (v: string) => void
   maxArea: string
   setMaxArea: (v: string) => void
+  virtualTourFilter: 'all' | 'with' | 'without'
+  setVirtualTourFilter: (v: 'all' | 'with' | 'without') => void
 }
 
 export const createFiltersSlice: StateCreator<FiltersSlice> = (set) => ({
@@ -56,4 +58,6 @@ export const createFiltersSlice: StateCreator<FiltersSlice> = (set) => ({
   setMinArea: (v) => set({ minArea: v }),
   maxArea: '',
   setMaxArea: (v) => set({ maxArea: v }),
+  virtualTourFilter: 'all',
+  setVirtualTourFilter: (v) => set({ virtualTourFilter: v }),
 })

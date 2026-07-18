@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSafeDb } from '@/lib/edge-db'
 import { MOCK_PROPERTIES } from '@/lib/mock-data'
 import { getPublishedSupabasePropertyBySlug } from '@/lib/supabase-properties'
+import { withDemoVirtualTour } from '@/lib/demo-virtual-tours'
+import type { Property } from '@/lib/types'
 
 export async function GET(
   request: NextRequest,
@@ -10,7 +12,7 @@ export async function GET(
   const { slug } = await params
 
   const supabaseProperty = await getPublishedSupabasePropertyBySlug(slug)
-  if (supabaseProperty) return NextResponse.json({ property: supabaseProperty })
+  if (supabaseProperty) return NextResponse.json({ property: withDemoVirtualTour(supabaseProperty) })
 
   const db = await getSafeDb()
   if (db) {
@@ -32,7 +34,7 @@ export async function GET(
         )
       }
 
-      return NextResponse.json({ property })
+      return NextResponse.json({ property: withDemoVirtualTour(property as unknown as Property) })
     } catch (error) {
       console.error('DB query error, falling back to mock:', error)
     }
@@ -46,5 +48,5 @@ export async function GET(
       { status: 404 }
     )
   }
-  return NextResponse.json({ property })
+  return NextResponse.json({ property: withDemoVirtualTour(property as unknown as Property) })
 }

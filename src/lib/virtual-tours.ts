@@ -27,6 +27,7 @@ export interface VirtualTour {
   provider: VirtualTourProvider
   status?: VirtualTourStatus
   title: string
+  isDemo?: boolean
   externalUrl?: string | null
   entrySceneId?: string | null
   scenes: VirtualTourScene[]

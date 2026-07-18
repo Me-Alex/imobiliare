@@ -14,7 +14,7 @@ interface ProprietatiPageProps {
 }
 
 export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
-  const { mapViewMode, selectedType, selectedZone, searchQuery, priceRange, rooms, transaction, featuredOnly, sort, minArea, maxArea } = useAppStore()
+  const { mapViewMode, selectedType, selectedZone, searchQuery, priceRange, rooms, transaction, featuredOnly, sort, minArea, maxArea, virtualTourFilter } = useAppStore()
 
   // Build filters for the map view (uses non-paginated query to get all at once)
   const mapFilters: QueryPropertyFilters = {}
@@ -29,6 +29,7 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
   if (sort) mapFilters.sort = sort
   if (minArea) mapFilters.minArea = Number(minArea)
   if (maxArea) mapFilters.maxArea = Number(maxArea)
+  if (virtualTourFilter !== 'all') mapFilters.virtualTour = virtualTourFilter
 
   const { data: mapProperties, isLoading: mapLoading } = useProperties(mapViewMode ? mapFilters : {})
   const mapData = mapViewMode ? (mapProperties ?? []) : []

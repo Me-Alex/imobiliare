@@ -55,6 +55,7 @@ export function SaveSearchDialog({ open, onOpenChange }: SaveSearchDialogProps) 
     minArea,
     maxArea,
     searchQuery,
+    virtualTourFilter,
   } = useAppStore()
 
   // Reset form when dialog opens
@@ -82,6 +83,7 @@ export function SaveSearchDialog({ open, onOpenChange }: SaveSearchDialogProps) 
   if (maxArea) filterBadges.push(`Max ${maxArea}m²`)
   if (featuredOnly) filterBadges.push('Doar populare')
   if (searchQuery) filterBadges.push(`"${searchQuery}"`)
+  if (virtualTourFilter !== 'all') filterBadges.push(virtualTourFilter === 'with' ? 'Cu tur virtual' : 'Fără tur virtual')
 
   const handleSave = () => {
     const trimmed = name.trim()
@@ -108,6 +110,7 @@ export function SaveSearchDialog({ open, onOpenChange }: SaveSearchDialogProps) 
         minArea: minArea || undefined,
         maxArea: maxArea || undefined,
         searchQuery: searchQuery || undefined,
+        virtualTourFilter,
       },
       createdAt: new Date().toISOString(),
     }

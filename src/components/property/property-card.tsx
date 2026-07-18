@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Heart, Scale, Bath, BedDouble, MapPin, Star, CalendarCheck, Maximize2 } from 'lucide-react'
+import { Heart, Scale, Bath, BedDouble, MapPin, Star, CalendarCheck, Maximize2, Rotate3D } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -113,7 +113,7 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
               className="absolute inset-0 h-full w-full object-cover img-zoom"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-            <div className="absolute top-3 left-3 flex gap-2 z-10">
+            <div className="absolute top-3 left-3 flex flex-wrap gap-2 z-10">
               <Badge className={typeColors[property.type] || 'bg-secondary'}>{typeLabels[property.type] || property.type}</Badge>
               <Badge className="bg-white/90 dark:bg-black/70 text-foreground backdrop-blur-sm border-0">
                 {transactionLabels[property.transaction] || property.transaction}
@@ -121,6 +121,11 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
               {property.featured && (
                 <Badge className="bg-amber-500 text-white border-0 gap-1">
                   <Star className="h-3 w-3" /> Popular
+                </Badge>
+              )}
+              {property.virtualTour && (
+                <Badge className="gap-1 border-0 bg-violet-600 text-white">
+                  <Rotate3D className="h-3 w-3" /> {property.virtualTour.isDemo ? 'Tur demo' : 'Tur 360°'}
                 </Badge>
               )}
             </div>
@@ -228,7 +233,7 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
         {/* Badges */}
-        <div className="absolute top-3 left-3 flex gap-2 z-10">
+        <div className="absolute top-3 left-3 flex flex-wrap gap-2 z-10">
           <Badge className={typeColors[property.type] || 'bg-secondary'}>{typeLabels[property.type] || property.type}</Badge>
           <Badge className="bg-white/90 dark:bg-black/70 text-foreground backdrop-blur-sm border-0">
             {transactionLabels[property.transaction] || property.transaction}
@@ -236,6 +241,11 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
           {property.featured && (
             <Badge className="bg-amber-500 text-white border-0 gap-1">
               <Star className="h-3 w-3" /> Popular
+            </Badge>
+          )}
+          {property.virtualTour && (
+            <Badge className="gap-1 border-0 bg-violet-600 text-white">
+              <Rotate3D className="h-3 w-3" /> {property.virtualTour.isDemo ? 'Tur demo' : 'Tur 360°'}
             </Badge>
           )}
         </div>

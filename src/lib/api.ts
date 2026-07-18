@@ -48,6 +48,7 @@ function buildPropertyParams(filters: PropertyFilters): URLSearchParams {
   if (filters.sort) params.set('sort', filters.sort)
   if (filters.minArea !== undefined && filters.minArea > 0) params.set('minArea', String(filters.minArea))
   if (filters.maxArea !== undefined && filters.maxArea > 0) params.set('maxArea', String(filters.maxArea))
+  if (filters.virtualTour) params.set('virtualTour', filters.virtualTour)
   return params
 }
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, SlidersHorizontal, LayoutGrid, List, ChevronDown, Bookmark, Map } from 'lucide-react'
+import { X, SlidersHorizontal, LayoutGrid, List, ChevronDown, Bookmark, Map, Rotate3D } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -43,6 +43,8 @@ const sortOptions = [
   { label: 'Cele mai noi', value: 'newest' },
 ]
 
+type VirtualTourFilterValue = 'all' | 'with' | 'without'
+
 interface ActiveFilter {
   key: string
   label: string
@@ -67,6 +69,7 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
     sort, setSort,
     minArea, setMinArea,
     maxArea, setMaxArea,
+    virtualTourFilter, setVirtualTourFilter,
   } = useAppStore()
 
   const { data: zones } = useZones()
@@ -83,6 +86,11 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
   if (searchQuery) activeFilters.push({ key: 'search', label: `"${searchQuery}"`, onRemove: () => setSearchQuery('') })
   if (minArea) activeFilters.push({ key: 'minA', label: `Min ${minArea}m²`, onRemove: () => setMinArea('') })
   if (maxArea) activeFilters.push({ key: 'maxA', label: `Max ${maxArea}m²`, onRemove: () => setMaxArea('') })
+  if (virtualTourFilter !== 'all') activeFilters.push({
+    key: 'virtualTour',
+    label: virtualTourFilter === 'with' ? 'Cu tur virtual' : 'Fără tur virtual',
+    onRemove: () => setVirtualTourFilter('all'),
+  })
 
   const clearAll = () => {
     setSelectedType('')
@@ -95,6 +103,7 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
     setFeaturedOnly(false)
     setSort('')
     setSearchQuery('')
+    setVirtualTourFilter('all')
   }
 
   return (
@@ -210,6 +219,8 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
                 setTransaction={setTransaction}
                 featuredOnly={featuredOnly}
                 setFeaturedOnly={setFeaturedOnly}
+                virtualTourFilter={virtualTourFilter}
+                setVirtualTourFilter={setVirtualTourFilter}
               />
             </CollapsibleContent>
           </Collapsible>
@@ -234,6 +245,8 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
           setTransaction={setTransaction}
           featuredOnly={featuredOnly}
           setFeaturedOnly={setFeaturedOnly}
+          virtualTourFilter={virtualTourFilter}
+          setVirtualTourFilter={setVirtualTourFilter}
         />
       </div>
 
@@ -284,6 +297,8 @@ function FilterPanel({
   setTransaction,
   featuredOnly,
   setFeaturedOnly,
+  virtualTourFilter,
+  setVirtualTourFilter,
 }: {
   zones: { id: string; name: string }[] | undefined
   selectedZone: string
@@ -300,6 +315,8 @@ function FilterPanel({
   setTransaction: (v: string) => void
   featuredOnly: boolean
   setFeaturedOnly: (v: boolean) => void
+  virtualTourFilter: VirtualTourFilterValue
+  setVirtualTourFilter: (v: VirtualTourFilterValue) => void
 }) {
   return (
     <div className="rounded-xl border bg-card p-4 sm:p-6">
@@ -401,6 +418,26 @@ function FilterPanel({
               className="h-9"
             />
           </div>
+        </div>
+
+        {/* Virtual tour */}
+        <div>
+          <Label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Rotate3D className="h-3.5 w-3.5" /> Tur virtual
+          </Label>
+          <Select
+            value={virtualTourFilter}
+            onValueChange={(value) => setVirtualTourFilter(value as VirtualTourFilterValue)}
+          >
+            <SelectTrigger className="w-full" aria-label="Filtru tur virtual">
+              <SelectValue placeholder="Toate proprietățile" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toate proprietățile</SelectItem>
+              <SelectItem value="with">Cu tur virtual</SelectItem>
+              <SelectItem value="without">Fără tur virtual</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Featured toggle */}

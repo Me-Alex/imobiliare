@@ -187,7 +187,7 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
                 </Badge>
                 {property.virtualTour ? (
                   <Badge className="gap-1 border-0 bg-violet-600 text-white">
-                    <Rotate3D className="h-3 w-3" /> Tur virtual
+                    <Rotate3D className="h-3 w-3" /> {property.virtualTour.isDemo ? 'Tur virtual demo' : 'Tur virtual'}
                   </Badge>
                 ) : null}
               </div>
@@ -251,14 +251,22 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
                   <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                     <div className="max-w-xl">
                       <Badge className="border-white/20 bg-white/15 text-white hover:bg-white/15">
-                        {virtualTourProviderLabel(property.virtualTour.provider)}
+                        {property.virtualTour.isDemo ? 'Demonstrație 360°' : virtualTourProviderLabel(property.virtualTour.provider)}
                       </Badge>
-                      <h3 className="mt-3 text-xl font-bold sm:text-2xl">Tur virtual interactiv</h3>
+                      <h3 className="mt-3 text-xl font-bold sm:text-2xl">
+                        {property.virtualTour.isDemo ? 'Tur virtual demonstrativ' : 'Tur virtual interactiv'}
+                      </h3>
                       <p className="mt-2 text-sm leading-relaxed text-white/80">
-                        Parcurge camerele în format 360°, verifică spațiul și pregătește întrebările înainte de vizionarea fizică.
+                        {property.virtualTour.isDemo
+                          ? 'Testează experiența 360°. Panorama este sintetică și nu reprezintă interiorul real al proprietății.'
+                          : 'Parcurge camerele în format 360°, verifică spațiul și pregătește întrebările înainte de vizionarea fizică.'}
                       </p>
                       {property.virtualTour.provider === 'NATIVE' ? (
-                        <p className="mt-2 text-xs text-white/70">{property.virtualTour.scenes.length} camere conectate</p>
+                        <p className="mt-2 text-xs text-white/70">
+                          {property.virtualTour.isDemo
+                            ? 'Panoramă sintetică pentru testarea funcționalității'
+                            : `${property.virtualTour.scenes.length} camere conectate`}
+                        </p>
                       ) : null}
                     </div>
                     <Button type="button" size="lg" variant="secondary" className="shrink-0 gap-2 bg-white text-slate-950 hover:bg-white/90" onClick={() => setVirtualTourOpen(true)}>
@@ -463,7 +471,9 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
               <Rotate3D className="h-5 w-5 text-primary" /> {property.virtualTour?.title || 'Tur virtual'}
             </DialogTitle>
             <DialogDescription>
-              Navighează prin proprietate și folosește modul ecran complet pentru o experiență imersivă.
+              {property.virtualTour?.isDemo
+                ? 'Demonstrație funcțională cu imagine sintetică; nu reprezintă interiorul real al anunțului.'
+                : 'Navighează prin proprietate și folosește modul ecran complet pentru o experiență imersivă.'}
             </DialogDescription>
           </DialogHeader>
           {virtualTourOpen && property.virtualTour ? (

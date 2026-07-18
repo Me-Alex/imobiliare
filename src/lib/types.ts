@@ -325,6 +325,7 @@ export interface PropertyFilters {
   sort?: string
   minArea?: number
   maxArea?: number
+  virtualTour?: 'with' | 'without'
 }
 
 export interface PaginatedPropertiesResponse {
@@ -350,6 +351,7 @@ export interface SavedSearch {
     minArea?: string
     maxArea?: string
     searchQuery?: string
+    virtualTourFilter?: 'all' | 'with' | 'without'
   }
   createdAt: string
 }

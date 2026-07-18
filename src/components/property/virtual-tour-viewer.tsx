@@ -202,6 +202,11 @@ export const VirtualTourViewer = forwardRef<VirtualTourViewerHandle, VirtualTour
     return (
       <div className={cn('relative min-h-[360px] overflow-hidden bg-slate-950', className)}>
         <div ref={containerRef} className="absolute inset-0" aria-label={title} />
+        {tour.isDemo ? (
+          <div className="pointer-events-none absolute left-3 top-3 z-20 rounded-full border border-amber-300/40 bg-slate-950/85 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200 shadow-lg backdrop-blur">
+            Demo · imagine sintetică
+          </div>
+        ) : null}
         {loading ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/80 text-white">
             <div className="text-center">

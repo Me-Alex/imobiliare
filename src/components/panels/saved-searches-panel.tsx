@@ -69,6 +69,7 @@ export function SavedSearchesPanel({ open, onOpenChange }: SavedSearchesPanelPro
     if (f.minArea !== undefined) store.setMinArea(f.minArea || '')
     if (f.maxArea !== undefined) store.setMaxArea(f.maxArea || '')
     if (f.searchQuery !== undefined) store.setSearchQuery(f.searchQuery || '')
+    store.setVirtualTourFilter(f.virtualTourFilter ?? 'all')
 
     // Navigate to proprietati page
     if (store.currentPage !== 'proprietati') {
@@ -197,6 +198,11 @@ function SavedSearchItem({
   }
   if (search.filters.transaction) {
     badges.push({ label: transactionLabels[search.filters.transaction] || search.filters.transaction })
+  }
+  if (search.filters.virtualTourFilter && search.filters.virtualTourFilter !== 'all') {
+    badges.push({
+      label: search.filters.virtualTourFilter === 'with' ? 'Cu tur virtual' : 'Fără tur virtual',
+    })
   }
 
   return (

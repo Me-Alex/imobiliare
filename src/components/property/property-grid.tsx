@@ -11,7 +11,7 @@ import { PropertyCard } from '@/components/property/property-card'
 export function PropertyGrid() {
   const {
     selectedType, selectedZone, searchQuery, priceRange, viewMode,
-    rooms, transaction, featuredOnly, sort, minArea, maxArea,
+    rooms, transaction, featuredOnly, sort, minArea, maxArea, virtualTourFilter,
   } = useAppStore()
 
   const filters: PropertyFilters = {}
@@ -26,6 +26,7 @@ export function PropertyGrid() {
   if (sort) filters.sort = sort
   if (minArea) filters.minArea = Number(minArea)
   if (maxArea) filters.maxArea = Number(maxArea)
+  if (virtualTourFilter !== 'all') filters.virtualTour = virtualTourFilter
 
   const {
     data,
@@ -101,7 +102,7 @@ export function PropertyGrid() {
       </div>
 
       <motion.div
-        key={`${selectedType}-${selectedZone}-${searchQuery}-${sort}-${rooms}-${transaction}`}
+        key={`${selectedType}-${selectedZone}-${searchQuery}-${sort}-${rooms}-${transaction}-${virtualTourFilter}`}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}

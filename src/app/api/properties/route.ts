@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSafeDb } from '@/lib/edge-db'
 import { MOCK_PROPERTIES } from '@/lib/mock-data'
 import { getPublishedSupabaseProperties } from '@/lib/supabase-properties'
+import { withDemoVirtualTours } from '@/lib/demo-virtual-tours'
 import type { Property } from '@/lib/types'
 
 const PROPERTY_TYPE_ALIASES: Record<string, string> = {
@@ -59,6 +60,7 @@ export async function GET(request: NextRequest) {
   const sort = searchParams.get('sort') || 'newest'
   const featured = searchParams.get('featured')
   const query = searchParams.get('q') || searchParams.get('search')
+  const virtualTour = searchParams.get('virtualTour')
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
   const pageSize = Math.min(50, Math.max(1, Number(searchParams.get('pageSize')) || 12))
 
@@ -79,7 +81,8 @@ export async function GET(request: NextRequest) {
   const merged = new Map<string, Property>()
   baseProperties.forEach((property) => merged.set(property.slug, normalizeProperty(property)))
   supabaseProperties.forEach((property) => merged.set(property.slug, normalizeProperty(property)))
-  let filtered = Array.from(merged.values()).filter((property) => property.status === 'PUBLISHED')
+  let filtered = withDemoVirtualTours(Array.from(merged.values()))
+    .filter((property) => property.status === 'PUBLISHED')
 
   if (type) filtered = filtered.filter((property) => sameValue(property.type, type))
   if (zone) filtered = filtered.filter((property) => sameValue(property.zone, zone))
@@ -90,6 +93,8 @@ export async function GET(request: NextRequest) {
   if (rooms) filtered = filtered.filter((property) => property.rooms >= Number(rooms))
   if (minArea) filtered = filtered.filter((property) => property.areaSqm >= Number(minArea))
   if (maxArea) filtered = filtered.filter((property) => property.areaSqm <= Number(maxArea))
+  if (virtualTour === 'with') filtered = filtered.filter((property) => Boolean(property.virtualTour))
+  if (virtualTour === 'without') filtered = filtered.filter((property) => !property.virtualTour)
   if (query) {
     const normalizedQuery = query.toLocaleLowerCase('ro-RO')
     filtered = filtered.filter((property) => [
