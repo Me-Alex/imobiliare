@@ -51,10 +51,24 @@ export async function GET(request: NextRequest) {
 
   try {
     const [contacts, newsletters, alerts, properties] = await Promise.all([
-      db.contactSubmission.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }),
-      db.newsletterSubscription.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }),
-      db.priceAlert.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }),
-      db.property.findMany({ select: { id: true, title: true, slug: true, price: true, type: true, transaction: true, status: true, zone: true, createdAt: true } }),
+      db.contactSubmission.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }).catch((error) => {
+        console.warn('Admin dashboard contacts unavailable:', error)
+        return []
+      }),
+      db.newsletterSubscription.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }).catch((error) => {
+        console.warn('Admin dashboard newsletters unavailable:', error)
+        return []
+      }),
+      db.priceAlert.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }).catch((error) => {
+        console.warn('Admin dashboard price alerts unavailable:', error)
+        return []
+      }),
+      db.property.findMany({
+        select: { id: true, title: true, slug: true, price: true, type: true, transaction: true, status: true, zone: true, createdAt: true },
+      }).catch((error) => {
+        console.warn('Admin dashboard local properties unavailable:', error)
+        return []
+      }),
     ])
 
     return NextResponse.json({

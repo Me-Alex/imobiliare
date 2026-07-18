@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CalendarDays, Clock, Plus, Trash2, CalendarRange,
@@ -19,20 +19,91 @@ import type { StaffMember, AvailabilitySlot } from '@/lib/types'
 import { toast } from 'sonner'
 import { cn, formatDateRO, getWeekdayRO, isDatePast, isToday, toDateString, getNextMonday } from '@/lib/utils'
 import { PageHero } from '@/components/layout/page-hero'
+import { useAuth } from '@/contexts/auth-context'
+import { supabase } from '@/lib/supabase'
 
 const LS_VIZIONARI = LS_KEYS.VIZIONARI
 
+function toStaffMember(row: {
+  id: string
+  email?: string | null
+  full_name?: string | null
+  name?: string | null
+  phone?: string | null
+  is_active?: boolean | null
+}): StaffMember {
+  const name = row.full_name || row.name || row.email?.split('@')[0] || 'Agent HQS'
+  const avatarInitials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'AH'
+
+  return {
+    id: row.id,
+    name,
+    email: row.email || '',
+    phone: row.phone || '',
+    role: 'Agent Imobiliar',
+    avatarInitials,
+    isActive: row.is_active !== false,
+  }
+}
+
 export function DisponibilitateStaffPage() {
+  const { profile } = useAuth()
   const [slots, setSlots] = useState<AvailabilitySlot[]>(() => {
     if (typeof window === 'undefined') return []
     return loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
   })
+  const [databaseAgents, setDatabaseAgents] = useState<StaffMember[]>([])
   const [selectedStaffId, setSelectedStaffId] = useState<string>(DEFAULT_STAFF[0].id)
   const [date, setDate] = useState('')
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('17:00')
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set())
   const [mounted] = useState(() => typeof window !== 'undefined')
+
+  useEffect(() => {
+    if (profile?.role !== 'ADMIN') return
+
+    let cancelled = false
+    void supabase
+      .from('profiles')
+      .select('id,email,name,full_name,phone,is_active')
+      .eq('role', 'AGENT')
+      .eq('is_active', true)
+      .order('full_name')
+      .then(({ data, error }) => {
+        if (cancelled || error) return
+        setDatabaseAgents((data || []).map((row) => toStaffMember(row)))
+      })
+
+    return () => { cancelled = true }
+  }, [profile])
+
+  const staffMembers = useMemo(() => {
+    if (profile?.role === 'AGENT') {
+      return [toStaffMember({
+        id: profile.id,
+        email: profile.email,
+        full_name: profile.fullName,
+        phone: profile.phone,
+        is_active: profile.isActive,
+      })]
+    }
+    if (profile?.role === 'ADMIN') {
+      return [...databaseAgents, ...DEFAULT_STAFF].filter(
+        (staff, index, all) => all.findIndex((candidate) => candidate.id === staff.id) === index,
+      )
+    }
+    return DEFAULT_STAFF
+  }, [databaseAgents, profile])
+
+  const activeSelectedStaffId = staffMembers.some((staff) => staff.id === selectedStaffId)
+    ? selectedStaffId
+    : staffMembers[0]?.id || DEFAULT_STAFF[0].id
 
   // Persist slots
   const persistSlots = useCallback((newSlots: AvailabilitySlot[]) => {
@@ -42,8 +113,8 @@ export function DisponibilitateStaffPage() {
 
   // Filter slots for selected staff
   const staffSlots = useMemo(
-    () => slots.filter((s) => s.staffId === selectedStaffId),
-    [slots, selectedStaffId],
+    () => slots.filter((s) => s.staffId === activeSelectedStaffId),
+    [slots, activeSelectedStaffId],
   )
 
   // Group slots by date, sorted ascending
@@ -88,7 +159,7 @@ export function DisponibilitateStaffPage() {
 
     const newSlot: AvailabilitySlot = {
       id: generateId(),
-      staffId: selectedStaffId,
+      staffId: activeSelectedStaffId,
       date,
       startTime,
       endTime,
@@ -114,12 +185,12 @@ export function DisponibilitateStaffPage() {
 
       // Check if slot already exists for this staff+date+time
       const exists = slots.some(
-        (s) => s.staffId === selectedStaffId && s.date === dateStr && s.startTime === '09:00' && s.endTime === '17:00',
+        (s) => s.staffId === activeSelectedStaffId && s.date === dateStr && s.startTime === '09:00' && s.endTime === '17:00',
       )
       if (!exists) {
         newSlots.push({
           id: generateId(),
-          staffId: selectedStaffId,
+          staffId: activeSelectedStaffId,
           date: dateStr,
           startTime: '09:00',
           endTime: '17:00',
@@ -162,7 +233,7 @@ export function DisponibilitateStaffPage() {
     toast.success('Slot sters')
   }
 
-  const selectedStaff = DEFAULT_STAFF.find((s) => s.id === selectedStaffId) ?? DEFAULT_STAFF[0]
+  const selectedStaff = staffMembers.find((s) => s.id === activeSelectedStaffId) ?? staffMembers[0] ?? DEFAULT_STAFF[0]
 
   if (!mounted) return null
 
@@ -171,7 +242,9 @@ export function DisponibilitateStaffPage() {
       <PageHero
         icon={CalendarDays}
         title="Disponibilitate Staff"
-        description="Gestioneaza intervalele orare disponibile pentru fiecare membru al echipei"
+        description={profile?.role === 'AGENT'
+          ? 'Gestioneaza intervalele tale orare disponibile'
+          : 'Gestioneaza intervalele orare disponibile pentru fiecare membru al echipei'}
         breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Disponibilitate Staff' }]}
       />
 
@@ -187,16 +260,16 @@ export function DisponibilitateStaffPage() {
           >
             <Label className="text-sm font-medium text-muted-foreground mb-3 block">
               <Users className="h-4 w-4 inline mr-1.5" />
-              Selecteaza membrul staff-ului
+              {profile?.role === 'AGENT' ? 'Profil agent' : 'Selecteaza membrul staff-ului'}
             </Label>
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
-              {DEFAULT_STAFF.filter((s) => s.isActive).map((staff) => (
+              {staffMembers.filter((s) => s.isActive).map((staff) => (
                 <button
                   key={staff.id}
                   onClick={() => setSelectedStaffId(staff.id)}
                   className={cn(
                     'flex items-center gap-3 shrink-0 rounded-xl border-2 px-4 py-3 transition-all duration-200 hover:shadow-md',
-                    selectedStaffId === staff.id
+                    activeSelectedStaffId === staff.id
                       ? 'border-primary bg-primary/5 shadow-sm'
                       : 'border-border bg-card hover:border-primary/40',
                   )}
@@ -205,7 +278,7 @@ export function DisponibilitateStaffPage() {
                     <AvatarFallback
                       className={cn(
                         'text-sm font-semibold',
-                        selectedStaffId === staff.id
+                        activeSelectedStaffId === staff.id
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted text-muted-foreground',
                       )}
