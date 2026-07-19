@@ -400,11 +400,11 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
                 </div>
                 <Separator />
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant={isFav ? 'default' : 'outline'} onClick={handleToggleFavorite} className="gap-2">
+                  <Button variant={isFav ? 'default' : 'outline'} onClick={handleToggleFavorite} className="gap-2" aria-pressed={isFav}>
                     <Heart className={`h-4 w-4 ${isFav ? 'fill-current' : ''}`} />
                     {isFav ? 'Salvat' : 'Salvează'}
                   </Button>
-                  <Button variant={isCompare ? 'default' : 'outline'} onClick={() => toggleCompare(property.id)} className="gap-2">
+                  <Button variant={isCompare ? 'default' : 'outline'} onClick={() => toggleCompare(property.id)} className="gap-2" aria-pressed={isCompare}>
                     <Scale className="h-4 w-4" /> {isCompare ? 'Adăugat' : 'Compară'}
                   </Button>
                 </div>

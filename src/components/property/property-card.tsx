@@ -168,6 +168,7 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
                 size="sm"
                 className="h-8"
                 onClick={(e) => { e.stopPropagation(); handleToggleFavorite() }}
+                aria-pressed={isFav}
               >
                 <FavoriteButton isFav={isFav} />
                 <span className="ml-1">{isFav ? 'Salvat' : 'Salveaza'}</span>
@@ -177,6 +178,7 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
                 size="sm"
                 className="h-8"
                 onClick={(e) => { e.stopPropagation(); toggleCompare(property.id) }}
+                aria-pressed={isCompare}
               >
                 <Scale className={`h-4 w-4 mr-1 ${isCompare ? 'text-primary' : ''}`} />
                 {isCompare ? 'In comparatie' : 'Compara'}
@@ -271,6 +273,7 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
             className="h-8 w-8 bg-white/90 dark:bg-black/60 backdrop-blur-sm border-0 shadow-sm hover:bg-white dark:hover:bg-black/80"
             onClick={(e) => { e.stopPropagation(); handleToggleFavorite() }}
             aria-label={isFav ? 'Sterge de la favorite' : 'Adauga la favorite'}
+            aria-pressed={isFav}
           >
             <FavoriteButton isFav={isFav} />
           </Button>
@@ -280,6 +283,7 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
             className="h-8 w-8 bg-white/90 dark:bg-black/60 backdrop-blur-sm border-0 shadow-sm hover:bg-white dark:hover:bg-black/80"
             onClick={(e) => { e.stopPropagation(); toggleCompare(property.id) }}
             aria-label={isCompare ? 'Sterge din comparatie' : 'Adauga la comparatie'}
+            aria-pressed={isCompare}
           >
             <Scale className={`h-4 w-4 ${isCompare ? 'text-primary' : ''}`} />
           </Button>
