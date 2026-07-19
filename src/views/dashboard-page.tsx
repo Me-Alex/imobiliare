@@ -8,12 +8,9 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarCheck,
-  Calculator,
   Eye,
   FileText,
   Heart,
-  Home,
-  Plus,
   Search,
   Settings,
   ShieldCheck,
@@ -50,7 +47,7 @@ function getActions(role: AccountRole): DashboardAction[] {
     return [
       { label: 'Performanta proprietatii', description: 'Vezi interesul, feedbackul si pretul', page: 'owner-dashboard', icon: BarChart3 },
       { label: 'Deal Room', description: 'Urmareste tranzactiile active', page: 'deal-room', icon: BriefcaseBusiness },
-      { label: 'Adauga proprietate', description: 'Publica un anunt nou', page: 'adauga-proprietate', icon: Plus },
+      { label: 'Dosar documente', description: 'Completeaza, incarca si semneaza intr-un singur loc', page: 'documente', icon: FileText },
       { label: 'Solicitari si vizionari', description: 'Urmareste interesul clientilor', page: 'vizionarile-mele', icon: CalendarCheck },
     ]
   }
@@ -59,7 +56,7 @@ function getActions(role: AccountRole): DashboardAction[] {
     return [
       { label: 'CRM agent', description: 'Lead-uri, follow-up-uri si conversie', page: 'crm', icon: Users },
       { label: 'Deal Room', description: 'Coordoneaza tranzactiile active', page: 'deal-room', icon: BriefcaseBusiness },
-      { label: 'Adauga proprietate', description: 'Adauga o proprietate in portofoliu', page: 'adauga-proprietate', icon: Plus },
+      { label: 'Dosare de rezolvat', description: 'Verifica, genereaza si urmareste semnaturile', page: 'documente', icon: FileText },
       { label: 'Agenda mea', description: 'Configureaza disponibilitatea', page: 'disponibilitate-staff', icon: CalendarCheck },
     ]
   }
@@ -69,7 +66,7 @@ function getActions(role: AccountRole): DashboardAction[] {
       { label: 'Panou administrare', description: 'Utilizatori, continut si rapoarte', page: 'admin', icon: ShieldCheck },
       { label: 'CRM si repartizare', description: 'Pipeline si alocare automata lead-uri', page: 'crm', icon: Users },
       { label: 'Deal Rooms', description: 'Auditul tuturor tranzactiilor', page: 'deal-room', icon: BriefcaseBusiness },
-      { label: 'Adauga proprietate', description: 'Publica in numele platformei', page: 'adauga-proprietate', icon: Plus },
+      { label: 'Blocaje documente', description: 'Rezolva verificari, versiuni si semnaturi', page: 'documente', icon: FileText },
     ]
   }
 
@@ -77,7 +74,7 @@ function getActions(role: AccountRole): DashboardAction[] {
     { label: 'Cauta proprietati', description: 'Descopera ofertele disponibile', page: 'proprietati', icon: Search },
     { label: 'Programeaza vizionare', description: 'Alege proprietatea si intervalul', page: 'programare-vizionare', icon: CalendarCheck },
     { label: 'Deal Room', description: 'Vizionari, oferte si documente intr-un loc', page: 'deal-room', icon: BriefcaseBusiness },
-    { label: 'Calculator rata', description: 'Estimeaza creditul ipotecar', page: 'calculator', icon: Calculator },
+    { label: 'Dosarul meu', description: 'Vezi imediat ce lipseste si ce ai de semnat', page: 'documente', icon: FileText },
   ]
 }
 

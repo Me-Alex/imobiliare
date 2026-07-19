@@ -46,6 +46,7 @@ interface AccountMenuItem {
 const accountMenu: AccountMenuItem[] = [
   { label: 'Dashboard', page: 'dashboard', icon: LayoutDashboard },
   { label: 'Deal Room', page: 'deal-room', icon: WalletCards },
+  { label: 'Dosar digital', page: 'documente', icon: FileText },
   { label: 'CRM agenți', page: 'crm', icon: BriefcaseBusiness, roles: ['AGENT', 'ADMIN'] },
   { label: 'Performanță proprietate', page: 'owner-dashboard', icon: BarChart3, roles: ['OWNER', 'ADMIN'] },
   { label: 'HQS Monede', page: 'monede', icon: CircleDollarSign },
@@ -54,7 +55,6 @@ const accountMenu: AccountMenuItem[] = [
   { label: 'Adauga proprietate', page: 'adauga-proprietate', icon: Plus, roles: ['OWNER', 'AGENT', 'ADMIN'] },
   { label: 'Programeaza vizionare', page: 'programare-vizionare', icon: CalendarCheck, roles: ['CLIENT', 'OWNER'] },
   { label: 'Vizionari', page: 'vizionarile-mele', icon: Users },
-  { label: 'Documente', page: 'documente', icon: FileText },
   { label: 'Disponibilitate staff', page: 'disponibilitate-staff', icon: CalendarCheck, roles: ['AGENT', 'ADMIN'] },
 ]
 

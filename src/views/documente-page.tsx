@@ -1,17 +1,18 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { motion } from 'framer-motion'
 import {
   Building2,
   CalendarDays,
-  CheckCircle2,
+  ChevronDown,
   FileCheck2,
   FileSignature,
-  FileText,
   FolderLock,
   Loader2,
   RefreshCw,
+  Settings2,
   ShieldCheck,
   User,
 } from 'lucide-react'
@@ -23,6 +24,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Dialog,
   DialogContent,
@@ -39,7 +41,7 @@ import {
 import { DocumentTableRow, DocumentMobileCard } from '@/components/features/documents/document-card'
 import { DocumentSearchBar, filterDocuments, type DocumentFilterState } from '@/components/features/documents/document-search-bar'
 import { DocumentPreviewModal } from '@/components/features/documents/document-preview-modal'
-import { LegalCompliancePanel } from '@/components/features/documents/legal-compliance-panel'
+import { DocumentActionCenter } from '@/components/features/documents/document-action-center'
 import { LegalDocumentBuilderDialog } from '@/components/features/documents/legal-document-builder-dialog'
 import { LegalDocumentRequestDialog } from '@/components/features/documents/legal-document-request-dialog'
 import { LegalDocumentRequestPanel } from '@/components/features/documents/legal-document-request-panel'
@@ -53,6 +55,8 @@ import {
 } from '@/lib/legal-documents'
 import { DOC_TYPE_LABELS, LS_KEYS } from '@/lib/constants'
 import { loadFromLS, saveToLS } from '@/lib/storage'
+import { getDocumentFlowSummary } from '@/lib/document-flow'
+import { readAppointmentContext, readDealContext, selectDocumentAppointment } from '@/lib/document-navigation'
 import {
   createDocumentUrl,
   deleteViewingDocument,
@@ -72,8 +76,8 @@ import { formatDateRO } from '@/lib/utils'
 const ROLE_COPY = {
   CLIENT: 'Completează datele, solicită documentele și semnează numai versiunea verificată de agent.',
   OWNER: 'Confirmă datele proprietății și semnează documentele partajate care te privesc.',
-  AGENT: 'Pregateste dosarele vizionarilor alocate si urmareste semnaturile participantilor.',
-  ADMIN: 'Administreaza documentele, contractele si jurnalul de audit al tuturor vizionarilor.',
+  AGENT: 'Pregătește dosarele vizionărilor alocate și urmărește semnăturile participanților.',
+  ADMIN: 'Administrează documentele, contractele și jurnalul de audit al tuturor vizionărilor.',
 } as const
 
 interface SigningState {
@@ -96,6 +100,7 @@ export function DocumentePage() {
   const [requestKind, setRequestKind] = useState<Exclude<LegalDocumentKind, 'viewing_report'> | null>(null)
   const [editingRequest, setEditingRequest] = useState<LegalDocumentRequest | null>(null)
   const [requestBusyId, setRequestBusyId] = useState<string | null>(null)
+  const [toolsOpen, setToolsOpen] = useState(false)
   const [signing, setSigning] = useState<SigningState | null>(null)
   const [signatureName, setSignatureName] = useState('')
   const [signatureAccepted, setSignatureAccepted] = useState(false)
@@ -116,7 +121,7 @@ export function DocumentePage() {
   )
 
   const canGenerateDocuments = profile?.role === 'AGENT' || profile?.role === 'ADMIN'
-  const canUploadDocuments = profile?.role === 'CLIENT' || profile?.role === 'AGENT' || profile?.role === 'ADMIN'
+  const canUploadDocuments = Boolean(profile)
   const uploadedTypes = useMemo(
     () => new Set(documents.filter((document) => document.status !== 'SUPERSEDED').map((document) => document.docType)),
     [documents],
@@ -156,8 +161,10 @@ export function DocumentePage() {
     try {
       const rows = await listViewings()
       setViewings(rows)
+      const requestedId = readAppointmentContext()
       const storedId = loadFromLS<string | null>(LS_KEYS.SELECTED_VIZIONARE, null)
-      const nextId = rows.some((row) => row.id === storedId) ? storedId : rows[0]?.id || null
+      const preferredId = requestedId || storedId
+      const nextId = rows.some((row) => row.id === preferredId) ? preferredId : rows[0]?.id || null
       setSelectedId(nextId)
     } catch (error) {
       toast.error('Vizionarile nu au putut fi incarcate.', {
@@ -179,6 +186,11 @@ export function DocumentePage() {
       return
     }
     saveToLS(LS_KEYS.SELECTED_VIZIONARE, selectedId)
+    if (readAppointmentContext() !== selectedId) {
+      selectDocumentAppointment(selectedId)
+    } else {
+      selectDocumentAppointment(selectedId, readDealContext())
+    }
     queueMicrotask(() => void Promise.all([
       refreshDocuments(selectedId),
       refreshRequests(selectedId),
@@ -188,7 +200,13 @@ export function DocumentePage() {
   const handleFileReady = useCallback(async (docType: DocType, file: File) => {
     if (!user || !selectedViewing) throw new Error('Selecteaza o vizionare.')
     try {
-      await uploadViewingDocument({ user, viewing: selectedViewing, docType, file })
+      await uploadViewingDocument({
+        user,
+        viewing: selectedViewing,
+        docType,
+        file,
+        documentOwnerId: profile?.role === 'OWNER' ? user.id : undefined,
+      })
       await refreshDocuments(selectedViewing.id)
       toast.success('Document incarcat in dosarul privat.')
     } catch (error) {
@@ -196,7 +214,7 @@ export function DocumentePage() {
       toast.error('Documentul nu a putut fi incarcat.', { description: message })
       throw error
     }
-  }, [refreshDocuments, selectedViewing, user])
+  }, [profile?.role, refreshDocuments, selectedViewing, user])
 
   const handleView = useCallback(async (document: ViewingDocument) => {
     setPreviewDoc(document)
@@ -349,6 +367,64 @@ export function DocumentePage() {
     }
   }
 
+  const flowSummary = selectedViewing && user && profile
+    ? getDocumentFlowSummary({
+        role: profile.role,
+        userId: user.id,
+        viewing: selectedViewing,
+        documents,
+        requests,
+      })
+    : null
+
+  const openTools = (uploadType?: DocType) => {
+    flushSync(() => setToolsOpen(true))
+    window.requestAnimationFrame(() => {
+      document.getElementById('document-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    if (uploadType) uploadAreaRef.current?.triggerUpload(uploadType)
+  }
+
+  const handlePrimaryAction = () => {
+    if (!flowSummary) return
+    const { action } = flowSummary
+
+    if (action.type === 'SIGN' && action.document && action.signer) {
+      openSigningDialog(action.document, action.signer)
+      return
+    }
+    if (action.type === 'EXTERNAL_SIGNATURE' && action.document) {
+      void handleView(action.document)
+      toast.info('Semnarea se continuă prin furnizorul verificat.', {
+        description: 'Poți consulta versiunea exactă aici; agentul sau administratorul coordonează semnarea avansată/calificată.',
+      })
+      return
+    }
+    if (action.type === 'EDIT_REQUEST' && action.request) {
+      setEditingRequest(action.request)
+      setRequestKind(action.request.documentKind)
+      return
+    }
+    if (action.type === 'CREATE_REQUEST' && action.kind && action.kind !== 'viewing_report') {
+      setEditingRequest(null)
+      setRequestKind(action.kind)
+      return
+    }
+    if (action.type === 'GENERATE_DOCUMENT' && action.kind) {
+      void handleOpenBuilder(action.kind)
+      return
+    }
+    if (action.type === 'UPLOAD_IDENTITY') {
+      openTools(profile?.role === 'OWNER' ? 'ownership_title' : 'id_card')
+      return
+    }
+    if (action.type === 'OPEN_TOOLS') {
+      openTools()
+      return
+    }
+    document.getElementById('document-archive')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   if (authLoading) {
     return <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   }
@@ -359,21 +435,14 @@ export function DocumentePage() {
         <Card className="max-w-md w-full text-center">
           <CardHeader>
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><User className="h-6 w-6" /></div>
-            <CardTitle>Autentifica-te</CardTitle>
-            <CardDescription>Documentele sunt disponibile numai utilizatorilor autentificati.</CardDescription>
+            <CardTitle>Autentifică-te</CardTitle>
+            <CardDescription>Documentele sunt disponibile numai utilizatorilor autentificați.</CardDescription>
           </CardHeader>
           <CardContent><Button onClick={() => navigateTo('login')}>Autentificare</Button></CardContent>
         </Card>
       </div>
     )
   }
-
-  const pendingForUser = documents.filter((document) =>
-    document.signatureRequirement === 'SIMPLE'
-    && ['READY_TO_SIGN', 'PARTIALLY_SIGNED'].includes(document.status)
-    && document.signers.some((signer) => signer.userId === user.id && signer.status === 'PENDING'),
-  ).length
-  const signedDocuments = documents.filter((document) => document.status === 'SIGNED').length
 
   return (
     <div className="min-h-[calc(100vh-10rem)] py-8 px-4">
@@ -384,27 +453,8 @@ export function DocumentePage() {
           description={ROLE_COPY[profile.role]}
           showBackButton
           onBack={() => navigateTo(profile.role === 'CLIENT' ? 'vizionarile-mele' : 'dashboard')}
-          backLabel="Inapoi"
+          backLabel="Înapoi"
         />
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          {[
-            { label: 'Vizionari accesibile', value: viewings.length, icon: CalendarDays },
-            { label: 'Documente', value: documents.length, icon: FileText },
-            { label: 'De semnat de tine', value: pendingForUser, icon: FileSignature },
-            { label: 'Dosare semnate', value: signedDocuments, icon: CheckCircle2 },
-          ].map((stat) => (
-            <Card key={stat.label} className="border-border/60">
-              <CardContent className="p-4">
-                <stat.icon className="h-4 w-4 text-primary mb-3" />
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {profile.role === 'ADMIN' && <LegalCompliancePanel userId={user.id} />}
 
         {loading ? (
           <div className="py-20 flex justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
@@ -412,9 +462,9 @@ export function DocumentePage() {
           <Card className="border-dashed">
             <CardContent className="py-16 text-center">
               <FolderLock className="h-10 w-10 mx-auto text-muted-foreground/50 mb-4" />
-              <h2 className="font-semibold">Nu exista vizionari asociate contului</h2>
-              <p className="text-sm text-muted-foreground mt-1 mb-5">Dosarul digital va fi creat dupa programarea unei vizionari.</p>
-              {profile.role === 'CLIENT' && <Button onClick={() => navigateTo('programare-vizionare')}>Programeaza o vizionare</Button>}
+              <h2 className="font-semibold">Nu există vizionări asociate contului</h2>
+              <p className="text-sm text-muted-foreground mt-1 mb-5">Dosarul digital va fi creat după programarea unei vizionări.</p>
+              {profile.role === 'CLIENT' && <Button onClick={() => navigateTo('programare-vizionare')}>Programează o vizionare</Button>}
             </CardContent>
           </Card>
         ) : (
@@ -423,11 +473,11 @@ export function DocumentePage() {
               <CardHeader className="pb-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <CardTitle className="text-base">Selecteaza vizionarea</CardTitle>
-                    <CardDescription>Fiecare vizionare are propriul dosar si propriul jurnal.</CardDescription>
+                    <CardTitle className="text-base">Dosarul vizionării</CardTitle>
+                    <CardDescription>Alege tranzacția; contextul rămâne păstrat între Deal Room și documente.</CardDescription>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => void refreshViewings()} className="gap-2">
-                    <RefreshCw className="h-3.5 w-3.5" /> Actualizeaza
+                    <RefreshCw className="h-3.5 w-3.5" /> Actualizează
                   </Button>
                 </div>
               </CardHeader>
@@ -455,6 +505,25 @@ export function DocumentePage() {
               </CardContent>
             </Card>
 
+            {flowSummary && (
+              <DocumentActionCenter summary={flowSummary} onPrimaryAction={handlePrimaryAction} />
+            )}
+
+            <Collapsible open={toolsOpen} onOpenChange={setToolsOpen} className="mb-6">
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="h-auto min-h-12 w-full justify-between gap-3 whitespace-normal px-4 py-3">
+                  <span className="flex items-center gap-2 text-left">
+                    <Settings2 className="h-4 w-4 shrink-0 text-primary" />
+                    <span>
+                      <span className="block font-medium">Toate acțiunile dosarului</span>
+                      <span className="block text-xs font-normal text-muted-foreground">Solicitări, generare și încărcări manuale</span>
+                    </span>
+                  </span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${toolsOpen ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div id="document-tools" className="scroll-mt-24 pt-4">
             {selectedViewing && (
               <LegalDocumentRequestPanel
                 role={profile.role}
@@ -477,8 +546,8 @@ export function DocumentePage() {
               <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 mb-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Documente juridice generate în proiect</CardTitle>
-                    <CardDescription>Agentul verifică datele furnizate de participanți înainte de a genera documentul oficial.</CardDescription>
+                    <CardTitle className="text-base">Generează alt document</CardTitle>
+                    <CardDescription>Datele verificate sunt reutilizate; alegi doar documentul necesar etapei.</CardDescription>
                   </CardHeader>
                   <CardContent className="grid sm:grid-cols-2 gap-3">
                     {LEGAL_DOCUMENT_ORDER.map((kind) => {
@@ -534,26 +603,33 @@ export function DocumentePage() {
                   <DocumentUploadArea
                     ref={uploadAreaRef}
                     uploadedTypes={uploadedTypes}
-                    allowedTypes={profile.role === 'CLIENT' ? ['id_card', 'proof_of_income', 'other'] : undefined}
+                    allowedTypes={profile.role === 'CLIENT'
+                      ? ['id_card', 'proof_of_income', 'other']
+                      : profile.role === 'OWNER'
+                        ? ['id_card', 'ownership_title', 'land_registry_excerpt', 'fiscal_certificate', 'energy_certificate', 'other']
+                        : undefined}
                     onFileReady={handleFileReady}
                   />
                 </CardContent>
               </Card>
             )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
-            <Card>
+            <Card id="document-archive" className="scroll-mt-24">
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2"><FolderLock className="h-4 w-4 text-primary" /> Documentele dosarului</CardTitle>
-                <CardDescription>Fisiere private, disponibile numai participantilor autorizati.</CardDescription>
+                <CardTitle className="text-base flex items-center gap-2"><FolderLock className="h-4 w-4 text-primary" /> Arhiva dosarului</CardTitle>
+                <CardDescription>Fișiere private, versiuni și jurnal, disponibile numai participanților autorizați.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {documentsLoading ? (
                   <div className="py-14 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
                 ) : documents.length === 0 ? (
-                  <div className="py-14 px-4 text-center text-sm text-muted-foreground">Nu exista documente in acest dosar.</div>
+                  <div className="py-14 px-4 text-center text-sm text-muted-foreground">Nu există încă documente în acest dosar.</div>
                 ) : (
                   <div className="p-4 space-y-3">
-                    <DocumentSearchBar documents={documents} filter={filter} onFilterChange={setFilter} />
+                    {documents.length > 4 && <DocumentSearchBar documents={documents} filter={filter} onFilterChange={setFilter} />}
                     {filteredDocuments.length === 0 ? (
                       <div className="py-8 text-center text-sm text-muted-foreground">Niciun document nu corespunde filtrelor selectate.</div>
                     ) : (

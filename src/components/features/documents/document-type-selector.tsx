@@ -10,10 +10,13 @@ import {
   FileSignature,
   FileText,
   Handshake,
+  House,
   IdCard,
   KeyRound,
   Loader2,
+  ReceiptText,
   ScrollText,
+  Zap,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
@@ -48,6 +51,34 @@ export const DOC_TYPE_CONFIG: Array<{
     color: 'text-emerald-600 dark:text-emerald-400',
     bgColor: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800',
     description: 'Adeverinta salariu / venit',
+  },
+  {
+    type: 'ownership_title',
+    icon: House,
+    color: 'text-indigo-700 dark:text-indigo-300',
+    bgColor: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800',
+    description: 'Titlul sau contractul de proprietate',
+  },
+  {
+    type: 'land_registry_excerpt',
+    icon: ScrollText,
+    color: 'text-sky-700 dark:text-sky-300',
+    bgColor: 'bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800',
+    description: 'Extras CF pentru informare',
+  },
+  {
+    type: 'fiscal_certificate',
+    icon: ReceiptText,
+    color: 'text-rose-700 dark:text-rose-300',
+    bgColor: 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800',
+    description: 'Certificat fiscal valabil',
+  },
+  {
+    type: 'energy_certificate',
+    icon: Zap,
+    color: 'text-amber-700 dark:text-amber-300',
+    bgColor: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800',
+    description: 'Certificat de performanta energetica',
   },
   {
     type: 'vizionare_sign',

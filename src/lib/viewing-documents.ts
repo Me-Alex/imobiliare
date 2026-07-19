@@ -350,6 +350,7 @@ export interface UploadDocumentInput {
   viewing: Vizionare
   docType: ViewingDocumentType
   file: File
+  documentOwnerId?: string
   title?: string
   templateId?: string | null
   status?: ViewingDocument['status']
@@ -373,7 +374,10 @@ export async function uploadViewingDocument(input: UploadDocumentInput): Promise
   const safeName = sanitizeFileName(input.file.name)
   const storagePath = `${input.user.id}/${input.viewing.id}/${documentId}/v1-${safeName}`
   const checksum = await sha256(input.file)
-  const documentOwnerId = input.viewing.clientId || input.viewing.userId || input.user.id
+  const documentOwnerId = input.documentOwnerId
+    || input.viewing.clientId
+    || input.viewing.userId
+    || input.user.id
 
   const { error: uploadError } = await supabase.storage
     .from(DOCUMENT_BUCKET)
@@ -396,7 +400,7 @@ export async function uploadViewingDocument(input: UploadDocumentInput): Promise
       title: input.title || input.file.name,
       type: input.docType,
       status: input.status || 'UPLOADED',
-      visibility: input.legal ? 'PARTICIPANTS' : 'PRIVATE',
+      visibility: input.legal ? 'PARTICIPANTS' : 'AGENT',
       storage_bucket: DOCUMENT_BUCKET,
       storage_path: storagePath,
       file_name: input.file.name,
@@ -460,7 +464,7 @@ export async function signViewingDocument(
   signatureName: string,
 ): Promise<void> {
   const consent = 'Confirm ca am citit documentul, ca datele sunt corecte si ca doresc sa il semnez electronic.'
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('document_signers')
     .update({
       status: 'SIGNED',
@@ -474,7 +478,10 @@ export async function signViewingDocument(
     .eq('id', signerId)
     .eq('user_id', userId)
     .eq('status', 'PENDING')
+    .select('id')
+    .maybeSingle()
   if (error) throw new Error(error.message)
+  if (!data) throw new Error('Semnătura nu a fost înregistrată. Reîncarcă dosarul și verifică drepturile contului.')
 }
 
 function renderTemplate(body: string, values: Record<string, string>): string {
@@ -729,7 +736,7 @@ export async function approveLegalTemplate(
   reviewerName: string,
 ): Promise<void> {
   if (reviewerName.trim().length < 3) throw new Error('Introdu numele complet al revizorului juridic.')
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('admin_document_templates')
     .update({
       legal_review_status: 'APPROVED',
@@ -738,7 +745,10 @@ export async function approveLegalTemplate(
       legal_reviewed_at: new Date().toISOString(),
     })
     .eq('id', templateId)
+    .select('id')
+    .maybeSingle()
   if (error) throw new Error(error.message)
+  if (!data) throw new Error('Șablonul nu a fost aprobat. Reîncarcă pagina și verifică drepturile de administrator.')
 }
 
 function inputDate(value: Date): string {

@@ -72,6 +72,10 @@ export interface UploadedDocument {
   docType:
     | 'id_card'
     | 'proof_of_income'
+    | 'ownership_title'
+    | 'land_registry_excerpt'
+    | 'fiscal_certificate'
+    | 'energy_certificate'
     | 'vizionare_sign'
     | 'brokerage_contract'
     | 'owner_mandate'

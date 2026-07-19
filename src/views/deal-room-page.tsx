@@ -40,6 +40,12 @@ import {
   submitDealOffer,
   updateDealNextStep,
 } from '@/lib/transaction-workspace'
+import {
+  openViewingDocuments,
+  readAppointmentContext,
+  readDealContext,
+  selectDealRoom,
+} from '@/lib/document-navigation'
 
 const STAGE_LABELS: Record<DealStage, string> = {
   NEW: 'Nou',
@@ -60,6 +66,22 @@ const STATUS_STYLES: Record<string, string> = {
   UNDER_REVIEW: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
   REQUIRED: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
   REJECTED: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  APPROVED: 'Aprobat',
+  WAIVED: 'Nu este necesar',
+  SIGNED: 'Semnat',
+  PRESENT: 'Prezent',
+  CONFIRMED: 'Confirmat',
+  UPLOADED: 'Încărcat',
+  UNDER_REVIEW: 'În verificare',
+  REQUIRED: 'Necesar',
+  REJECTED: 'Respins',
+  PENDING: 'În așteptare',
+  CHECKED_IN: 'Prezent',
+  COMPLETED: 'Finalizat',
+  NOT_APPLICABLE: 'Nu se aplică',
 }
 
 function formatDate(value?: string | null, includeTime = true) {
@@ -90,6 +112,7 @@ export function DealRoomPage() {
   const [nextStep, setNextStep] = useState('')
   const [nextStepOwner, setNextStepOwner] = useState('')
   const [nextStepDue, setNextStepDue] = useState('')
+  const [showAllRequirements, setShowAllRequirements] = useState(false)
 
   const loadRooms = useCallback(async () => {
     if (!user) {
@@ -101,12 +124,13 @@ export function DealRoomPage() {
     try {
       const nextRooms = await fetchDealRooms()
       setRooms(nextRooms)
-      const requestedAppointment = typeof window !== 'undefined' ? sessionStorage.getItem('hqs-selected-appointment-id') : null
-      const requestedRoom = requestedAppointment
-        ? nextRooms.find((room) => room.deal_appointments?.some((item) => item.appointment_id === requestedAppointment))
-        : null
+      const requestedAppointment = readAppointmentContext()
+      const requestedDeal = readDealContext()
+      const requestedRoom = nextRooms.find((room) => room.id === requestedDeal)
+        || (requestedAppointment
+          ? nextRooms.find((room) => room.deal_appointments?.some((item) => item.appointment_id === requestedAppointment))
+          : null)
       setSelectedId((current) => requestedRoom?.id || (current && nextRooms.some((room) => room.id === current) ? current : nextRooms[0]?.id || null))
-      if (requestedRoom && typeof window !== 'undefined') sessionStorage.removeItem('hqs-selected-appointment-id')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Deal Room nu a putut fi încărcat.')
     } finally {
@@ -149,12 +173,20 @@ export function DealRoomPage() {
   }
 
   if (!room) {
+    const requestedAppointment = readAppointmentContext()
     return (
       <div className="mx-auto flex min-h-[65vh] max-w-xl flex-col items-center justify-center px-4 text-center">
         <WalletCards className="h-11 w-11 text-primary" />
         <h1 className="mt-4 text-2xl font-bold">Prima tranzacție începe cu o vizionare</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">După programarea unei vizionări, platforma creează automat spațiul comun pentru participanți, documente, oferte și pașii următori.</p>
-        <Button className="mt-6" onClick={() => navigateTo(profile.role === 'CLIENT' ? 'programare-vizionare' : 'vizionarile-mele')}>Deschide vizionările</Button>
+        <Button
+          className="mt-6"
+          onClick={() => requestedAppointment
+            ? openViewingDocuments(navigateTo, requestedAppointment)
+            : navigateTo(profile.role === 'CLIENT' ? 'programare-vizionare' : 'vizionarile-mele')}
+        >
+          {requestedAppointment ? 'Deschide dosarul vizionării' : 'Deschide vizionările'}
+        </Button>
       </div>
     )
   }
@@ -166,6 +198,23 @@ export function DealRoomPage() {
   const events = [...(room.deal_events || [])].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
   const completedDocs = requirements.filter((item) => ['APPROVED', 'WAIVED'].includes(item.status)).length
   const progress = requirements.length ? Math.round(completedDocs / requirements.length * 100) : 0
+  const appointmentId = appointments[0]?.appointment_id || null
+  const pendingSignatureRequirement = requirements.find((requirement) => {
+    const document = relationOne(requirement.client_documents)
+    return document?.document_signers?.some((signer) => signer.user_id === user.id && signer.status === 'PENDING')
+  })
+  const nextRequirement = pendingSignatureRequirement
+    || requirements.find((requirement) =>
+      !['APPROVED', 'WAIVED'].includes(requirement.status)
+      && (canManage || requirement.responsible_role === profile.role || requirement.assigned_to === user.id),
+    )
+    || requirements.find((requirement) => !['APPROVED', 'WAIVED'].includes(requirement.status))
+  const visibleRequirements = showAllRequirements ? requirements : requirements.slice(0, 4)
+
+  const handleOpenDocuments = () => {
+    if (appointmentId) openViewingDocuments(navigateTo, appointmentId, room.id)
+    else navigateTo('documente')
+  }
 
   const handleOffer = async () => {
     const amount = Number(offerAmount)
@@ -230,7 +279,17 @@ export function DealRoomPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <label className="sr-only" htmlFor="deal-selector">Selectează tranzacția</label>
-              <select id="deal-selector" className="h-10 min-w-64 rounded-md border bg-background px-3 text-sm" value={room.id} onChange={(event) => setSelectedId(event.target.value)}>
+              <select
+                id="deal-selector"
+                className="h-10 min-w-64 rounded-md border bg-background px-3 text-sm"
+                value={room.id}
+                onChange={(event) => {
+                  const dealId = event.target.value
+                  const selectedRoom = rooms.find((item) => item.id === dealId)
+                  setSelectedId(dealId)
+                  selectDealRoom(dealId, selectedRoom?.deal_appointments?.[0]?.appointment_id)
+                }}
+              >
                 {rooms.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
               </select>
               <Button variant="outline" size="icon" aria-label="Reîncarcă Deal Room" onClick={() => void loadRooms()}><RefreshCw className="h-4 w-4" /></Button>
@@ -259,7 +318,7 @@ export function DealRoomPage() {
                       </div>
                     )
                   })}
-                  <Button variant="outline" className="w-full" onClick={() => navigateTo('vizionarile-mele')}>Deschide fișa de vizionare <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                  <Button variant="outline" className="w-full" onClick={() => navigateTo('vizionarile-mele')}>Deschide agenda vizionărilor <ArrowRight className="ml-2 h-4 w-4" /></Button>
                 </CardContent>
               </Card>
 
@@ -288,7 +347,20 @@ export function DealRoomPage() {
                 </div>
               </CardHeader>
               <CardContent className="grid gap-3 md:grid-cols-2">
-                {requirements.map((requirement) => {
+                {nextRequirement && (
+                  <div className="md:col-span-2 flex flex-col gap-4 rounded-xl border border-primary/25 bg-primary/[0.05] p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <Badge className="mb-2 border-0 bg-primary/10 text-primary hover:bg-primary/10">Acțiunea următoare</Badge>
+                      <p className="font-semibold">{pendingSignatureRequirement ? `Semnează: ${nextRequirement.label}` : `Rezolvă: ${nextRequirement.label}`}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Deschidem direct dosarul acestei vizionări, fără să pierzi contextul tranzacției.</p>
+                    </div>
+                    <Button className="shrink-0" onClick={handleOpenDocuments}>
+                      {pendingSignatureRequirement ? <FileSignature className="mr-2 h-4 w-4" /> : <ArrowRight className="mr-2 h-4 w-4" />}
+                      Continuă documentul
+                    </Button>
+                  </div>
+                )}
+                {visibleRequirements.map((requirement) => {
                   const document = relationOne(requirement.client_documents)
                   const signers = document?.document_signers || []
                   return (
@@ -303,7 +375,12 @@ export function DealRoomPage() {
                     </div>
                   )
                 })}
-                <Button variant="outline" className="md:col-span-2" onClick={() => navigateTo('documente')}><FileSignature className="mr-2 h-4 w-4" /> Gestionează documentele și versiunile</Button>
+                {requirements.length > 4 && (
+                  <Button variant="ghost" className="md:col-span-2" onClick={() => setShowAllRequirements((value) => !value)}>
+                    {showAllRequirements ? 'Arată doar documentele prioritare' : `Arată toate cele ${requirements.length} cerințe`}
+                  </Button>
+                )}
+                <Button variant="outline" className="md:col-span-2" onClick={handleOpenDocuments}><FileSignature className="mr-2 h-4 w-4" /> Deschide dosarul complet și versiunile</Button>
               </CardContent>
             </Card>
 
@@ -376,7 +453,7 @@ function StageProgress({ current }: { current: DealStage }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  return <Badge variant="secondary" className={`shrink-0 border-0 text-[10px] ${STATUS_STYLES[status] || ''}`}>{status.replaceAll('_', ' ')}</Badge>
+  return <Badge variant="secondary" className={`shrink-0 border-0 text-[10px] ${STATUS_STYLES[status] || ''}`}>{STATUS_LABELS[status] || status.replaceAll('_', ' ')}</Badge>
 }
 
 function EmptyLine({ text }: { text: string }) {

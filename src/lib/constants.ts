@@ -5,6 +5,10 @@ import type { StaffMember, Vizionare, DocTypeLabelMap, CoinReward } from './type
 export const DOC_TYPE_LABELS: DocTypeLabelMap = {
   id_card: 'Carte de Identitate',
   proof_of_income: 'Adeverinta de Venit',
+  ownership_title: 'Act de Proprietate',
+  land_registry_excerpt: 'Extras de Carte Funciara',
+  fiscal_certificate: 'Certificat Fiscal',
+  energy_certificate: 'Certificat Energetic',
   vizionare_sign: 'Fisa de Vizionare',
   brokerage_contract: 'Contract de Intermediere',
   owner_mandate: 'Mandat Proprietar',

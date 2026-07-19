@@ -3,19 +3,18 @@
 import { motion } from 'framer-motion'
 import {
   CalendarDays, Clock, Star, CalendarClock, MessageSquarePlus,
-  Upload, XCircle, CheckCircle2, UserCheck, UserX, WalletCards,
+  XCircle, CheckCircle2, UserCheck, UserX, WalletCards,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAppStore } from '@/store/use-app-store'
-import { saveToLS } from '@/lib/storage'
-import { DEFAULT_STAFF, VIZIONARE_STATUS_CONFIG, LS_KEYS } from '@/lib/constants'
+import { DEFAULT_STAFF, VIZIONARE_STATUS_CONFIG } from '@/lib/constants'
 import type { Vizionare } from '@/lib/types'
 import { StarRating } from '@/components/dialogs/vizionare-feedback-dialog'
-import { VizionareDocumentsSection } from '@/components/features/vizionare-documents-section'
 import { formatDateRO } from '@/lib/utils'
+import { openDealRoomForViewing } from '@/lib/document-navigation'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -63,14 +62,8 @@ export function VizionareCard({
     vizionare.noShowEligibleAt && Date.now() >= new Date(vizionare.noShowEligibleAt).getTime(),
   )
 
-  const handleUploadDocs = () => {
-    saveToLS(LS_KEYS.SELECTED_VIZIONARE, vizionare.id)
-    navigateTo('documente')
-  }
-
   const handleDealRoom = () => {
-    sessionStorage.setItem('hqs-selected-appointment-id', vizionare.id)
-    navigateTo('deal-room')
+    openDealRoomForViewing(navigateTo, vizionare.id)
   }
 
   return (
@@ -174,32 +167,20 @@ export function VizionareCard({
             </p>
           )}
 
-          {/* Documents */}
-          <VizionareDocumentsSection vizionareId={vizionare.id} />
-
           {/* Actions */}
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50 flex-wrap">
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               className="gap-1.5 text-xs h-8"
               onClick={handleDealRoom}
             >
               <WalletCards className="h-3.5 w-3.5" />
-              Deal Room
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 text-xs h-8"
-              onClick={handleUploadDocs}
-            >
-              <Upload className="h-3.5 w-3.5" />
-              Incarca Documente
+              Continuă tranzacția
             </Button>
 
             {/* Add Feedback button — completed vizionari without rating */}
-            {isCompleted && !hasFeedback && (
+            {canClientManage && isCompleted && !hasFeedback && (
               <Button
                 variant="outline"
                 size="sm"
@@ -212,7 +193,7 @@ export function VizionareCard({
             )}
 
             {/* Edit Feedback button — completed vizionari with rating */}
-            {isCompleted && hasFeedback && (
+            {canClientManage && isCompleted && hasFeedback && (
               <Button
                 variant="ghost"
                 size="sm"
