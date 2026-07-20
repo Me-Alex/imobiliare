@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSafeDb } from '@/lib/edge-db'
 import { MOCK_ZONES, MOCK_PROPERTIES } from '@/lib/mock-data'
