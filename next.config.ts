@@ -2,14 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  ...(process.env.NEXT_PUBLIC_OUTPUT_EXPORT === '1'
-    ? { output: 'export' as const, images: { unoptimized: true } }
-    : {
-        // Cloudflare Pages compatibility
-        images: {
-          unoptimized: true,
-        },
-      }),
+  // Cloudflare Pages compatibility and general image unoptimization for edge deployments
+  images: {
+    unoptimized: true,
+  },
   reactStrictMode: true,
   async headers() {
     return [

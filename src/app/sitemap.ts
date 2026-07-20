@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import type { MetadataRoute } from 'next'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://imobiliare2.pages.dev'

@@ -9,3 +9,7 @@
 ## 2024-05-18 - Netlify Deployment Plugin for Next.js
 **Learning:** Netlify relies on `@netlify/plugin-nextjs` for Next.js app routing and build outputs to work correctly without manual routing rules, especially for standard dynamic apps (not fully static exports).
 **Action:** When creating `netlify.toml` for standard Next.js deployments, ensure the `@netlify/plugin-nextjs` plugin is listed in the plugins block so that dynamic routes and server components function natively on Netlify.
+
+## 2024-05-18 - Next.js output: export behavior with dynamic routes
+**Learning:** If a Next.js App Router project uses dynamic API routes without explicit `export const dynamic = 'force-static'`, setting `output: 'export'` (or using it conditionally via environment variables) will cause the build to fail, even on platforms like Netlify or Vercel if the environment variable happens to be set or if it's evaluated incorrectly.
+**Action:** Remove `output: 'export'` from `next.config.ts` entirely if the app relies on dynamic server-side rendering or dynamic API routes, rather than trying to conditionally set it based on an environment variable, which can lead to unpredictable CI failures.
