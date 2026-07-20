@@ -5,3 +5,7 @@
 ## 2024-05-18 - Netlify Deployment for Next.js App Router with Dynamic API Routes
 **Learning:** For a Next.js app that uses App Router and has dynamic API routes (`/api/*`), configuring `output: 'export'` (or `NEXT_PUBLIC_OUTPUT_EXPORT=1`) will fail during build because dynamic API routes cannot be statically exported. Additionally, if using Netlify, deploying static export `out/` with redirect to `index.html` might break if the app is relying on standard Next.js routing instead of true SPA export.
 **Action:** When building for standard Netlify deployment (not statically exported), ensure the publish directory is `.next` (or let Netlify auto-detect) instead of `out`, and do not set `NEXT_PUBLIC_OUTPUT_EXPORT=1` if the app uses Next.js server features or dynamic API routes.
+
+## 2024-05-18 - Netlify Deployment Plugin for Next.js
+**Learning:** Netlify relies on `@netlify/plugin-nextjs` for Next.js app routing and build outputs to work correctly without manual routing rules, especially for standard dynamic apps (not fully static exports).
+**Action:** When creating `netlify.toml` for standard Next.js deployments, ensure the `@netlify/plugin-nextjs` plugin is listed in the plugins block so that dynamic routes and server components function natively on Netlify.

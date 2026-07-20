@@ -1,8 +1,9 @@
 [build]
-  command = "bun run build"
+  command = "bun install && bun run build"
   publish = ".next"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+[build.environment]
+  NEXT_PRIVATE_STANDALONE = "true"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
