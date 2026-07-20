@@ -26,7 +26,7 @@ export function MyPropertiesList({ properties, visible, onEdit, onDelete }: MyPr
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
             <div className="glass-card rounded-xl p-4">
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-primary" />
+                <Building2 className="h-4 w-4 text-primary" aria-hidden="true" />
                 Proprietatile tale ({properties.length})
               </h3>
               <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -37,7 +37,7 @@ export function MyPropertiesList({ properties, visible, onEdit, onDelete }: MyPr
                         {prop.cover_url ? (
                           <img src={prop.cover_url as string} alt="" className="h-full w-full object-cover" />
                         ) : (
-                          <Building2 className="h-5 w-5 text-primary/50" />
+                          <Building2 className="h-5 w-5 text-primary/50" aria-hidden="true" />
                         )}
                       </div>
                       <div className="min-w-0">
@@ -55,14 +55,14 @@ export function MyPropertiesList({ properties, visible, onEdit, onDelete }: MyPr
                     <div className="flex items-center gap-1 shrink-0">
                       <Badge variant="outline" className="text-[10px]">{prop.type as string}</Badge>
                       <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
+                        <Clock className="h-3 w-3" aria-hidden="true" />
                         {new Date(prop.created_at as string).toLocaleDateString('ro-RO')}
                       </span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary" onClick={() => onEdit(prop)}>
-                        <Pencil className="h-3.5 w-3.5" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary" onClick={() => onEdit(prop)} aria-label="Editeaza proprietatea">
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => onDelete(prop.id as string)}>
-                        <Trash2 className="h-3.5 w-3.5" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => onDelete(prop.id as string)} aria-label="Sterge proprietatea">
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                       </Button>
                     </div>
                   </div>
