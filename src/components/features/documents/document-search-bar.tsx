@@ -70,15 +70,16 @@ export function DocumentSearchBar({ documents, filter, onFilterChange }: Documen
             <button
               onClick={() => onFilterChange({ ...filter, search: '' })}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Sterge cautarea"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           )}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="relative">
-              <Filter className="h-4 w-4" />
+            <Button variant="outline" size="icon" className="relative" aria-label="Filtreaza documentele">
+              <Filter className="h-4 w-4" aria-hidden="true" />
               {activeFilterCount > 0 && (
                 <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] text-primary-foreground flex items-center justify-center">
                   {activeFilterCount}
