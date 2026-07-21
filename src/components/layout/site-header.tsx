@@ -186,7 +186,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
         <div className="flex items-center gap-2">
           {/* Saved Searches */}
           <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Cautari salvate" onClick={onOpenSavedSearches}>
-            <Bookmark className="h-5 w-5" />
+            <Bookmark className="h-5 w-5" aria-hidden="true" />
             {savedSearchCount > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-primary text-primary-foreground border-0">
                 {savedSearchCount > 9 ? '9+' : savedSearchCount}
@@ -202,7 +202,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
             aria-label="HQS Monede"
             onClick={() => navigateTo('monede')}
           >
-            <CircleDollarSign className="h-5 w-5 text-amber-500" />
+            <CircleDollarSign className="h-5 w-5 text-amber-500" aria-hidden="true" />
             {user && coinBalance > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-amber-500 text-white border-0">
                 {coinBalance > 999 ? '999+' : coinBalance}
@@ -212,7 +212,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
 
           {/* Favorites */}
           <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Favorite" onClick={onOpenFavorites}>
-            <Heart className="h-5 w-5" />
+            <Heart className="h-5 w-5" aria-hidden="true" />
             {favorites.length > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-primary text-primary-foreground border-0">
                 {favorites.length}
@@ -222,7 +222,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
 
           {/* Notifications Bell */}
           <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Notificari" onClick={onOpenNotifications}>
-            <Bell className="h-5 w-5" />
+            <Bell className="h-5 w-5" aria-hidden="true" />
             <NotificationsBadge />
           </Button>
 
@@ -289,8 +289,8 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
             aria-label="Schimba tema"
           >
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" aria-hidden="true" />
+            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" aria-hidden="true" />
           </Button>
 
           {/* Mobile Menu */}
