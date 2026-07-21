@@ -1,3 +1,3 @@
-## 2024-05-27 - Icon-only Button Accessibility
-**Learning:** The document preview modal and search bar components contained several icon-only buttons (like zoom, rotate, and filter) that lacked ARIA labels, making them inaccessible to screen readers. Additionally, decorative icons needed to be explicitly hidden.
-**Action:** Always add descriptive `aria-label` attributes to `<Button size="icon">` elements and `aria-hidden="true"` to decorative `lucide-react` icons inside them.
+## 2024-05-27 - Icon-only Button Accessibility in Headers
+**Learning:** The main site header contained several icon-only buttons (like notifications, favorites, saved searches) that lacked `aria-hidden="true"` on their inner SVG icons, creating redundant screen reader announcements.
+**Action:** Always add `aria-hidden="true"` to decorative `lucide-react` icons inside `<Button size="icon">` elements when the button itself has an `aria-label`.
