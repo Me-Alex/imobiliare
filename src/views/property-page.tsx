@@ -86,7 +86,7 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
     setLightbox,
   } = useAppStore()
   const { user, profile } = useAuth()
-  const { onFavorite, onUnfavorite, onViewProperty } = useCoinActions()
+  const { onFavorite, onUnfavorite } = useCoinActions()
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const [contactOpen, setContactOpen] = useState(false)
   const [contactIntent, setContactIntent] = useState<ContactIntent>('general')
@@ -97,11 +97,8 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
   const { data: candidateProperties = [] } = useProperties()
 
   useEffect(() => {
-    if (property) {
-      void onViewProperty(property.id, property.title)
-      void recordPropertyView(property.id)
-    }
-  }, [onViewProperty, property])
+    if (property) void recordPropertyView(property.id)
+  }, [property?.id])
 
   const relatedProperties = useMemo(
     () => property ? getRelatedProperties(property, candidateProperties) : [],
@@ -130,7 +127,7 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
   const handleToggleFavorite = () => {
     const wasFavorite = favorites.includes(property.id)
     toggleFavorite(property.id)
-    if (!wasFavorite) void onFavorite(property.id, property.title)
+    if (!wasFavorite) void onFavorite(property.id)
     else void onUnfavorite(property.id)
   }
 

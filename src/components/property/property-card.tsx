@@ -74,7 +74,7 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
   const handleToggleFavorite = () => {
     const wasFavorite = favorites.includes(property.id)
     toggleFavorite(property.id)
-    if (!wasFavorite) void onFavorite(property.id, property.title)
+    if (!wasFavorite) void onFavorite(property.id)
     else void onUnfavorite(property.id)
   }
 

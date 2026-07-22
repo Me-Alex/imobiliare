@@ -115,21 +115,6 @@ export async function claimDailyCoinReward(): Promise<CoinAccountSnapshot> {
   return mapSnapshot(data)
 }
 
-export async function awardCoinAction(
-  action: CoinTransactionType,
-  description: string,
-  relatedId?: string,
-): Promise<CoinAccountSnapshot> {
-  ensureConfigured()
-  const { data, error } = await supabase.rpc('award_coin_action', {
-    p_action: action,
-    p_related_id: relatedId ?? null,
-    p_description: description,
-  })
-  if (error) throwRpcError(error)
-  return mapSnapshot(data)
-}
-
 export async function redeemCoinReward(rewardId: string): Promise<CoinAccountSnapshot> {
   ensureConfigured()
   const { data, error } = await supabase.rpc('redeem_coin_reward', { p_reward_id: rewardId })

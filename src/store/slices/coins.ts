@@ -5,10 +5,8 @@ import type {
   CoinRedemption,
   CoinReward,
   CoinTransaction,
-  CoinTransactionType,
 } from '@/lib/types'
 import {
-  awardCoinAction,
   claimDailyCoinReward,
   fetchCoinAccount,
   redeemCoinReward,
@@ -23,17 +21,14 @@ export interface CoinsSlice {
   rewards: CoinReward[]
   redemptions: CoinRedemption[]
   streak: CoinDailyStreak
-  earnedPropertyIds: Set<string>
   coinsLoading: boolean
   coinsError: string | null
 
   hydrateCoins: (userId: string | null) => Promise<void>
   refreshCoins: () => Promise<void>
-  earnCoins: (type: CoinTransactionType, description: string, relatedId?: string) => Promise<number>
   claimDailyLogin: () => Promise<{ earned: number; streak: number }>
   redeemReward: (rewardId: string) => Promise<CoinRedemption | null>
   canAfford: (cost: number) => boolean
-  hasViewedProperty: (propertyId: string) => boolean
 }
 
 const emptyCoinState = {
@@ -44,17 +39,10 @@ const emptyCoinState = {
   rewards: [] as CoinReward[],
   redemptions: [] as CoinRedemption[],
   streak: { lastLoginDate: '', currentStreak: 0 },
-  earnedPropertyIds: new Set<string>(),
   coinsError: null,
 }
 
 function snapshotState(snapshot: CoinAccountSnapshot) {
-  const earnedPropertyIds = new Set(
-    snapshot.transactions
-      .filter((transaction) => transaction.type === 'view_property' && transaction.relatedId)
-      .map((transaction) => transaction.relatedId as string),
-  )
-
   return {
     balance: snapshot.wallet.balance,
     lifetimeEarned: snapshot.wallet.lifetimeEarned,
@@ -66,7 +54,6 @@ function snapshotState(snapshot: CoinAccountSnapshot) {
       lastLoginDate: snapshot.wallet.lastClaimDate,
       currentStreak: snapshot.wallet.currentStreak,
     },
-    earnedPropertyIds,
     coinsError: null,
   }
 }
@@ -110,14 +97,6 @@ export const createCoinsSlice: StateCreator<CoinsSlice> = (set, get) => ({
     await get().hydrateCoins(ownerId)
   },
 
-  earnCoins: async (type, description, relatedId) => {
-    if (!get().ownerId) return 0
-    const snapshot = await awardCoinAction(type, description, relatedId)
-    set(snapshotState(snapshot))
-    dispatchBalance(snapshot.wallet.balance)
-    return snapshot.earned ?? 0
-  },
-
   claimDailyLogin: async () => {
     if (!get().ownerId) return { earned: 0, streak: 0 }
     const snapshot = await claimDailyCoinReward()
@@ -138,5 +117,4 @@ export const createCoinsSlice: StateCreator<CoinsSlice> = (set, get) => ({
   },
 
   canAfford: (cost) => get().balance >= cost,
-  hasViewedProperty: (propertyId) => get().earnedPropertyIds.has(propertyId),
 })

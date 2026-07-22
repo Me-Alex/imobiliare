@@ -8,7 +8,6 @@ import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store/use-app-store'
 import { isValidEmail } from '@/lib/validators'
-import { useCoinActions } from '@/hooks/use-coin-actions'
 import { LS_KEYS } from '@/lib/constants'
 import { PUBLIC_NAVIGATION } from '@/lib/navigation-config'
 
@@ -40,7 +39,6 @@ export function SiteFooter() {
     setRooms,
     setTransaction,
   } = useAppStore()
-  const { onNewsletter } = useCoinActions()
 
   const handleNewsletterSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -69,8 +67,6 @@ export function SiteFooter() {
         description: 'Vei primi noutatile pe ' + email,
       })
       setEmail('')
-      // Earn coins for newsletter
-      void onNewsletter()
     } catch (error) {
       toast.error('Eroare', {
         description: error instanceof Error ? error.message : 'Va rugam incercati din nou.',

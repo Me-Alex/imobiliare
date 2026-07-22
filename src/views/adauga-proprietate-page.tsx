@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
-import { supabase } from '@/lib/supabase'
+import { isSupabaseConfigured, supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { EditPropertyDialog } from '@/components/property/edit-property-dialog'
 import { PageHero } from '@/components/layout/page-hero'
@@ -20,11 +20,22 @@ import { PropertyForm } from '@/components/property/property-form'
 import { VirtualTourViewer } from '@/components/property/virtual-tour-viewer'
 import type { PropertyFormData } from '@/components/property/property-form'
 import type { UserProperty } from '@/lib/types'
-import { LS_KEYS } from '@/lib/constants'
 import { RoleAccessDenied } from '@/components/account/role-access-denied'
 import { getMapEmbedUrl } from '@/lib/property-details'
 import { uploadListingImages, submitVirtualTour } from '@/lib/virtual-tour-publishing'
 import { parseExternalTourUrl, type VirtualTour } from '@/lib/virtual-tours'
+import {
+  archiveManagedProperty,
+  fetchManagedProperties,
+  toSupabasePropertyType,
+  userPropertyCacheKey,
+} from '@/lib/managed-properties'
+
+const MANAGED_ROLES = ['OWNER', 'AGENT', 'ADMIN'] as const
+
+function isManagedRole(role: string): role is (typeof MANAGED_ROLES)[number] {
+  return (MANAGED_ROLES as readonly string[]).includes(role)
+}
 
 function generateSlug(title: string): string {
   const roMap: Record<string, string> = {
@@ -41,16 +52,6 @@ function generateSlug(title: string): string {
     + '-' + Date.now().toString(36)
 }
 
-function toSupabasePropertyType(type: string): string {
-  const normalized = type.toLocaleLowerCase('ro-RO')
-  if (normalized.includes('teren')) return 'LAND'
-  if (normalized.includes('birou')) return 'OFFICE'
-  if (normalized.includes('comercial') || normalized.includes('depozit')) return 'COMMERCIAL'
-  if (normalized.includes('vil') || normalized.includes('pensiune')) return 'VILLA'
-  if (normalized.includes('cas')) return 'HOUSE'
-  return 'APARTMENT'
-}
-
 export function AdaugaProprietatePage() {
   const { user, profile, loading: authLoading } = useAuth()
   const navigateTo = useAppStore((s) => s.navigateTo)
@@ -64,28 +65,44 @@ export function AdaugaProprietatePage() {
   const previewDataRef = useRef<PropertyFormData | null>(null)
   const [previewData, setPreviewData] = useState<PropertyFormData | null>(null)
 
-  const loadMyProperties = useCallback(() => {
+  const loadMyProperties = useCallback(async () => {
+    if (!user || !profile || !isManagedRole(profile.role)) {
+      setMyProperties([])
+      return
+    }
+
     try {
-      const stored = JSON.parse(localStorage.getItem(LS_KEYS.USER_PROPERTIES) || '[]')
-      setMyProperties(stored)
-    } catch { setMyProperties([]) }
-  }, [])
+      const properties = await fetchManagedProperties({
+        userId: user.id,
+        role: profile.role,
+      })
+      setMyProperties(properties)
+    } catch (error) {
+      console.warn('Managed properties unavailable:', error)
+      setMyProperties([])
+    }
+  }, [profile, user])
 
   useEffect(() => {
-    const frame = requestAnimationFrame(loadMyProperties)
+    const frame = requestAnimationFrame(() => { void loadMyProperties() })
     return () => cancelAnimationFrame(frame)
   }, [loadMyProperties])
 
-  const deleteProperty = useCallback((id: string) => {
-    const stored = JSON.parse(localStorage.getItem(LS_KEYS.USER_PROPERTIES) || '[]')
-    const filtered = stored.filter((p: UserProperty) => p.id !== id)
-    localStorage.setItem(LS_KEYS.USER_PROPERTIES, JSON.stringify(filtered))
-    setMyProperties(filtered)
-    toast.success('Proprietate stearsa')
-  }, [])
+  const deleteProperty = useCallback(async (id: string) => {
+    try {
+      await archiveManagedProperty(id)
+      await loadMyProperties()
+      toast.success('Proprietate arhivata', {
+        description: 'Anuntul nu mai este vizibil public, iar istoricul sau ramane disponibil.',
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Eroare necunoscuta'
+      toast.error('Proprietatea nu a putut fi arhivata', { description: message })
+    }
+  }, [loadMyProperties])
 
   const handleFormSubmit = async (form: PropertyFormData) => {
-    if (!user || !profile || !['OWNER', 'AGENT', 'ADMIN'].includes(profile.role)) return
+    if (!user || !profile || !isManagedRole(profile.role)) return
 
     setIsSubmitting(true)
     try {
@@ -95,7 +112,10 @@ export function AdaugaProprietatePage() {
         ? (parseFloat(form.price) / parseFloat(form.areaSqm)).toFixed(0)
         : null
 
-      const hasSupabaseConfig = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+      const hasSupabaseConfig = isSupabaseConfigured
+      if (!hasSupabaseConfig) {
+        throw new Error('Publicarea proprietatilor nu este configurata. Verifica setarile Supabase.')
+      }
       let publishedGalleryUrls = form.galleryUrls
       let remotePropertySaved = false
       let submittedTour: VirtualTour | null = null
@@ -110,9 +130,13 @@ export function AdaugaProprietatePage() {
         } catch (error) {
           console.warn('Listing image upload skipped:', error)
           toast.warning('Fotografiile nu au ajuns în cloud', {
-            description: 'Anunțul rămâne salvat local; poți reîncerca publicarea după verificarea conexiunii.',
+            description: 'Publicarea a fost oprită. Verifică conexiunea și reîncearcă.',
           })
         }
+      }
+
+      if (publishedGalleryUrls.some((url) => url.startsWith('data:'))) {
+        throw new Error('Fotografiile nu au putut fi incarcate. Anuntul nu a fost publicat.')
       }
 
       if (hasSupabaseConfig && publishedGalleryUrls.every((url) => !url.startsWith('data:'))) {
@@ -140,6 +164,7 @@ export function AdaugaProprietatePage() {
           owner_id: profile.role === 'OWNER' ? user.id : null,
           owner_email: profile.role === 'OWNER' ? user.email || null : null,
           floor: form.floor ? parseInt(form.floor) : null,
+          total_floors: form.totalFloors ? parseInt(form.totalFloors) : null,
           year_built: form.yearBuilt ? parseInt(form.yearBuilt) : null,
           cover_image_url: publishedGalleryUrls[0] || form.coverUrl || null,
           gallery_urls: publishedGalleryUrls,
@@ -150,9 +175,10 @@ export function AdaugaProprietatePage() {
         const { error: propertyError } = await supabase.from('properties').insert([supabaseData])
         if (propertyError) {
           console.warn('Supabase property save skipped:', propertyError.message)
-          toast.warning('Anunțul este salvat doar pe acest dispozitiv', {
+          toast.warning('Anunțul nu a fost publicat', {
             description: propertyError.message,
           })
+          throw new Error(propertyError.message)
         } else {
           remotePropertySaved = true
           if (form.virtualTour.mode !== 'NONE') {
@@ -225,7 +251,7 @@ export function AdaugaProprietatePage() {
 
       let stored: UserProperty[] = []
       try {
-        stored = JSON.parse(localStorage.getItem(LS_KEYS.USER_PROPERTIES) || '[]')
+        stored = JSON.parse(localStorage.getItem(userPropertyCacheKey(user.id)) || '[]')
         if (!Array.isArray(stored)) stored = []
       } catch {
         // Corrupted data — reset
@@ -233,13 +259,9 @@ export function AdaugaProprietatePage() {
       }
       stored.push(newProp)
       try {
-        localStorage.setItem(LS_KEYS.USER_PROPERTIES, JSON.stringify(stored))
+        localStorage.setItem(userPropertyCacheKey(user.id), JSON.stringify(stored))
       } catch {
-        toast.error('Spatiu de stocare plin', {
-          description: 'Imaginile sunt prea mari. Incearca cu mai putine imagini sau imagini mai mici.',
-        })
-        setIsSubmitting(false)
-        return
+        console.warn('Managed property cache could not be updated')
       }
 
       toast.success('Proprietate adaugata cu succes!', {
@@ -248,7 +270,7 @@ export function AdaugaProprietatePage() {
           : `"${form.title}" este acum publică pe platformă.`,
       })
       setSubmittedCount((c) => c + 1)
-      loadMyProperties()
+      void loadMyProperties()
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Eroare necunoscuta'
       console.error('Submit error:', err)
@@ -437,6 +459,7 @@ export function AdaugaProprietatePage() {
       <MyPropertiesList
         properties={myProperties}
         visible={showMyProps}
+        label={profile?.role === 'ADMIN' ? 'Proprietati administrate' : 'Proprietatile tale'}
         onEdit={(prop) => { setEditProperty(prop); setEditOpen(true) }}
         onDelete={deleteProperty}
       />
@@ -452,7 +475,7 @@ export function AdaugaProprietatePage() {
         open={editOpen}
         onOpenChange={setEditOpen}
         property={editProperty}
-        onSaved={() => { loadMyProperties(); setEditProperty(null) }}
+        onSaved={() => { void loadMyProperties(); setEditProperty(null) }}
       />
     </div>
   )

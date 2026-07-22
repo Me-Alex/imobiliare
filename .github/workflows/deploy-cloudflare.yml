@@ -38,8 +38,10 @@ jobs:
       - name: Lint and type-check
         run: bun run lint && bun run typecheck
 
-      - name: Build Cloudflare worker
-        run: bun run cf:build
+      - name: Verify Cloudflare deploy artifact
+        # This catches Worker-size and module-resolution failures before the
+        # production deployment job is allowed to run.
+        run: bun run cf:verify
 
   deploy:
     needs: quality

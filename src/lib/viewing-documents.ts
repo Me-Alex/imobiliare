@@ -194,6 +194,20 @@ export interface CreateViewingInput {
   privacyAccepted: boolean
 }
 
+function toViewingBookingError(error: { code?: string; message: string }): Error {
+  // PostgreSQL's exclusion constraint is the authority for availability. A
+  // second browser may have selected the same local slot before it refreshes,
+  // so turn the race-condition response into a useful next action.
+  if (
+    error.code === '23P01'
+    || error.message.includes('appointments_active_staff_time_excl')
+  ) {
+    return new Error('Intervalul tocmai a fost rezervat. Alege o altă oră disponibilă.')
+  }
+
+  return new Error(error.message)
+}
+
 export async function createViewing(input: CreateViewingInput): Promise<Vizionare> {
   const startAt = new Date(`${input.date}T${input.startTime}:00`)
   const endAt = new Date(`${input.date}T${input.endTime}:00`)
@@ -259,7 +273,7 @@ export async function createViewing(input: CreateViewingInput): Promise<Vizionar
     `)
     .single()
 
-  if (error) throw new Error(error.message)
+  if (error) throw toViewingBookingError(error)
   return mapViewing(data as Record<string, unknown>)
 }
 

@@ -13,9 +13,11 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/contexts/auth-context'
 import { loadFromLS } from '@/lib/storage'
 import { LS_KEYS } from '@/lib/constants'
-import type { Vizionare, UserProperty, UploadedDocument, SavedSearch } from '@/lib/types'
+import { loadManagedPropertyCache } from '@/lib/managed-properties'
+import type { Vizionare, UploadedDocument, SavedSearch } from '@/lib/types'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -104,7 +106,7 @@ interface ValuationHistoryEntry {
   result: { estimatedValue: number }
 }
 
-function buildActivityItems(): ActivityItem[] {
+function buildActivityItems(userId: string | undefined): ActivityItem[] {
   const items: ActivityItem[] = []
 
   // Vizionari
@@ -124,7 +126,7 @@ function buildActivityItems(): ActivityItem[] {
   }
 
   // User Properties
-  const properties = loadFromLS<UserProperty[]>(LS_KEYS.USER_PROPERTIES, [])
+  const properties = loadManagedPropertyCache(userId)
   for (const p of properties) {
     const ts = (p as Record<string, unknown>).created_at as string | undefined
     // Fallback: parse id if it starts with a timestamp
@@ -211,7 +213,8 @@ interface ActivityTimelineProps {
 }
 
 export function ActivityTimeline({ onViewAll }: ActivityTimelineProps) {
-  const items = useMemo(() => buildActivityItems(), [])
+  const { user } = useAuth()
+  const items = useMemo(() => buildActivityItems(user?.id), [user?.id])
 
   return (
     <div className="glass-card rounded-2xl p-6">

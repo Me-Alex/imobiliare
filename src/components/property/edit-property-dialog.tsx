@@ -28,10 +28,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { loadFromLS, saveToLS } from '@/lib/storage'
-import { PROPERTY_TYPES, TRANSACTIONS, CURRENCIES, SECTOARE, ZONES, LS_KEYS } from '@/lib/constants'
+import { PROPERTY_TYPES, TRANSACTIONS, CURRENCIES, SECTOARE, ZONES } from '@/lib/constants'
 import type { UserProperty } from '@/lib/types'
 import { toast } from 'sonner'
+import { useAuth } from '@/contexts/auth-context'
+import { updateManagedProperty } from '@/lib/managed-properties'
 
 /* ─── Form data (camelCase for UI) ─── */
 
@@ -241,6 +242,7 @@ export function EditPropertyDialog({
   property,
   onSaved,
 }: EditPropertyDialogProps) {
+  const { user } = useAuth()
   const [form, setForm] = useState<EditFormData>(emptyForm)
   const [isSaving, setIsSaving] = useState(false)
   const [initialized, setInitialized] = useState(false)
@@ -292,43 +294,33 @@ export function EditPropertyDialog({
 
     setIsSaving(true)
     try {
-      const properties = loadFromLS<UserProperty[]>(LS_KEYS.USER_PROPERTIES, [])
-      const idx = properties.findIndex((p) => p.id === property.id)
-      if (idx === -1) {
-        toast.error('Proprietatea nu a fost gasita in localStorage')
-        setIsSaving(false)
-        return
+      if (!user) {
+        throw new Error('Trebuie sa fii autentificat pentru a edita proprietatea.')
       }
 
-      // Recalculate price_per_sqm
-      const pricePerSqm = price > 0 && areaSqm > 0 ? Math.round(price / areaSqm) : null
-
-      // Build updated property object preserving original fields we don't edit
-      const updated: UserProperty = {
-        ...properties[idx],
-        title: form.title.trim(),
-        description: form.description.trim(),
-        type: form.type,
-        transaction: form.transaction,
-        price,
-        currency: form.currency,
-        area_sqm: areaSqm,
-        rooms: parseInt(form.rooms) || 0,
-        bathrooms: parseInt(form.bathrooms) || 0,
-        floor: form.floor !== '' ? parseInt(form.floor) : null,
-        total_floors: form.totalFloors !== '' ? parseInt(form.totalFloors) : null,
-        year_built: form.yearBuilt !== '' ? parseInt(form.yearBuilt) : null,
-        address: form.address.trim(),
-        zone: form.zone,
-        sector: form.sector,
-        featured: form.featured,
-        cover_url: form.galleryUrls[0] || '',
-        gallery_urls: JSON.stringify(form.galleryUrls),
-        price_per_sqm: pricePerSqm,
-      }
-
-      properties[idx] = updated
-      saveToLS(LS_KEYS.USER_PROPERTIES, properties)
+      await updateManagedProperty({
+        propertyId: property.id,
+        userId: user.id,
+        values: {
+          title: form.title.trim(),
+          description: form.description.trim(),
+          type: form.type,
+          transaction: form.transaction,
+          price,
+          currency: form.currency,
+          areaSqm,
+          rooms: parseInt(form.rooms) || 0,
+          bathrooms: parseInt(form.bathrooms) || 0,
+          floor: form.floor !== '' ? parseInt(form.floor) : null,
+          totalFloors: form.totalFloors !== '' ? parseInt(form.totalFloors) : null,
+          yearBuilt: form.yearBuilt !== '' ? parseInt(form.yearBuilt) : null,
+          address: form.address.trim(),
+          zone: form.zone,
+          sector: form.sector,
+          featured: form.featured,
+          galleryUrls: form.galleryUrls,
+        },
+      })
 
       toast.success('Proprietate actualizata cu succes!', {
         description: `"${form.title}" a fost salvata.`,

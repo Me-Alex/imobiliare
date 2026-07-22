@@ -32,11 +32,12 @@ import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { loadFromLS } from '@/lib/storage'
 import { LS_KEYS } from '@/lib/constants'
+import { loadManagedPropertyCache } from '@/lib/managed-properties'
 import {
   ACCOUNT_ROLE_DEFINITIONS,
   type AccountRole,
 } from '@/lib/account-roles'
-import type { UploadedDocument, UserProperty, Vizionare } from '@/lib/types'
+import type { UploadedDocument, Vizionare } from '@/lib/types'
 
 const DEFAULT_NOTIFICATIONS: Record<string, boolean> = {
   newProperties: true,
@@ -74,7 +75,7 @@ export function ProfilPage() {
   const navigateTo = useAppStore((state) => state.navigateTo)
   const favorites = useAppStore((state) => state.favorites)
 
-  const properties = useMemo(() => loadFromLS<UserProperty[]>(LS_KEYS.USER_PROPERTIES, []), [])
+  const properties = useMemo(() => loadManagedPropertyCache(user?.id), [user?.id])
   const vizionari = useMemo(() => loadFromLS<Vizionare[]>(LS_KEYS.VIZIONARI, []), [])
   const documents = useMemo(() => loadFromLS<UploadedDocument[]>(LS_KEYS.DOCUMENTS, []), [])
   const savedSearches = useMemo(() => loadFromLS<Array<{ id: string }>>(LS_KEYS.SAVED_SEARCHES, []), [])

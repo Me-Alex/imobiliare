@@ -1,8 +1,9 @@
 /**
  * Edge-safe database accessor.
  *
- * On a standard Node.js runtime the dynamic `import()` of @/lib/db (Prisma + SQLite)
- * succeeds and every route works with the real database.
+ * On a standard Node.js runtime, Prisma is resolved lazily from node_modules so
+ * local SQLite development can use the real database without shipping Prisma to
+ * the Cloudflare Worker.
  *
  * On Cloudflare Workers this resolves the configured D1 binding and wraps it in
  * the Prisma-compatible adapter. On standard Node.js it uses Prisma + SQLite.
@@ -13,6 +14,10 @@ import type { PrismaClient } from '@prisma/client'
 import type { D1Database } from './db-d1'
 
 let _nodeDb: PrismaClient | null | undefined = undefined // undefined = not tried yet
+
+type PrismaModule = {
+  PrismaClient: new (options?: { log?: string[] }) => PrismaClient
+}
 
 async function getD1Database(): Promise<PrismaClient | null> {
   try {
@@ -50,8 +55,16 @@ export async function getSafeDb(): Promise<PrismaClient | null> {
   }
 
   try {
-    const mod = await import('./db')
-    _nodeDb = (mod as { db: PrismaClient }).db ?? null
+    // Do not statically import Prisma from a module that is shared by Worker
+    // routes. Cloudflare uses D1 above, while Node-only local development can
+    // resolve Prisma from node_modules at runtime. Keeping the module name
+    // dynamic prevents OpenNext from emitting Prisma's query-engine WASM in
+    // the Worker bundle.
+    const prismaPackage = ['@prisma', 'client'].join('/')
+    const { PrismaClient } = await import(prismaPackage) as PrismaModule
+    _nodeDb = new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? ['query'] : [],
+    })
   } catch {
     _nodeDb = null
   }

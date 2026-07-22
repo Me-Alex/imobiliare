@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { Building2, Clock, Pencil, Trash2 } from 'lucide-react'
+import { Archive, Building2, Clock, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import type { UserProperty } from '@/lib/types'
@@ -9,11 +9,12 @@ import type { UserProperty } from '@/lib/types'
 interface MyPropertiesListProps {
   properties: UserProperty[]
   visible: boolean
+  label?: string
   onEdit: (prop: UserProperty) => void
   onDelete: (id: string) => void
 }
 
-export function MyPropertiesList({ properties, visible, onEdit, onDelete }: MyPropertiesListProps) {
+export function MyPropertiesList({ properties, visible, label = 'Proprietatile tale', onEdit, onDelete }: MyPropertiesListProps) {
   return (
     <AnimatePresence>
       {visible && properties.length > 0 && (
@@ -27,7 +28,7 @@ export function MyPropertiesList({ properties, visible, onEdit, onDelete }: MyPr
             <div className="glass-card rounded-xl p-4">
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-primary" />
-                Proprietatile tale ({properties.length})
+                {label} ({properties.length})
               </h3>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {properties.map((prop) => (
@@ -70,11 +71,12 @@ export function MyPropertiesList({ properties, visible, onEdit, onDelete }: MyPr
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 opacity-0 transition-opacity text-muted-foreground hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
+                        className="h-7 w-7 opacity-0 transition-opacity text-muted-foreground hover:text-amber-600 group-hover:opacity-100 focus-visible:opacity-100"
                         onClick={() => onDelete(prop.id as string)}
-                        aria-label="Sterge proprietatea"
+                        aria-label="Arhiveaza proprietatea"
+                        title="Arhiveaza proprietatea"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Archive className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>

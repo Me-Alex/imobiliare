@@ -7,9 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
-import { loadFromLS } from '@/lib/storage'
-import { LS_KEYS } from '@/lib/constants'
 import type { UserProperty } from '@/lib/types'
+import { loadManagedPropertyCache } from '@/lib/managed-properties'
 
 interface PropertyPickerStepProps {
   selectedId: string | null
@@ -18,7 +17,7 @@ interface PropertyPickerStepProps {
 
 export function PropertyPickerStep({ selectedId, onSelect }: PropertyPickerStepProps) {
   const { user } = useAuth()
-  const properties = loadFromLS<UserProperty[]>(LS_KEYS.USER_PROPERTIES, [])
+  const properties = useMemo(() => loadManagedPropertyCache(user?.id), [user?.id])
 
   const allProperties = useMemo(() => {
     // Also include some demo properties if user has none

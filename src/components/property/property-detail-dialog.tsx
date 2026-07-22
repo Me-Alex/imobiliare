@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import {
   Heart, Scale, MapPin, BedDouble, Maximize2, Bath, Building,
   Calendar, Phone, ChevronLeft, ChevronRight,
@@ -43,20 +43,13 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const { user } = useAuth()
   const { data: property, isLoading } = useProperty(selectedPropertySlug)
-  const { onViewProperty, onFavorite, onUnfavorite } = useCoinActions()
+  const { onFavorite, onUnfavorite } = useCoinActions()
 
   const open = !!selectedPropertySlug && currentPage !== 'proprietate'
 
   const handleOpenChange = useCallback((v: boolean) => {
     if (!v) setSelectedPropertySlug(null)
   }, [setSelectedPropertySlug])
-
-  // Earn coins for viewing property (once per session per property)
-  useEffect(() => {
-    if (property) {
-      onViewProperty(property.id, property.title)
-    }
-  }, [property?.id])
 
   if (!open) return null
 
@@ -142,7 +135,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
               onClick={() => {
                 const wasFav = favorites.includes(property.id)
                 toggleFavorite(property.id)
-                if (!wasFav) void onFavorite(property.id, property.title)
+                if (!wasFav) void onFavorite(property.id)
                 else void onUnfavorite(property.id)
               }}
               className="gap-2"
