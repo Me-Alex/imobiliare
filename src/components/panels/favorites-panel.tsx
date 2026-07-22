@@ -26,7 +26,7 @@ interface FavoritesPanelProps {
 }
 
 export function FavoritesPanel({ open, onOpenChange }: FavoritesPanelProps) {
-  const { favorites, toggleFavorite, setSelectedPropertySlug } = useAppStore()
+  const { favorites, toggleFavorite } = useAppStore()
   const { onUnfavorite } = useCoinActions()
   const [properties, setProperties] = useState<Property[] | null>(null)
 
@@ -55,11 +55,6 @@ export function FavoritesPanel({ open, onOpenChange }: FavoritesPanelProps) {
 
   const loading = open && favorites.length > 0 && properties === null
   const displayProperties = !open ? [] : (properties ?? [])
-
-  const handleViewDetails = (slug: string) => {
-    setSelectedPropertySlug(slug)
-    onOpenChange(false)
-  }
 
   const handleRemove = (id: string) => {
     toggleFavorite(id)
@@ -103,7 +98,7 @@ export function FavoritesPanel({ open, onOpenChange }: FavoritesPanelProps) {
                   <FavoriteItem
                     key={property.id}
                     property={property}
-                    onViewDetails={() => handleViewDetails(property.slug)}
+                    href={`/proprietati/${encodeURIComponent(property.slug)}`}
                     onRemove={() => handleRemove(property.id)}
                   />
                 ))}
@@ -118,11 +113,11 @@ export function FavoritesPanel({ open, onOpenChange }: FavoritesPanelProps) {
 
 function FavoriteItem({
   property,
-  onViewDetails,
+  href,
   onRemove,
 }: {
   property: Property
-  onViewDetails: () => void
+  href: string
   onRemove: () => void
 }) {
   const gallery: string[] = property.galleryUrls ? JSON.parse(property.galleryUrls) : []
@@ -165,12 +160,10 @@ function FavoriteItem({
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              className="flex-1 h-8 text-xs gap-1"
-              onClick={onViewDetails}
-            >
-              Vezi detalii
+            <Button asChild size="sm" className="flex-1 h-8 text-xs gap-1">
+              <a href={href}>
+                Vezi detalii
+              </a>
             </Button>
             <Button
               variant="outline"

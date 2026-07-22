@@ -1,6 +1,6 @@
 'use client'
 
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect } from 'react'
 import { LogIn, ShieldCheck, CalendarCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,7 +11,8 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { useAuth } from '@/contexts/auth-context'
-import { useAppStore } from '@/store/use-app-store'
+import { saveAuthReturnTarget, type AuthReturnContext } from '@/lib/auth-return'
+import { useAppStore, type PageKey } from '@/store/use-app-store'
 
 interface AuthRequiredDialogProps {
   open: boolean
@@ -23,9 +24,9 @@ interface AuthRequiredDialogProps {
   /** Optional description override */
   description?: string
   /** Page to navigate to after login succeeds (instead of default) */
-  returnPage?: string
+  returnPage?: PageKey
   /** Extra data to store for after login (e.g. property ID) */
-  returnContext?: Record<string, string | null>
+  returnContext?: AuthReturnContext
 }
 
 export function AuthRequiredDialog({
@@ -39,36 +40,16 @@ export function AuthRequiredDialog({
 }: AuthRequiredDialogProps) {
   const { user, loading } = useAuth()
   const navigateTo = useAppStore((s) => s.navigateTo)
-  const setVizionareProperty = useAppStore((s) => s.setVizionareProperty)
 
   const handleLogin = () => {
-    // Store return context for post-login redirect
-    if (returnContext) {
-      if (returnContext.vizionarePropertyId && returnContext.vizionarePropertyTitle) {
-        setVizionareProperty(returnContext.vizionarePropertyId, returnContext.vizionarePropertyTitle)
-      }
-    }
-
-    // Store return page in sessionStorage
-    if (returnPage) {
-      sessionStorage.setItem('pm-auth-return-page', returnPage)
-    }
-    if (returnContext?.fromProperty) {
-      sessionStorage.setItem('pm-auth-return-property', returnContext.fromProperty)
-    }
-    if (returnContext) {
-      sessionStorage.setItem('pm-auth-return-context', JSON.stringify(returnContext))
-    }
-
+    saveAuthReturnTarget(returnPage ?? 'dashboard', returnContext)
     onOpenChange(false)
     navigateTo('login')
   }
 
-  // If user becomes authenticated while dialog is open, close it
-  if (!loading && user && open) {
-    onOpenChange(false)
-    return null
-  }
+  useEffect(() => {
+    if (!loading && user && open) onOpenChange(false)
+  }, [loading, onOpenChange, open, user])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -77,9 +58,9 @@ export function AuthRequiredDialog({
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
             <ShieldCheck className="h-7 w-7" />
           </div>
-          <DialogTitle className="text-xl">Autentificare Necesara</DialogTitle>
+          <DialogTitle className="text-xl">Autentificare necesară</DialogTitle>
           <DialogDescription className="text-sm mt-2">
-            {description || `Pentru a ${actionLabel.toLowerCase()}, trebuie sa fii autentificat in contul tau.`}
+            {description || `Pentru a ${actionLabel.toLowerCase()}, trebuie să fii autentificat în contul tău.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -93,7 +74,7 @@ export function AuthRequiredDialog({
               <div>
                 <p className="text-sm font-medium">{actionLabel}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Creeaza un cont gratuit sau autentifica-te pentru a accesa aceasta functionalitate.
+                  Creează un cont gratuit sau autentifică-te pentru a accesa această funcționalitate.
                 </p>
               </div>
             </div>
@@ -102,10 +83,10 @@ export function AuthRequiredDialog({
           {/* Benefits */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Vizionari Programate', desc: 'Rezerva online' },
+              { label: 'Vizionări programate', desc: 'Rezervă online' },
               { label: 'Favorite Salvate', desc: 'Acces de oriunde' },
-              { label: 'Alerte de Pret', desc: 'Notificari in timp real' },
-              { label: 'Istoric Complet', desc: 'Toate actiunile' },
+              { label: 'Alerte de preț', desc: 'Notificări în timp real' },
+              { label: 'Istoric complet', desc: 'Toate acțiunile' },
             ].map((benefit) => (
               <div key={benefit.label} className="flex items-start gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
@@ -120,7 +101,7 @@ export function AuthRequiredDialog({
           {/* Login button */}
           <Button className="w-full gap-2 h-11" onClick={handleLogin}>
             <LogIn className="h-4 w-4" />
-            Autentifica-te sau Creeaza Cont
+            Autentifică-te sau creează un cont
           </Button>
         </div>
       </DialogContent>

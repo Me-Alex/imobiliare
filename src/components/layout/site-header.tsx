@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
-import { Bell, Bookmark, Building2, CircleDollarSign, Heart, LogIn, LogOut, Menu, Moon, Plus, Sun } from 'lucide-react'
+import { Bell, BellRing, Bookmark, Building2, CircleDollarSign, Heart, LogIn, LogOut, Menu, Moon, Plus, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -26,7 +26,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { LS_KEYS } from '@/lib/constants'
 import { ACCOUNT_ROLE_DEFINITIONS, type AccountRole } from '@/lib/account-roles'
-import { getAccountMenuItems, PUBLIC_NAVIGATION } from '@/lib/navigation-config'
+import { getAccountMenuItems, getWorkspaceNavigation, isAccountWorkspacePage, PUBLIC_NAVIGATION } from '@/lib/navigation-config'
 
 function NotificationsBadge() {
   const [count, setCount] = useState(0)
@@ -93,6 +93,10 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
   const accountRole = profile?.role ?? 'CLIENT'
   const roleDefinition = ACCOUNT_ROLE_DEFINITIONS[accountRole]
   const accountMenuItems = getAccountMenuItems(accountRole)
+  const workspacePages = new Set(getWorkspaceNavigation(accountRole).map((item) => item.page))
+  const visibleAccountMenuItems = isAccountWorkspacePage(currentPage)
+    ? accountMenuItems.filter((item) => !workspacePages.has(item.page))
+    : accountMenuItems
 
   const handleAuthClick = () => {
     if (user) {
@@ -164,6 +168,16 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
             )}
           </Button>
 
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative hidden lg:inline-flex"
+            aria-label="Alerte de preț"
+            onClick={onOpenPriceAlerts}
+          >
+            <BellRing className="h-5 w-5" />
+          </Button>
+
           {/* Coins — navigates to full page */}
           <Button
             variant="ghost"
@@ -230,7 +244,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                 </div>
                 <DropdownMenuSeparator />
-                {accountMenuItems.map((item) => {
+                {visibleAccountMenuItems.map((item) => {
                   const Icon = item.icon
                   return (
                     <DropdownMenuItem

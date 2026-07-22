@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Home, ChevronRight, ArrowLeft } from 'lucide-react'
 import { useAppStore } from '@/store/use-app-store'
 import type { PageKey } from '@/store/slices/navigation'
+import { PageContainer } from './page-shell'
 
 // ─── PageBreadcrumb ──────────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ export function PageBreadcrumb({ items, className }: {
 
   return (
     <nav
-      className={`flex items-center gap-2 text-sm text-muted-foreground ${className ?? 'mb-6'}`}
+      className={`scroll-horizontal flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 text-sm text-muted-foreground ${className ?? 'mb-6'}`}
       aria-label="Breadcrumb"
     >
       <button
@@ -103,10 +104,10 @@ export function PageHero({
         )}
         {breadcrumb && <PageBreadcrumb items={breadcrumb} className="mb-4" />}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
             {description && (
-              <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+              <p className="mt-1.5 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
             )}
           </div>
           {children && <div className="flex shrink-0 flex-wrap items-center gap-2">{children}</div>}
@@ -119,14 +120,14 @@ export function PageHero({
   if (variant === 'full') {
     return (
       <>
-        <section className="relative py-16 lg:py-20 bg-gradient-to-b from-primary/5 via-transparent to-transparent overflow-hidden">
+        <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-transparent to-transparent py-12 sm:py-14 lg:py-16">
           <div className="absolute inset-0 dots-pattern opacity-30" />
           <div
             className="floating-blob w-[400px] h-[400px] -top-32 -right-32"
             style={{ background: 'radial-gradient(circle, oklch(0.527 0.14 160 / 10%) 0%, transparent 70%)' }}
           />
 
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <PageContainer className="relative">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -134,23 +135,23 @@ export function PageHero({
             >
               {breadcrumb && <PageBreadcrumb items={breadcrumb} />}
 
-              <div className="flex items-center gap-4 mb-4">
+              <div className="mb-4 flex items-start gap-4">
                 {Icon && (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/10 bg-primary/10 text-primary shadow-sm">
                     <Icon className="h-6 w-6" />
                   </div>
                 )}
-                <div>
-                  <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">{title}</h1>
+                <div className="min-w-0">
+                  <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
                   {description && (
-                    <p className="text-muted-foreground mt-1">{description}</p>
+                    <p className="mt-1.5 max-w-3xl leading-7 text-muted-foreground">{description}</p>
                   )}
                 </div>
               </div>
 
               {children}
             </motion.div>
-          </div>
+          </PageContainer>
         </section>
 
         <hr className="section-divider" />
@@ -161,14 +162,14 @@ export function PageHero({
   // ── variant="border" ─────────────────────────────────────────────────────
   return (
     <section className="border-b bg-muted/30">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+      <PageContainer className="py-6">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {breadcrumb && <PageBreadcrumb items={breadcrumb} className="mb-4" />}
 
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               {Icon && (
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/10 bg-primary/10 text-primary shadow-sm">
                   <Icon className="h-6 w-6" />
                 </div>
               )}
@@ -182,7 +183,7 @@ export function PageHero({
             {children}
           </div>
         </motion.div>
-      </div>
+      </PageContainer>
     </section>
   )
 }

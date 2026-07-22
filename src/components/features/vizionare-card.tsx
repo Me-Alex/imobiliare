@@ -7,10 +7,11 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAppStore } from '@/store/use-app-store'
-import { DEFAULT_STAFF, VIZIONARE_STATUS_CONFIG } from '@/lib/constants'
+import { DEFAULT_STAFF } from '@/lib/constants'
 import type { Vizionare } from '@/lib/types'
 import { StarRating } from '@/components/dialogs/vizionare-feedback-dialog'
 import { formatDateRO } from '@/lib/utils'
@@ -51,7 +52,12 @@ export function VizionareCard({
 }) {
   const { navigateTo } = useAppStore()
   const staff = getStaffById(vizionare.staffId)
-  const statusCfg = VIZIONARE_STATUS_CONFIG[vizionare.status]
+  const staffInitials = staff?.avatarInitials || vizionare.staffName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'AH'
   const isCancelled = ['cancelled', 'cancelled_by_client', 'cancelled_by_agent'].includes(vizionare.status)
   const isPast = vizionare.status === 'completed' || vizionare.status === 'no_show' || isCancelled
   const isActive = ['pending', 'confirmed', 'checked_in'].includes(vizionare.status)
@@ -83,7 +89,7 @@ export function VizionareCard({
             <div className="flex items-start gap-3 min-w-0">
               <Avatar className="h-10 w-10 flex-shrink-0">
                 <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                  {staff?.avatarInitials || '?'}
+                  {staffInitials}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
@@ -110,12 +116,10 @@ export function VizionareCard({
                       : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-700'
                   }
                 >
-                  {vizionare.wouldProceed ? 'Doreste sa continue' : 'Nu este interesat'}
+                  {vizionare.wouldProceed ? 'Dorește să continue' : 'Nu este interesat'}
                 </Badge>
               )}
-              <Badge className={statusCfg.className} variant={statusCfg.variant}>
-                {statusCfg.label}
-              </Badge>
+              <StatusBadge status={vizionare.status} />
             </div>
           </div>
 
@@ -188,7 +192,7 @@ export function VizionareCard({
                 onClick={() => onAddFeedback(vizionare)}
               >
                 <MessageSquarePlus className="h-3.5 w-3.5" />
-                Adauga Feedback
+                Adaugă feedback
               </Button>
             )}
 
@@ -201,7 +205,7 @@ export function VizionareCard({
                 onClick={() => onAddFeedback(vizionare)}
               >
                 <MessageSquarePlus className="h-3.5 w-3.5" />
-                Editeaza Feedback
+                Editează feedbackul
               </Button>
             )}
 
@@ -232,7 +236,7 @@ export function VizionareCard({
                 onClick={() => onCancel(vizionare.id)}
               >
                 <XCircle className="h-3.5 w-3.5" />
-                Anuleaza
+                Anulează
               </Button>
             )}
 

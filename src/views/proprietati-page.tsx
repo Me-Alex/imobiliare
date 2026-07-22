@@ -1,7 +1,8 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Home, Building2, ChevronRight, Loader2 } from 'lucide-react'
+import { Building2, Loader2, MapPinOff } from 'lucide-react'
+import { PageContainer, PageHero } from '@/components/layout'
 import { PropertyFilters } from '@/components/property/property-filters'
 import { PropertyGrid } from '@/components/property/property-grid'
 import { PropertyMapView } from '@/components/property/property-map-view'
@@ -9,6 +10,7 @@ import { RecentlyViewed } from '@/components/panels/recently-viewed'
 import { useAppStore } from '@/store/use-app-store'
 import { useProperties, type PropertyFilters as QueryPropertyFilters } from '@/hooks/use-properties'
 import { Button } from '@/components/ui/button'
+import { PageState } from '@/components/ui/page-state'
 
 interface ProprietatiPageProps {
   onSaveSearch?: () => void
@@ -57,69 +59,41 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
 
   return (
     <>
-      {/* Page Hero */}
-      <section className="relative py-16 lg:py-20 bg-gradient-to-b from-primary/5 via-transparent to-transparent overflow-hidden">
-        <div className="absolute inset-0 dots-pattern opacity-30" />
-        <div className="floating-blob w-[400px] h-[400px] -top-32 -right-32" style={{ background: 'radial-gradient(circle, oklch(0.527 0.14 160 / 10%) 0%, transparent 70%)' }} />
-
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            {/* Breadcrumb */}
-            <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
-              <Home className="h-4 w-4" />
-              <span>Acasa</span>
-              <ChevronRight className="h-3.5 w-3.5" />
-              <span className="text-foreground font-medium">Proprietati</span>
-            </nav>
-
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Building2 className="h-6 w-6" />
-              </div>
-              <div>
-                <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Proprietati</h1>
-                <p className="text-muted-foreground mt-1">Gaseste proprietatea perfecta in Bucuresti</p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 mt-6">
-              {[
-                { label: 'Apartamente', value: 'APARTMENT' },
-                { label: 'Case', value: 'HOUSE' },
-                { label: 'Vile', value: 'VILLA' },
-                { label: 'Terenuri', value: 'LAND' },
-                { label: 'Spatii Comerciale', value: 'COMMERCIAL' },
-              ].map((tag) => (
-                <button
-                  key={tag.value}
-                  type="button"
-                  onClick={() => {
-                    setSelectedType(selectedType === tag.value ? '' : tag.value)
-                    setMapViewMode(false)
-                  }}
-                  aria-pressed={selectedType === tag.value}
-                  className="text-sm px-4 py-2 rounded-full border border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 hover-lift aria-pressed:border-primary/50 aria-pressed:bg-primary/10 aria-pressed:text-primary"
-                >
-                  {tag.label}
-                </button>
-              ))}
-            </div>
-          </motion.div>
+      <PageHero
+        icon={Building2}
+        title="Proprietăți"
+        description="Descoperă proprietăți verificate și filtrează rapid ofertele potrivite pentru tine."
+        breadcrumb={[{ label: 'Proprietăți' }]}
+      >
+        <div className="mt-6 flex flex-wrap items-center gap-2">
+          {[
+            { label: 'Apartamente', value: 'APARTMENT' },
+            { label: 'Case', value: 'HOUSE' },
+            { label: 'Vile', value: 'VILLA' },
+            { label: 'Terenuri', value: 'LAND' },
+            { label: 'Spații comerciale', value: 'COMMERCIAL' },
+          ].map((tag) => (
+            <button
+              key={tag.value}
+              type="button"
+              onClick={() => {
+                setSelectedType(selectedType === tag.value ? '' : tag.value)
+                setMapViewMode(false)
+              }}
+              aria-pressed={selectedType === tag.value}
+              className="rounded-full border border-border/70 bg-card/80 px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-foreground aria-pressed:border-primary/40 aria-pressed:bg-primary/10 aria-pressed:text-primary"
+            >
+              {tag.label}
+            </button>
+          ))}
         </div>
-      </section>
-
-      <hr className="section-divider" />
+      </PageHero>
 
       {/* Recently Viewed */}
       <RecentlyViewed />
 
       {/* Properties Grid */}
-      <section className="py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <PageContainer as="section" className="py-10 sm:py-12">
           <PropertyFilters onSaveSearch={onSaveSearch} />
           <div className="mt-6">
             <AnimatePresence mode="wait">
@@ -132,16 +106,26 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
                   transition={{ duration: 0.25 }}
                 >
                   {mapLoading ? (
-                    <div className="flex items-center justify-center py-20">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </div>
+                    <PageState
+                      compact
+                      tone="loading"
+                      icon={Loader2}
+                      title="Încărcăm proprietățile pe hartă"
+                      description="Pregătim pozițiile și detaliile ofertelor disponibile."
+                    />
                   ) : mapError ? (
-                    <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-                      <p className="text-sm text-muted-foreground">Harta nu a putut fi incarcata momentan.</p>
-                      <Button variant="outline" size="sm" onClick={() => void refetchMap()}>
-                        Reincearca
-                      </Button>
-                    </div>
+                    <PageState
+                      compact
+                      tone="error"
+                      icon={MapPinOff}
+                      title="Harta nu este disponibilă momentan"
+                      description="Lista de proprietăți rămâne disponibilă. Poți încerca din nou fără să pierzi filtrele selectate."
+                      action={(
+                        <Button variant="outline" size="sm" onClick={() => void refetchMap()}>
+                          Reîncearcă
+                        </Button>
+                      )}
+                    />
                   ) : (
                     <PropertyMapView properties={mapData} />
                   )}
@@ -159,8 +143,7 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
               )}
             </AnimatePresence>
           </div>
-        </div>
-      </section>
+      </PageContainer>
     </>
   )
 }

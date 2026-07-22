@@ -2,13 +2,14 @@
 
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { MapPin, User, Check, Building2 } from 'lucide-react'
+import { AlertCircle, MapPin, User, Check, Building2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { PageState } from '@/components/ui/page-state'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import type { UserProperty } from '@/lib/types'
-import { loadManagedPropertyCache } from '@/lib/managed-properties'
+import { useProperties } from '@/hooks/use-properties'
 
 interface PropertyPickerStepProps {
   selectedId: string | null
@@ -17,32 +18,21 @@ interface PropertyPickerStepProps {
 
 export function PropertyPickerStep({ selectedId, onSelect }: PropertyPickerStepProps) {
   const { user } = useAuth()
-  const properties = useMemo(() => loadManagedPropertyCache(user?.id), [user?.id])
-
-  const allProperties = useMemo(() => {
-    // Also include some demo properties if user has none
-    if (properties.length > 0) return properties
-    return [
-      {
-        id: 'demo-1', title: 'Apartament 2 camere Dorobanti',
-        type: 'Apartament', transaction: 'VANZARE', price: '95000',
-        currency: 'EUR', areaSqm: '58', rooms: '2', address: 'Str. Dorobanti nr. 45',
-        zone: 'Dorobanti', coverUrl: '/images/prop-demo-1.jpg',
-      },
-      {
-        id: 'demo-2', title: 'Garsoniera Centru',
-        type: 'Garsoniera', transaction: 'INCHIRIERE', price: '450',
-        currency: 'EUR', areaSqm: '35', rooms: '1', address: 'Str. Victoriei nr. 12',
-        zone: 'Victoriei', coverUrl: '/images/prop-demo-2.jpg',
-      },
-      {
-        id: 'demo-3', title: 'Casa 3 camere Pipera',
-        type: 'Casa', transaction: 'VANZARE', price: '185000',
-        currency: 'EUR', areaSqm: '120', rooms: '3', address: 'Str. Pipera nr. 78',
-        zone: 'Pipera', coverUrl: '/images/prop-demo-3.jpg',
-      },
-    ]
-  }, [properties])
+  const { data: properties = [], isLoading, isError, refetch } = useProperties()
+  const allProperties = useMemo<UserProperty[]>(() => properties.map((property) => ({
+    id: property.id,
+    title: property.title,
+    type: property.type,
+    transaction: property.transaction,
+    price: property.price,
+    currency: property.currency,
+    areaSqm: property.areaSqm,
+    rooms: property.rooms,
+    address: property.address,
+    zone: property.zone,
+    coverUrl: property.coverUrl || undefined,
+    slug: property.slug,
+  })), [properties])
 
   if (!user) {
     return (
@@ -50,21 +40,59 @@ export function PropertyPickerStep({ selectedId, onSelect }: PropertyPickerStepP
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
           <User className="h-7 w-7" />
         </div>
-        <h3 className="text-lg font-semibold mb-2">Autentifica-te</h3>
+        <h3 className="text-lg font-semibold mb-2">Autentifică-te</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Trebuie sa fii autentificat pentru a programa o vizionare.
+          Trebuie să fii autentificat pentru a programa o vizionare.
         </p>
         <Button onClick={() => useAppStore.getState().navigateTo('login')} className="gap-2">
-          Autentifica-te
+          Autentifică-te
         </Button>
       </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <PageState
+        compact
+        tone="loading"
+        icon={Loader2}
+        title="Încărcăm proprietățile"
+        description="Pregătim ofertele disponibile pentru vizionare."
+      />
+    )
+  }
+
+  if (isError) {
+    return (
+      <PageState
+        compact
+        tone="error"
+        icon={AlertCircle}
+        title="Proprietățile nu au putut fi încărcate"
+        description="Conexiunea poate fi reluată fără să pierzi progresul programării."
+        action={<Button variant="outline" size="sm" onClick={() => void refetch()}>Reîncearcă</Button>}
+      />
+    )
+  }
+
+  if (allProperties.length === 0) {
+    return (
+      <PageState
+        compact
+        tone="neutral"
+        icon={Building2}
+        title="Nu există proprietăți disponibile"
+        description="Revino când sunt publicate oferte noi sau explorează serviciile agenției."
+        action={<Button variant="outline" size="sm" onClick={() => useAppStore.getState().navigateTo('servicii')}>Vezi serviciile</Button>}
+      />
     )
   }
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground text-center">
-        Selecteaza o proprietate pentru a programa o vizionare
+        Selectează proprietatea pe care vrei să o vizionezi
       </p>
       <div className="grid gap-3 max-h-96 overflow-y-auto pr-1 custom-scrollbar">
         {allProperties.map((prop) => {
@@ -116,7 +144,7 @@ export function PropertyPickerStep({ selectedId, onSelect }: PropertyPickerStepP
                     {prop.type && <Badge variant="secondary" className="text-xs">{prop.type}</Badge>}
                     {prop.transaction && (
                       <Badge variant="outline" className="text-xs">
-                        {prop.transaction === 'VANZARE' ? 'Vanzare' : 'Inchiriere'}
+                        {prop.transaction === 'SALE' || prop.transaction === 'VANZARE' ? 'Vânzare' : 'Închiriere'}
                       </Badge>
                     )}
                   </div>

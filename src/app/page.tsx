@@ -49,6 +49,8 @@ import { CrmPage } from '@/views/crm-page'
 import { OwnerDashboardPage } from '@/views/owner-dashboard-page'
 import { NotificationsPanel } from '@/components/panels/notifications-panel'
 import { useCoinsHydration } from '@/hooks/use-coin-actions'
+import { useAuthReturnRedirect } from '@/hooks/use-auth-return-redirect'
+import { InactiveAccountGate } from '@/components/account/inactive-account-gate'
 import { isAccountWorkspacePage } from '@/lib/navigation-config'
 import { PATH_PAGE_MAP } from '@/lib/route-config'
 
@@ -86,11 +88,12 @@ const pageComponents: Record<string, React.ComponentType<Record<string, unknown>
   'owner-dashboard': OwnerDashboardPage,
 }
 
-// Pages that should NOT show header/footer/overlays
-const fullBleedPages = new Set(['login', 'admin', 'adauga-proprietate', 'dashboard', 'profil', 'programare-vizionare', 'disponibilitate-staff', 'vizionarile-mele', 'documente', 'monede', 'deal-room', 'crm', 'owner-dashboard'])
+// Focused flows keep the shared header, but do not use the public marketing chrome.
+const focusedPages = new Set(['login', 'admin', 'adauga-proprietate', 'dashboard', 'profil', 'programare-vizionare', 'disponibilitate-staff', 'vizionarile-mele', 'documente', 'monede', 'deal-room', 'crm', 'owner-dashboard'])
 
 function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
   useCoinsHydration()
+  useAuthReturnRedirect()
   const { user, profile } = useAuth()
   const {
     currentPage,
@@ -158,52 +161,21 @@ function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
   }, [])
 
   const PageComponent = pageComponents[currentPage]
-  const isFullBleed = fullBleedPages.has(currentPage)
+  const isFocusedPage = focusedPages.has(currentPage)
   const pageContent = user && profile && !canAccessAccountPage(profile.role, currentPage)
     ? <RoleAccessDenied currentRole={profile.role} allowedRoles={getAllowedRolesForPage(currentPage)} />
     : PageComponent
       ? <PageComponent onSaveSearch={() => setSaveSearchDialogOpen(true)} />
       : null
 
-  if (isFullBleed) {
-    // Login and Admin pages have their own header/footer
-    return (
-      <div className="min-h-screen flex flex-col">
-        <a href="#main-content" className="skip-link">
-          Treci la continutul principal
-        </a>
-        <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} onOpenSavedSearches={() => setSavedSearchesOpen(true)} />
-        {isAccountWorkspacePage(currentPage) && <AccountWorkspaceNav />}
-        <main id="main-content" className="flex-1">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentPage}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-            >
-              {pageContent}
-            </motion.div>
-          </AnimatePresence>
-        </main>
-        <FavoritesPanel open={favoritesOpen} onOpenChange={setFavoritesOpen} />
-        <PriceAlertsPanel open={priceAlertsOpen} onOpenChange={setPriceAlertsOpen} />
-        <NotificationsPanel open={notificationsOpen} onOpenChange={setNotificationsOpen} />
-        <SavedSearchesPanel open={savedSearchesOpen} onOpenChange={setSavedSearchesOpen} />
-        <SaveSearchDialog open={saveSearchDialogOpen} onOpenChange={setSaveSearchDialogOpen} />
-        <Toaster richColors position="bottom-right" />
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen flex flex-col">
       <a href="#main-content" className="skip-link">
-        Treci la continutul principal
+        Treci la conținutul principal
       </a>
-      <AnnouncementBanner />
+      {!isFocusedPage && <AnnouncementBanner />}
       <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} onOpenSavedSearches={() => setSavedSearchesOpen(true)} />
+      {isAccountWorkspacePage(currentPage) && <AccountWorkspaceNav />}
       <main id="main-content" className="flex-1">
         <AnimatePresence mode="wait">
           <motion.div
@@ -213,11 +185,13 @@ function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
-            {pageContent}
+            <InactiveAccountGate enabled={isAccountWorkspacePage(currentPage)}>
+              {pageContent}
+            </InactiveAccountGate>
           </motion.div>
         </AnimatePresence>
       </main>
-      <SiteFooter />
+      {!isFocusedPage && <SiteFooter />}
       <PropertyDetailDialog onContact={handleContact} />
       <PropertyCompare />
       <ContactFormDialog

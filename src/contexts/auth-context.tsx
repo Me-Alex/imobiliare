@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef, ty
 import { type User, type Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from '@/lib/supabase'
 import { normalizeAccountRole, type AccountRole } from '@/lib/account-roles'
+import { AUTH_CALLBACK_QUERY_PARAM, ensureAuthReturnTarget } from '@/lib/auth-return'
 
 export interface GoogleAuthError {
   code: string
@@ -180,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, fetchProfile])
 
   const updateProfile = useCallback(async (updates: AccountProfileUpdate) => {
-    if (!user) return { error: 'Trebuie sa fii autentificat.' }
+    if (!user) return { error: 'Trebuie să fii autentificat.' }
 
     const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (updates.fullName !== undefined) {
@@ -251,16 +252,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: {
           code: 'missing_configuration',
           isProviderNotEnabled: false,
-          message: 'Autentificarea nu este configurata corect pentru acest deployment.',
+          message: 'Autentificarea nu este configurată corect pentru această versiune a aplicației.',
         },
       }
     }
 
     try {
+      ensureAuthReturnTarget('dashboard')
+      const callbackUrl = new URL('/', window.location.origin)
+      callbackUrl.searchParams.set('page', 'login')
+      callbackUrl.searchParams.set(AUTH_CALLBACK_QUERY_PARAM, 'google')
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: callbackUrl.toString(),
           skipBrowserRedirect: true,
         },
       })
@@ -273,7 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             code: error.code || 'unknown',
             isProviderNotEnabled,
             message: isProviderNotEnabled
-              ? 'Autentificarea Google nu este inca configurata. Urmeaza pasii de mai jos.'
+              ? 'Autentificarea Google nu este încă configurată. Urmează pașii de mai jos.'
               : message || 'Eroare la conectarea cu Google.',
           },
         }
@@ -284,7 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           error: {
             code: 'missing_redirect_url',
             isProviderNotEnabled: false,
-            message: 'Google nu a returnat o adresa de autentificare valida.',
+            message: 'Google nu a returnat o adresă de autentificare validă.',
           },
         }
       }
@@ -296,7 +302,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: {
           code: 'exception',
           isProviderNotEnabled: false,
-          message: 'Nu s-a putut conecta cu Google. Incearca din nou.',
+          message: 'Nu s-a putut conecta cu Google. Încearcă din nou.',
         },
       }
     }

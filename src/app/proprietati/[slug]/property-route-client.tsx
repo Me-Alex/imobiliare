@@ -9,6 +9,7 @@ import { SiteFooter } from '@/components/layout/site-footer'
 import { CookieConsent } from '@/components/layout/cookie-consent'
 import { BackToTop } from '@/components/layout/back-to-top'
 import { GalleryLightbox } from '@/components/dialogs/gallery-lightbox'
+import { PropertyCompare } from '@/components/property/property-compare'
 import { FavoritesPanel } from '@/components/panels/favorites-panel'
 import { PriceAlertsPanel } from '@/components/panels/price-alerts-panel'
 import { SavedSearchesPanel } from '@/components/panels/saved-searches-panel'
@@ -19,6 +20,7 @@ import { useAppStore } from '@/store/use-app-store'
 import { PropertyPage } from '@/views/property-page'
 import type { Property } from '@/lib/types'
 import { getPageDestination } from '@/lib/route-config'
+import { rememberRecentlyViewedProperty } from '@/lib/recently-viewed'
 
 interface PropertyRouteClientProps {
   property: Property
@@ -40,6 +42,7 @@ function PropertyRouteContent({ property }: PropertyRouteClientProps) {
 
   useEffect(() => {
     useAppStore.setState({ currentPage: 'proprietate', selectedPropertySlug: property.slug })
+    rememberRecentlyViewedProperty(property.slug)
     const readyTimer = window.setTimeout(() => setNavigationReady(true), 0)
     return () => window.clearTimeout(readyTimer)
   }, [property.slug])
@@ -69,6 +72,7 @@ function PropertyRouteContent({ property }: PropertyRouteClientProps) {
       <PriceAlertsPanel open={priceAlertsOpen} onOpenChange={setPriceAlertsOpen} />
       <NotificationsPanel open={notificationsOpen} onOpenChange={setNotificationsOpen} />
       <SavedSearchesPanel open={savedSearchesOpen} onOpenChange={setSavedSearchesOpen} />
+      <PropertyCompare />
       <GalleryLightbox
         key={lightboxImages.join(',')}
         images={lightboxImages}

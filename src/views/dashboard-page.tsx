@@ -20,6 +20,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/auth-context'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { PageState } from '@/components/ui/page-state'
+import { PageContainer, PageHero, PageSection, PageShell, PageSurface, SectionHeader } from '@/components/layout'
 import { useAppStore, type PageKey } from '@/store/use-app-store'
 import { loadFromLS } from '@/lib/storage'
 import { LS_KEYS } from '@/lib/constants'
@@ -159,19 +161,32 @@ export function DashboardPage() {
   }, [profile, user])
 
   if (authLoading || workspaceLoading) {
-    return <div className="min-h-[calc(100vh-10rem)] animate-pulse bg-muted/10" />
+    return (
+      <PageShell>
+        <PageContainer className="py-8">
+          <PageState
+            tone="loading"
+            title="Pregătim spațiul tău de lucru"
+            description="Sincronizăm vizionările, tranzacțiile și documentele asociate contului."
+          />
+        </PageContainer>
+      </PageShell>
+    )
   }
 
   if (!user || !profile) {
     return (
-      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center px-4 py-12">
-        <div className="text-center space-y-4">
-          <Eye className="mx-auto h-10 w-10 text-primary" />
-          <h2 className="text-xl font-bold">Autentifică-te</h2>
-          <p className="text-sm text-muted-foreground">Prezentarea contului este disponibilă după autentificare.</p>
-          <Button onClick={() => navigateTo('login')}>Autentificare</Button>
-        </div>
-      </div>
+      <PageShell>
+        <PageContainer width="narrow" className="py-8">
+          <PageState
+            tone="neutral"
+            icon={Eye}
+            title="Autentifică-te pentru a continua"
+            description="Panoul contului reunește vizionările, documentele și următorii pași ai tranzacțiilor tale."
+            action={<Button onClick={() => navigateTo('login')}>Autentificare</Button>}
+          />
+        </PageContainer>
+      </PageShell>
     )
   }
 
@@ -182,9 +197,9 @@ export function DashboardPage() {
   const stats: DashboardStat[] = role === 'CLIENT'
     ? [
           { label: 'Favorite', value: favorites.length, icon: Heart, color: 'text-rose-600 bg-rose-100 dark:bg-rose-900/30' },
-          { label: 'Vizionari active', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
+          { label: 'Vizionări active', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
           { label: 'Documente de rezolvat', value: openRequirements.length, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
-        { label: 'Cautari salvate', value: savedSearches.length, icon: Search, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+        { label: 'Căutări salvate', value: savedSearches.length, icon: Search, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
       ]
     : role === 'OWNER'
       ? [
@@ -208,18 +223,21 @@ export function DashboardPage() {
           ]
 
   return (
-    <div className="min-h-screen">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
-              Bine ai revenit, {profile.fullName}!
-            </h1>
-            <Badge className="bg-primary/10 text-primary hover:bg-primary/10">{roleDefinition.label}</Badge>
-          </div>
-          <p className="mt-2 max-w-2xl text-muted-foreground">{roleDefinition.description}</p>
-          {workspaceError && <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">Datele live nu sunt disponibile momentan. Reîncearcă din pagina destinației.</p>}
-        </motion.div>
+    <PageShell>
+      <PageContainer className="py-8">
+        <PageHero
+          variant="simple"
+          title={`Bine ai revenit, ${profile.fullName}!`}
+          description={roleDefinition.description}
+        >
+          <Badge className="bg-primary/10 text-primary hover:bg-primary/10">{roleDefinition.label}</Badge>
+        </PageHero>
+
+        {workspaceError && (
+          <p role="status" className="mb-6 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            Datele live nu sunt disponibile momentan. Poți continua, iar datele vor fi reîncărcate în pagina destinației.
+          </p>
+        )}
 
         <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
           {stats.map((stat, index) => (
@@ -239,13 +257,11 @@ export function DashboardPage() {
           ))}
         </div>
 
-        <section className="mb-8">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold">Spațiul contului tău</h2>
-              <p className="text-sm text-muted-foreground">Acțiunile sunt adaptate profilului {roleDefinition.label.toLowerCase()}.</p>
-            </div>
-          </div>
+        <PageSection>
+          <SectionHeader
+            title="Spațiul contului tău"
+            description={`Acțiunile sunt adaptate profilului ${roleDefinition.label.toLowerCase()}.`}
+          />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {actions.map((action) => (
               <button
@@ -265,10 +281,10 @@ export function DashboardPage() {
               </button>
             ))}
           </div>
-        </section>
+        </PageSection>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="glass-card rounded-2xl p-6">
+          <PageSurface tone="elevated" className="p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-semibold">
                 <CalendarCheck className="h-5 w-5 text-primary" />
@@ -277,10 +293,13 @@ export function DashboardPage() {
               <Button variant="ghost" size="sm" onClick={() => navigateTo('vizionarile-mele')}>Vezi toate</Button>
             </div>
             {activeVizionari.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                <CalendarCheck className="mx-auto mb-2 h-9 w-9 opacity-30" />
-                Nu există vizionări active.
-              </div>
+              <PageState
+                compact
+                icon={CalendarCheck}
+                title="Nu există vizionări active"
+                description="Programările noi vor apărea aici împreună cu statusul lor."
+                className="min-h-36 border-0 bg-transparent shadow-none"
+              />
             ) : (
               <div className="space-y-3">
                 {activeVizionari.slice(0, 3).map((item) => (
@@ -295,9 +314,9 @@ export function DashboardPage() {
                 ))}
               </div>
             )}
-          </div>
+          </PageSurface>
 
-          <div className="glass-card rounded-2xl p-6">
+          <PageSurface tone="elevated" className="p-6">
             <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
               {role === 'CLIENT' ? <Heart className="h-5 w-5 text-primary" /> : <Building2 className="h-5 w-5 text-primary" />}
               {role === 'CLIENT' ? 'Experiența ta de căutare' : 'Portofoliu și responsabilități'}
@@ -310,9 +329,9 @@ export function DashboardPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </PageSurface>
         </div>
-      </div>
-    </div>
+      </PageContainer>
+    </PageShell>
   )
 }

@@ -1,17 +1,13 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { Clock, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { useAppStore } from '@/store/use-app-store'
 import { formatBucharestLocation, formatPrice } from '@/lib/utils'
-import { LS_KEYS } from '@/lib/constants'
+import { clearRecentlyViewedProperties, getRecentlyViewedSlugs } from '@/lib/recently-viewed'
 import type { Property } from '@/lib/types'
-
-const STORAGE_KEY = LS_KEYS.RECENTLY_VIEWED
-const MAX_RECENT = 4
 
 const typeLabels: Record<string, string> = {
   APARTMENT: 'Apartament',
@@ -27,24 +23,6 @@ const typeColors: Record<string, string> = {
   VILLA: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/20',
   LAND: 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/20',
   COMMERCIAL: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/20',
-}
-
-function getRecentlyViewedSlugs(): string[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function addToRecentlyViewed(slug: string): string[] {
-  const current = getRecentlyViewedSlugs()
-  const filtered = current.filter((s) => s !== slug)
-  const updated = [slug, ...filtered].slice(0, MAX_RECENT)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-  return updated
 }
 
 async function fetchPropertiesBySlugs(
@@ -84,31 +62,18 @@ async function fetchPropertiesBySlugs(
 }
 
 export function RecentlyViewed() {
-  const { selectedPropertySlug, setSelectedPropertySlug } = useAppStore()
   const [properties, setProperties] = useState<Property[]>([])
-  const mountedRef = useRef(false)
-  const slugsRef = useRef<string[]>([])
 
   // On mount, load slugs from localStorage and fetch properties
   useEffect(() => {
-    mountedRef.current = true
-    slugsRef.current = getRecentlyViewedSlugs()
-    fetchPropertiesBySlugs(slugsRef.current, setProperties)
+    fetchPropertiesBySlugs(getRecentlyViewedSlugs(), setProperties)
   }, [])
-
-  // When selectedPropertySlug changes to non-null, add to recently viewed and refetch
-  useEffect(() => {
-    if (!mountedRef.current || !selectedPropertySlug) return
-    slugsRef.current = addToRecentlyViewed(selectedPropertySlug)
-    fetchPropertiesBySlugs(slugsRef.current, setProperties)
-  }, [selectedPropertySlug])
 
   // Don't render if no properties loaded (also covers empty history)
   if (properties.length === 0) return null
 
   const handleClearHistory = () => {
-    localStorage.removeItem(STORAGE_KEY)
-    slugsRef.current = []
+    clearRecentlyViewedProperties()
     setProperties([])
   }
 
@@ -144,13 +109,14 @@ export function RecentlyViewed() {
               'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&q=75'
 
             return (
-              <motion.div
+              <motion.a
                 key={property.slug}
+                href={`/proprietati/${encodeURIComponent(property.slug)}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.08 }}
                 className="shrink-0 w-[200px] rounded-lg border border-border overflow-hidden cursor-pointer group hover:scale-105 hover:shadow-lg transition-all duration-200"
-                onClick={() => setSelectedPropertySlug(property.slug)}
+                aria-label={`Vezi din nou proprietatea ${property.title}`}
               >
                 {/* Cover image */}
                 <div className="relative h-32 overflow-hidden">
@@ -182,7 +148,7 @@ export function RecentlyViewed() {
                     {formatPrice(property.price, property.currency)}
                   </p>
                 </div>
-              </motion.div>
+              </motion.a>
             )
           })}
         </div>

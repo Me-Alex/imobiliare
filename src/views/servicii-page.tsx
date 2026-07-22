@@ -49,6 +49,19 @@ type ServiceDefinition = {
   directPage?: 'evaluare'
 }
 
+type ServicePackage = {
+  id: string
+  name: string
+  description: string
+  items: string[]
+  primaryServiceId: string
+  featured?: boolean
+}
+
+type ServiceRequestSelection =
+  | { kind: 'service'; service: ServiceDefinition }
+  | { kind: 'package'; package: ServicePackage; primaryService: ServiceDefinition }
+
 const SERVICES: ServiceDefinition[] = [
   {
     id: 'evaluare',
@@ -128,25 +141,28 @@ const SERVICES: ServiceDefinition[] = [
   },
 ]
 
-const PACKAGES = [
+const PACKAGES: ServicePackage[] = [
   {
+    id: 'start-listare',
     name: 'Start listare',
     description: 'Pentru o proprietate care urmează să fie publicată.',
     items: ['Evaluare orientativă', 'Fotografie profesională', 'Descriere și structură de anunț'],
-    serviceId: 'fotografie',
+    primaryServiceId: 'fotografie',
   },
   {
+    id: 'prezentare-premium',
     name: 'Prezentare premium',
     description: 'Pentru proprietăți unde experiența vizuală contează.',
     items: ['Fotografie profesională', 'Tur virtual 360°', 'Video de prezentare'],
-    serviceId: 'tur-virtual',
+    primaryServiceId: 'tur-virtual',
     featured: true,
   },
   {
+    id: 'pregatit-pentru-tranzactie',
     name: 'Pregătit pentru tranzacție',
     description: 'Pentru proprietari care vor un proces bine organizat.',
     items: ['Checklist documente', 'Deal Room', 'Coordonarea pașilor și responsabililor'],
-    serviceId: 'documente',
+    primaryServiceId: 'documente',
   },
 ]
 
@@ -161,7 +177,7 @@ const INITIAL_FORM = {
 
 export function ServiciiPage() {
   const navigateTo = useAppStore((state) => state.navigateTo)
-  const [selectedService, setSelectedService] = useState<ServiceDefinition | null>(null)
+  const [selection, setSelection] = useState<ServiceRequestSelection | null>(null)
   const [form, setForm] = useState(INITIAL_FORM)
   const [submitting, setSubmitting] = useState(false)
 
@@ -170,17 +186,22 @@ export function ServiciiPage() {
       navigateTo(service.directPage)
       return
     }
-    setSelectedService(service)
+    setSelection({ kind: 'service', service })
   }
 
-  const openPackage = (serviceId: string) => {
-    const service = SERVICES.find((item) => item.id === serviceId)
-    if (service) setSelectedService(service)
+  const openPackage = (servicePackage: ServicePackage) => {
+    const primaryService = SERVICES.find((item) => item.id === servicePackage.primaryServiceId)
+    if (!primaryService) {
+      toast.error('Pachetul nu poate fi solicitat momentan.')
+      return
+    }
+
+    setSelection({ kind: 'package', package: servicePackage, primaryService })
   }
 
   const submitRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!selectedService) return
+    if (!selection) return
     if (form.name.trim().length < 2) {
       toast.error('Introdu numele complet.')
       return
@@ -200,6 +221,26 @@ export function ServiciiPage() {
 
     setSubmitting(true)
     try {
+      const requestIdentity = selection.kind === 'package'
+        ? {
+            propertyTitle: `Pachet servicii: ${selection.package.name}`,
+            messageLines: [
+              'Tip solicitare: pachet de servicii',
+              `Pachet: ${selection.package.name}`,
+              `Cod pachet: ${selection.package.id}`,
+              `Servicii incluse: ${selection.package.items.join(', ')}`,
+              `Serviciu principal: ${selection.primaryService.title} (${selection.primaryService.id})`,
+            ],
+          }
+        : {
+            propertyTitle: `Serviciu: ${selection.service.title}`,
+            messageLines: [
+              'Tip solicitare: serviciu individual',
+              `Serviciu: ${selection.service.title}`,
+              `Cod serviciu: ${selection.service.id}`,
+            ],
+          }
+
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -207,10 +248,10 @@ export function ServiciiPage() {
           name: form.name.trim(),
           email: form.email.trim(),
           phone: form.phone.trim(),
-          propertyTitle: `Serviciu: ${selectedService.title}`,
+          propertyTitle: requestIdentity.propertyTitle,
           privacyAccepted: form.privacyAccepted,
           message: [
-            `Solicitare serviciu: ${selectedService.title}`,
+            ...requestIdentity.messageLines,
             `Zonă / localitate: ${form.location.trim() || 'nespecificată'}`,
             `Detalii: ${form.details.trim() || 'Clientul solicită să fie contactat pentru stabilirea detaliilor.'}`,
           ].join('\n'),
@@ -223,7 +264,7 @@ export function ServiciiPage() {
         description: 'Echipa o va vedea în centrul de administrare și te va contacta pentru detalii.',
       })
       setForm(INITIAL_FORM)
-      setSelectedService(null)
+      setSelection(null)
     } catch (error) {
       toast.error('Solicitarea nu a fost trimisă', {
         description: error instanceof Error ? error.message : 'Încearcă din nou.',
@@ -312,7 +353,7 @@ export function ServiciiPage() {
                 <CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>{item.name}</CardTitle>{item.featured ? <Badge>Recomandat</Badge> : null}</div><CardDescription>{item.description}</CardDescription></CardHeader>
                 <CardContent>
                   <ul className="space-y-3">{item.items.map((feature) => <li key={feature} className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-primary" />{feature}</li>)}</ul>
-                  <Button aria-label={`Cere detalii pentru pachetul ${item.name}`} className="mt-6 w-full" variant={item.featured ? 'default' : 'outline'} onClick={() => openPackage(item.serviceId)}>Cere detalii</Button>
+                  <Button aria-label={`Cere detalii pentru pachetul ${item.name}`} className="mt-6 w-full" variant={item.featured ? 'default' : 'outline'} onClick={() => openPackage(item)}>Cere detalii</Button>
                 </CardContent>
               </Card>
             ))}
@@ -330,10 +371,14 @@ export function ServiciiPage() {
         </div>
       </section>
 
-      <Dialog open={Boolean(selectedService)} onOpenChange={(open) => { if (!open && !submitting) setSelectedService(null) }}>
+      <Dialog open={Boolean(selection)} onOpenChange={(open) => { if (!open && !submitting) setSelection(null) }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Solicită {selectedService?.shortTitle.toLocaleLowerCase('ro-RO')}</DialogTitle>
+            <DialogTitle>
+              {selection?.kind === 'package'
+                ? `Solicită pachetul „${selection.package.name}”`
+                : `Solicită ${selection?.service.shortTitle.toLocaleLowerCase('ro-RO') ?? 'serviciul'}`}
+            </DialogTitle>
             <DialogDescription>Completează datele esențiale. Detaliile și livrabilele vor fi confirmate înainte de începerea serviciului.</DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={submitRequest}>
@@ -349,7 +394,7 @@ export function ServiciiPage() {
               <span>Am citit <a href="/confidentialitate" target="_blank" rel="noreferrer" className="font-medium text-primary underline-offset-4 hover:underline">informarea privind protecția datelor</a> și sunt de acord să fiu contactat în legătură cu această solicitare.</span>
             </label>
             <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" disabled={submitting} onClick={() => setSelectedService(null)}>Renunță</Button>
+              <Button type="button" variant="outline" disabled={submitting} onClick={() => setSelection(null)}>Renunță</Button>
               <Button type="submit" disabled={submitting}>{submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Trimite solicitarea</Button>
             </div>
           </form>

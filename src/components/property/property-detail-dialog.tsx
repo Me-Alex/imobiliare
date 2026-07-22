@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   Heart, Scale, MapPin, BedDouble, Maximize2, Bath, Building,
   Calendar, Phone, ChevronLeft, ChevronRight,
@@ -31,7 +31,7 @@ import { useAuth } from '@/contexts/auth-context'
 
 
 const typeLabels: Record<string, string> = {
-  APARTMENT: 'Apartament', HOUSE: 'Casa', VILLA: 'Vila', LAND: 'Teren', COMMERCIAL: 'Comercial',
+  APARTMENT: 'Apartament', HOUSE: 'Casă', VILLA: 'Vilă', LAND: 'Teren', COMMERCIAL: 'Comercial',
 }
 
 interface PropertyDetailDialogProps {
@@ -45,7 +45,11 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
   const { data: property, isLoading } = useProperty(selectedPropertySlug)
   const { onFavorite, onUnfavorite } = useCoinActions()
 
-  const open = !!selectedPropertySlug && currentPage !== 'proprietate'
+  const open = !!selectedPropertySlug && currentPage !== 'proprietate' && currentPage !== 'login'
+
+  useEffect(() => {
+    if (currentPage === 'login' && selectedPropertySlug) setSelectedPropertySlug(null)
+  }, [currentPage, selectedPropertySlug, setSelectedPropertySlug])
 
   const handleOpenChange = useCallback((v: boolean) => {
     if (!v) setSelectedPropertySlug(null)
@@ -85,7 +89,7 @@ export function PropertyDetailDialog({ onContact }: PropertyDetailDialogProps) {
           <DialogHeader className="text-left space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">{typeLabels[property.type] || property.type}</Badge>
-              <Badge variant="secondary">{property.transaction === 'SALE' ? 'Vanzare' : 'Inchiriere'}</Badge>
+              <Badge variant="secondary">{property.transaction === 'SALE' ? 'Vânzare' : 'Închiriere'}</Badge>
               {property.featured && <Badge className="bg-amber-500 text-white border-0">Popular</Badge>}
             </div>
             <DialogTitle className="text-2xl">{property.title}</DialogTitle>

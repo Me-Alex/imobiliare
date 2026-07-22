@@ -55,7 +55,6 @@ export function HeroSection() {
     setSelectedZone,
     selectedType,
     setSelectedType,
-    setSelectedPropertySlug,
     navigateTo,
   } = useAppStore()
   const { data: zones } = useZones()
@@ -155,10 +154,10 @@ export function HeroSection() {
       setIsOpen(false)
       navigateTo('proprietati')
     } else {
-      setSelectedPropertySlug(suggestion.slug)
       setIsOpen(false)
+      window.location.assign(`/proprietati/${encodeURIComponent(suggestion.slug)}`)
     }
-  }, [setSelectedZone, setSelectedPropertySlug, setSearchQuery, navigateTo])
+  }, [setSelectedZone, setSearchQuery, navigateTo])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isOpen || allItems.length === 0) {

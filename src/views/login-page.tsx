@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useEffect, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Building2, Lock, Mail, Eye, EyeOff, ArrowRight, Loader2, Shield, User, AlertTriangle, ExternalLink, X, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { useAuth, type GoogleAuthError } from '@/contexts/auth-context'
-import { useAppStore, type PageKey } from '@/store/use-app-store'
+import { consumeAuthCallbackError } from '@/lib/auth-return'
 import { PageBreadcrumb } from '@/components/layout/page-hero'
+import { PageContainer, PageShell } from '@/components/layout'
+import { PageState } from '@/components/ui/page-state'
 import { toast } from 'sonner'
 
 export function LoginPage() {
@@ -24,23 +26,30 @@ export function LoginPage() {
   const [googleError, setGoogleError] = useState<GoogleAuthError | null>(null)
   const [showSetupGuide, setShowSetupGuide] = useState(false)
   const { signIn, signUp, signInWithGoogle, user } = useAuth()
-  const navigateTo = useAppStore((s) => s.navigateTo)
 
-  // Handle post-login redirect
   useEffect(() => {
-    if (!user) return
-    const returnPage = sessionStorage.getItem('pm-auth-return-page')
-    if (returnPage) {
-      sessionStorage.removeItem('pm-auth-return-page')
-      sessionStorage.removeItem('pm-auth-return-property')
-      navigateTo(returnPage as PageKey)
-      return
-    }
-    navigateTo('dashboard')
-  }, [user, navigateTo])
+    const callbackError = consumeAuthCallbackError()
+    if (!callbackError) return
+
+    setGoogleError({
+      code: 'oauth_callback_error',
+      isProviderNotEnabled: false,
+      message: 'Conectarea cu Google a fost anulată sau nu a putut fi finalizată. Încearcă din nou.',
+    })
+  }, [])
 
   if (user) {
-    return null
+    return (
+      <PageShell>
+        <PageContainer width="narrow" className="py-10">
+          <PageState
+            tone="loading"
+            title="Finalizăm autentificarea"
+            description="Încărcăm profilul și te redirecționăm către destinația inițială."
+          />
+        </PageContainer>
+      </PageShell>
+    )
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -57,17 +66,16 @@ export function LoginPage() {
       if (result.error) {
         setError(result.error)
       } else if (isLogin) {
-        toast.success('Autentificare reusita!', {
+        toast.success('Autentificare reușită!', {
           description: 'Bine ai venit pe HQS Imobiliare.',
         })
-        navigateTo('dashboard')
       } else {
         toast.success('Cont creat cu succes!', {
-          description: 'Verifica email-ul pentru confirmare.',
+          description: 'Verifică e-mailul pentru confirmare.',
         })
       }
     } catch {
-      setError('A aparut o eroare. Te rugam incearca din nou.')
+      setError('A apărut o eroare. Te rugăm să încerci din nou.')
     } finally {
       setIsLoading(false)
     }
@@ -89,7 +97,7 @@ export function LoginPage() {
       setGoogleError({
         code: 'exception',
         isProviderNotEnabled: false,
-        message: 'Nu s-a putut conecta cu Google. Incearca din nou.',
+        message: 'Nu s-a putut conecta cu Google. Încearcă din nou.',
       })
     } finally {
       setGoogleLoading(false)
@@ -116,7 +124,7 @@ export function LoginPage() {
       >
         {/* Breadcrumb */}
         <PageBreadcrumb
-          items={[{ label: 'Acasa', page: 'acasa' }, { label: isLogin ? 'Autentificare' : 'Inregistrare' }]}
+          items={[{ label: 'Acasă', page: 'acasa' }, { label: isLogin ? 'Autentificare' : 'Înregistrare' }]}
         />
 
         <div className="glass-card rounded-2xl p-8">
@@ -126,11 +134,11 @@ export function LoginPage() {
               <Shield className="h-7 w-7" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight">
-              {isLogin ? 'Bine ai revenit!' : 'Creeaza Cont Nou'}
+              {isLogin ? 'Bine ai revenit!' : 'Creează un cont nou'}
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
               {isLogin
-                ? 'Autentifica-te pentru a accesa spatiul contului tau'
+                ? 'Autentifică-te pentru a accesa spațiul contului tău'
                 : 'Alege tipul de cont potrivit pentru tine'}
             </p>
           </div>
@@ -152,11 +160,11 @@ export function LoginPage() {
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
               </svg>
             )}
-            {googleLoading ? 'Se conecteaza...' : 'Continua cu Google'}
+            {googleLoading ? 'Se conectează...' : 'Continuă cu Google'}
           </button>
           {!isLogin && (
             <p className="mt-2 text-center text-xs text-muted-foreground">
-              Conturile Google noi pornesc ca profil Client. Il poti schimba in Proprietar din profil.
+              Conturile Google noi pornesc cu profilul Client. Îl poți schimba în Proprietar din profil.
             </p>
           )}
 
@@ -175,10 +183,10 @@ export function LoginPage() {
                       <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                          Google Login nu este inca activat
+                          Autentificarea Google nu este încă activată
                         </p>
                         <p className="text-xs text-amber-600/80 dark:text-amber-400/70 mt-1">
-                          Autentificarea cu Google necesita configurare in Supabase Dashboard.
+                          Autentificarea cu Google necesită configurare în Supabase Dashboard.
                         </p>
                         <button
                           type="button"
@@ -186,14 +194,14 @@ export function LoginPage() {
                           className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline"
                         >
                           <Info className="h-3.5 w-3.5" />
-                          Vezi cum sa configurezi
+                          Vezi cum se configurează
                         </button>
                       </div>
                       <button
                         type="button"
                         onClick={() => setGoogleError(null)}
                         className="text-amber-500 hover:text-amber-600 transition-colors shrink-0"
-                        aria-label="Inchide"
+                        aria-label="Închide"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -212,7 +220,7 @@ export function LoginPage() {
                         type="button"
                         onClick={() => { setShowSetupGuide(false); setGoogleError(null) }}
                         className="text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label="Inchide ghidul"
+                        aria-label="Închide ghidul"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -229,7 +237,7 @@ export function LoginPage() {
                             Mergi la Google Cloud Console
                           </p>
                           <p className="text-muted-foreground mt-0.5">
-                            Creeaza un proiect (sau foloseste unul existent) si activeaza &quot;Google Identity&quot; API.
+                            Creează un proiect (sau folosește unul existent) și activează API-ul Google Identity.
                           </p>
                           <a
                             href={googleConsoleUrl}
@@ -250,7 +258,7 @@ export function LoginPage() {
                         </div>
                         <div>
                           <p className="font-medium text-foreground">
-                            Creeaza OAuth 2.0 Client ID
+                            Creează un ID de client OAuth 2.0
                           </p>
                           <p className="text-muted-foreground mt-0.5">
                             Credentials → Create Credentials → OAuth client ID → Web application.
@@ -265,7 +273,7 @@ export function LoginPage() {
                         </div>
                         <div>
                           <p className="font-medium text-foreground">
-                            Adauga Redirect URI
+                            Adaugă URI-ul de redirecționare
                           </p>
                           <div className="mt-1.5 rounded-md bg-background/80 border border-border px-3 py-2 font-mono text-[10px] break-all text-muted-foreground">
                             https://spmapzhlcwhzfrxuvgxd.supabase.co/auth/v1/callback
@@ -280,10 +288,10 @@ export function LoginPage() {
                         </div>
                         <div>
                           <p className="font-medium text-foreground">
-                            Activeaza Google in Supabase
+                            Activează Google în Supabase
                           </p>
                           <p className="text-muted-foreground mt-0.5">
-                            Mergi la Authentication → Providers → Google → Activeaza si adauga Client ID si Client Secret obtinute.
+                            În Supabase, mergi la Authentication, Providers, Google, apoi adaugă ID-ul și secretul de client obținute.
                           </p>
                           <a
                             href={supabaseDashboardUrl}
@@ -304,10 +312,10 @@ export function LoginPage() {
                         </div>
                         <div>
                           <p className="font-medium text-foreground">
-                            Salveaza si testeaza
+                            Salvează și testează
                           </p>
                           <p className="text-muted-foreground mt-0.5">
-                            Dupa activare, intoarce-te aici si incearca din nou butonul &quot;Continua cu Google&quot;.
+                            După activare, întoarce-te aici și încearcă din nou butonul „Continuă cu Google”.
                           </p>
                         </div>
                       </div>
@@ -319,7 +327,7 @@ export function LoginPage() {
                         onClick={() => { setShowSetupGuide(false); setGoogleError(null) }}
                         className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                       >
-                        Am inteles, ascunde ghidul
+                        Am înțeles, ascunde ghidul
                       </button>
                     </div>
                   </div>
@@ -344,7 +352,7 @@ export function LoginPage() {
                     type="button"
                     onClick={() => setGoogleError(null)}
                     className="text-destructive/60 hover:text-destructive transition-colors shrink-0"
-                    aria-label="Inchide"
+                    aria-label="Închide"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -391,7 +399,7 @@ export function LoginPage() {
                 </fieldset>
                 <div className="space-y-2">
                   <label htmlFor="fullName" className="text-sm font-medium">
-                    Nume Complet
+                    Nume complet
                   </label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -451,7 +459,7 @@ export function LoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   tabIndex={-1}
-                  aria-label={showPassword ? 'Ascunde parola' : 'Arata parola'}
+                  aria-label={showPassword ? 'Ascunde parola' : 'Arată parola'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -482,7 +490,7 @@ export function LoginPage() {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  {isLogin ? 'Autentifica-te' : 'Creeaza Cont'}
+                  {isLogin ? 'Autentifică-te' : 'Creează contul'}
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -498,7 +506,7 @@ export function LoginPage() {
               onClick={() => { setIsLogin(!isLogin); setError(''); setGoogleError(null); setShowSetupGuide(false) }}
               className="font-medium text-primary hover:underline"
             >
-              {isLogin ? 'Inregistreaza-te' : 'Autentifica-te'}
+              {isLogin ? 'Înregistrează-te' : 'Autentifică-te'}
             </button>
           </p>
 

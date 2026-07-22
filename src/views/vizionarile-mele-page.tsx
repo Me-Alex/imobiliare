@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import {
   CalendarDays, Clock, User,
   CalendarCheck, CalendarX2, Inbox,
@@ -16,7 +16,8 @@ import { LS_KEYS } from '@/lib/constants'
 import type { Vizionare, AvailabilitySlot } from '@/lib/types'
 import { VizionareFeedbackDialog } from '@/components/dialogs/vizionare-feedback-dialog'
 import { toast } from 'sonner'
-import { PageHero } from '@/components/layout/page-hero'
+import { PageContainer, PageHero, PageShell, PageSurface } from '@/components/layout'
+import { PageState } from '@/components/ui/page-state'
 import { VizionareCard } from '@/components/features/vizionare-card'
 import {
   cancelViewing,
@@ -28,23 +29,6 @@ import {
   markViewingNoShow,
   saveViewingFeedback,
 } from '@/lib/viewing-documents'
-
-// ─── Empty State ────────────────────────────────────────────────────────────
-
-function EmptyState({ message, icon: Icon }: { message: string; icon: React.ComponentType<{ className?: string }> }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col items-center justify-center py-16 text-center"
-    >
-      <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
-        <Icon className="h-8 w-8 text-muted-foreground/50" />
-      </div>
-      <p className="text-muted-foreground text-sm max-w-xs">{message}</p>
-    </motion.div>
-  )
-}
 
 // ─── Timeline Dot ───────────────────────────────────────────────────────────
 
@@ -81,7 +65,7 @@ export function VizionarileMelePage() {
     try {
       setVizionari(await listViewings())
     } catch (error) {
-      toast.error('Vizionarile nu au putut fi incarcate.', {
+      toast.error('Vizionările nu au putut fi încărcate.', {
         description: error instanceof Error ? error.message : undefined,
       })
     } finally {
@@ -123,9 +107,9 @@ export function VizionarileMelePage() {
         }
       }
       await refreshViewings()
-      toast.success('Vizionare anulata', { description: 'Programarea a fost anulata cu succes.' })
+      toast.success('Vizionare anulată', { description: 'Programarea a fost anulată cu succes.' })
     } catch (error) {
-      toast.error('Vizionarea nu a putut fi anulata.', {
+      toast.error('Vizionarea nu a putut fi anulată.', {
         description: error instanceof Error ? error.message : undefined,
       })
     }
@@ -175,7 +159,7 @@ export function VizionarileMelePage() {
           : 'Programarea din istoric rămâne în audit. Alege o nouă dată.',
       })
     } catch (error) {
-      toast.error('Vizionarea nu a putut fi reprogramata.', {
+      toast.error('Vizionarea nu a putut fi reprogramată.', {
         description: error instanceof Error ? error.message : undefined,
       })
     }
@@ -207,38 +191,33 @@ export function VizionarileMelePage() {
 
   if (authLoading || (user && dataLoading)) {
     return (
-      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
+      <PageShell>
+        <PageContainer width="narrow" className="py-10">
+          <PageState tone="loading" title="Încărcăm vizionările" description="Sincronizăm programările și stările lor actuale." />
+        </PageContainer>
+      </PageShell>
     )
   }
 
   if (!user) {
     return (
-      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center py-12 px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-2xl p-8 text-center max-w-md"
-        >
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
-            <User className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-bold mb-2">Autentifica-te</h2>
-          <p className="text-sm text-muted-foreground mb-6">
-            Trebuie sa fii autentificat pentru a vedea vizionarile tale.
-          </p>
-          <Button onClick={() => navigateTo('login')} className="gap-2">
-            Autentifica-te
-          </Button>
-        </motion.div>
-      </div>
+      <PageShell>
+        <PageContainer width="narrow" className="py-10">
+          <PageState
+            tone="neutral"
+            icon={User}
+            title="Autentifică-te"
+            description="Intră în cont pentru a vedea și administra vizionările tale."
+            action={<Button onClick={() => navigateTo('login')}>Autentificare</Button>}
+          />
+        </PageContainer>
+      </PageShell>
     )
   }
 
   return (
-    <div className="min-h-[calc(100vh-10rem)] py-8 px-4">
-      <div className="max-w-3xl mx-auto">
+    <PageShell>
+      <PageContainer width="narrow" className="py-8 sm:py-10">
         <PageHero
           variant="simple"
           title={canManage ? 'Agenda vizionărilor' : 'Vizionările mele'}
@@ -247,24 +226,24 @@ export function VizionarileMelePage() {
             : 'Gestionează programările tale de vizionare.'}
           showBackButton
           onBack={() => navigateTo('acasa')}
-          backLabel="Inapoi"
+          backLabel="Înapoi"
         />
 
         {/* Stats summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
             { label: 'Active', count: activeVizionari.length, icon: CalendarCheck, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' },
-            { label: 'In asteptare', count: activeVizionari.filter(v => v.status === 'pending').length, icon: Clock, color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' },
+            { label: 'În așteptare', count: activeVizionari.filter(v => v.status === 'pending').length, icon: Clock, color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' },
             { label: 'Confirmate / prezenți', count: activeVizionari.filter(v => v.status === 'confirmed' || v.status === 'checked_in').length, icon: CalendarDays, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' },
             { label: 'Istoric', count: historyVizionari.length, icon: CalendarX2, color: 'text-muted-600 bg-muted/50' },
           ].map(stat => (
-            <div key={stat.label} className="glass-card rounded-xl p-3 sm:p-4 text-center">
+            <PageSurface key={stat.label} className="p-3 text-center sm:p-4">
               <div className={`mx-auto w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${stat.color}`}>
                 <stat.icon className="h-4 w-4" />
               </div>
               <p className="text-xl font-bold">{stat.count}</p>
               <p className="text-xs text-muted-foreground">{stat.label}</p>
-            </div>
+            </PageSurface>
           ))}
         </div>
 
@@ -273,7 +252,7 @@ export function VizionarileMelePage() {
           <TabsList className="w-full mb-6">
             <TabsTrigger value="active" className="flex-1 gap-1.5">
               <CalendarDays className="h-3.5 w-3.5 hidden sm:block" />
-              Vizionari Active
+              Vizionări active
               {activeVizionari.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] text-[10px] px-1.5">
                   {activeVizionari.length}
@@ -314,9 +293,12 @@ export function VizionarileMelePage() {
                   ))}
                 </div>
               ) : (
-                <EmptyState
+                <PageState
+                  compact
                   icon={CalendarCheck}
-                  message="Fara vizionari programate. Programeaza o vizionare la o proprietate care te intereseaza."
+                  title="Nu ai vizionări active"
+                  description="Programează o vizionare direct din catalogul de proprietăți."
+                  action={!canManage ? <Button variant="outline" size="sm" onClick={() => navigateTo('proprietati')}>Vezi proprietățile</Button> : undefined}
                 />
               )}
             </AnimatePresence>
@@ -329,7 +311,7 @@ export function VizionarileMelePage() {
                   onClick={() => navigateTo('programare-vizionare')}
                 >
                   <CalendarDays className="h-4 w-4" />
-                  Programeaza o Vizionare Noua
+                  Programează o vizionare nouă
                 </Button>
               </div>
             )}
@@ -365,15 +347,17 @@ export function VizionarileMelePage() {
                   </div>
                 </div>
               ) : (
-                <EmptyState
+                <PageState
+                  compact
                   icon={Inbox}
-                  message="Nu ai inca vizionari in istoric. Vizionarile finalizate sau anulate vor aparea aici."
+                  title="Istoricul este gol"
+                  description="Vizionările finalizate sau anulate vor apărea aici."
                 />
               )}
             </AnimatePresence>
           </TabsContent>
         </Tabs>
-      </div>
+      </PageContainer>
 
       {/* Feedback Dialog */}
       <VizionareFeedbackDialog
@@ -382,6 +366,6 @@ export function VizionarileMelePage() {
         vizionare={feedbackVizionare}
         onSaved={handleFeedbackSaved}
       />
-    </div>
+    </PageShell>
   )
 }

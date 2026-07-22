@@ -23,7 +23,7 @@ interface PropertyCardProps {
 
 const typeLabels: Record<string, string> = {
   APARTMENT: 'Apartament',
-  HOUSE: 'Casa',
+  HOUSE: 'Casă',
   VILLA: 'Vila',
   LAND: 'Teren',
   COMMERCIAL: 'Comercial',
@@ -37,8 +37,8 @@ const typeColors: Record<string, string> = {
 }
 
 const transactionLabels: Record<string, string> = {
-  SALE: 'Vanzare',
-  RENT: 'Inchiriere',
+  SALE: 'Vânzare',
+  RENT: 'Închiriere',
 }
 
 function FavoriteButton({ isFav }: { isFav: boolean }) {
@@ -63,7 +63,7 @@ function MetricPill({ icon: Icon, value, label }: { icon: React.ElementType; val
 
 export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }: PropertyCardProps) {
   const { favorites, compareList, toggleFavorite, toggleCompare, setVizionareProperty, navigateTo } = useAppStore()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const { onFavorite, onUnfavorite } = useCoinActions()
   const [authOpen, setAuthOpen] = useState(false)
   const isFav = favorites.includes(property.id)
@@ -83,6 +83,13 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
       setAuthOpen(true)
       return
     }
+    if (profile && !['CLIENT', 'OWNER'].includes(profile.role)) {
+      toast.info('Programările noi sunt disponibile conturilor de client și proprietar.', {
+        description: 'Poți administra vizionările existente din spațiul contului tău.',
+      })
+      navigateTo('vizionarile-mele')
+      return
+    }
     setVizionareProperty(property.id, property.title)
     sessionStorage.setItem('pm-route-viewing-context', JSON.stringify({
       propertyId: property.id,
@@ -90,6 +97,9 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
       propertySlug: property.slug,
     }))
     navigateTo('programare-vizionare')
+    toast.success('Proprietatea a fost selectată.', {
+      description: 'Alege agentul, data și ora vizionării.',
+    })
   }
 
   if (viewMode === 'list') {
@@ -113,12 +123,12 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
               className="absolute inset-0 h-full w-full object-cover img-zoom"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-            <div className="absolute top-3 left-3 flex flex-wrap gap-2 z-10">
+            <div className="pointer-events-none absolute top-3 left-3 z-10 flex flex-wrap gap-2">
               <Badge className={typeColors[property.type] || 'bg-secondary'}>{typeLabels[property.type] || property.type}</Badge>
               <Badge className="bg-white/90 dark:bg-black/70 text-foreground backdrop-blur-sm border-0">
                 {transactionLabels[property.transaction] || property.transaction}
               </Badge>
-              {property.featured && (
+              {Boolean(property.featured) && (
                 <Badge className="bg-amber-500 text-white border-0 gap-1">
                   <Star className="h-3 w-3" /> Popular
                 </Badge>
@@ -152,9 +162,9 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
               </div>
               <div className="flex flex-wrap gap-4 mt-2">
                 <MetricPill icon={BedDouble} value={property.rooms} label="camere" />
-                <MetricPill icon={Maximize2} value={`${property.areaSqm} m²`} label="suprafata" />
-                <MetricPill icon={Bath} value={property.bathrooms} label="bai" />
-                {property.floor && (
+                <MetricPill icon={Maximize2} value={`${property.areaSqm} m²`} label="suprafață" />
+                <MetricPill icon={Bath} value={property.bathrooms} label="băi" />
+                {property.floor !== null && property.floor !== undefined && (
                   <div className="flex flex-col items-center gap-0.5 min-w-[42px]">
                     <span className="text-sm font-medium">Et.{property.floor}</span>
                     <span className="text-[10px] text-muted-foreground leading-none">etaj</span>
@@ -170,7 +180,7 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
                 onClick={(e) => { e.stopPropagation(); handleToggleFavorite() }}
               >
                 <FavoriteButton isFav={isFav} />
-                <span className="ml-1">{isFav ? 'Salvat' : 'Salveaza'}</span>
+                  <span className="ml-1">{isFav ? 'Salvat' : 'Salvează'}</span>
               </Button>
               <Button
                 variant="outline"
@@ -179,7 +189,7 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
                 onClick={(e) => { e.stopPropagation(); toggleCompare(property.id) }}
               >
                 <Scale className={`h-4 w-4 mr-1 ${isCompare ? 'text-primary' : ''}`} />
-                {isCompare ? 'In comparatie' : 'Compara'}
+                {isCompare ? 'În comparație' : 'Compară'}
               </Button>
               <Button
                 variant="outline"
@@ -199,7 +209,7 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
         <AuthRequiredDialog
           open={authOpen}
           onOpenChange={setAuthOpen}
-          actionLabel="Programează o Vizionare"
+          actionLabel="Programează o vizionare"
           actionIcon={CalendarCheck}
           returnPage="programare-vizionare"
           returnContext={{
@@ -233,12 +243,12 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
         {/* Badges */}
-        <div className="absolute top-3 left-3 flex flex-wrap gap-2 z-10">
+        <div className="pointer-events-none absolute top-3 left-3 z-10 flex flex-wrap gap-2">
           <Badge className={typeColors[property.type] || 'bg-secondary'}>{typeLabels[property.type] || property.type}</Badge>
           <Badge className="bg-white/90 dark:bg-black/70 text-foreground backdrop-blur-sm border-0">
             {transactionLabels[property.transaction] || property.transaction}
           </Badge>
-          {property.featured && (
+          {Boolean(property.featured) && (
             <Badge className="bg-amber-500 text-white border-0 gap-1">
               <Star className="h-3 w-3" /> Popular
             </Badge>
@@ -259,9 +269,8 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
             onClick={(e) => {
               e.stopPropagation()
               handleSchedule()
-              toast.success('Selecteaza data si ora pentru vizionare')
             }}
-            aria-label="Programeaza vizionare"
+            aria-label="Programează vizionarea"
           >
             <CalendarCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           </Button>
@@ -270,7 +279,7 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
             size="icon"
             className="h-8 w-8 bg-white/90 dark:bg-black/60 backdrop-blur-sm border-0 shadow-sm hover:bg-white dark:hover:bg-black/80"
             onClick={(e) => { e.stopPropagation(); handleToggleFavorite() }}
-            aria-label={isFav ? 'Sterge de la favorite' : 'Adauga la favorite'}
+            aria-label={isFav ? 'Șterge de la favorite' : 'Adaugă la favorite'}
           >
             <FavoriteButton isFav={isFav} />
           </Button>
@@ -279,14 +288,14 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
             size="icon"
             className="h-8 w-8 bg-white/90 dark:bg-black/60 backdrop-blur-sm border-0 shadow-sm hover:bg-white dark:hover:bg-black/80"
             onClick={(e) => { e.stopPropagation(); toggleCompare(property.id) }}
-            aria-label={isCompare ? 'Sterge din comparatie' : 'Adauga la comparatie'}
+            aria-label={isCompare ? 'Șterge din comparație' : 'Adaugă la comparație'}
           >
             <Scale className={`h-4 w-4 ${isCompare ? 'text-primary' : ''}`} />
           </Button>
         </div>
 
         {/* Price */}
-        <div className="absolute bottom-3 left-3 z-10">
+        <div className="pointer-events-none absolute bottom-3 left-3 z-10">
           <div className="price-tag-animated absolute inset-0 rounded-lg -z-10" />
           <div className="text-xl font-bold text-white drop-shadow-lg">{formatPrice(property.price)}</div>
           {property.pricePerSqm && (
@@ -306,14 +315,14 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
         </div>
         <div className="flex items-center gap-4 pt-3 border-t border-border/50">
           <MetricPill icon={BedDouble} value={property.rooms} label="camere" />
-          <MetricPill icon={Maximize2} value={`${property.areaSqm} m²`} label="suprafata" />
-          <MetricPill icon={Bath} value={property.bathrooms} label="bai" />
+          <MetricPill icon={Maximize2} value={`${property.areaSqm} m²`} label="suprafață" />
+          <MetricPill icon={Bath} value={property.bathrooms} label="băi" />
         </div>
       </CardContent>
       <AuthRequiredDialog
         open={authOpen}
         onOpenChange={setAuthOpen}
-        actionLabel="Programeaza o Vizionare"
+        actionLabel="Programează o vizionare"
         actionIcon={CalendarCheck}
         returnPage="programare-vizionare"
         returnContext={{

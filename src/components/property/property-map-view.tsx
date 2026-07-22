@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { useAppStore } from '@/store/use-app-store'
 import type { Property } from '@/lib/types'
 
 // ─── Zone coordinate mapping (percentage-based) ────────────────────────────────
@@ -126,7 +125,6 @@ interface PropertyMapViewProps {
 }
 
 export function PropertyMapView({ properties }: PropertyMapViewProps) {
-  const { setSelectedPropertySlug } = useAppStore()
   const [zoom, setZoom] = useState(1)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [showSidebar, setShowSidebar] = useState(false)
@@ -236,12 +234,13 @@ export function PropertyMapView({ properties }: PropertyMapViewProps) {
                 {markers.map((m) => {
                   const typeInfo = TYPE_COLORS[m.type] || TYPE_COLORS.APARTMENT
                   return (
-                    <motion.button
+                    <motion.a
                       key={m.id}
+                      href={`/proprietati/${encodeURIComponent(m.slug)}`}
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="w-full text-left rounded-lg border p-3 hover:bg-accent/50 transition-colors group"
-                      onClick={() => setSelectedPropertySlug(m.slug)}
+                      aria-label={`Vezi detaliile proprietății ${m.title}`}
                     >
                       <div className="flex items-start gap-2">
                         <div
@@ -273,7 +272,7 @@ export function PropertyMapView({ properties }: PropertyMapViewProps) {
                           </div>
                         </div>
                       </div>
-                    </motion.button>
+                    </motion.a>
                   )
                 })}
               </div>
@@ -408,62 +407,67 @@ export function PropertyMapView({ properties }: PropertyMapViewProps) {
               return (
                 <Tooltip key={m.id}>
                   <TooltipTrigger asChild>
-                    <g
+                    <a
+                      href={`/proprietati/${encodeURIComponent(m.slug)}`}
+                      aria-label={`Vezi detaliile proprietății ${m.title}`}
                       onMouseEnter={() => setHoveredId(m.id)}
                       onMouseLeave={() => setHoveredId(null)}
-                      onClick={() => setSelectedPropertySlug(m.slug)}
+                      onFocus={() => setHoveredId(m.id)}
+                      onBlur={() => setHoveredId(null)}
                       style={{ cursor: 'pointer' }}
                     >
-                      {/* Featured pulse ring */}
-                      {m.featured && (
+                      <g>
+                        {/* Featured pulse ring */}
+                        {m.featured && (
+                          <motion.circle
+                            cx={m.cx}
+                            cy={m.cy}
+                            r={r}
+                            fill="none"
+                            stroke={typeInfo.fill}
+                            strokeWidth="0.2"
+                            animate={{
+                              r: [r, r + 2, r + 3.5],
+                              opacity: [0.6, 0.2, 0],
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              delay: idx * 0.15,
+                            }}
+                          />
+                        )}
+                        {/* Marker shadow */}
+                        <circle
+                          cx={m.cx}
+                          cy={m.cy + 0.3}
+                          r={r}
+                          fill="rgba(0,0,0,0.15)"
+                        />
+                        {/* Marker body */}
                         <motion.circle
                           cx={m.cx}
                           cy={m.cy}
                           r={r}
-                          fill="none"
-                          stroke={typeInfo.fill}
-                          strokeWidth="0.2"
-                          animate={{
-                            r: [r, r + 2, r + 3.5],
-                            opacity: [0.6, 0.2, 0],
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                            delay: idx * 0.15,
-                          }}
+                          fill={typeInfo.fill}
+                          stroke={typeInfo.stroke}
+                          strokeWidth={isHovered ? 0.3 : 0.15}
+                          filter={m.featured ? 'url(#featured-glow)' : 'url(#marker-glow)'}
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: idx * 0.03, duration: 0.3, type: 'spring', stiffness: 200 }}
+                          whileHover={{ scale: 1.4 }}
                         />
-                      )}
-                      {/* Marker shadow */}
-                      <circle
-                        cx={m.cx}
-                        cy={m.cy + 0.3}
-                        r={r}
-                        fill="rgba(0,0,0,0.15)"
-                      />
-                      {/* Marker body */}
-                      <motion.circle
-                        cx={m.cx}
-                        cy={m.cy}
-                        r={r}
-                        fill={typeInfo.fill}
-                        stroke={typeInfo.stroke}
-                        strokeWidth={isHovered ? 0.3 : 0.15}
-                        filter={m.featured ? 'url(#featured-glow)' : 'url(#marker-glow)'}
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: idx * 0.03, duration: 0.3, type: 'spring', stiffness: 200 }}
-                        whileHover={{ scale: 1.4 }}
-                      />
-                      {/* Inner dot */}
-                      <circle
-                        cx={m.cx}
-                        cy={m.cy}
-                        r={r * 0.35}
-                        fill="white"
-                        opacity="0.6"
-                      />
-                    </g>
+                        {/* Inner dot */}
+                        <circle
+                          cx={m.cx}
+                          cy={m.cy}
+                          r={r * 0.35}
+                          fill="white"
+                          opacity="0.6"
+                        />
+                      </g>
+                    </a>
                   </TooltipTrigger>
                   <TooltipContent
                     side="top"

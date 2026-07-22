@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, ChevronLeft, Loader2 } from 'lucide-react'
+import { CalendarCheck, ChevronRight, ChevronLeft, LogIn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
@@ -10,7 +10,8 @@ import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
 import { LS_KEYS, DEFAULT_STAFF } from '@/lib/constants'
 import type { StaffMember, AvailabilitySlot, UserProperty } from '@/lib/types'
 import { toast } from 'sonner'
-import { PageHero } from '@/components/layout/page-hero'
+import { PageContainer, PageHero, PageShell, PageSurface } from '@/components/layout'
+import { PageState } from '@/components/ui/page-state'
 import { toDateString } from '@/lib/utils'
 import { StepIndicator } from '@/components/vizionare/step-indicator'
 import { PropertyPickerStep } from '@/components/vizionare/property-picker-step'
@@ -161,12 +162,12 @@ export function ProgramareVizionarePage() {
       }
 
       setVizionareProperty(null, null)
-      toast.success('Vizionare programata cu succes!', {
+      toast.success('Vizionare programată cu succes!', {
         description: `Vei fi contactat de ${selectedStaff.name} pentru confirmare.`,
       })
       navigateTo('vizionarile-mele')
     } catch (error) {
-      toast.error('Vizionarea nu a putut fi programata.', {
+      toast.error('Vizionarea nu a putut fi programată.', {
         description: error instanceof Error ? error.message : undefined,
       })
     } finally {
@@ -200,45 +201,52 @@ export function ProgramareVizionarePage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <PageShell>
+        <PageContainer width="narrow" className="py-10">
+          <PageState
+            tone="loading"
+            title="Pregătim programarea"
+            description="Verificăm sesiunea și disponibilitatea contului tău."
+          />
+        </PageContainer>
+      </PageShell>
     )
   }
 
   if (!user) {
     return (
-      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center px-4 py-12">
-        <div className="max-w-md rounded-2xl border bg-card p-8 text-center shadow-sm">
-          <h1 className="text-xl font-bold">Autentifica-te pentru a programa vizionarea</h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Pastreaza proprietatea selectata si continua cu un cont pentru confirmarea programarii.
-          </p>
-          <Button className="mt-6" onClick={() => navigateTo('login')}>
-            Autentificare
-          </Button>
-        </div>
-      </div>
+      <PageShell>
+        <PageContainer width="narrow" className="py-10">
+          <PageState
+            tone="neutral"
+            icon={LogIn}
+            title="Autentifică-te pentru a programa vizionarea"
+            description="Păstrăm proprietatea selectată și continui imediat după autentificare."
+            action={<Button onClick={() => navigateTo('login')}>Autentificare</Button>}
+          />
+        </PageContainer>
+      </PageShell>
     )
   }
 
   return (
-    <div className="min-h-[calc(100vh-10rem)] py-8 px-4">
-      <div className="max-w-3xl mx-auto">
+    <PageShell>
+      <PageContainer width="narrow" className="py-8 sm:py-10">
         <PageHero
           variant="simple"
-          title="Programare Vizionare"
-          description="Programeaza o vizionare la proprietatea dorita cu un agent specialist."
+          icon={CalendarCheck}
+          title="Programează o vizionare"
+          description="Alege proprietatea, agentul și intervalul potrivit. Confirmarea și documentele rămân în contul tău."
           showBackButton
           onBack={() => navigateTo('proprietati')}
-          backLabel="Inapoi la proprietati"
+          backLabel="Înapoi la proprietăți"
         />
 
         {/* Step Indicator */}
         <StepIndicator currentStep={step} onStepClick={handleStepClick} />
 
         {/* Step Content */}
-        <div className="glass-card rounded-2xl p-5 sm:p-8 min-h-[400px]">
+        <PageSurface tone="elevated" className="min-h-[400px] p-5 sm:p-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
@@ -286,7 +294,7 @@ export function ProgramareVizionarePage() {
               )}
             </motion.div>
           </AnimatePresence>
-        </div>
+        </PageSurface>
 
         {/* Navigation Buttons */}
         <div className="flex items-center justify-between mt-6">
@@ -297,7 +305,7 @@ export function ProgramareVizionarePage() {
             className="gap-2"
           >
             <ChevronLeft className="h-4 w-4" />
-            Inapoi
+            Înapoi
           </Button>
 
           {step < 3 && (
@@ -306,12 +314,12 @@ export function ProgramareVizionarePage() {
               disabled={step === 1 ? !canProceedStep2 : !canProceedStep3}
               className="gap-2"
             >
-              Urmatorul
+              Următorul
               <ChevronRight className="h-4 w-4" />
             </Button>
           )}
         </div>
-      </div>
-    </div>
+      </PageContainer>
+    </PageShell>
   )
 }
