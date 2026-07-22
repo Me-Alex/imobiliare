@@ -56,7 +56,7 @@ import {
 import { DOC_TYPE_LABELS, LS_KEYS } from '@/lib/constants'
 import { loadFromLS, saveToLS } from '@/lib/storage'
 import { getDocumentFlowSummary } from '@/lib/document-flow'
-import { readAppointmentContext, readDealContext, selectDocumentAppointment } from '@/lib/document-navigation'
+import { readAppointmentContext, readDealContext, returnToWorkflow, selectDocumentAppointment } from '@/lib/document-navigation'
 import {
   createDocumentUrl,
   deleteViewingDocument,
@@ -452,7 +452,7 @@ export function DocumentePage() {
           title="Dosar digital"
           description={ROLE_COPY[profile.role]}
           showBackButton
-          onBack={() => navigateTo(profile.role === 'CLIENT' ? 'vizionarile-mele' : 'dashboard')}
+          onBack={() => returnToWorkflow(navigateTo, profile.role === 'CLIENT' ? 'vizionarile-mele' : 'dashboard')}
           backLabel="Înapoi"
         />
 

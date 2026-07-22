@@ -6,22 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { useAppStore, type PageKey } from '@/store/use-app-store'
+import { useAppStore } from '@/store/use-app-store'
 import { isValidEmail } from '@/lib/validators'
 import { useCoinActions } from '@/hooks/use-coin-actions'
 import { LS_KEYS } from '@/lib/constants'
+import { PUBLIC_NAVIGATION } from '@/lib/navigation-config'
 
 
-
-const quickLinks: { label: string; page: PageKey }[] = [
-  { label: 'Acasa', page: 'acasa' },
-  { label: 'Proprietati', page: 'proprietati' },
-  { label: 'Analiza Piata', page: 'analiza' },
-  { label: 'Zone', page: 'zone' },
-  { label: 'Servicii', page: 'servicii' },
-  { label: 'Calculator Ipotecar', page: 'calculator' },
-  { label: 'Despre Noi', page: 'de-ce-noi' },
-]
 
 const propertyTypes = ['Apartamente', 'Case', 'Vile', 'Terenuri', 'Spatii Comerciale', 'Garsoniere']
 
@@ -177,7 +168,7 @@ export function SiteFooter() {
           <div className="transition-colors duration-300">
             <h3 className="font-semibold mb-4">Legaturi Rapide</h3>
             <ul className="space-y-2.5">
-              {quickLinks.map((link) => (
+              {PUBLIC_NAVIGATION.map((link) => (
                 <li key={link.label}>
                   <button
                     onClick={() => navigateTo(link.page)}

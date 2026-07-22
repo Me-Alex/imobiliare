@@ -3,13 +3,14 @@
 import { motion } from 'framer-motion'
 import { Home, ChevronRight, ArrowLeft } from 'lucide-react'
 import { useAppStore } from '@/store/use-app-store'
+import type { PageKey } from '@/store/slices/navigation'
 
 // ─── PageBreadcrumb ──────────────────────────────────────────────────────────
 
 export interface PageBreadcrumbItem {
   label: string
   /** PageKey to navigate to; omit on the last (current) item */
-  page?: string
+  page?: PageKey
 }
 
 export function PageBreadcrumb({ items, className }: {
@@ -17,20 +18,28 @@ export function PageBreadcrumb({ items, className }: {
   className?: string
 }) {
   const navigateTo = useAppStore((s) => s.navigateTo)
+  const visibleItems = items[0]?.page === 'acasa' ? items.slice(1) : items
 
   return (
     <nav
       className={`flex items-center gap-2 text-sm text-muted-foreground ${className ?? 'mb-6'}`}
       aria-label="Breadcrumb"
     >
-      <Home className="h-4 w-4" />
-      {items.map((item, i) => (
+      <button
+        type="button"
+        onClick={() => navigateTo('acasa')}
+        className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+      >
+        <Home className="h-4 w-4" />
+        <span>Acasă</span>
+      </button>
+      {visibleItems.map((item, i) => (
         <span key={i} className="flex items-center gap-2">
           <ChevronRight className="h-3.5 w-3.5" />
           {item.page ? (
             <button
               type="button"
-              onClick={() => navigateTo(item.page as 'acasa')}
+              onClick={() => navigateTo(item.page!)}
               className="hover:text-foreground transition-colors"
             >
               {item.label}
@@ -75,7 +84,7 @@ export function PageHero({
   breadcrumb,
   showBackButton,
   onBack,
-  backLabel = 'Inapoi',
+  backLabel = 'Înapoi',
   children,
 }: PageHeroProps) {
   // ── variant="simple" ─────────────────────────────────────────────────────
@@ -93,10 +102,15 @@ export function PageHero({
           </button>
         )}
         {breadcrumb && <PageBreadcrumb items={breadcrumb} className="mb-4" />}
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
-        {description && (
-          <p className="text-muted-foreground mt-1 text-sm">{description}</p>
-        )}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+            {description && (
+              <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+            )}
+          </div>
+          {children && <div className="flex shrink-0 flex-wrap items-center gap-2">{children}</div>}
+        </div>
       </div>
     )
   }

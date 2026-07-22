@@ -13,26 +13,26 @@ export const ACCOUNT_ROLE_DEFINITIONS: Record<AccountRole, AccountRoleDefinition
   CLIENT: {
     label: 'Client',
     title: 'Profil Client',
-    description: 'Cauta locuinta potrivita, salveaza oferte si programeaza vizionari.',
-    features: ['Favorite si cautari salvate', 'Vizionari si documente personale', 'Alerte de pret si calculator ipotecar'],
+    description: 'Caută locuința potrivită, salvează oferte și programează vizionări.',
+    features: ['Favorite și căutări salvate', 'Vizionări și documente personale', 'Alerte de preț și calculator ipotecar'],
   },
   OWNER: {
     label: 'Proprietar',
     title: 'Profil Proprietar',
-    description: 'Publica si administreaza proprietatile pe care le detii.',
-    features: ['Publicare si editare anunturi proprii', 'Solicitari si vizionari pentru proprietati', 'Evaluare si rapoarte de performanta'],
+    description: 'Publică și administrează proprietățile pe care le deții.',
+    features: ['Publicare și editare anunțuri proprii', 'Solicitări și vizionări pentru proprietăți', 'Evaluare și rapoarte de performanță'],
   },
   AGENT: {
     label: 'Agent',
     title: 'Profil Agent',
-    description: 'Gestioneaza portofoliul alocat, clientii si agenda de vizionari.',
-    features: ['Proprietati si lead-uri alocate', 'Agenda si disponibilitate', 'Documente si urmarirea vizionarilor'],
+    description: 'Gestionează portofoliul alocat, clienții și agenda de vizionări.',
+    features: ['Proprietăți și lead-uri alocate', 'Agenda și disponibilitate', 'Documente și urmărirea vizionărilor'],
   },
   ADMIN: {
     label: 'Administrator',
     title: 'Profil Administrator',
-    description: 'Controleaza utilizatorii, continutul si operatiunile platformei.',
-    features: ['Panou administrativ complet', 'Moderare proprietati si utilizatori', 'Rapoarte, configurari si audit'],
+    description: 'Controlează utilizatorii, conținutul și operațiunile platformei.',
+    features: ['Panou administrativ complet', 'Moderare proprietăți și utilizatori', 'Rapoarte, configurări și audit'],
   },
 }
 
@@ -45,7 +45,7 @@ const RESTRICTED_PAGE_ROLES: Partial<Record<string, readonly AccountRole[]>> = {
   documente: ['CLIENT', 'OWNER', 'AGENT', 'ADMIN'],
   'deal-room': ['CLIENT', 'OWNER', 'AGENT', 'ADMIN'],
   crm: ['AGENT', 'ADMIN'],
-  'owner-dashboard': ['OWNER', 'ADMIN'],
+  'owner-dashboard': ['OWNER'],
   dashboard: ACCOUNT_ROLES,
   profil: ACCOUNT_ROLES,
 }

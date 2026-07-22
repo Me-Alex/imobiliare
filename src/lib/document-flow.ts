@@ -120,8 +120,11 @@ function actionForParticipant(
     }
   }
 
-  const hasIdentity = activeDocuments.some((document) => document.docType === 'id_card')
-  if (!hasIdentity) {
+  const ownerEvidenceTypes = new Set(['ownership_title', 'land_registry_excerpt', 'fiscal_certificate', 'energy_certificate'])
+  const hasRequiredEvidence = role === 'OWNER'
+    ? activeDocuments.some((document) => ownerEvidenceTypes.has(document.docType))
+    : activeDocuments.some((document) => document.docType === 'id_card')
+  if (!hasRequiredEvidence) {
     return {
       type: 'UPLOAD_IDENTITY',
       label: role === 'OWNER' ? 'Încarcă primul act al proprietății' : 'Încarcă actul de identitate',

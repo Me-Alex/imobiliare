@@ -755,9 +755,12 @@ textarea:focus-visible {
   backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid oklch(0.527 0.14 160 / 10%);
   box-shadow: 0 8px 32px -8px oklch(0.2 0.03 160 / 10%);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.glass-card:hover {
+.glass-card-interactive {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card-interactive:hover {
   box-shadow: 0 16px 48px -12px oklch(0.2 0.03 160 / 15%);
   border-color: oklch(0.527 0.14 160 / 20%);
   transform: translateY(-2px);
@@ -767,7 +770,7 @@ textarea:focus-visible {
   border-color: oklch(0.65 0.17 160 / 12%);
   box-shadow: 0 8px 32px -8px oklch(0 0 0 / 20%);
 }
-.dark .glass-card:hover {
+.dark .glass-card-interactive:hover {
   box-shadow: 0 16px 48px -12px oklch(0 0 0 / 30%);
   border-color: oklch(0.65 0.17 160 / 20%);
 }

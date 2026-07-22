@@ -392,7 +392,7 @@ export async function fetchOwnerSnapshot(ownerId: string) {
       .order('requested_at', { ascending: false }),
     supabase
       .from('deal_document_requirements')
-      .select('id,deal_id,document_type,label,responsible_role,status,due_at,deal_rooms!deal_document_requirements_deal_id_fkey(property_id)')
+      .select('id,deal_id,document_type,label,responsible_role,status,due_at,deal_rooms!deal_document_requirements_deal_id_fkey(id,property_id)')
       .order('created_at', { ascending: false }),
     supabase
       .from('deal_events')

@@ -47,6 +47,24 @@ export function openDealRoomForViewing(navigate: Navigate, appointmentId: string
   replaceContext('deal-room', appointmentId, dealId)
 }
 
+/**
+ * Keeps the user inside the active transaction when the document workspace was
+ * opened from a Deal Room. When there is no transaction context, callers can
+ * still provide their most useful role-specific destination.
+ */
+export function returnToWorkflow(navigate: Navigate, fallback: PageKey) {
+  const appointmentId = readAppointmentContext()
+  const dealId = readDealContext()
+
+  if (dealId) {
+    navigate('deal-room')
+    replaceContext('deal-room', appointmentId, dealId)
+    return
+  }
+
+  navigate(fallback)
+}
+
 export function selectDealRoom(dealId: string, appointmentId?: string | null) {
   replaceContext('deal-room', appointmentId, dealId)
 }

@@ -31,6 +31,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
+import { getRoleLabel, getStatusLabel, getStatusTone } from '@/lib/presentation'
 import {
   DEAL_STAGES,
   type DealRoom,
@@ -55,33 +56,6 @@ const STAGE_LABELS: Record<DealStage, string> = {
   CONTRACT: 'Contract',
   CLOSED_WON: 'Finalizat',
   CLOSED_LOST: 'Închis',
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  APPROVED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-  SIGNED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-  PRESENT: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-  CONFIRMED: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-  UPLOADED: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-  UNDER_REVIEW: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  REQUIRED: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
-  REJECTED: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  APPROVED: 'Aprobat',
-  WAIVED: 'Nu este necesar',
-  SIGNED: 'Semnat',
-  PRESENT: 'Prezent',
-  CONFIRMED: 'Confirmat',
-  UPLOADED: 'Încărcat',
-  UNDER_REVIEW: 'În verificare',
-  REQUIRED: 'Necesar',
-  REJECTED: 'Respins',
-  PENDING: 'În așteptare',
-  CHECKED_IN: 'Prezent',
-  COMPLETED: 'Finalizat',
-  NOT_APPLICABLE: 'Nu se aplică',
 }
 
 function formatDate(value?: string | null, includeTime = true) {
@@ -198,7 +172,10 @@ export function DealRoomPage() {
   const events = [...(room.deal_events || [])].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
   const completedDocs = requirements.filter((item) => ['APPROVED', 'WAIVED'].includes(item.status)).length
   const progress = requirements.length ? Math.round(completedDocs / requirements.length * 100) : 0
-  const appointmentId = appointments[0]?.appointment_id || null
+  const requestedAppointmentId = readAppointmentContext()
+  const appointmentId = requestedAppointmentId && appointments.some((item) => item.appointment_id === requestedAppointmentId)
+    ? requestedAppointmentId
+    : appointments[0]?.appointment_id || null
   const pendingSignatureRequirement = requirements.find((requirement) => {
     const document = relationOne(requirement.client_documents)
     return document?.document_signers?.some((signer) => signer.user_id === user.id && signer.status === 'PENDING')
@@ -272,7 +249,7 @@ export function DealRoomPage() {
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <Badge className="border-0 bg-primary/10 text-primary hover:bg-primary/10">Deal Room</Badge>
-                <Badge variant="outline">{room.status}</Badge>
+                <StatusBadge status={room.status} />
               </div>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{room.title}</h1>
               <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Building2 className="h-4 w-4" /> {property?.address || property?.title || 'Proprietate'}</p>
@@ -328,9 +305,9 @@ export function DealRoomPage() {
                   {participants.map((participant) => {
                     const person = relationOne(participant.profiles)
                     return (
-                      <div key={participant.profile_id} className="flex items-center gap-3 rounded-xl border p-3">
+                        <div key={participant.profile_id} className="flex items-center gap-3 rounded-xl border p-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{(person?.full_name || person?.name || participant.participant_role).charAt(0)}</div>
-                        <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{person?.full_name || person?.name || 'Participant'}</p><p className="text-xs text-muted-foreground">{participant.participant_role}</p></div>
+                        <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{person?.full_name || person?.name || 'Participant'}</p><p className="text-xs text-muted-foreground">{getRoleLabel(participant.participant_role)}</p></div>
                         <StatusBadge status={participant.attendance_status} />
                       </div>
                     )
@@ -350,7 +327,7 @@ export function DealRoomPage() {
                 {nextRequirement && (
                   <div className="md:col-span-2 flex flex-col gap-4 rounded-xl border border-primary/25 bg-primary/[0.05] p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <Badge className="mb-2 border-0 bg-primary/10 text-primary hover:bg-primary/10">Acțiunea următoare</Badge>
+                      <Badge className="mb-2 border-0 bg-primary/10 text-primary hover:bg-primary/10">Document de rezolvat</Badge>
                       <p className="font-semibold">{pendingSignatureRequirement ? `Semnează: ${nextRequirement.label}` : `Rezolvă: ${nextRequirement.label}`}</p>
                       <p className="mt-1 text-sm text-muted-foreground">Deschidem direct dosarul acestei vizionări, fără să pierzi contextul tranzacției.</p>
                     </div>
@@ -364,8 +341,8 @@ export function DealRoomPage() {
                   const document = relationOne(requirement.client_documents)
                   const signers = document?.document_signers || []
                   return (
-                    <div key={requirement.id} className="rounded-xl border p-4">
-                      <div className="flex items-start justify-between gap-3"><div><p className="font-medium">{requirement.label}</p><p className="mt-1 text-xs text-muted-foreground">Responsabil: {requirement.responsible_role}</p></div><StatusBadge status={requirement.status} /></div>
+                      <div key={requirement.id} className="rounded-xl border p-4">
+                        <div className="flex items-start justify-between gap-3"><div><p className="font-medium">{requirement.label}</p><p className="mt-1 text-xs text-muted-foreground">Responsabil: {getRoleLabel(requirement.responsible_role)}</p></div><StatusBadge status={requirement.status} /></div>
                       {document ? (
                         <div className="mt-3 space-y-2 rounded-lg bg-muted/40 p-3 text-xs">
                           <div className="flex items-center justify-between"><span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" /> {document.title}</span><Badge variant="outline">v{document.version}</Badge></div>
@@ -453,7 +430,7 @@ function StageProgress({ current }: { current: DealStage }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  return <Badge variant="secondary" className={`shrink-0 border-0 text-[10px] ${STATUS_STYLES[status] || ''}`}>{STATUS_LABELS[status] || status.replaceAll('_', ' ')}</Badge>
+  return <Badge variant="outline" className={`shrink-0 text-[10px] ${getStatusTone(status)}`}>{getStatusLabel(status)}</Badge>
 }
 
 function EmptyLine({ text }: { text: string }) {

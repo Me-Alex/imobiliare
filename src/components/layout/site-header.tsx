@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
-import { BarChart3, Bell, Bookmark, BriefcaseBusiness, Building2, CalendarCheck, CircleDollarSign, FileText, Heart, LayoutDashboard, LogIn, LogOut, Menu, Moon, Plus, Sun, Shield, User, Users, WalletCards, type LucideIcon } from 'lucide-react'
+import { Bell, Bookmark, Building2, CircleDollarSign, Heart, LogIn, LogOut, Menu, Moon, Plus, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -26,37 +26,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { LS_KEYS } from '@/lib/constants'
 import { ACCOUNT_ROLE_DEFINITIONS, type AccountRole } from '@/lib/account-roles'
-
-const navItems: { label: string; page: PageKey }[] = [
-  { label: 'Acasa', page: 'acasa' },
-  { label: 'Proprietati', page: 'proprietati' },
-  { label: 'Analiza', page: 'analiza' },
-  { label: 'Zone', page: 'zone' },
-  { label: 'Servicii', page: 'servicii' },
-  { label: 'De Ce Noi', page: 'de-ce-noi' },
-]
-
-interface AccountMenuItem {
-  label: string
-  page: PageKey
-  icon: LucideIcon
-  roles?: readonly AccountRole[]
-}
-
-const accountMenu: AccountMenuItem[] = [
-  { label: 'Dashboard', page: 'dashboard', icon: LayoutDashboard },
-  { label: 'Deal Room', page: 'deal-room', icon: WalletCards },
-  { label: 'Dosar digital', page: 'documente', icon: FileText },
-  { label: 'CRM agenți', page: 'crm', icon: BriefcaseBusiness, roles: ['AGENT', 'ADMIN'] },
-  { label: 'Performanță proprietate', page: 'owner-dashboard', icon: BarChart3, roles: ['OWNER', 'ADMIN'] },
-  { label: 'HQS Monede', page: 'monede', icon: CircleDollarSign },
-  { label: 'Profilul meu', page: 'profil', icon: User },
-  { label: 'Panou Admin', page: 'admin', icon: Shield, roles: ['ADMIN'] },
-  { label: 'Adauga proprietate', page: 'adauga-proprietate', icon: Plus, roles: ['OWNER', 'AGENT', 'ADMIN'] },
-  { label: 'Programeaza vizionare', page: 'programare-vizionare', icon: CalendarCheck, roles: ['CLIENT', 'OWNER'] },
-  { label: 'Vizionari', page: 'vizionarile-mele', icon: Users },
-  { label: 'Disponibilitate staff', page: 'disponibilitate-staff', icon: CalendarCheck, roles: ['AGENT', 'ADMIN'] },
-]
+import { getAccountMenuItems, PUBLIC_NAVIGATION } from '@/lib/navigation-config'
 
 function NotificationsBadge() {
   const [count, setCount] = useState(0)
@@ -122,7 +92,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const accountRole = profile?.role ?? 'CLIENT'
   const roleDefinition = ACCOUNT_ROLE_DEFINITIONS[accountRole]
-  const accountMenuItems = accountMenu.filter((item) => !item.roles || item.roles.includes(accountRole))
+  const accountMenuItems = getAccountMenuItems(accountRole)
 
   const handleAuthClick = () => {
     if (user) {
@@ -159,9 +129,9 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
         </button>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-1" aria-label="Navigare principala">
-          {navItems.map((item) => {
-            const isActive = currentPage === item.page
+        <nav className="hidden xl:flex items-center gap-1" aria-label="Navigare principală">
+          {PUBLIC_NAVIGATION.map((item) => {
+            const isActive = currentPage === item.page || (currentPage === 'proprietate' && item.page === 'proprietati')
             return (
               <button
                 key={item.page}
@@ -185,7 +155,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
         {/* Right side */}
         <div className="flex items-center gap-2">
           {/* Saved Searches */}
-          <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Cautari salvate" onClick={onOpenSavedSearches}>
+          <Button variant="ghost" size="icon" className="relative hidden lg:inline-flex" aria-label="Căutări salvate" onClick={onOpenSavedSearches}>
             <Bookmark className="h-5 w-5" />
             {savedSearchCount > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-primary text-primary-foreground border-0">
@@ -211,7 +181,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           </Button>
 
           {/* Favorites */}
-          <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Favorite" onClick={onOpenFavorites}>
+          <Button variant="ghost" size="icon" className="relative hidden lg:inline-flex" aria-label="Favorite" onClick={onOpenFavorites}>
             <Heart className="h-5 w-5" />
             {favorites.length > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-primary text-primary-foreground border-0">
@@ -221,7 +191,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           </Button>
 
           {/* Notifications Bell */}
-          <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Notificari" onClick={onOpenNotifications}>
+          <Button variant="ghost" size="icon" className="relative hidden lg:inline-flex" aria-label="Notificări" onClick={onOpenNotifications}>
             <Bell className="h-5 w-5" />
             <NotificationsBadge />
           </Button>
@@ -231,11 +201,11 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
             <Button
               variant="default"
               size="sm"
-              className="hidden sm:flex gap-1.5 h-9"
+              className="hidden xl:flex gap-1.5 h-9"
               onClick={() => navigateTo('adauga-proprietate')}
             >
               <Plus className="h-4 w-4" />
-              Adauga Proprietate
+              Adaugă proprietate
             </Button>
           )}
 
@@ -263,7 +233,11 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                 {accountMenuItems.map((item) => {
                   const Icon = item.icon
                   return (
-                    <DropdownMenuItem key={item.page} onClick={() => navigateTo(item.page)} className="gap-2">
+                    <DropdownMenuItem
+                      key={item.page}
+                      onClick={() => navigateTo(item.page)}
+                      className={cn('gap-2', currentPage === item.page && 'bg-accent text-foreground')}
+                    >
                       <Icon className="h-4 w-4" />
                       {item.label}
                     </DropdownMenuItem>
@@ -287,7 +261,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
             variant="ghost"
             size="icon"
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            aria-label="Schimba tema"
+            aria-label="Schimbă tema"
           >
             <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -296,7 +270,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           {/* Mobile Menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Meniu">
+              <Button variant="ghost" size="icon" className="xl:hidden" aria-label="Meniu">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
@@ -307,9 +281,9 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                   HQS Imobiliare
                 </SheetTitle>
               </SheetHeader>
-              <nav className="flex flex-col gap-1 mt-4" aria-label="Navigare mobila">
-                {navItems.map((item) => {
-                  const isActive = currentPage === item.page
+              <nav className="flex flex-col gap-1 mt-4" aria-label="Navigare mobilă">
+                {PUBLIC_NAVIGATION.map((item) => {
+                  const isActive = currentPage === item.page || (currentPage === 'proprietate' && item.page === 'proprietati')
                   return (
                     <button
                       key={item.page}
@@ -354,7 +328,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
               >
                 <span className="flex items-center gap-2">
                   <Bell className="h-4 w-4" />
-                  Notificari
+                  Notificări
                 </span>
               </button>
               <button
@@ -385,7 +359,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
               >
                 <span className="flex items-center gap-2">
                   <Bell className="h-4 w-4" />
-                  Alerte Pret
+                  Alerte de preț
                 </span>
               </button>
               <button
@@ -398,7 +372,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
               >
                 <span className="flex items-center gap-2">
                   <Bookmark className="h-4 w-4" />
-                  Cautari Salvate
+                  Căutări salvate
                 </span>
                 {savedSearchCount > 0 && (
                   <Badge variant="secondary" className="text-xs">{savedSearchCount}</Badge>
@@ -438,7 +412,10 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                       <button
                         key={item.page}
                         type="button"
-                        className="flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground mt-1"
+                        className={cn(
+                          'flex items-center gap-2 w-full rounded-md px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent hover:text-foreground mt-1',
+                          currentPage === item.page ? 'bg-accent text-foreground' : 'text-muted-foreground',
+                        )}
                         onClick={() => handleMobileNav(item.page)}
                       >
                         <Icon className="h-4 w-4" />

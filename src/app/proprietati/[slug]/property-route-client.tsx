@@ -18,6 +18,7 @@ import { useCoinsHydration } from '@/hooks/use-coin-actions'
 import { useAppStore } from '@/store/use-app-store'
 import { PropertyPage } from '@/views/property-page'
 import type { Property } from '@/lib/types'
+import { getPageDestination } from '@/lib/route-config'
 
 interface PropertyRouteClientProps {
   property: Property
@@ -46,8 +47,7 @@ function PropertyRouteContent({ property }: PropertyRouteClientProps) {
   useEffect(() => {
     if (!navigationReady) return
     if (currentPage !== 'proprietate') {
-      const destination = currentPage === 'acasa' ? '/' : `/?page=${encodeURIComponent(currentPage)}`
-      window.location.assign(destination)
+      window.location.assign(getPageDestination(currentPage))
     }
   }, [currentPage, navigationReady])
 

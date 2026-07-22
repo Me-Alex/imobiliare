@@ -120,7 +120,7 @@ export function ValuationHistory({ onSelect }: ValuationHistoryProps) {
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 10, height: 0 }}
-              className="glass-card rounded-xl p-4 flex items-center gap-4 group hover:border-primary/30 transition-colors cursor-pointer"
+              className="glass-card glass-card-interactive rounded-xl p-4 flex items-center gap-4 group cursor-pointer"
               onClick={() => onSelect(entry)}
             >
               <div className="flex-1 min-w-0">

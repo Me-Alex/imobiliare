@@ -113,6 +113,7 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
 
   const isFav = favorites.includes(property.id)
   const isCompare = compareList.includes(property.id)
+  const canRequestViewing = !user || profile?.role === 'CLIENT' || profile?.role === 'OWNER'
   const typeLabel = PROPERTY_TYPE_LABELS[property.type] || property.type
   const transactionLabel = TRANSACTION_LABELS[property.transaction] || property.transaction
   const features = getPropertyFeatures(property)
@@ -120,7 +121,7 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
   const handleBack = () => {
     setSelectedPropertySlug(null)
     if (standalone) {
-      window.location.assign('/?page=proprietati')
+      window.location.assign('/proprietati')
       return
     }
     navigateTo('proprietati')
@@ -134,6 +135,7 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
   }
 
   const handleSchedule = () => {
+    if (!canRequestViewing) return
     if (!user) {
       setAuthDialogOpen(true)
       return
@@ -228,15 +230,6 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
               <MetricCard icon={Bath} label="Băi" value={property.bathrooms ? String(property.bathrooms) : '—'} />
               <MetricCard icon={Building} label="Etaj" value={property.floor === null ? '—' : String(property.floor)} />
             </motion.div>
-
-            <div className="grid gap-2 sm:grid-cols-2 lg:hidden">
-              <Button className="h-11 gap-2 bg-emerald-600 text-white hover:bg-emerald-700" onClick={handleSchedule}>
-                <CalendarCheck className="h-4 w-4" /> Programează vizionare
-              </Button>
-              <Button variant="outline" className="h-11 gap-2" onClick={() => openContact()}>
-                <MessageSquare className="h-4 w-4" /> Întreabă agentul
-              </Button>
-            </div>
 
             <Section title="Descriere">
               <p className="whitespace-pre-line text-sm leading-7 text-muted-foreground sm:text-base">
@@ -385,9 +378,9 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
                   Răspuns în timpul programului agenției
                 </div>
                 <div className="space-y-2">
-                  <Button className="h-11 w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-700" onClick={handleSchedule}>
+                  {canRequestViewing && <Button className="h-11 w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-700" onClick={handleSchedule}>
                     <CalendarCheck className="h-4 w-4" /> Programează vizionare
-                  </Button>
+                  </Button>}
                   <Button variant="outline" className="h-11 w-full gap-2" onClick={() => openContact()}>
                     <MessageSquare className="h-4 w-4" /> Contactează agentul
                   </Button>
@@ -432,7 +425,7 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
                 <p className="text-sm font-medium text-primary">Alternative relevante</p>
                 <h2 id="similar-properties-title" className="mt-1 text-2xl font-bold">Proprietăți similare</h2>
               </div>
-              <Button variant="ghost" className="hidden sm:inline-flex" onClick={() => standalone ? window.location.assign('/?page=proprietati') : navigateTo('proprietati')}>
+              <Button variant="ghost" className="hidden sm:inline-flex" onClick={() => standalone ? window.location.assign('/proprietati') : navigateTo('proprietati')}>
                 Vezi toate
               </Button>
             </div>
@@ -444,10 +437,10 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] backdrop-blur lg:hidden">
-        <div className="mx-auto grid max-w-lg grid-cols-[1fr_auto] gap-2">
-          <Button className="h-11 gap-2 bg-emerald-600 text-white hover:bg-emerald-700" onClick={handleSchedule}>
+        <div className={`mx-auto grid max-w-lg gap-2 ${canRequestViewing ? 'grid-cols-[1fr_auto]' : 'grid-cols-1'}`}>
+          {canRequestViewing && <Button className="h-11 gap-2 bg-emerald-600 text-white hover:bg-emerald-700" onClick={handleSchedule}>
             <CalendarCheck className="h-4 w-4" /> Programează vizionare
-          </Button>
+          </Button>}
           <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => openContact()} aria-label="Trimite mesaj agentului">
             <MessageSquare className="h-5 w-5" />
           </Button>

@@ -28,6 +28,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import {
@@ -37,6 +38,8 @@ import {
   listingQuality,
   relationOne,
 } from '@/lib/transaction-workspace'
+import { openDealRoomForViewing } from '@/lib/document-navigation'
+import { getStatusLabel } from '@/lib/presentation'
 
 type OwnerSnapshot = Awaited<ReturnType<typeof fetchOwnerSnapshot>>
 
@@ -89,13 +92,22 @@ export function OwnerDashboardPage() {
 
   if (authLoading || loading) return <div className="flex min-h-[65vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   if (!user || !profile) return <StateBlock icon={Users} title="Autentificare necesară" description="Dashboardul proprietarului conține date private despre anunț și tranzacții." />
-  if (!['OWNER', 'ADMIN'].includes(profile.role)) return <StateBlock icon={Building2} title="Profil de proprietar necesar" description="Acest dashboard este disponibil proprietarilor și administratorilor." />
+  if (profile.role !== 'OWNER') return <StateBlock icon={Building2} title="Profil de proprietar necesar" description="Acest dashboard este disponibil proprietarilor autentificați." />
   if (error) return <StateBlock icon={HelpCircle} title="Date indisponibile" description={error} action={<Button onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" /> Reîncearcă</Button>} />
   if (!snapshot || !property || !analysis || !quality) {
     return <StateBlock icon={ImagePlus} title="Publică prima proprietate" description="După publicare vei vedea aici vizualizările, cererile, feedbackul și recomandările de optimizare." action={<Button onClick={() => navigateTo('adauga-proprietate')}>Adaugă proprietate</Button>} />
   }
 
   const totals = sumMetrics(metrics)
+  const selectedAppointmentId = typeof appointments[0]?.id === 'string' ? appointments[0].id : undefined
+  const selectedDealId = typeof requirements[0]?.deal_id === 'string' ? requirements[0].deal_id : undefined
+  const openSelectedDeal = () => {
+    if (selectedAppointmentId) {
+      openDealRoomForViewing(navigateTo, selectedAppointmentId, selectedDealId)
+      return
+    }
+    navigateTo('deal-room')
+  }
   const feedbackRows = appointments.filter((item) => typeof item.rating === 'number' || typeof item.feedback === 'string')
   const averageRating = feedbackRows.length ? feedbackRows.reduce((sum, item) => sum + Number(item.rating || 0), 0) / feedbackRows.filter((item) => Number(item.rating || 0) > 0).length : 0
   const missingDocuments = requirements.filter((item) => !['APPROVED', 'WAIVED'].includes(String(item.status)))
@@ -120,8 +132,8 @@ export function OwnerDashboardPage() {
           <div className="grid md:grid-cols-[220px_minmax(0,1fr)]">
             <div className="h-44 bg-muted md:h-full">{property.cover_image_url ? <img src={property.cover_image_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Building2 className="h-10 w-10 text-muted-foreground/40" /></div>}</div>
             <CardContent className="flex flex-col justify-between gap-5 p-5 sm:p-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-bold">{property.title}</h2><Badge variant="outline">{property.status}</Badge></div><p className="mt-2 text-sm text-muted-foreground">{property.address || property.zone || property.city}</p></div><p className="text-2xl font-bold text-primary">{formatMoney(Number(property.price || 0), property.currency || 'EUR')}</p></div>
-              <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => navigateTo('adauga-proprietate')}>Editează anunțul</Button><Button onClick={() => navigateTo('deal-room')}>Deschide Deal Room <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-bold">{property.title}</h2><StatusBadge status={property.status} /></div><p className="mt-2 text-sm text-muted-foreground">{property.address || property.zone || property.city}</p></div><p className="text-2xl font-bold text-primary">{formatMoney(Number(property.price || 0), property.currency || 'EUR')}</p></div>
+              <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => navigateTo('adauga-proprietate')}>Gestionează proprietățile</Button><Button onClick={openSelectedDeal}>Deschide tranzacția <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
             </CardContent>
           </div>
         </Card>
@@ -163,12 +175,12 @@ export function OwnerDashboardPage() {
 
           <Card>
             <CardHeader className="pb-3"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><FileWarning className="h-4 w-4 text-primary" /> Documente necesare</CardTitle><Badge variant={missingDocuments.length ? 'destructive' : 'secondary'}>{missingDocuments.length} lipsă</Badge></div></CardHeader>
-            <CardContent className="space-y-2">{requirements.length ? requirements.slice(0, 6).map((item) => <div key={String(item.id)} className="flex items-center gap-3 rounded-lg border p-3"><ClipboardCheck className={`h-4 w-4 shrink-0 ${['APPROVED', 'WAIVED'].includes(String(item.status)) ? 'text-emerald-500' : 'text-amber-500'}`} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{String(item.label)}</p><p className="text-xs text-muted-foreground">{String(item.status).replaceAll('_', ' ')}</p></div></div>) : <Empty message="Cerințele apar automat după prima vizionare." />}<Button variant="outline" className="mt-2 w-full" onClick={() => navigateTo('deal-room')}>Vezi checklistul complet</Button></CardContent>
+            <CardContent className="space-y-2">{requirements.length ? requirements.slice(0, 6).map((item) => <div key={String(item.id)} className="flex items-center gap-3 rounded-lg border p-3"><ClipboardCheck className={`h-4 w-4 shrink-0 ${['APPROVED', 'WAIVED'].includes(String(item.status)) ? 'text-emerald-500' : 'text-amber-500'}`} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{String(item.label)}</p><p className="text-xs text-muted-foreground">{getStatusLabel(item.status)}</p></div></div>) : <Empty message="Cerințele apar automat după prima vizionare." />}<Button variant="outline" className="mt-2 w-full" onClick={openSelectedDeal}>Vezi checklistul complet</Button></CardContent>
           </Card>
         </div>
 
         <Card>
-          <CardHeader className="pb-3"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><Activity className="h-4 w-4 text-primary" /> Activitatea agentului</CardTitle><Button variant="ghost" size="sm" onClick={() => navigateTo('deal-room')}>Jurnal complet</Button></div></CardHeader>
+          <CardHeader className="pb-3"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><Activity className="h-4 w-4 text-primary" /> Activitatea agentului</CardTitle><Button variant="ghost" size="sm" onClick={openSelectedDeal}>Jurnal complet</Button></div></CardHeader>
           <CardContent>{events.length ? <div className="grid gap-3 md:grid-cols-2">{events.slice(0, 6).map((event) => <div key={String(event.id)} className="flex items-start gap-3 rounded-xl border p-3"><div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" /><div><p className="text-sm font-medium">{String(event.summary)}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(event.created_at)}</p></div></div>)}</div> : <Empty message="Activitatea agentului va fi înregistrată automat în jurnalul tranzacției." />}</CardContent>
         </Card>
       </main>

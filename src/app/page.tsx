@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { AnnouncementBanner } from '@/components/layout/announcement-banner'
 import { SiteHeader } from '@/components/layout/site-header'
+import { AccountWorkspaceNav } from '@/components/layout/account-workspace-nav'
 import { FavoritesPanel } from '@/components/panels/favorites-panel'
 import { PriceAlertsPanel } from '@/components/panels/price-alerts-panel'
 import { SavedSearchesPanel } from '@/components/panels/saved-searches-panel'
@@ -48,6 +49,8 @@ import { CrmPage } from '@/views/crm-page'
 import { OwnerDashboardPage } from '@/views/owner-dashboard-page'
 import { NotificationsPanel } from '@/components/panels/notifications-panel'
 import { useCoinsHydration } from '@/hooks/use-coin-actions'
+import { isAccountWorkspacePage } from '@/lib/navigation-config'
+import { PATH_PAGE_MAP } from '@/lib/route-config'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -85,16 +88,6 @@ const pageComponents: Record<string, React.ComponentType<Record<string, unknown>
 
 // Pages that should NOT show header/footer/overlays
 const fullBleedPages = new Set(['login', 'admin', 'adauga-proprietate', 'dashboard', 'profil', 'programare-vizionare', 'disponibilitate-staff', 'vizionarile-mele', 'documente', 'monede', 'deal-room', 'crm', 'owner-dashboard'])
-
-const PATH_PAGE_MAP: Record<string, PageKey> = {
-  '/': 'acasa',
-  '/proprietati': 'proprietati',
-  '/analiza-piata': 'analiza',
-  '/zone': 'zone',
-  '/servicii': 'servicii',
-  '/evaluare': 'evaluare',
-  '/despre-noi': 'de-ce-noi',
-}
 
 function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
   useCoinsHydration()
@@ -180,6 +173,7 @@ function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
           Treci la continutul principal
         </a>
         <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} onOpenSavedSearches={() => setSavedSearchesOpen(true)} />
+        {isAccountWorkspacePage(currentPage) && <AccountWorkspaceNav />}
         <main id="main-content" className="flex-1">
           <AnimatePresence mode="wait">
             <motion.div
@@ -193,6 +187,8 @@ function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
             </motion.div>
           </AnimatePresence>
         </main>
+        <FavoritesPanel open={favoritesOpen} onOpenChange={setFavoritesOpen} />
+        <PriceAlertsPanel open={priceAlertsOpen} onOpenChange={setPriceAlertsOpen} />
         <NotificationsPanel open={notificationsOpen} onOpenChange={setNotificationsOpen} />
         <SavedSearchesPanel open={savedSearchesOpen} onOpenChange={setSavedSearchesOpen} />
         <SaveSearchDialog open={saveSearchDialogOpen} onOpenChange={setSaveSearchDialogOpen} />
