@@ -206,6 +206,22 @@ export function ProgramareVizionarePage() {
     )
   }
 
+  if (!user) {
+    return (
+      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center px-4 py-12">
+        <div className="max-w-md rounded-2xl border bg-card p-8 text-center shadow-sm">
+          <h1 className="text-xl font-bold">Autentifica-te pentru a programa vizionarea</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Pastreaza proprietatea selectata si continua cu un cont pentru confirmarea programarii.
+          </p>
+          <Button className="mt-6" onClick={() => navigateTo('login')}>
+            Autentificare
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-[calc(100vh-10rem)] py-8 px-4">
       <div className="max-w-3xl mx-auto">

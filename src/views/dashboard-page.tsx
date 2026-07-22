@@ -114,6 +114,8 @@ export function DashboardPage() {
   useEffect(() => {
     if (!user || !profile) {
       setWorkspace(EMPTY_SUMMARY)
+      setWorkspaceLoading(false)
+      setWorkspaceError('')
       return
     }
 

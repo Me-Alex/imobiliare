@@ -1,84 +1,89 @@
 import { NextRequest, NextResponse } from 'next/server'
-import ZAI from 'z-ai-web-dev-sdk'
+import { z } from 'zod'
+import {
+  AIServiceConfigurationError,
+  AIServiceUnavailableError,
+  aiChat,
+} from '@/lib/ai-edge'
 
-// ── ZAI singleton ─────────────────────────────────────────────
-let zaiPromise: ReturnType<typeof ZAI.create> | null = null
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-function getZAI() {
-  zaiPromise ??= ZAI.create()
-  return zaiPromise
-}
+const requestSchema = z.object({
+  message: z.string().trim().min(1).max(1_000),
+  history: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string().trim().min(1).max(1_000),
+  })).max(12).default([]),
+})
 
-// ── Simple in-memory rate limiter ─────────────────────────────
-const RATE_LIMIT_WINDOW = 60_000        // 1 minute in ms
-const RATE_LIMIT_MAX = 10               // max requests per window
-
+const RATE_LIMIT_WINDOW = 60_000
+const RATE_LIMIT_MAX = 10
+const MAX_TRACKED_IPS = 5_000
 const ipTimestamps = new Map<string, number[]>()
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now()
-  let timestamps = ipTimestamps.get(ip)
-
-  if (!timestamps) {
-    timestamps = []
-    ipTimestamps.set(ip, timestamps)
-  }
-
-  // Prune entries older than the window
   const windowStart = now - RATE_LIMIT_WINDOW
-  while (timestamps.length > 0 && timestamps[0]! < windowStart) {
-    timestamps.shift()
-  }
+  const timestamps = (ipTimestamps.get(ip) || []).filter((timestamp) => timestamp >= windowStart)
 
   if (timestamps.length >= RATE_LIMIT_MAX) {
+    ipTimestamps.set(ip, timestamps)
     return true
   }
 
   timestamps.push(now)
+  ipTimestamps.set(ip, timestamps)
+
+  if (ipTimestamps.size > MAX_TRACKED_IPS) {
+    for (const [key, entries] of ipTimestamps) {
+      if (entries.length === 0 || entries[entries.length - 1]! < windowStart) ipTimestamps.delete(key)
+    }
+  }
+
   return false
 }
 
-// ── Handler ───────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
-  // Rate limiting
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const ip = request.headers.get('cf-connecting-ip')
+    || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || 'unknown'
+
   if (isRateLimited(ip)) {
     return NextResponse.json(
-      { error: 'Prea multe solicitări. Te rog să încerci din nou peste un minut.' },
-      { status: 429 }
+      { error: 'Prea multe solicitari. Incearca din nou peste un minut.' },
+      { status: 429 },
     )
   }
 
+  let body: unknown
   try {
-    const body = await request.json()
-    const { message, history } = body as { message?: string; history?: Array<{ role: string; content: string }> }
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Cererea nu contine JSON valid.' }, { status: 400 })
+  }
 
-    if (!message || typeof message !== 'string' || message.trim().length === 0) {
-      return NextResponse.json(
-        { reply: 'Te rog să scrii un mesaj valid.' },
-        { status: 400 }
-      )
-    }
+  const parsed = requestSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Trimite un mesaj intre 1 si 1.000 de caractere.' },
+      { status: 400 },
+    )
+  }
 
-    const systemPrompt = 'Ești un asistent virtual pentru HQS Imobiliare, o platformă de analiză imobiliară din București. Răspunde scurt și util în limba română despre: proprietăți, zone, prețuri, piețe imobiliare, sfaturi de cumpărare/vânzare. Dacă ești întrebat despre alte subiecte, redirecționează politicos spre imobiliare. Max 3 propoziții.'
+  const systemPrompt = 'Esti un asistent virtual pentru HQS Imobiliare, o platforma de analiza imobiliara din Bucuresti. Raspunde scurt si util in limba romana despre proprietati, zone, preturi, piete imobiliare, sfaturi de cumparare sau vanzare. Daca esti intrebat despre alte subiecte, redirectioneaza politicos spre imobiliare. Maximum 3 propozitii.'
 
-    const zai = await getZAI()
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...(history || []).map((h) => ({ role: h.role as 'user' | 'assistant', content: h.content })),
-        { role: 'user', content: message.trim() },
-      ],
-      thinking: { type: 'disabled' },
-    })
-    const reply = completion.choices[0]?.message?.content || 'Nu am putut genera un răspuns.'
-
+  try {
+    const reply = await aiChat(systemPrompt, parsed.data.message, parsed.data.history)
     return NextResponse.json({ reply })
   } catch (error) {
-    console.error('AI Chat error:', error)
+    console.error('AI chat request failed:', error)
+    const status = error instanceof AIServiceConfigurationError || error instanceof AIServiceUnavailableError
+      ? 503
+      : 500
     return NextResponse.json(
-      { reply: 'Ne pare rău, a apărut o eroare. Te rog să încerci din nou.' },
-      { status: 500 }
+      { error: 'Asistentul nu este disponibil momentan. Incearca din nou mai tarziu.' },
+      { status },
     )
   }
 }

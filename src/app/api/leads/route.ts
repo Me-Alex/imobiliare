@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSafeDb } from '@/lib/edge-db'
+import { requireStaff } from '@/lib/server-admin-auth'
+import { hasLegacyCrmModels } from '@/lib/legacy-crm'
 import {
   canTransitionLead,
   isValidLeadStatus,
@@ -26,9 +28,12 @@ function parseList(value: string | null | undefined): string[] | undefined {
 // ─── GET /api/leads ───────────────────────────────────────────
 // Query: status, assignedToId, source, q, page, pageSize
 export async function GET(request: NextRequest) {
+  const staff = await requireStaff(request)
+  if ('response' in staff) return staff.response
+
   const db = await getSafeDb()
-  if (!db) {
-    return NextResponse.json({ leads: [], total: 0, page: 1, pageSize: 20 })
+  if (!db || !hasLegacyCrmModels(db)) {
+    return NextResponse.json({ error: 'CRM legacy indisponibil in acest mediu.' }, { status: 503 })
   }
 
   const { searchParams } = new URL(request.url)
@@ -83,6 +88,9 @@ export async function GET(request: NextRequest) {
 
 // ─── POST /api/leads ──────────────────────────────────────────
 export async function POST(request: NextRequest) {
+  const staff = await requireStaff(request)
+  if ('response' in staff) return staff.response
+
   let body: Record<string, unknown>
   try {
     body = await request.json()
@@ -117,20 +125,8 @@ export async function POST(request: NextRequest) {
   }
 
   const db = await getSafeDb()
-  if (!db) {
-    // Demo mode — accept without persistence
-    return NextResponse.json({
-      lead: {
-        id: `demo-${Date.now()}`,
-        name,
-        email,
-        phone,
-        status: 'NEW',
-        source,
-        priority,
-      },
-      demo: true,
-    })
+  if (!db || !hasLegacyCrmModels(db)) {
+    return NextResponse.json({ error: 'CRM legacy indisponibil in acest mediu.' }, { status: 503 })
   }
 
   try {

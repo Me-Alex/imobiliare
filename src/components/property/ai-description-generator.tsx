@@ -23,6 +23,7 @@ import type {
 } from '@/lib/ai-listing-types'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useAuth } from '@/contexts/auth-context'
 
 interface PropertyFormSnapshot {
   title: string
@@ -111,6 +112,7 @@ function buildPayload(
 }
 
 export function AiDescriptionGenerator({ form, onApply }: AiDescriptionGeneratorProps) {
+  const { session } = useAuth()
   const [open, setOpen] = useState(false)
   const [tone, setTone] = useState<ListingTone>('professional')
   const [language, setLanguage] = useState<ListingLanguage>('ro')
@@ -152,9 +154,17 @@ export function AiDescriptionGenerator({ form, onApply }: AiDescriptionGenerator
   }
 
   async function requestContent(payload: ListingInput & { variantIndex?: number }): Promise<ListingApiResponse> {
+    const accessToken = session?.access_token
+    if (!accessToken) {
+      throw new Error('Autentifica-te pentru a folosi redactarea asistata.')
+    }
+
     const response = await fetch('/api/ai-listing-description', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + accessToken,
+      },
       body: JSON.stringify(payload),
     })
     const data = await response.json().catch(() => ({})) as ListingApiResponse

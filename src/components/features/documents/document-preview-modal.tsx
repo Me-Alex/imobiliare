@@ -44,7 +44,7 @@ export function DocumentPreviewModal({
               <span className="truncate">{document?.title}</span>
             </DialogTitle>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} aria-label="Inchide previzualizarea">
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -57,6 +57,7 @@ export function DocumentPreviewModal({
           signedUrl={signedUrl}
           loading={loading}
           error={error}
+          onClose={onClose}
           onDownload={onDownload}
         />
       </DialogContent>
@@ -69,8 +70,9 @@ function DocumentPreviewInner({
   signedUrl,
   loading,
   error,
+  onClose,
   onDownload,
-}: Omit<DocumentPreviewModalProps, 'onClose'>) {
+}: DocumentPreviewModalProps) {
   const [scale, setScale] = useState(1)
   const [rotation, setRotation] = useState(0)
   const isPdf = document?.fileType === 'application/pdf'
@@ -83,18 +85,18 @@ function DocumentPreviewInner({
   return (
     <>
       <div className="shrink-0 border-b px-4 py-2 flex items-center gap-2 bg-background">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomOut} disabled={!signedUrl || loading}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomOut} disabled={!signedUrl || loading} aria-label="Micsoreaza documentul">
           <ZoomOut className="h-4 w-4" />
         </Button>
         <span className="text-xs text-muted-foreground w-12 text-center">{Math.round(scale * 100)}%</span>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomIn} disabled={!signedUrl || loading}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomIn} disabled={!signedUrl || loading} aria-label="Mareste documentul">
           <ZoomIn className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRotate} disabled={!signedUrl || loading}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRotate} disabled={!signedUrl || loading} aria-label="Roteste documentul">
           <RotateCcw className="h-4 w-4" />
         </Button>
         <div className="w-px h-5 bg-border mx-1" />
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDownload} disabled={!signedUrl || loading}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDownload} disabled={!signedUrl || loading} aria-label="Descarca documentul">
           <Download className="h-4 w-4" />
         </Button>
       </div>
@@ -124,7 +126,7 @@ function DocumentPreviewInner({
             >
               <AlertCircle className="h-8 w-8 text-destructive" />
               <p className="text-sm text-destructive">{error}</p>
-              <Button variant="outline" size="sm">Inchide</Button>
+              <Button variant="outline" size="sm" onClick={onClose}>Inchide</Button>
             </motion.div>
           )}
 

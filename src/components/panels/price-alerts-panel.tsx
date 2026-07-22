@@ -25,7 +25,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useZones } from '@/hooks/use-properties'
-import { isValidEmail } from '@/lib/validators'
+import { useAuth } from '@/contexts/auth-context'
+import { useAppStore } from '@/store/use-app-store'
 
 const propertyTypes = [
   { label: 'Apartament', value: 'APARTMENT' },
@@ -60,13 +61,14 @@ interface PriceAlertsPanelProps {
 }
 
 export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) {
+  const { user, session, loading: authLoading } = useAuth()
+  const navigateTo = useAppStore((state) => state.navigateTo)
   const { data: zones } = useZones()
   const [alerts, setAlerts] = useState<PriceAlert[]>([])
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   // Form state
-  const [email, setEmail] = useState('')
   const [zone, setZone] = useState('')
   const [propertyType, setPropertyType] = useState('')
   const [minPrice, setMinPrice] = useState('')
@@ -74,19 +76,30 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
   const [minRooms, setMinRooms] = useState('')
 
   const fetchAlerts = useCallback(async () => {
+    const accessToken = session?.access_token
+    if (!accessToken) {
+      setAlerts([])
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
-      const res = await fetch('/api/price-alerts')
+      const res = await fetch('/api/price-alerts', {
+        headers: { Authorization: 'Bearer ' + accessToken },
+      })
       if (res.ok) {
         const data = await res.json()
         setAlerts(data)
+      } else if (res.status === 401 || res.status === 403) {
+        setAlerts([])
       }
     } catch {
-      // silently fail
+      setAlerts([])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [session?.access_token])
 
   useEffect(() => {
     if (open) {
@@ -96,7 +109,6 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
   }, [open, fetchAlerts])
 
   const resetForm = () => {
-    setEmail('')
     setZone('')
     setPropertyType('')
     setMinPrice('')
@@ -107,8 +119,10 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!email.trim() || !isValidEmail(email.trim())) {
-      toast.error('Te rugam introdu o adresa de email valida.')
+    const accessToken = session?.access_token
+    if (!accessToken) {
+      toast.error('Autentifica-te pentru a administra alertele de pret.')
+      navigateTo('login')
       return
     }
 
@@ -123,14 +137,16 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
       setSubmitting(true)
       const res = await fetch('/api/price-alerts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + accessToken,
+        },
         body: JSON.stringify({
-          email: email.trim(),
-          zone: zone || undefined,
-          propertyType: propertyType || undefined,
+          zone: zone && zone !== 'all' ? zone : undefined,
+          propertyType: propertyType && propertyType !== 'all' ? propertyType : undefined,
           minPrice: minP,
           maxPrice: maxP,
-          minRooms: minRooms ? parseInt(minRooms) : null,
+          minRooms: minRooms && minRooms !== 'any' ? parseInt(minRooms) : null,
         }),
       })
 
@@ -152,8 +168,18 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
   }
 
   const handleDeactivate = async (id: string) => {
+    const accessToken = session?.access_token
+    if (!accessToken) {
+      toast.error('Autentifica-te pentru a administra alertele de pret.')
+      navigateTo('login')
+      return
+    }
+
     try {
-      const res = await fetch(`/api/price-alerts/${id}`, { method: 'DELETE' })
+      const res = await fetch('/api/price-alerts/' + id, {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + accessToken },
+      })
       if (res.ok) {
         toast.success('Alerta a fost dezactivata.')
         setAlerts((prev) => prev.filter((a) => a.id !== id))
@@ -194,20 +220,12 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
                 Creeaza o alerta noua
               </h3>
 
-              {/* Email */}
-              <div className="space-y-1.5">
-                <Label htmlFor="alert-email" className="text-xs font-medium text-muted-foreground">
-                  Email <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="alert-email"
-                  type="email"
-                  placeholder="exemplu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="h-9"
-                />
+              <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+                {authLoading
+                  ? 'Verificam contul...'
+                  : user?.email
+                    ? 'Alerta va fi asociata contului ' + user.email + '.'
+                    : 'Autentifica-te pentru a crea si administra alertele tale.'}
               </div>
 
               {/* Zone */}
@@ -287,7 +305,7 @@ export function PriceAlertsPanel({ open, onOpenChange }: PriceAlertsPanelProps) 
                 </Select>
               </div>
 
-              <Button type="submit" className="w-full gap-2" disabled={submitting}>
+              <Button type="submit" className="w-full gap-2" disabled={submitting || authLoading}>
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -368,7 +386,7 @@ function AlertItem({
     <div className="rounded-xl border bg-card p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{alert.email}</p>
+          <p className="text-sm font-medium">Alerta contului tau</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {new Date(alert.createdAt).toLocaleDateString('ro-RO', {
               day: 'numeric',

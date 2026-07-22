@@ -1,37 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSafeDb } from '@/lib/edge-db'
-import { supabase } from '@/lib/supabase'
+import { requireAuthenticatedAccount } from '@/lib/server-admin-auth'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  // ── Auth check ──────────────────────────────────────────────
-  try {
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const token = authHeader.slice(7)
-    const { error } = await supabase.auth.getUser(token)
-    if (error) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const account = await requireAuthenticatedAccount(request)
+  if ('response' in account) return account.response
+  if (!account.email) {
+    return NextResponse.json({ error: 'Contul nu are o adresa de email valida.' }, { status: 422 })
   }
 
-  // ── Handler ─────────────────────────────────────────────────
   const db = await getSafeDb()
   if (!db) {
-    return NextResponse.json({ success: true }) // demo mode
+    return NextResponse.json({ error: 'Serviciul de alerte nu este disponibil.' }, { status: 503 })
   }
 
   try {
     const { id } = await params
-
     const alert = await db.priceAlert.findUnique({ where: { id } })
-    if (!alert) {
+
+    // Return a uniform result for missing and foreign records to avoid exposing
+    // which alert IDs belong to other accounts.
+    if (!alert || alert.email.trim().toLowerCase() !== account.email) {
       return NextResponse.json({ error: 'Alerta nu a fost gasita.' }, { status: 404 })
     }
 

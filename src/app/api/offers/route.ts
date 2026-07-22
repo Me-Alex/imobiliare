@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSafeDb } from '@/lib/edge-db'
+import { requireStaff } from '@/lib/server-admin-auth'
+import { hasLegacyCrmModels } from '@/lib/legacy-crm'
 import { isValidOfferStatus } from '@/lib/offers'
 import { notifyOfferStatus } from '@/lib/notifications'
 import { isValidEmail } from '@/lib/validators'
@@ -9,9 +11,12 @@ export const dynamic = 'force-dynamic'
 // ─── GET /api/offers ──────────────────────────────────────────
 // Query: propertyId, leadId, buyerUserId, status, page, pageSize
 export async function GET(request: NextRequest) {
+  const staff = await requireStaff(request)
+  if ('response' in staff) return staff.response
+
   const db = await getSafeDb()
-  if (!db) {
-    return NextResponse.json({ offers: [], total: 0, page: 1, pageSize: 20 })
+  if (!db || !hasLegacyCrmModels(db)) {
+    return NextResponse.json({ error: 'Ofertele legacy nu sunt disponibile in acest mediu.' }, { status: 503 })
   }
 
   const { searchParams } = new URL(request.url)
@@ -64,6 +69,9 @@ export async function GET(request: NextRequest) {
 // ─── POST /api/offers ─────────────────────────────────────────
 // Create a new offer (or counter-offer if parentOfferId is set)
 export async function POST(request: NextRequest) {
+  const staff = await requireStaff(request)
+  if ('response' in staff) return staff.response
+
   let body: Record<string, unknown>
   try {
     body = await request.json()
@@ -99,19 +107,8 @@ export async function POST(request: NextRequest) {
   }
 
   const db = await getSafeDb()
-  if (!db) {
-    return NextResponse.json({
-      offer: {
-        id: `demo-offer-${Date.now()}`,
-        propertyId,
-        buyerName,
-        buyerEmail,
-        amount,
-        currency,
-        status: parentOfferId ? 'COUNTERED' : 'SUBMITTED',
-      },
-      demo: true,
-    }, { status: 201 })
+  if (!db || !hasLegacyCrmModels(db)) {
+    return NextResponse.json({ error: 'Ofertele legacy nu sunt disponibile in acest mediu.' }, { status: 503 })
   }
 
   try {

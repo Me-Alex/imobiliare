@@ -38,9 +38,9 @@ export default function Error({
         </CardHeader>
 
         <CardContent className="text-center">
-          {error.message && (
-            <p className="rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive">
-              {error.message}
+          {error.digest && (
+            <p className="rounded-lg bg-muted px-4 py-2 text-xs text-muted-foreground">
+              Cod de referinta: {error.digest}
             </p>
           )}
         </CardContent>

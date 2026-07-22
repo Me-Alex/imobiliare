@@ -22,6 +22,8 @@ The development server runs at `http://localhost:3000`. The included SQLite data
 | `DATABASE_URL` | Prisma database URL for local development |
 | `NEXT_PUBLIC_SUPABASE_URL` | Public Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public/publishable Supabase browser key |
+| `ZAI_API_KEY` | Server-only AI provider credential; configure it as a Cloudflare Worker secret |
+| `ZAI_API_URL` | Optional server-only AI chat-completions endpoint |
 
 Copy `.env.example` to `.env` and keep real credentials out of version control. Never place GitHub tokens, Cloudflare API tokens, Supabase secret keys, or service-role keys in client variables or committed files.
 
@@ -42,6 +44,6 @@ bun run check
 - Supabase provides authentication and mirrors authenticated user-submitted listings to `public.properties`.
 - `supabase-setup.sql` is a reviewed bootstrap for a fresh Supabase project. Read it before applying it to an existing database.
 
-Build for Cloudflare with `bun run cf:build`. Preview with `bun run cf:preview`, or deploy with `bun run cf:deploy` after configuring Cloudflare credentials outside the repository. The `Deploy Cloudflare Worker` GitHub Actions workflow deploys every push to `main`; it requires the `CLOUDFLARE_API_TOKEN` repository secret and `CLOUDFLARE_ACCOUNT_ID` repository variable.
+Build for Cloudflare with `bun run cf:build`. Preview with `bun run cf:preview`, or deploy with `bun run cf:deploy` after configuring Cloudflare credentials outside the repository. Configure `ZAI_API_KEY` in the Worker secrets dashboard before enabling live AI responses; the deploy command preserves dashboard-managed variables and secrets. The `Deploy Cloudflare Worker` GitHub Actions workflow validates lint, types, and the OpenNext build before each production deployment. It requires the `CLOUDFLARE_API_TOKEN` repository secret and `CLOUDFLARE_ACCOUNT_ID` repository variable.
 
 This project targets Cloudflare **Workers**, not the legacy static Pages export. For Workers Builds, use `bun run cf:build` as the build command and `bun run cf:deploy` as the deploy command. Remove or reconfigure any older Cloudflare Pages integration that still calls `pages:build`.

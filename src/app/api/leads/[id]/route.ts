@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSafeDb } from '@/lib/edge-db'
+import { requireStaff } from '@/lib/server-admin-auth'
+import { hasLegacyCrmModels } from '@/lib/legacy-crm'
 import {
   canTransitionLead,
   isValidLeadStatus,
@@ -15,10 +17,13 @@ export const dynamic = 'force-dynamic'
 type Ctx = { params: Promise<{ id: string }> }
 
 // ─── GET /api/leads/:id ───────────────────────────────────────
-export async function GET(_request: NextRequest, context: Ctx) {
+export async function GET(request: NextRequest, context: Ctx) {
+  const staff = await requireStaff(request)
+  if ('response' in staff) return staff.response
+
   const { id } = await context.params
   const db = await getSafeDb()
-  if (!db) return NextResponse.json({ error: 'DB unavailable' }, { status: 503 })
+  if (!db || !hasLegacyCrmModels(db)) return NextResponse.json({ error: 'CRM legacy indisponibil in acest mediu.' }, { status: 503 })
 
   try {
     const lead = await db.lead.findUnique({
@@ -42,6 +47,9 @@ export async function GET(_request: NextRequest, context: Ctx) {
 // ─── PATCH /api/leads/:id ─────────────────────────────────────
 // Supports: status, priority, assignedToId, notes, budget*, preferred*, nextFollowUpAt, lostReason
 export async function PATCH(request: NextRequest, context: Ctx) {
+  const staff = await requireStaff(request)
+  if ('response' in staff) return staff.response
+
   const { id } = await context.params
   let body: Record<string, unknown>
   try {
@@ -51,7 +59,7 @@ export async function PATCH(request: NextRequest, context: Ctx) {
   }
 
   const db = await getSafeDb()
-  if (!db) return NextResponse.json({ error: 'DB unavailable' }, { status: 503 })
+  if (!db || !hasLegacyCrmModels(db)) return NextResponse.json({ error: 'CRM legacy indisponibil in acest mediu.' }, { status: 503 })
 
   try {
     const existing = await db.lead.findUnique({
@@ -180,10 +188,13 @@ export async function PATCH(request: NextRequest, context: Ctx) {
 }
 
 // ─── DELETE /api/leads/:id ────────────────────────────────────
-export async function DELETE(_request: NextRequest, context: Ctx) {
+export async function DELETE(request: NextRequest, context: Ctx) {
+  const staff = await requireStaff(request)
+  if ('response' in staff) return staff.response
+
   const { id } = await context.params
   const db = await getSafeDb()
-  if (!db) return NextResponse.json({ error: 'DB unavailable' }, { status: 503 })
+  if (!db || !hasLegacyCrmModels(db)) return NextResponse.json({ error: 'CRM legacy indisponibil in acest mediu.' }, { status: 503 })
 
   try {
     await db.lead.delete({ where: { id } })

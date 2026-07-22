@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSafeDb } from '@/lib/edge-db'
+import { requireStaff } from '@/lib/server-admin-auth'
+import { hasLegacyCrmModels } from '@/lib/legacy-crm'
 import {
   canTransitionOffer,
   isTerminalOfferStatus,
@@ -14,10 +16,13 @@ export const dynamic = 'force-dynamic'
 type Ctx = { params: Promise<{ id: string }> }
 
 // ─── GET /api/offers/:id ──────────────────────────────────────
-export async function GET(_request: NextRequest, context: Ctx) {
+export async function GET(request: NextRequest, context: Ctx) {
+  const staff = await requireStaff(request)
+  if ('response' in staff) return staff.response
+
   const { id } = await context.params
   const db = await getSafeDb()
-  if (!db) return NextResponse.json({ error: 'DB unavailable' }, { status: 503 })
+  if (!db || !hasLegacyCrmModels(db)) return NextResponse.json({ error: 'Ofertele legacy nu sunt disponibile in acest mediu.' }, { status: 503 })
 
   try {
     const offer = await db.offer.findUnique({
@@ -42,6 +47,9 @@ export async function GET(_request: NextRequest, context: Ctx) {
 // Transition status: ACCEPTED | REJECTED | WITHDRAWN | COUNTERED
 // Body: { status, actor, responseNote?, amount? (for agent-side update) }
 export async function PATCH(request: NextRequest, context: Ctx) {
+  const staff = await requireStaff(request)
+  if ('response' in staff) return staff.response
+
   const { id } = await context.params
   let body: Record<string, unknown>
   try {
@@ -51,7 +59,7 @@ export async function PATCH(request: NextRequest, context: Ctx) {
   }
 
   const db = await getSafeDb()
-  if (!db) return NextResponse.json({ error: 'DB unavailable' }, { status: 503 })
+  if (!db || !hasLegacyCrmModels(db)) return NextResponse.json({ error: 'Ofertele legacy nu sunt disponibile in acest mediu.' }, { status: 503 })
 
   try {
     const existing = await db.offer.findUnique({

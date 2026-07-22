@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { generateListingContent, regenerateListingVariant } from '@/lib/ai-listing'
+import { requireAccountRole } from '@/lib/server-admin-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -43,6 +44,9 @@ function isRateLimited(ip: string): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  const account = await requireAccountRole(request, ['OWNER', 'AGENT', 'ADMIN'])
+  if ('response' in account) return account.response
+
   const ip = request.headers.get('cf-connecting-ip')
     || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     || 'unknown'

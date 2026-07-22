@@ -8,13 +8,29 @@ import { PropertyMapView } from '@/components/property/property-map-view'
 import { RecentlyViewed } from '@/components/panels/recently-viewed'
 import { useAppStore } from '@/store/use-app-store'
 import { useProperties, type PropertyFilters as QueryPropertyFilters } from '@/hooks/use-properties'
+import { Button } from '@/components/ui/button'
 
 interface ProprietatiPageProps {
   onSaveSearch?: () => void
 }
 
 export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
-  const { mapViewMode, selectedType, selectedZone, searchQuery, priceRange, rooms, transaction, featuredOnly, sort, minArea, maxArea, virtualTourFilter } = useAppStore()
+  const {
+    mapViewMode,
+    selectedType,
+    selectedZone,
+    searchQuery,
+    priceRange,
+    rooms,
+    transaction,
+    featuredOnly,
+    sort,
+    minArea,
+    maxArea,
+    virtualTourFilter,
+    setSelectedType,
+    setMapViewMode,
+  } = useAppStore()
 
   // Build filters for the map view (uses non-paginated query to get all at once)
   const mapFilters: QueryPropertyFilters = {}
@@ -31,7 +47,12 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
   if (maxArea) mapFilters.maxArea = Number(maxArea)
   if (virtualTourFilter !== 'all') mapFilters.virtualTour = virtualTourFilter
 
-  const { data: mapProperties, isLoading: mapLoading } = useProperties(mapViewMode ? mapFilters : {})
+  const {
+    data: mapProperties,
+    isLoading: mapLoading,
+    isError: mapError,
+    refetch: refetchMap,
+  } = useProperties(mapViewMode ? mapFilters : {})
   const mapData = mapViewMode ? (mapProperties ?? []) : []
 
   return (
@@ -66,12 +87,24 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 mt-6">
-              {['Apartamente', 'Case', 'Vile', 'Terenuri', 'Spatii Comerciale'].map((tag) => (
+              {[
+                { label: 'Apartamente', value: 'APARTMENT' },
+                { label: 'Case', value: 'HOUSE' },
+                { label: 'Vile', value: 'VILLA' },
+                { label: 'Terenuri', value: 'LAND' },
+                { label: 'Spatii Comerciale', value: 'COMMERCIAL' },
+              ].map((tag) => (
                 <button
-                  key={tag}
-                  className="text-sm px-4 py-2 rounded-full border border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 hover-lift"
+                  key={tag.value}
+                  type="button"
+                  onClick={() => {
+                    setSelectedType(selectedType === tag.value ? '' : tag.value)
+                    setMapViewMode(false)
+                  }}
+                  aria-pressed={selectedType === tag.value}
+                  className="text-sm px-4 py-2 rounded-full border border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 hover-lift aria-pressed:border-primary/50 aria-pressed:bg-primary/10 aria-pressed:text-primary"
                 >
-                  {tag}
+                  {tag.label}
                 </button>
               ))}
             </div>
@@ -101,6 +134,13 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
                   {mapLoading ? (
                     <div className="flex items-center justify-center py-20">
                       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : mapError ? (
+                    <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+                      <p className="text-sm text-muted-foreground">Harta nu a putut fi incarcata momentan.</p>
+                      <Button variant="outline" size="sm" onClick={() => void refetchMap()}>
+                        Reincearca
+                      </Button>
                     </div>
                   ) : (
                     <PropertyMapView properties={mapData} />

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react'
 import { type User, type Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from '@/lib/supabase'
 import { normalizeAccountRole, type AccountRole } from '@/lib/account-roles'
@@ -96,36 +96,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true)
   const [profile, setProfile] = useState<AccountProfile | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
+  const profileRequestRef = useRef(0)
+  const activeUserIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+    let mounted = true
+    const applySession = (currentSession: Session | null) => {
+      if (!mounted) return
+
+      const nextUser = currentSession?.user ?? null
+      const identityChanged = activeUserIdRef.current !== nextUser?.id
+      if (identityChanged) {
+        activeUserIdRef.current = nextUser?.id ?? null
+        profileRequestRef.current += 1
+        setProfile(null)
+        setProfileLoading(Boolean(nextUser))
+      } else if (!nextUser) {
+        setProfile(null)
+        setProfileLoading(false)
+      }
+
       setSession(currentSession)
-      setUser(currentSession?.user ?? null)
+      setUser(nextUser)
       setAuthLoading(false)
-    }).catch(() => {
-      setAuthLoading(false)
-    })
+    }
+
+    void supabase.auth.getSession()
+      .then(({ data: { session: currentSession } }) => applySession(currentSession))
+      .catch(() => {
+        if (mounted) setAuthLoading(false)
+      })
 
     let subscription: { unsubscribe: () => void } | null = null
     try {
       const { data } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-        setSession(currentSession)
-        setUser(currentSession?.user ?? null)
-        if (!currentSession?.user) {
-          setProfile(null)
-          setProfileLoading(false)
-        }
-        setAuthLoading(false)
+        applySession(currentSession)
       })
       subscription = data.subscription
     } catch {
       // getSession above remains the source of truth if subscriptions are unavailable.
     }
 
-    return () => subscription?.unsubscribe()
+    return () => {
+      mounted = false
+      subscription?.unsubscribe()
+    }
   }, [])
 
   const fetchProfile = useCallback(async (currentUser: User) => {
+    const requestId = ++profileRequestRef.current
+    const isCurrentRequest = () =>
+      profileRequestRef.current === requestId && activeUserIdRef.current === currentUser.id
+
     setProfileLoading(true)
     try {
       const { data, error } = await supabase
@@ -135,15 +157,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle()
 
       if (error || !data) {
-        setProfile(fallbackProfile(currentUser))
+        if (isCurrentRequest()) setProfile(fallbackProfile(currentUser))
         return
       }
 
-      setProfile(mapProfile(currentUser, data as Record<string, unknown>))
+      if (isCurrentRequest()) setProfile(mapProfile(currentUser, data as Record<string, unknown>))
     } catch {
-      setProfile(fallbackProfile(currentUser))
+      if (isCurrentRequest()) setProfile(fallbackProfile(currentUser))
     } finally {
-      setProfileLoading(false)
+      if (isCurrentRequest()) setProfileLoading(false)
     }
   }, [])
 
@@ -183,6 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single()
 
       if (error) return { error: error.message }
+      profileRequestRef.current += 1
       setProfile(mapProfile(user, data as Record<string, unknown>))
       return { error: null }
     } catch {

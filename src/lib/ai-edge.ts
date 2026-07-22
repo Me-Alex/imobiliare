@@ -1,10 +1,12 @@
 /**
- * Edge-compatible AI helper.
- * On local dev: uses z-ai-web-dev-sdk
- * On Cloudflare Edge: uses fetch to internal API (with fallback)
+ * Server-side adapter for the AI provider.
+ *
+ * Keep the credential in ZAI_API_KEY (a Cloudflare Worker secret in
+ * production). This module is imported only by route handlers; it must never
+ * be imported from a Client Component.
  */
 
-interface ChatMessage {
+export interface AIChatMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
 }
@@ -15,59 +17,65 @@ interface ChatCompletionResponse {
   }>
 }
 
-// Try to use SDK on Node.js, fetch on edge
-async function createCompletion(messages: ChatMessage[]): Promise<string> {
-  const isEdge = typeof (globalThis as Record<string, unknown>).EdgeRuntime !== 'undefined'
-
-  if (!isEdge) {
-    // Node.js: use z-ai-web-dev-sdk
-    const ZAI = (await import('z-ai-web-dev-sdk')).default
-    const zai = await ZAI.create()
-    const completion = await zai.chat.completions.create({
-      messages,
-      thinking: { type: 'disabled' },
-    })
-    return completion.choices[0]?.message?.content || ''
+export class AIServiceConfigurationError extends Error {
+  constructor() {
+    super('AI service is not configured')
+    this.name = 'AIServiceConfigurationError'
   }
+}
 
-  // Edge: use fetch to the internal API
-  try {
-    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMWY3MjI4YzAtYjkwNi00OGM3LWI4YzctODM1NTQ4NjdiOGIyIiwiY2hhdF9pZCI6ImNoYXQtYTZjZjAxMmMtNGZlNC00ZGUwLWE5YzctMTE2OWM4Yjc5YmQyIiwicGxhdGZvcm0iOiJ6YWkifQ.HLJ1wT-IvxLnGZBf1NMBfkbx687AbstiUTBx5DhaFLA'
+export class AIServiceUnavailableError extends Error {
+  constructor() {
+    super('AI service is unavailable')
+    this.name = 'AIServiceUnavailableError'
+  }
+}
 
-    const resp = await fetch('https://internal-api.z.ai/v1/chat/completions', {
+async function createCompletion(messages: AIChatMessage[]): Promise<string> {
+  const apiKey = process.env.ZAI_API_KEY
+  if (!apiKey) throw new AIServiceConfigurationError()
+
+  const response = await fetch(
+    process.env.ZAI_API_URL || 'https://internal-api.z.ai/v1/chat/completions',
+    {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: 'Bearer ' + apiKey,
       },
       body: JSON.stringify({
-        model: 'default',
+        model: process.env.ZAI_MODEL || 'default',
         messages,
         thinking: { type: 'disabled' },
       }),
-    })
+    },
+  )
 
-    if (!resp.ok) throw new Error(`API returned ${resp.status}`)
-    const data = (await resp.json()) as ChatCompletionResponse
-    return data.choices[0]?.message?.content || ''
-  } catch {
-    throw new Error('AI service unavailable on this platform')
+  if (!response.ok) {
+    throw new AIServiceUnavailableError()
   }
+
+  const data = await response.json() as ChatCompletionResponse
+  const content = data.choices[0]?.message?.content?.trim()
+  if (!content) throw new AIServiceUnavailableError()
+  return content
 }
 
-export async function aiChat(systemPrompt: string, userMessage: string, history?: ChatMessage[]): Promise<string> {
-  const messages: ChatMessage[] = [
-    { role: 'assistant', content: systemPrompt },
-    ...(history || []),
+export async function aiChat(
+  systemPrompt: string,
+  userMessage: string,
+  history: AIChatMessage[] = [],
+): Promise<string> {
+  return createCompletion([
+    { role: 'system', content: systemPrompt },
+    ...history,
     { role: 'user', content: userMessage },
-  ]
-  return createCompletion(messages)
+  ])
 }
 
 export async function aiCompletion(systemPrompt: string, userMessage: string): Promise<string> {
-  const messages: ChatMessage[] = [
-    { role: 'assistant', content: systemPrompt },
+  return createCompletion([
+    { role: 'system', content: systemPrompt },
     { role: 'user', content: userMessage },
-  ]
-  return createCompletion(messages)
+  ])
 }
