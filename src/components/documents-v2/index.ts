@@ -11,3 +11,4 @@ export { DocumentTimeline, type DocumentTimelineProps, type TimelineItem } from 
 export { DocumentCard, type DocumentCardProps } from './document-card'
 export { StatePill, type StatePillProps } from './state-pill'
 export { IdentityCard, type IdentityCardProps, type IdentityValue } from './identity-card'
+export { ClientFlow, type ClientFlowProps, type ClientSubmission, type ClientFieldValue } from './client-flow'
