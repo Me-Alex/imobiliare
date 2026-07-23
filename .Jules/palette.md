@@ -1,0 +1,4 @@
+
+## 2024-05-24 - Screen Reader Support for Icon-Only Actions
+**Learning:** In a codebase heavily relying on generic UI components like `<Button size="icon">` combined with Lucide icons (e.g., `property-compare`, `valuation-history`, `document-search-bar`), developers often forget to provide accessible names for these visually intuitive but structurally meaningless elements. Without an `aria-label`, screen readers may announce these buttons as just "button" or read out unhelpful file paths/SVGs, severely hurting accessibility for key interactions (like filtering or deleting).
+**Action:** Always ensure that icon-only interactive elements (especially `<Button size="icon">`) have a descriptive `aria-label` attribute. The label must be localized to match the app's primary language (e.g., Romanian). Examples: `aria-label="Șterge evaluarea"`, `aria-label="Filtrează documentele"`.
