@@ -58,6 +58,11 @@ export async function PATCH(request: NextRequest, context: Ctx) {
     return NextResponse.json({ error: 'JSON invalid.' }, { status: 400 })
   }
 
+  // Use the authenticated identity for every audit log entry. Never trust
+  // a client-supplied actor name — the audit log is the only place the
+  // pipeline records *who* did *what*.
+  const actorName = staff.email || staff.userId
+
   const db = await getSafeDb()
   if (!db || !hasLegacyCrmModels(db)) return NextResponse.json({ error: 'CRM legacy indisponibil in acest mediu.' }, { status: 503 })
 
@@ -69,7 +74,7 @@ export async function PATCH(request: NextRequest, context: Ctx) {
     if (!existing) return NextResponse.json({ error: 'Lead negăsit.' }, { status: 404 })
 
     const data: Record<string, unknown> = {}
-    const activities: Array<{ type: string; body: string; actorName?: string; metadata?: string }> = []
+    const activities: Array<{ type: string; body: string; actorName: string; metadata?: string }> = []
 
     // Status transition
     if (body.status !== undefined) {
@@ -89,7 +94,7 @@ export async function PATCH(request: NextRequest, context: Ctx) {
         activities.push({
           type: 'STATUS_CHANGE',
           body: `Status: ${current} → ${next}`,
-          actorName: typeof body.actorName === 'string' ? body.actorName : 'system',
+          actorName,
           metadata: JSON.stringify({ from: current, to: next }),
         })
         if (next === 'CONTACTED') data.lastContactedAt = new Date()
@@ -109,7 +114,7 @@ export async function PATCH(request: NextRequest, context: Ctx) {
           body: newAssigneeId
             ? `Asignat agentului ${newAssigneeId}`
             : 'Dezasignat',
-          actorName: typeof body.actorName === 'string' ? body.actorName : 'system',
+          actorName,
           metadata: JSON.stringify({ from: existing.assignedToId, to: newAssigneeId }),
         })
       }
@@ -135,10 +140,19 @@ export async function PATCH(request: NextRequest, context: Ctx) {
 
     // Optional activity note
     if (typeof body.activityNote === 'string' && body.activityNote.trim()) {
+      // Whitelist activity types so the audit log only contains values the
+      // pipeline actually understands. Anything else falls back to NOTE.
+      const ALLOWED_ACTIVITY_TYPES = [
+        'NOTE', 'CALL', 'EMAIL', 'SMS', 'ASSIGNMENT', 'OFFER', 'VIEWING',
+      ] as const
+      const requestedType = typeof body.activityType === 'string' ? body.activityType : 'NOTE'
+      const safeType = (ALLOWED_ACTIVITY_TYPES as readonly string[]).includes(requestedType)
+        ? requestedType
+        : 'NOTE'
       activities.push({
-        type: typeof body.activityType === 'string' ? body.activityType : 'NOTE',
+        type: safeType,
         body: body.activityNote.trim(),
-        actorName: typeof body.actorName === 'string' ? body.actorName : 'agent',
+        actorName,
       })
     }
 

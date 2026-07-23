@@ -87,7 +87,14 @@ function ruleSatisfied(rule: ActorRule, actor: Actor): boolean {
   if (rule.kind === 'ANY') return true
   if (rule.kind === 'SYSTEM') return actor.kind === 'SYSTEM'
   if (rule.kind === 'STAFF') return actor.kind === 'STAFF'
-  if (rule.kind === 'PARTICIPANT') return actor.kind === 'PARTICIPANT' && actor.role === rule.role
+  if (rule.kind === 'PARTICIPANT') {
+    if (actor.kind !== 'PARTICIPANT') return false
+    // `role: 'ANY'` in the rule table is a wildcard that matches both
+    // CLIENT and OWNER. Without this branch the wildcard never fires
+    // because the Actor union only allows the two concrete roles.
+    if (rule.role === 'ANY') return actor.role === 'CLIENT' || actor.role === 'OWNER'
+    return actor.role === rule.role
+  }
   return false
 }
 

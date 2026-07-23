@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSafeDb } from '@/lib/edge-db'
-import { isValidEmail } from '@/lib/validators'
+import { isValidEmail, normalizeEmail } from '@/lib/validators'
+import { createIpRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
+
+// Newsletter is a one-shot subscription. Keep the limit tight so a script
+// can't burn through the address space.
+const newsletterRateLimiter = createIpRateLimiter({ windowMs: 60_000, max: 3 })
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const limit = newsletterRateLimiter.check(ip)
+  if (limit.limited) {
+    return rateLimitResponse(
+      limit,
+      'Prea multe încercări de abonare. Te rugăm să aștepți un minut.',
+    )
+  }
+
   // ── Parse & validate input ──────────────────────────────────
   let email: string | undefined
 
@@ -23,6 +37,8 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const normalizedEmail = normalizeEmail(email)
+
   // ── Persist to database ─────────────────────────────────────
   const db = await getSafeDb()
   if (!db) {
@@ -32,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   try {
     await db.newsletterSubscription.create({
-      data: { email: email.trim().toLowerCase() },
+      data: { email: normalizedEmail },
     })
   } catch (error: any) {
     // Unique constraint violation — user is already subscribed

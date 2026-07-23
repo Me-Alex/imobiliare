@@ -38,6 +38,9 @@ jobs:
       - name: Lint and type-check
         run: bun run lint && bun run typecheck
 
+      - name: Unit tests
+        run: bun run test
+
       - name: Verify Cloudflare deploy artifact
         # This catches Worker-size and module-resolution failures before the
         # production deployment job is allowed to run.

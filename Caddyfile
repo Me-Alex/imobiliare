@@ -1,6 +1,13 @@
 :81 {
+	# DEV-ONLY convenience handler: lets a developer point the proxy at a
+	# different local port by visiting `http://localhost:81/?XTransformPort=3030`.
+	# This is a *server-side request forgery* primitive if the listener is ever
+	# exposed outside the loopback interface — a remote caller could pivot
+	# into any local service. It is therefore restricted to the loopback
+	# addresses below. Do NOT relax the `remote_ip` matcher.
 	@transform_port_query {
 		query XTransformPort=*
+		remote_ip 127.0.0.1 ::1
 	}
 
 	handle @transform_port_query {

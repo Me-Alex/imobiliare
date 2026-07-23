@@ -6,13 +6,16 @@ import { withDemoVirtualTour } from '@/lib/demo-virtual-tours'
 import type { Property } from '@/lib/types'
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params
 
+  // Supabase helper already filters by status = 'PUBLISHED' in SQL.
   const supabaseProperty = await getPublishedSupabasePropertyBySlug(slug)
-  if (supabaseProperty) return NextResponse.json({ property: withDemoVirtualTour(supabaseProperty) })
+  if (supabaseProperty) {
+    return NextResponse.json({ property: withDemoVirtualTour(supabaseProperty) })
+  }
 
   const db = await getSafeDb()
   if (db) {
@@ -27,7 +30,10 @@ export async function GET(
         },
       })
 
-      if (!property) {
+      // Only expose PUBLISHED listings on the public endpoint. Draft /
+      // archived / sold properties are still reachable through the admin
+      // or owner dashboards because those have their own scoped queries.
+      if (!property || property.status !== 'PUBLISHED') {
         return NextResponse.json(
           { error: 'Property not found' },
           { status: 404 }
@@ -40,8 +46,9 @@ export async function GET(
     }
   }
 
-  // Fallback mock data
-  const property = MOCK_PROPERTIES.find(p => p.slug === slug)
+  // Fallback mock data — also gated to PUBLISHED so a stale mock entry
+  // can never leak a non-public listing.
+  const property = MOCK_PROPERTIES.find(p => p.slug === slug && p.status === 'PUBLISHED')
   if (!property) {
     return NextResponse.json(
       { error: 'Property not found' },

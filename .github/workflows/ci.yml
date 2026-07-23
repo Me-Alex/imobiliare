@@ -34,5 +34,8 @@ jobs:
       - name: Lint and type-check
         run: bun run lint && bun run typecheck
 
+      - name: Unit tests
+        run: bun run test
+
       - name: Build Cloudflare worker
         run: bun run cf:build

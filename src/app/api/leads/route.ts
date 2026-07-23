@@ -13,7 +13,12 @@ import {
   type LeadStatus,
 } from '@/lib/crm'
 import { notifyLeadAssigned, notifyNewLeadToTeam } from '@/lib/notifications'
-import { isValidEmail } from '@/lib/validators'
+import { isValidEmail, normalizeEmail } from '@/lib/validators'
+import { createIpRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
+
+// Even authenticated endpoints benefit from a per-IP ceiling — a single
+// staff session can otherwise flood the CRM in seconds.
+const leadCreateRateLimiter = createIpRateLimiter({ windowMs: 60_000, max: 30 })
 
 export const dynamic = 'force-dynamic'
 
@@ -91,6 +96,14 @@ export async function POST(request: NextRequest) {
   const staff = await requireStaff(request)
   if ('response' in staff) return staff.response
 
+  const limit = leadCreateRateLimiter.check(getClientIp(request))
+  if (limit.limited) {
+    return rateLimitResponse(
+      limit,
+      'Ai creat prea multe lead-uri într-un interval scurt. Încearcă din nou peste un minut.',
+    )
+  }
+
   let body: Record<string, unknown>
   try {
     body = await request.json()
@@ -99,7 +112,8 @@ export async function POST(request: NextRequest) {
   }
 
   const name = typeof body.name === 'string' ? body.name.trim() : ''
-  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+  const emailRaw = typeof body.email === 'string' ? body.email : ''
+  const email = isValidEmail(emailRaw) ? normalizeEmail(emailRaw) : ''
   const phone = typeof body.phone === 'string' ? body.phone.trim() : undefined
   const notes = typeof body.notes === 'string' ? body.notes.trim() : ''
   const source = (typeof body.source === 'string' ? body.source : 'website') as LeadSource

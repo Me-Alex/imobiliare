@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSafeDb } from '@/lib/edge-db'
 import { isValidEmail } from '@/lib/validators'
+import { createIpRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
+
+// 5 submissions per minute per IP — generous for a real visitor, cheap to defeat
+// for an attacker but enough to block casual spam and scripted floods.
+const contactRateLimiter = createIpRateLimiter({ windowMs: 60_000, max: 5 })
 
 export async function POST(request: NextRequest) {
+  // ── Rate limit ──────────────────────────────────────────────
+  const ip = getClientIp(request)
+  const limit = contactRateLimiter.check(ip)
+  if (limit.limited) {
+    return rateLimitResponse(
+      limit,
+      'Ai trimis prea multe mesaje recent. Te rugăm să aștepți un minut.',
+    )
+  }
+
   // ── Parse & validate input ──────────────────────────────────
   let name: string | undefined
   let email: string | undefined

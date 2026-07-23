@@ -58,6 +58,10 @@ export async function PATCH(request: NextRequest, context: Ctx) {
     return NextResponse.json({ error: 'JSON invalid.' }, { status: 400 })
   }
 
+  // Use the authenticated identity for any audit trail entry. Falling back
+  // to the auth userId means the log can never be forged from the client.
+  const auditActor = staff.email || staff.userId
+
   const db = await getSafeDb()
   if (!db || !hasLegacyCrmModels(db)) return NextResponse.json({ error: 'Ofertele legacy nu sunt disponibile in acest mediu.' }, { status: 503 })
 
@@ -143,7 +147,7 @@ export async function PATCH(request: NextRequest, context: Ctx) {
               create: {
                 type: 'OFFER',
                 body: `Ofertă acceptată: ${offer.amount} ${offer.currency}.`,
-                actorName: typeof body.actorName === 'string' ? body.actorName : actor,
+                actorName: auditActor,
                 metadata: JSON.stringify({ offerId: offer.id }),
               },
             },
