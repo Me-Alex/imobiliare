@@ -1,3 +1,11 @@
+/**
+ * @deprecated This module is part of the legacy documents pipeline. New
+ * code should import from `@/lib/documents/flow` (the single pure function
+ * `nextAction(ctx)`) or `@/components/documents-v2` (the new visual
+ * surface). See `src/lib/documents/README.md` for the migration plan.
+ * The module is kept here for backwards compatibility with the views
+ * that still call `getDocumentFlowSummary`; do not add new consumers.
+ */
 import type { AccountRole } from '@/lib/account-roles'
 import {
   getLegalDocumentDefinition,

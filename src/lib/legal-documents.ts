@@ -1,3 +1,11 @@
+/**
+ * @deprecated This module is part of the legacy documents pipeline. New
+ * code should import from `@/lib/documents` (the foundation module) or
+ * `@/components/documents-v2` (the new visual surface). See
+ * `src/lib/documents/README.md` for the migration plan. The module is
+ * kept here for backwards compatibility with the 18+ files that still
+ * depend on its types; do not add new consumers.
+ */
 import type { ViewingDocumentType } from '@/lib/types'
 
 export type LegalDocumentKind =
