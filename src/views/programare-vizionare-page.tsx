@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CalendarCheck, ChevronRight, ChevronLeft, LogIn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,34 @@ import { PropertyPickerStep } from '@/components/vizionare/property-picker-step'
 import { StaffDatePickerStep } from '@/components/vizionare/staff-date-picker-step'
 import { ConfirmationStep } from '@/components/vizionare/confirmation-step'
 import { createViewing, getAgencyLegalProfile } from '@/lib/viewing-documents'
+import type { ClientSubmission, ClientFieldValue } from '@/components/documents-v2'
+import type { TransactionKind } from '@/lib/documents/flow-shape'
+
+/**
+ * Map a property's free-form `transaction` field to the strict
+ * `TransactionKind` consumed by the new `ClientFlow` component.
+ * Accepts Romanian and English variants; defaults to RENTAL.
+ */
+function transactionKindOf(property: UserProperty | null): TransactionKind {
+  if (!property) return 'RENTAL'
+  const raw = String(property.transaction ?? '').toUpperCase()
+  return raw === 'SALE' || raw === 'VANZARE' || raw === 'SELL' ? 'SALE' : 'RENTAL'
+}
+
+/**
+ * Encode the accumulated `ClientFlow` submissions into a single block
+ * that can be appended to the appointment's free-form `notes` column.
+ * The format is human-readable so the agent can also read it without
+ * a parser; a future commit will move this to its own table.
+ */
+function encodeClientFlowSubmissions(submissions: readonly ClientSubmission[]): string {
+  if (submissions.length === 0) return ''
+  const blocks = submissions.map((submission) => {
+    const label = submission.stageId ?? 'rental'
+    return `[ClientFlow:${label}]\n${JSON.stringify(submission.values, null, 2)}`
+  })
+  return `[ClientFlow]\n${blocks.join('\n\n')}`
+}
 
 // ─── Seed availability helper ────────────────────────────────────────────────
 
@@ -84,6 +112,45 @@ export function ProgramareVizionarePage() {
   const [privacyNoticeVersion, setPrivacyNoticeVersion] = useState<string | null>(null)
   const [complianceLoading, setComplianceLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // ClientFlow submissions, accumulated per stage. RENTAL → one entry.
+  // SALE → up to three entries (identity, offer, contract), keyed by stageId.
+  const [clientFlowSubmissions, setClientFlowSubmissions] = useState<ClientSubmission[]>([])
+
+  const flowKind = useMemo(() => transactionKindOf(selectedProperty), [selectedProperty])
+
+  const clientFlowPrefill = useMemo<Record<string, ClientFieldValue>>(() => {
+    if (!user) return {}
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>
+    const fullName =
+      (typeof meta.full_name === 'string' && meta.full_name)
+      || (typeof meta.name === 'string' && meta.name)
+      || user.email?.split('@')[0]
+      || ''
+    const phone =
+      (typeof meta.phone === 'string' && meta.phone)
+      || (typeof meta.phone_number === 'string' && meta.phone_number)
+      || ''
+    return {
+      fullName,
+      email: user.email ?? '',
+      phone,
+    }
+  }, [user])
+
+  const handleClientFlowSubmit = (submission: ClientSubmission) => {
+    setClientFlowSubmissions((prev) => {
+      // For SALE, replace the entry for the same stage if it exists.
+      if (submission.stageId) {
+        const idx = prev.findIndex((s) => s.stageId === submission.stageId)
+        if (idx >= 0) {
+          const next = prev.slice()
+          next[idx] = submission
+          return next
+        }
+      }
+      return [...prev, submission]
+    })
+  }
 
   // Seed availability on first render
   useEffect(() => {
@@ -110,6 +177,9 @@ export function ProgramareVizionarePage() {
     setNotes('')
     setTermsAccepted(false)
     setPrivacyAccepted(false)
+    // Reset any in-progress ClientFlow state — the previous
+    // submissions belonged to the previous property.
+    setClientFlowSubmissions([])
   }
 
   const handleStaffSelect = (staff: StaffMember) => {
@@ -136,6 +206,12 @@ export function ProgramareVizionarePage() {
 
     setIsSubmitting(true)
     try {
+      // Merge the user's free-form notes with the structured
+      // `ClientFlow` data so the agent sees both. A future commit
+      // will move the structured part to its own table.
+      const flowBlock = encodeClientFlowSubmissions(clientFlowSubmissions)
+      const mergedNotes = [notes.trim(), flowBlock].filter(Boolean).join('\n\n')
+
       await createViewing({
         user,
         propertyId: selectedProperty.id,
@@ -145,7 +221,7 @@ export function ProgramareVizionarePage() {
         date: selectedDate,
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
-        notes,
+        notes: mergedNotes,
         termsAccepted,
         privacyAccepted,
       })
@@ -290,6 +366,9 @@ export function ProgramareVizionarePage() {
                   complianceLoading={complianceLoading}
                   isSubmitting={isSubmitting}
                   onSubmit={handleSubmit}
+                  clientFlowKind={flowKind}
+                  clientFlowPrefill={clientFlowPrefill}
+                  onClientFlowSubmit={handleClientFlowSubmit}
                 />
               )}
             </motion.div>
