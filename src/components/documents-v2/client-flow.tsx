@@ -20,7 +20,7 @@
  * No modals, no tabs, no drawers.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Check, ChevronRight, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +33,7 @@ import {
   type ClientField,
   type TransactionKind,
 } from '@/lib/documents/flow-shape'
+import { DocumentPreview, type DocumentPreviewStage } from './document-preview'
 
 export type ClientFieldValue = string | number | boolean | undefined
 
@@ -58,6 +59,12 @@ export interface ClientFlowProps {
   completedSaleStages?: readonly ('identity' | 'offer' | 'contract')[]
   /** Called when the client submits a stage / the rental form. */
   onSubmit: (submission: ClientSubmission) => void | Promise<void>
+  /**
+   * If false, the live document preview is hidden. Defaults to true.
+   * Use this in dense layouts where the parent already shows the
+   * preview elsewhere.
+   */
+  showPreview?: boolean
   className?: string
 }
 
@@ -78,6 +85,7 @@ export function ClientFlow({
   prefill,
   completedSaleStages: _completedSaleStages = [],
   onSubmit,
+  showPreview = true,
   className,
 }: ClientFlowProps) {
   const shape = getTransactionShape(kind)
@@ -112,6 +120,15 @@ export function ClientFlow({
           }
         }}
         done={done.includes('rental')}
+        preview={
+          showPreview ? (
+            <DocumentPreview
+              kind="RENTAL"
+              values={values}
+              propertyTitle={summary.propertyTitle}
+            />
+          ) : null
+        }
       />
     )
   }
@@ -157,6 +174,16 @@ export function ClientFlow({
             }
           : undefined
       }
+      preview={
+        showPreview ? (
+          <DocumentPreview
+            kind="SALE"
+            stage={active.id satisfies DocumentPreviewStage}
+            values={values}
+            propertyTitle={summary.propertyTitle}
+          />
+        ) : null
+      }
     />
   )
 }
@@ -178,6 +205,8 @@ interface ClientFormLayoutProps {
   onAction: () => void | Promise<void>
   onBack?: () => void
   done: boolean
+  /** Optional live preview rendered after the form card. */
+  preview?: ReactNode
 }
 
 function ClientFormLayout({
@@ -197,6 +226,7 @@ function ClientFormLayout({
   onAction,
   onBack,
   done,
+  preview,
 }: ClientFormLayoutProps) {
   const requiredMissing = useMemo(
     () => fields.filter((f) => f.required && isEmpty(values[f.key])).map((f) => f.key),
@@ -297,6 +327,11 @@ function ClientFormLayout({
           </div>
         )}
       </section>
+
+      {/* Live document preview — paper-style rendering of the same
+          values, updates on every keystroke. Hidden in dense layouts
+          via `showPreview={false}` on `ClientFlow`. */}
+      {preview}
 
       {/* Footer actions */}
       {!done ? (
