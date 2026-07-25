@@ -59,26 +59,29 @@ export function DocumentSearchBar({ documents, filter, onFilterChange }: Documen
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <Input
             placeholder="Cauta dupa titlu sau nume fisier..."
+            aria-label="Cauta documente"
             value={filter.search}
             onChange={(e) => onFilterChange({ ...filter, search: e.target.value })}
             className="pl-9"
           />
           {filter.search && (
             <button
+              type="button"
+              aria-label="Sterge cautarea"
               onClick={() => onFilterChange({ ...filter, search: '' })}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           )}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="relative">
-              <Filter className="h-4 w-4" />
+            <Button variant="outline" size="icon" className="relative" aria-label="Filtreaza documentele">
+              <Filter className="h-4 w-4" aria-hidden="true" />
               {activeFilterCount > 0 && (
                 <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] text-primary-foreground flex items-center justify-center">
                   {activeFilterCount}
