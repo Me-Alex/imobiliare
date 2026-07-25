@@ -249,6 +249,7 @@ function PropertyCompare() {
                           size="icon"
                           className="absolute top-2 right-2 h-7 w-7 bg-black/50 hover:bg-black/70 text-white border-0 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => toggleCompare(p.id)}
+                          aria-label={`Șterge ${p.title} din comparație`}
                         >
                           <X className="h-3.5 w-3.5" />
                         </Button>
