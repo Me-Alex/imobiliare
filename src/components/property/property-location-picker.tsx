@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Map as LeafletMap, Marker as LeafletMarker } from 'leaflet'
 import {
-  CheckCircle2, ExternalLink, Loader2, LocateFixed, MapPin, Search, Trash2,
+  CheckCircle2, CircleAlert, ExternalLink, Loader2, LocateFixed, MapPin, Search,
+  ShieldCheck, Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -80,14 +81,18 @@ export function PropertyLocationPicker({
   const markerRef = useRef<LeafletMarker | null>(null)
   const onChangeRef = useRef(onChange)
   const addressRef = useRef(address)
+  const locationRef = useRef({ lat, lng, zone })
   const setMarkerRef = useRef<((nextLat: number, nextLng: number, moveMap?: boolean) => void) | null>(null)
   const [mapReady, setMapReady] = useState(false)
+  const [mapError, setMapError] = useState('')
+  const [mapAttempt, setMapAttempt] = useState(0)
   const [searching, setSearching] = useState(false)
   const [results, setResults] = useState<GeocodeResult[]>([])
   const [searchError, setSearchError] = useState('')
 
   useEffect(() => { onChangeRef.current = onChange }, [onChange])
   useEffect(() => { addressRef.current = address }, [address])
+  useEffect(() => { locationRef.current = { lat, lng, zone } }, [lat, lng, zone])
 
   const searchQuery = useMemo(() => [
     address.trim(), zone, sector, 'București', 'România',
@@ -98,18 +103,22 @@ export function PropertyLocationPicker({
     if (!containerRef.current || mapRef.current) return
     let cancelled = false
     const container = containerRef.current
+    setMapReady(false)
+    setMapError('')
 
     void import('leaflet').then((L) => {
       if (cancelled || mapRef.current) return
-      const initialCenter = validCoordinates(lat, lng)
-        ? [lat, lng] as [number, number]
-        : ZONE_CENTERS[zone] || BUCHAREST_CENTER
+      const initialLocation = locationRef.current
+      const initialCenter = validCoordinates(initialLocation.lat, initialLocation.lng)
+        ? [initialLocation.lat, initialLocation.lng] as [number, number]
+        : ZONE_CENTERS[initialLocation.zone] || BUCHAREST_CENTER
       const map = L.map(container, {
         center: initialCenter,
-        zoom: validCoordinates(lat, lng) ? 16 : zone ? 14 : 12,
+        zoom: validCoordinates(initialLocation.lat, initialLocation.lng) ? 16 : initialLocation.zone ? 14 : 12,
         zoomControl: false,
         scrollWheelZoom: false,
       })
+      mapRef.current = map
 
       L.control.zoom({ position: 'topright' }).addTo(map)
       L.tileLayer(
@@ -132,7 +141,7 @@ export function PropertyLocationPicker({
           markerRef.current.setLatLng([nextLat, nextLng])
         } else {
           const marker = L.marker([nextLat, nextLng], { icon, draggable: true, keyboard: true }).addTo(map)
-          marker.bindTooltip('Trage pinul pentru o poziționare mai precisă', { direction: 'top', offset: [0, -36] })
+          marker.bindTooltip('Trage pinul pentru o poziționare mai precisă.', { direction: 'top', offset: [0, -36] })
           marker.on('dragend', () => {
             const point = marker.getLatLng()
             onChangeRef.current({ lat: point.lat, lng: point.lng })
@@ -143,19 +152,26 @@ export function PropertyLocationPicker({
       }
 
       setMarkerRef.current = setMarker
-      if (validCoordinates(lat, lng)) setMarker(lat, lng!)
+      if (validCoordinates(initialLocation.lat, initialLocation.lng)) {
+        setMarker(initialLocation.lat, initialLocation.lng!)
+      }
 
       map.on('click', (event: L.LeafletMouseEvent) => {
         setMarker(event.latlng.lat, event.latlng.lng)
         onChangeRef.current({ lat: event.latlng.lat, lng: event.latlng.lng })
       })
 
-      mapRef.current = map
       setMapReady(true)
       window.setTimeout(() => map.invalidateSize(), 50)
     }).catch((error) => {
+      if (cancelled) return
       console.error('Map initialization failed:', error)
-      setSearchError('Harta nu a putut fi încărcată.')
+      markerRef.current = null
+      setMarkerRef.current = null
+      mapRef.current?.remove()
+      mapRef.current = null
+      setMapReady(false)
+      setMapError('Harta nu a putut fi încărcată. Verifică conexiunea și încearcă din nou.')
     })
 
     return () => {
@@ -167,11 +183,11 @@ export function PropertyLocationPicker({
         mapRef.current = null
       }
     }
-    // The map is intentionally initialized once; later prop changes are handled below.
-  }, [])
+    // Reinitialize only after an explicit retry; later prop changes are synchronized below.
+  }, [mapAttempt])
 
   useEffect(() => {
-    if (!mapRef.current) return
+    if (!mapReady || !mapRef.current) return
     if (validCoordinates(lat, lng)) {
       setMarkerRef.current?.(lat, lng!)
       return
@@ -180,7 +196,13 @@ export function PropertyLocationPicker({
     markerRef.current = null
     const center = ZONE_CENTERS[zone] || BUCHAREST_CENTER
     mapRef.current.flyTo(center, zone ? 14 : 12, { duration: 0.4 })
-  }, [lat, lng, zone])
+  }, [lat, lng, mapReady, zone])
+
+  function retryMap() {
+    setMapError('')
+    setMapReady(false)
+    setMapAttempt((attempt) => attempt + 1)
+  }
 
   async function handleSearch() {
     if (!canSearch) return
@@ -210,40 +232,73 @@ export function PropertyLocationPicker({
     onChange({ address: result.displayName, lat: result.lat, lng: result.lng })
     setResults([])
     setSearchError('')
-    toast.success('Adresa a fost poziționată pe hartă')
+    toast.success('Adresa a fost poziționată pe hartă.')
   }
 
   function clearPin() {
     markerRef.current?.remove()
     markerRef.current = null
     onChange({ lat: null, lng: null })
-    toast.success('Pinul a fost eliminat')
+    toast.success('Pinul a fost eliminat.')
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleSearch}
-          disabled={searching || !canSearch}
-          className="gap-2 sm:w-auto"
-        >
-          {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          {searching ? 'Căutăm adresa…' : 'Caută adresa pe hartă'}
-        </Button>
-        {validCoordinates(lat, lng) && (
-          <Button type="button" variant="ghost" onClick={clearPin} className="gap-2 text-muted-foreground">
-            <Trash2 className="h-4 w-4" /> Elimină pinul
-          </Button>
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-border/70 bg-muted/20 p-3.5 sm:p-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Search className="h-4.5 w-4.5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Găsește adresa pe hartă</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                Folosim adresa, zona și sectorul completate mai sus pentru o căutare mai precisă.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button
+              type="button"
+              onClick={handleSearch}
+              disabled={searching || !canSearch}
+              className="w-full gap-2 sm:w-auto"
+              aria-busy={searching}
+            >
+              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              {searching ? 'Căutăm adresa…' : 'Caută pe hartă'}
+            </Button>
+            {validCoordinates(lat, lng) && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={clearPin}
+                className="w-full gap-2 text-muted-foreground sm:w-auto"
+              >
+                <Trash2 className="h-4 w-4" /> Elimină pinul
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {!canSearch && (
+          <p className="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+            Completează cel puțin zona sau primele patru caractere ale adresei pentru a porni căutarea.
+          </p>
         )}
       </div>
 
       {results.length > 0 && (
-        <div className="overflow-hidden rounded-xl border bg-background shadow-sm">
-          <div className="border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
-            Alege rezultatul corect
+        <div className="overflow-hidden rounded-2xl border border-primary/15 bg-background shadow-sm">
+          <div className="flex items-center justify-between gap-3 border-b bg-primary/5 px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold">Alege adresa corectă</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Selectarea unui rezultat va muta automat pinul.</p>
+            </div>
+            <Badge variant="secondary" className="tabular-nums">
+              {results.length} {results.length === 1 ? 'rezultat' : 'rezultate'}
+            </Badge>
           </div>
           <div className="divide-y">
             {results.map((result, index) => (
@@ -251,9 +306,11 @@ export function PropertyLocationPicker({
                 key={`${result.lat}-${result.lng}-${index}`}
                 type="button"
                 onClick={() => selectResult(result)}
-                className="flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-primary/5"
+                className="group flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none"
               >
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <MapPin className="h-4 w-4" />
+                </span>
                 <span className="min-w-0 flex-1 text-sm leading-snug">{result.displayName}</span>
                 <Badge variant="secondary" className="hidden shrink-0 capitalize sm:inline-flex">{result.type}</Badge>
               </button>
@@ -263,61 +320,128 @@ export function PropertyLocationPicker({
       )}
 
       {searchError && (
-        <p className="rounded-lg border border-amber-300/60 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-          {searchError}
-        </p>
+        <div
+          role="alert"
+          className="flex items-start gap-2.5 rounded-xl border border-amber-300/60 bg-amber-500/10 px-3.5 py-3 text-xs text-amber-900 dark:text-amber-200"
+        >
+          <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <p className="leading-relaxed">{searchError}</p>
+        </div>
       )}
 
-      <div className="relative overflow-hidden rounded-2xl border bg-muted shadow-inner">
+      <div className="relative overflow-hidden rounded-[1.25rem] border border-border/70 bg-muted shadow-sm ring-1 ring-black/[0.02] dark:ring-white/[0.03]">
         <div
           ref={containerRef}
           data-testid="property-location-map"
-          className="h-[320px] w-full sm:h-[380px]"
+          className="h-[300px] w-full sm:h-[380px]"
           aria-label="Hartă pentru poziționarea proprietății"
         />
 
-        {!mapReady && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        {!mapReady && !mapError && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted" role="status" aria-live="polite">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-background shadow-sm">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
+            </span>
+            <p className="text-xs font-medium text-muted-foreground">Se încarcă harta…</p>
           </div>
         )}
 
-        <div className="pointer-events-none absolute left-3 top-3 z-[500] max-w-[calc(100%-4.5rem)] rounded-lg border bg-background/95 px-3 py-2 shadow-sm backdrop-blur">
-          <div className="flex items-center gap-2 text-xs font-medium">
-            <LocateFixed className="h-3.5 w-3.5 text-primary" />
-            Click pe hartă sau trage pinul
+        {mapError && (
+          <div
+            className="absolute inset-0 z-[510] flex flex-col items-center justify-center gap-3 bg-muted px-6 text-center"
+            role="alert"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300">
+              <CircleAlert className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold">Harta nu este disponibilă momentan</p>
+              <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">{mapError}</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={retryMap} className="gap-2">
+              <LocateFixed className="h-4 w-4" aria-hidden="true" />
+              Reîncearcă
+            </Button>
           </div>
-        </div>
+        )}
+
+        {!mapError && (
+          <div className="pointer-events-none absolute left-3 top-3 z-[500] max-w-[calc(100%-4.5rem)] rounded-xl border border-border/70 bg-background/95 px-3.5 py-2.5 shadow-lg backdrop-blur-md">
+            <div className="flex items-center gap-2 text-xs font-semibold">
+              <LocateFixed className="h-3.5 w-3.5 text-primary" />
+              Clic pe hartă pentru a pune pinul
+            </div>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">Îl poți trage apoi până la poziția exactă.</p>
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-col gap-2 rounded-xl border bg-muted/25 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-2">
-          <CheckCircle2 className={cn('mt-0.5 h-4 w-4 shrink-0', validCoordinates(lat, lng) ? 'text-emerald-600' : 'text-muted-foreground')} />
-          <div>
-            <p className="text-xs font-medium">
-              {validCoordinates(lat, lng) ? 'Poziția proprietății este salvată' : 'Pinul este recomandat pentru o localizare corectă'}
-            </p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+      <div
+        className={cn(
+          'flex flex-col gap-3 rounded-2xl border px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between',
+          validCoordinates(lat, lng)
+            ? 'border-emerald-500/20 bg-emerald-500/[0.07]'
+            : 'border-border/70 bg-muted/20',
+        )}
+        aria-live="polite"
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className={cn(
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
+              validCoordinates(lat, lng)
+                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                : 'bg-muted text-muted-foreground',
+            )}
+          >
+            {validCoordinates(lat, lng)
+              ? <CheckCircle2 className="h-4.5 w-4.5" />
+              : <MapPin className="h-4.5 w-4.5" />}
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold">
+                {validCoordinates(lat, lng) ? 'Poziție salvată' : 'Poziționează proprietatea'}
+              </p>
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-[10px]',
+                  validCoordinates(lat, lng) && 'border-emerald-500/25 bg-background/70 text-emerald-700 dark:text-emerald-300',
+                )}
+              >
+                {validCoordinates(lat, lng) ? 'Localizare completă' : 'Pin nesetat'}
+              </Badge>
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {validCoordinates(lat, lng)
-                ? `${lat.toFixed(6)}, ${lng!.toFixed(6)}`
-                : 'Adresa poate fi căutată sau pinul poate fi pus manual.'}
+                ? 'Pinul va fi folosit pentru hartă și căutările bazate pe zonă.'
+                : 'Adaugă un pin pentru ca proprietatea să fie găsită mai ușor pe hartă.'}
             </p>
+            {validCoordinates(lat, lng) && (
+              <p className="mt-1 font-mono text-[10px] tabular-nums text-muted-foreground">
+                {lat.toFixed(6)}, {lng!.toFixed(6)}
+              </p>
+            )}
           </div>
         </div>
         <a
           href="https://www.openstreetmap.org/copyright"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+          className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
-          Date © OpenStreetMap <ExternalLink className="h-3 w-3" />
+          Date cartografice © OpenStreetMap <ExternalLink className="h-3 w-3" />
         </a>
       </div>
 
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Căutarea are loc numai când apeși butonul și trimite textul adresei către serviciul OpenStreetMap Nominatim.
-        Dacă adresa este confidențială, poziționează manual pinul la nivelul străzii sau al zonei.
-      </p>
+      <div className="flex items-start gap-2.5 px-1 text-[11px] leading-relaxed text-muted-foreground">
+        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+        <p>
+          Căutarea pornește numai când apeși butonul și trimite textul adresei către OpenStreetMap Nominatim.
+          Pentru o adresă confidențială, plasează pinul aproximativ, la nivelul străzii sau al zonei.
+        </p>
+      </div>
     </div>
   )
 }

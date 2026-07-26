@@ -653,6 +653,16 @@ html {
   background: oklch(0.45 0.02 60);
 }
 
+/* The publish-property stepper remains swipeable without a persistent mobile scrollbar. */
+.property-form-steps {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.property-form-steps::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── @layer component: notifications-panel ── Notifications panel thin scrollbar */
 .notifications-scroll {
   scrollbar-width: thin;

@@ -1,19 +1,46 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef, type FormEvent } from 'react'
-import { motion } from 'framer-motion'
 import {
-  Plus, Loader2, MapPin, Building2, Ruler,
-  BedDouble, Bath, Calendar, Euro, Tag, Upload, CheckCircle2,
-  Circle, Clock3, Lightbulb, Navigation, Rotate3D,
+  useCallback,
+  useState,
+  type ElementType,
+  type FormEvent,
+  type ReactNode,
+} from 'react'
+import {
+  Bath,
+  BedDouble,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Circle,
+  Clock3,
+  Euro,
+  Eye,
+  ImageIcon,
+  Loader2,
+  MapPin,
+  Navigation,
+  Plus,
+  Rotate3D,
+  Ruler,
+  ShieldCheck,
+  Sparkles,
+  Tag,
+  Upload,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
+
+import { PageSurface, SectionHeader } from '@/components/layout/page-shell'
+import { AiDescriptionGenerator } from '@/components/property/ai-description-generator'
+import { ImageGalleryUploader } from '@/components/property/image-gallery-uploader'
+import { PropertyLocationPicker } from '@/components/property/property-location-picker'
+import { VirtualTourEditor } from '@/components/property/virtual-tour-editor'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
-import { Textarea } from '@/components/ui/textarea'
-import { Separator } from '@/components/ui/separator'
 import {
   Select,
   SelectContent,
@@ -22,12 +49,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { PROPERTY_TYPES, TRANSACTIONS, CURRENCIES, SECTOARE, ZONES } from '@/lib/constants'
-import { ImageGalleryUploader } from '@/components/property/image-gallery-uploader'
-import { AiDescriptionGenerator } from '@/components/property/ai-description-generator'
-import { PropertyLocationPicker } from '@/components/property/property-location-picker'
-import { VirtualTourEditor } from '@/components/property/virtual-tour-editor'
-import { toast } from 'sonner'
+import { Textarea } from '@/components/ui/textarea'
+import { CURRENCIES, PROPERTY_TYPES, SECTOARE, TRANSACTIONS, ZONES } from '@/lib/constants'
+import { cn } from '@/lib/utils'
 import {
   EMPTY_VIRTUAL_TOUR_DRAFT,
   isVirtualTourDraftValid,
@@ -60,550 +84,813 @@ export interface PropertyFormData {
 }
 
 const INITIAL_FORM: PropertyFormData = {
-  title: '', description: '', type: '', transaction: 'VANZARE',
-  price: '', currency: 'EUR', areaSqm: '', rooms: '', bathrooms: '',
-  floor: '', totalFloors: '', yearBuilt: '', address: '',
-  zone: '', sector: '', lat: null, lng: null,
-  featured: false, coverUrl: '', galleryUrls: [],
+  title: '',
+  description: '',
+  type: '',
+  transaction: 'VANZARE',
+  price: '',
+  currency: 'EUR',
+  areaSqm: '',
+  rooms: '',
+  bathrooms: '',
+  floor: '',
+  totalFloors: '',
+  yearBuilt: '',
+  address: '',
+  zone: '',
+  sector: '',
+  lat: null,
+  lng: null,
+  featured: false,
+  coverUrl: '',
+  galleryUrls: [],
   virtualTour: EMPTY_VIRTUAL_TOUR_DRAFT,
 }
 
 interface PropertyFormProps {
   onSubmit: (data: PropertyFormData) => void
   isSubmitting: boolean
-  onFormChange?: (data: PropertyFormData) => void
+  onPreview: (data: PropertyFormData) => void
 }
 
-export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyFormProps) {
-  const [form, setForm] = useState<PropertyFormData>(INITIAL_FORM)
-  const onFormChangeRef = useRef(onFormChange)
-  useEffect(() => { onFormChangeRef.current = onFormChange })
+interface ListingSectionProps {
+  id: string
+  step: number
+  icon: ElementType
+  title: string
+  description: string
+  complete: boolean
+  optional?: boolean
+  children: ReactNode
+}
 
-  const updateField = useCallback(<K extends keyof PropertyFormData>(key: K, value: PropertyFormData[K]) => {
-    setForm((prev) => {
-      const next = { ...prev, [key]: value }
-      onFormChangeRef.current?.(next)
-      return next
-    })
+function ListingSection({
+  id,
+  step,
+  icon,
+  title,
+  description,
+  complete,
+  optional = false,
+  children,
+}: ListingSectionProps) {
+  return (
+    <div id={id} tabIndex={-1} className="scroll-mt-32 focus:outline-none">
+      <PageSurface as="section" className="overflow-hidden" tone="default">
+        <div className="border-b border-border/60 bg-muted/20 px-5 py-5 sm:px-6">
+          <SectionHeader
+            className="mb-0"
+            eyebrow={`Pasul ${step}`}
+            icon={icon}
+            title={title}
+            description={description}
+            actions={(
+              <Badge
+                variant={complete ? 'default' : 'outline'}
+                className={cn(
+                  'gap-1.5',
+                  complete && 'bg-emerald-600 text-white hover:bg-emerald-600',
+                )}
+              >
+                {complete ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+                {complete ? 'Complet' : optional ? 'Opțional' : 'De completat'}
+              </Badge>
+            )}
+          />
+        </div>
+        <div className="p-5 sm:p-6">{children}</div>
+      </PageSurface>
+    </div>
+  )
+}
+
+function formatPrice(value: string, currency: string) {
+  const price = Number(value)
+  return price > 0 ? `${price.toLocaleString('ro-RO')} ${currency}` : 'Preț nesetat'
+}
+
+export function PropertyForm({
+  onSubmit,
+  isSubmitting,
+  onPreview,
+}: PropertyFormProps) {
+  const [form, setForm] = useState<PropertyFormData>(INITIAL_FORM)
+  const [showValidation, setShowValidation] = useState(false)
+
+  const updateField = useCallback(<K extends keyof PropertyFormData>(
+    key: K,
+    value: PropertyFormData[K],
+  ) => {
+    setForm((previous) => ({ ...previous, [key]: value }))
   }, [])
 
   const updateFields = useCallback((fields: Partial<PropertyFormData>) => {
-    setForm((prev) => {
-      const next = { ...prev, ...fields }
-      onFormChangeRef.current?.(next)
-      return next
-    })
+    setForm((previous) => ({ ...previous, ...fields }))
   }, [])
 
   const isLand = /teren/i.test(form.type)
   const hasPin = form.lat !== null && form.lng !== null
   const validVirtualTour = isVirtualTourDraftValid(form.virtualTour)
-  const steps = [
-    {
-      id: 'property-step-basic',
-      label: 'Anunț',
-      complete: Boolean(form.title.trim() && form.description.trim() && form.type && form.transaction),
-    },
-    {
-      id: 'property-step-price',
-      label: 'Preț',
-      complete: Number(form.price) > 0 && Number(form.areaSqm) > 0,
-    },
-    {
-      id: 'property-step-details',
-      label: 'Detalii',
-      complete: isLand || Number(form.rooms) > 0,
-    },
-    {
-      id: 'property-step-location',
-      label: 'Localizare',
-      complete: Boolean(form.sector && form.zone && form.address.trim() && hasPin),
-    },
-    {
-      id: 'property-step-images',
-      label: 'Imagini',
-      complete: form.galleryUrls.length > 0,
-    },
-    {
-      id: 'property-step-virtual-tour',
-      label: 'Tur 360°',
-      complete: validVirtualTour,
-    },
-  ]
-  const completionSignals = [
-    Boolean(form.title.trim()), Boolean(form.description.trim()), Boolean(form.type),
-    Number(form.price) > 0, Number(form.areaSqm) > 0, isLand || Number(form.rooms) > 0,
-    Boolean(form.sector), Boolean(form.zone), Boolean(form.address.trim()), hasPin,
-    form.galleryUrls.length > 0,
-  ]
-  const completionPercent = Math.round(
-    (completionSignals.filter(Boolean).length / completionSignals.length) * 100,
+  const hasConfiguredTour = form.virtualTour.mode !== 'NONE' && validVirtualTour
+  const currentYear = new Date().getFullYear()
+  const isPositiveInteger = (value: string) => Number.isInteger(Number(value)) && Number(value) > 0
+  const isOptionalNonNegativeInteger = (value: string) => (
+    !value || (Number.isInteger(Number(value)) && Number(value) >= 0)
   )
-  const missingRequired = [
-    !form.title.trim() ? 'titlul' : '',
-    !form.description.trim() ? 'descrierea' : '',
-    !form.type ? 'tipul proprietății' : '',
-    !(Number(form.price) > 0) ? 'prețul' : '',
-    !(Number(form.areaSqm) > 0) ? 'suprafața' : '',
-    !isLand && !(Number(form.rooms) > 0) ? 'numărul de camere' : '',
-    !form.sector ? 'sectorul' : '',
-    !form.zone ? 'zona' : '',
-    !form.address.trim() ? 'adresa' : '',
-    !validVirtualTour ? 'configurația turului virtual' : '',
-  ].filter(Boolean)
+  const hasValidYear = !form.yearBuilt || (
+    Number.isInteger(Number(form.yearBuilt))
+    && Number(form.yearBuilt) >= 1800
+    && Number(form.yearBuilt) <= currentYear
+  )
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    if (missingRequired.length > 0) {
-      const firstIncomplete = steps.find((step) => !step.complete)
-      document.getElementById(firstIncomplete?.id || 'property-step-basic')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const sectionCompletion = {
+    basic: Boolean(form.title.trim() && form.description.trim() && form.type && form.transaction),
+    details: Number(form.price) > 0 && Number(form.areaSqm) > 0 && (isLand || isPositiveInteger(form.rooms)),
+    location: Boolean(form.sector && form.zone && form.address.trim()),
+    images: form.galleryUrls.length > 0,
+    tour: hasConfiguredTour,
+  }
+
+  const steps = [
+    { id: 'property-step-basic', label: 'Despre proprietate', complete: sectionCompletion.basic },
+    { id: 'property-step-details', label: 'Preț și detalii', complete: sectionCompletion.details },
+    { id: 'property-step-location', label: 'Localizare', complete: sectionCompletion.location },
+    { id: 'property-step-images', label: 'Fotografii', complete: sectionCompletion.images, optional: true },
+    { id: 'property-step-virtual-tour', label: 'Tur virtual', complete: sectionCompletion.tour, optional: true },
+  ]
+
+  const requiredItems = [
+    { missing: !form.title.trim(), label: 'titlul', fieldId: 'title', sectionId: 'property-step-basic' },
+    { missing: !form.description.trim(), label: 'descrierea', fieldId: 'description', sectionId: 'property-step-basic' },
+    { missing: !form.type, label: 'tipul proprietății', fieldId: 'property-type', sectionId: 'property-step-basic' },
+    { missing: !(Number(form.price) > 0), label: 'prețul', fieldId: 'price', sectionId: 'property-step-details' },
+    { missing: !(Number(form.areaSqm) > 0), label: 'suprafața', fieldId: 'area', sectionId: 'property-step-details' },
+    { missing: !isLand && !isPositiveInteger(form.rooms), label: 'un număr întreg de camere', fieldId: 'rooms', sectionId: 'property-step-details' },
+    { missing: !isLand && !isOptionalNonNegativeInteger(form.bathrooms), label: 'un număr valid de băi', fieldId: 'bathrooms', sectionId: 'property-step-details' },
+    { missing: !isLand && !isOptionalNonNegativeInteger(form.floor), label: 'un etaj valid', fieldId: 'floor', sectionId: 'property-step-details' },
+    { missing: !isLand && !isOptionalNonNegativeInteger(form.totalFloors), label: 'un număr valid de etaje', fieldId: 'totalFloors', sectionId: 'property-step-details' },
+    { missing: !isLand && Boolean(form.floor && form.totalFloors) && Number(form.floor) > Number(form.totalFloors), label: 'un etaj mai mic sau egal cu totalul', fieldId: 'floor', sectionId: 'property-step-details' },
+    { missing: !isLand && !hasValidYear, label: `un an între 1800 și ${currentYear}`, fieldId: 'yearBuilt', sectionId: 'property-step-details' },
+    { missing: !form.sector, label: 'sectorul', fieldId: 'property-sector', sectionId: 'property-step-location' },
+    { missing: !form.zone, label: 'zona', fieldId: 'property-zone', sectionId: 'property-step-location' },
+    { missing: !form.address.trim(), label: 'adresa', fieldId: 'address', sectionId: 'property-step-location' },
+    {
+      missing: form.virtualTour.mode !== 'NONE' && !validVirtualTour,
+      label: 'configurația turului virtual',
+      fieldId: 'property-step-virtual-tour',
+      sectionId: 'property-step-virtual-tour',
+    },
+  ].filter((item) => item.missing)
+
+  const qualitySignals = [
+    form.title.trim().length >= 20,
+    form.description.trim().length >= 160,
+    Boolean(form.type && form.transaction),
+    Number(form.price) > 0,
+    Number(form.areaSqm) > 0,
+    isLand || isPositiveInteger(form.rooms),
+    Boolean(form.sector && form.zone),
+    form.address.trim().length >= 8,
+    hasPin,
+    form.galleryUrls.length > 0,
+    form.galleryUrls.length >= 5,
+    isLand || Boolean(form.yearBuilt),
+  ]
+  const qualityPercent = Math.round(
+    (qualitySignals.filter(Boolean).length / qualitySignals.length) * 100,
+  )
+  const qualityLabel = qualityPercent >= 90
+    ? 'Excelent'
+    : qualityPercent >= 70
+      ? 'Foarte bun'
+      : qualityPercent >= 45
+        ? 'Bun început'
+        : 'De completat'
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    setShowValidation(true)
+
+    const firstMissing = requiredItems[0]
+    if (firstMissing) {
+      document.getElementById(firstMissing.sectionId)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+      window.setTimeout(() => document.getElementById(firstMissing.fieldId)?.focus(), 450)
       toast.error('Completează câmpurile obligatorii', {
-        description: `Mai lipsesc: ${missingRequired.join(', ')}.`,
+        description: `Mai lipsesc: ${requiredItems.map((item) => item.label).join(', ')}.`,
       })
       return
     }
+
     onSubmit(form)
   }
 
+  const resetLocation = (fields: Partial<PropertyFormData>) => {
+    updateFields({ ...fields, lat: null, lng: null })
+  }
+
+  const pricePerSqm = Number(form.price) > 0 && Number(form.areaSqm) > 0
+    ? Math.round(Number(form.price) / Number(form.areaSqm))
+    : null
+
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-2xl p-4 sm:p-5 lg:col-span-3"
-        >
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold">Pregătește anunțul pentru publicare</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Datele complete cresc calitatea anunțului și precizia căutărilor.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="gap-1.5">
-                    <Clock3 className="h-3 w-3" /> 4–6 minute
-                  </Badge>
-                  <Badge className="tabular-nums">{completionPercent}%</Badge>
-                </div>
-              </div>
-              <Progress value={completionPercent} className="mt-3 h-2" />
-            </div>
-
-            <div className="grid grid-cols-6 gap-1.5 lg:w-[520px]">
-              {steps.map((step, index) => (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => document.getElementById(step.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                  className="group flex min-w-0 flex-col items-center gap-1 rounded-lg px-1 py-2 text-center transition-colors hover:bg-muted"
-                >
-                  <span className={step.complete ? 'text-emerald-600' : 'text-muted-foreground'}>
-                    {step.complete ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                  </span>
-                  <span className="w-full truncate text-[10px] font-medium sm:text-xs">{index + 1}. {step.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Main Form - 2 columns */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Basic Info */}
-          <motion.section id="property-step-basic" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card scroll-mt-28 rounded-2xl p-5 sm:p-6 space-y-5">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Tag className="h-5 w-5 text-primary" />
-              Informatii de Baza
-            </h2>
-
-            <div className="space-y-2">
-              <Label htmlFor="title">Titlu *</Label>
-              <Input
-                id="title"
-                placeholder="Apartament 3 camere in Dorobanti, decomandat"
-                value={form.title}
-                onChange={(e) => updateField('title', e.target.value)}
-                className="h-11"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <Label htmlFor="description">Descriere *</Label>
-                  <p className="mt-1 text-xs text-muted-foreground">Scrie manual sau pornește de la trei variante adaptate proprietății.</p>
-                </div>
-                <AiDescriptionGenerator
-                  form={form}
-                  onApply={({ title, description }) => {
-                    setForm((previous) => {
-                      const next = { ...previous, title, description }
-                      onFormChangeRef.current?.(next)
-                      return next
-                    })
-                  }}
-                />
-              </div>
-              <Textarea
-                id="description"
-                placeholder="Descrie proprietatea detaliat: finisaje, dotari, vecinatate, acces transport etc."
-                value={form.description}
-                onChange={(e) => updateField('description', e.target.value)}
-                className="min-h-[120px] resize-y"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tip Proprietate *</Label>
-                <Select value={form.type} onValueChange={(v) => updateField('type', v)} required>
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Selecteaza tipul" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PROPERTY_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Tranzactie *</Label>
-                <Select value={form.transaction} onValueChange={(v) => updateField('transaction', v)}>
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TRANSACTIONS.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </motion.section>
-
-          {/* Pricing & Size */}
-          <motion.section id="property-step-price" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card scroll-mt-28 rounded-2xl p-5 sm:p-6 space-y-5">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Euro className="h-5 w-5 text-primary" />
-              Pret si Dimensiuni
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="price">Pret *</Label>
-                <div className="relative">
-                  <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="price"
-                    type="number"
-                    min="0"
-                    step="1000"
-                    placeholder="95000"
-                    value={form.price}
-                    onChange={(e) => updateField('price', e.target.value)}
-                    className="pl-10 h-11"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Moneda</Label>
-                <Select value={form.currency} onValueChange={(v) => updateField('currency', v)}>
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="area">Suprafata (m²) *</Label>
-                <div className="relative">
-                  <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="area"
-                    type="number"
-                    min="1"
-                    placeholder="75"
-                    value={form.areaSqm}
-                    onChange={(e) => updateField('areaSqm', e.target.value)}
-                    className="pl-10 h-11"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            {form.price && form.areaSqm && parseFloat(form.price) > 0 && parseFloat(form.areaSqm) > 0 && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
-                <span className="text-sm text-muted-foreground">Pret/mp:</span>
-                <span className="text-sm font-semibold text-primary">
-                  {Math.round(parseFloat(form.price) / parseFloat(form.areaSqm)).toLocaleString('ro-RO')} {form.currency}/m²
-                </span>
-              </div>
-            )}
-          </motion.section>
-
-          {/* Rooms & Details */}
-          <motion.section id="property-step-details" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card scroll-mt-28 rounded-2xl p-5 sm:p-6 space-y-5">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-primary" />
-              Detalii Imobil
-            </h2>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="rooms">Camere *</Label>
-                <div className="relative">
-                  <BedDouble className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="rooms"
-                    type="number"
-                    min="0"
-                    placeholder="3"
-                    value={form.rooms}
-                    onChange={(e) => updateField('rooms', e.target.value)}
-                    className="pl-10 h-11"
-                    required={!isLand}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bathrooms">Bai</Label>
-                <div className="relative">
-                  <Bath className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="bathrooms"
-                    type="number"
-                    min="0"
-                    placeholder="1"
-                    value={form.bathrooms}
-                    onChange={(e) => updateField('bathrooms', e.target.value)}
-                    className="pl-10 h-11"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="floor">Etaj</Label>
-                <Input
-                  id="floor"
-                  type="number"
-                  min="0"
-                  placeholder="3"
-                  value={form.floor}
-                  onChange={(e) => updateField('floor', e.target.value)}
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="totalFloors">Total etaje</Label>
-                <Input
-                  id="totalFloors"
-                  type="number"
-                  min="0"
-                  placeholder="8"
-                  value={form.totalFloors}
-                  onChange={(e) => updateField('totalFloors', e.target.value)}
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="yearBuilt">An Constructie</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    id="yearBuilt"
-                    type="number"
-                    min="1900"
-                    max={new Date().getFullYear()}
-                    placeholder="2020"
-                    value={form.yearBuilt}
-                    onChange={(e) => updateField('yearBuilt', e.target.value)}
-                    className="pl-10 h-11"
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.section>
-
-          {/* Location */}
-          <motion.section id="property-step-location" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card scroll-mt-28 rounded-2xl p-5 sm:p-6 space-y-5">
+    <form onSubmit={handleSubmit} className="pb-28 lg:pb-0" noValidate>
+      <PageSurface tone="elevated" className="mb-6 overflow-hidden">
+        <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="min-w-0">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-primary" />
-                  Adresă și poziție pe hartă
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">Caută adresa, apoi ajustează pinul pentru o poziționare exactă.</p>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Calitatea anunțului
+                </div>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Câmpurile obligatorii permit publicarea; fotografiile și pinul cresc calitatea anunțului.
+                </p>
               </div>
-              <Badge variant={hasPin ? 'default' : 'outline'} className="gap-1.5">
-                <Navigation className="h-3 w-3" /> {hasPin ? 'Pin poziționat' : 'Pin recomandat'}
-              </Badge>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Sector *</Label>
-                <Select value={form.sector} onValueChange={(v) => updateField('sector', v)} required>
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Selecteaza sectorul" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SECTOARE.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Zona *</Label>
-                <Select value={form.zone} onValueChange={(v) => updateField('zone', v)} required>
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Selecteaza zona" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ZONES.map((z) => (
-                      <SelectItem key={z} value={z}>{z}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="text-right">
+                <p className="text-2xl font-bold tabular-nums text-primary">{qualityPercent}%</p>
+                <p className="text-xs font-medium text-muted-foreground">{qualityLabel}</p>
               </div>
             </div>
+            <Progress value={qualityPercent} className="mt-4 h-2" />
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="address">Adresa exactă *</Label>
-              <Input
-                id="address"
-                placeholder="Str. Example nr. 10, Bl. A3, Sc. 2, Et. 4, Ap. 12"
-                value={form.address}
-                onChange={(e) => updateField('address', e.target.value)}
-                className="h-11"
-                required
+          <div className="flex items-center gap-2 rounded-xl border bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
+            <Clock3 className="h-4 w-4 text-primary" />
+            Aproximativ 4–6 minute
+          </div>
+        </div>
+
+        <nav
+          aria-label="Secțiunile formularului"
+          className="property-form-steps overflow-x-auto border-t border-border/60 bg-muted/15 px-4 py-3 sm:px-6"
+        >
+          <div className="flex min-w-max gap-2">
+            {steps.map((step, index) => (
+              <button
+                key={step.id}
+                type="button"
+                onClick={() => document.getElementById(step.id)?.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start',
+                })}
+                className={cn(
+                  'flex min-w-[148px] items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors',
+                  step.complete
+                    ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                    : 'border-border/70 bg-background/70 hover:border-primary/30 hover:bg-primary/5',
+                )}
+              >
+                <span className={cn(
+                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                  step.complete ? 'bg-emerald-600 text-white' : 'bg-muted text-muted-foreground',
+                )}>
+                  {step.complete ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold">{step.label}</span>
+                  <span className="block text-[10px] text-muted-foreground">
+                    {step.complete ? 'Complet' : step.optional ? 'Opțional' : 'Obligatoriu'}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </nav>
+      </PageSurface>
+
+      {showValidation && requiredItems.length > 0 ? (
+        <div
+          role="alert"
+          className="mb-6 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm"
+        >
+          <p className="font-semibold text-destructive">Anunțul nu este încă pregătit pentru publicare.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Completează {requiredItems.map((item) => item.label).join(', ')}. Te-am dus la primul câmp lipsă.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-8">
+        <div className="min-w-0 space-y-6">
+          <ListingSection
+            id="property-step-basic"
+            step={1}
+            icon={Tag}
+            title="Despre proprietate"
+            description="Creează o primă impresie clară și convingătoare."
+            complete={sectionCompletion.basic}
+          >
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="title">Titlul anunțului *</Label>
+                  <span className={cn(
+                    'text-[11px] tabular-nums text-muted-foreground',
+                    form.title.length >= 20 && 'text-emerald-600',
+                  )}>
+                    {form.title.length}/80
+                  </span>
+                </div>
+                <Input
+                  id="title"
+                  maxLength={80}
+                  placeholder="Apartament luminos cu 3 camere în Dorobanți"
+                  value={form.title}
+                  onChange={(event) => updateField('title', event.target.value)}
+                  className="h-12 text-base"
+                  aria-invalid={showValidation && !form.title.trim()}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Include tipul proprietății, numărul de camere și zona.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <Label htmlFor="description">Descriere *</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Evidențiază compartimentarea, finisajele, lumina naturală și vecinătățile.
+                    </p>
+                  </div>
+                  <AiDescriptionGenerator
+                    form={form}
+                    onApply={({ title, description }) => {
+                      setForm((previous) => ({ ...previous, title, description }))
+                    }}
+                  />
+                </div>
+                <Textarea
+                  id="description"
+                  placeholder="Descrie proprietatea, dotările și avantajele zonei…"
+                  value={form.description}
+                  onChange={(event) => updateField('description', event.target.value)}
+                  className="min-h-[180px] resize-y text-sm leading-6"
+                  aria-invalid={showValidation && !form.description.trim()}
+                  required
+                />
+                <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <span>Recomandat: minimum 160 de caractere.</span>
+                  <span className={cn('tabular-nums', form.description.length >= 160 && 'text-emerald-600')}>
+                    {form.description.length} caractere
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="property-type">Tipul proprietății *</Label>
+                  <Select value={form.type} onValueChange={(value) => updateFields({
+                    type: value,
+                    ...( /teren/i.test(value) ? {
+                      rooms: '',
+                      bathrooms: '',
+                      floor: '',
+                      totalFloors: '',
+                      yearBuilt: '',
+                    } : {} ),
+                  })} required>
+                    <SelectTrigger
+                      id="property-type"
+                      className="h-12"
+                      aria-invalid={showValidation && !form.type}
+                    >
+                      <SelectValue placeholder="Selectează tipul" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROPERTY_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium">Tipul tranzacției *</legend>
+                  <div className="grid grid-cols-2 rounded-xl border bg-muted/25 p-1">
+                    {TRANSACTIONS.map((transaction) => {
+                      const selected = form.transaction === transaction.value
+                      return (
+                        <button
+                          key={transaction.value}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => updateField('transaction', transaction.value)}
+                          className={cn(
+                            'h-10 rounded-lg px-3 text-sm font-medium transition-all',
+                            selected
+                              ? 'bg-background text-foreground shadow-sm ring-1 ring-border'
+                              : 'text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {transaction.value === 'INCHIRIERE' ? 'Închiriere' : 'Vânzare'}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </fieldset>
+              </div>
+            </div>
+          </ListingSection>
+
+          <ListingSection
+            id="property-step-details"
+            step={2}
+            icon={Building2}
+            title="Preț și caracteristici"
+            description="Detaliile care ajută cumpărătorii să compare rapid proprietatea."
+            complete={sectionCompletion.details}
+          >
+            <div className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_160px]">
+                <div className="space-y-2">
+                  <Label htmlFor="price">Preț *</Label>
+                  <div className="relative">
+                    <Euro className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="price"
+                      type="number"
+                      min="0"
+                      step={form.transaction === 'INCHIRIERE' ? '50' : '1000'}
+                      placeholder={form.transaction === 'INCHIRIERE' ? '850' : '150000'}
+                      value={form.price}
+                      onChange={(event) => updateField('price', event.target.value)}
+                      className="h-12 pl-10 text-base font-semibold"
+                      aria-invalid={showValidation && !(Number(form.price) > 0)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="property-currency">Moneda</Label>
+                  <Select value={form.currency} onValueChange={(value) => updateField('currency', value)}>
+                    <SelectTrigger id="property-currency" className="h-12">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CURRENCIES.map((currency) => (
+                        <SelectItem key={currency} value={currency}>{currency}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className={cn(
+                'grid gap-4',
+                isLand ? 'sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-5',
+              )}>
+                <div className="space-y-2">
+                  <Label htmlFor="area">{isLand ? 'Suprafața terenului *' : 'Suprafață utilă *'}</Label>
+                  <div className="relative">
+                    <Ruler className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="area"
+                      type="number"
+                      min="1"
+                      placeholder={isLand ? '500' : '75'}
+                      value={form.areaSqm}
+                      onChange={(event) => updateField('areaSqm', event.target.value)}
+                      className="h-11 pl-10"
+                      aria-invalid={showValidation && !(Number(form.areaSqm) > 0)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {!isLand ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="rooms">Camere *</Label>
+                      <div className="relative">
+                        <BedDouble className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="rooms"
+                          type="number"
+                          min="1"
+                          step="1"
+                          placeholder="3"
+                          value={form.rooms}
+                          onChange={(event) => updateField('rooms', event.target.value)}
+                          className="h-11 pl-10"
+                          aria-invalid={showValidation && !isPositiveInteger(form.rooms)}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bathrooms">Băi</Label>
+                      <div className="relative">
+                        <Bath className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="bathrooms"
+                          type="number"
+                          min="0"
+                          step="1"
+                          placeholder="2"
+                          value={form.bathrooms}
+                          onChange={(event) => updateField('bathrooms', event.target.value)}
+                          className="h-11 pl-10"
+                          aria-invalid={showValidation && !isOptionalNonNegativeInteger(form.bathrooms)}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="floor">Etaj</Label>
+                      <Input
+                        id="floor"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="3"
+                        value={form.floor}
+                        onChange={(event) => updateField('floor', event.target.value)}
+                        className="h-11"
+                        aria-invalid={showValidation && (
+                          !isOptionalNonNegativeInteger(form.floor)
+                          || Boolean(form.floor && form.totalFloors) && Number(form.floor) > Number(form.totalFloors)
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="totalFloors">Total etaje</Label>
+                      <Input
+                        id="totalFloors"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="8"
+                        value={form.totalFloors}
+                        onChange={(event) => updateField('totalFloors', event.target.value)}
+                        className="h-11"
+                        aria-invalid={showValidation && !isOptionalNonNegativeInteger(form.totalFloors)}
+                      />
+                    </div>
+                  </>
+                ) : null}
+              </div>
+
+              {!isLand ? (
+                <div className="max-w-xs space-y-2">
+                  <Label htmlFor="yearBuilt">Anul construcției</Label>
+                  <div className="relative">
+                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="yearBuilt"
+                      type="number"
+                      min="1800"
+                      max={currentYear}
+                      step="1"
+                      placeholder="2020"
+                      value={form.yearBuilt}
+                      onChange={(event) => updateField('yearBuilt', event.target.value)}
+                      className="h-11 pl-10"
+                      aria-invalid={showValidation && !hasValidYear}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {pricePerSqm ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/15 bg-primary/5 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold">{pricePerSqm.toLocaleString('ro-RO')} {form.currency}/m²</p>
+                    <p className="text-xs text-muted-foreground">Calculat automat din preț și suprafață.</p>
+                  </div>
+                  <Badge variant="outline">Indicator orientativ</Badge>
+                </div>
+              ) : null}
+            </div>
+          </ListingSection>
+
+          <ListingSection
+            id="property-step-location"
+            step={3}
+            icon={MapPin}
+            title="Localizare"
+            description="Alege zona, completează adresa și confirmă poziția pe hartă."
+            complete={sectionCompletion.location}
+          >
+            <div className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="property-sector">Sector *</Label>
+                  <Select
+                    value={form.sector}
+                    onValueChange={(value) => resetLocation({ sector: value })}
+                    required
+                  >
+                    <SelectTrigger
+                      id="property-sector"
+                      className="h-12"
+                      aria-invalid={showValidation && !form.sector}
+                    >
+                      <SelectValue placeholder="Selectează sectorul" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SECTOARE.map((sector) => (
+                        <SelectItem key={sector} value={sector}>{sector}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="property-zone">Zonă *</Label>
+                  <Select
+                    value={form.zone}
+                    onValueChange={(value) => resetLocation({ zone: value })}
+                    required
+                  >
+                    <SelectTrigger
+                      id="property-zone"
+                      className="h-12"
+                      aria-invalid={showValidation && !form.zone}
+                    >
+                      <SelectValue placeholder="Selectează zona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ZONES.map((zone) => (
+                        <SelectItem key={zone} value={zone}>{zone}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Adresa exactă *</Label>
+                <Input
+                  id="address"
+                  placeholder="Strada, numărul, blocul și apartamentul"
+                  value={form.address}
+                  onChange={(event) => resetLocation({ address: event.target.value })}
+                  className="h-12"
+                  aria-invalid={showValidation && !form.address.trim()}
+                  required
+                />
+                {hasPin ? null : (
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Navigation className="h-3.5 w-3.5" />
+                    După orice modificare a adresei, reconfirmă pinul pe hartă.
+                  </p>
+                )}
+              </div>
+
+              <PropertyLocationPicker
+                address={form.address}
+                zone={form.zone}
+                sector={form.sector}
+                lat={form.lat}
+                lng={form.lng}
+                onChange={(location) => updateFields({
+                  ...(location.address ? { address: location.address } : {}),
+                  lat: location.lat,
+                  lng: location.lng,
+                })}
               />
             </div>
+          </ListingSection>
 
-            <PropertyLocationPicker
-              address={form.address}
-              zone={form.zone}
-              sector={form.sector}
-              lat={form.lat}
-              lng={form.lng}
-              onChange={(location) => updateFields({
-                ...(location.address ? { address: location.address } : {}),
-                lat: location.lat,
-                lng: location.lng,
-              })}
-            />
-          </motion.section>
-
-          {/* Images */}
-          <motion.section id="property-step-images" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card scroll-mt-28 rounded-2xl p-5 sm:p-6 space-y-5">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Upload className="h-5 w-5 text-primary" />
-              Imagini
-            </h2>
+          <ListingSection
+            id="property-step-images"
+            step={4}
+            icon={Upload}
+            title="Fotografii"
+            description="Alege o copertă puternică și adaugă imagini clare din fiecare încăpere."
+            complete={sectionCompletion.images}
+            optional
+          >
             <ImageGalleryUploader
               urls={form.galleryUrls}
               onChange={(urls) => updateField('galleryUrls', urls)}
             />
-          </motion.section>
+          </ListingSection>
 
-          <motion.section id="property-step-virtual-tour" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="glass-card scroll-mt-28 rounded-2xl p-5 sm:p-6 space-y-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  <Rotate3D className="h-5 w-5 text-primary" />
-                  Tur virtual
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">Importă Matterport/Kuula sau creează un tur 360° direct în HQS.</p>
-              </div>
-              <Badge variant="outline">Opțional</Badge>
-            </div>
+          <ListingSection
+            id="property-step-virtual-tour"
+            step={5}
+            icon={Rotate3D}
+            title="Tur virtual"
+            description="Importă Matterport/Kuula sau construiește un tur 360° în HQS."
+            complete={sectionCompletion.tour}
+            optional
+          >
             <VirtualTourEditor
               value={form.virtualTour}
               onChange={(virtualTour) => updateField('virtualTour', virtualTour)}
             />
-          </motion.section>
+          </ListingSection>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Submit Card */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6 sticky top-24">
-            <div className="space-y-4">
-              <div className="rounded-xl border bg-primary/5 p-3.5">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold">Starea anunțului</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {missingRequired.length === 0 ? 'Câmpurile obligatorii sunt complete.' : `${missingRequired.length} câmpuri obligatorii rămase.`}
-                    </p>
+        <aside className="hidden lg:block" aria-label="Rezumatul anunțului">
+          <div className="space-y-4">
+            <PageSurface className="overflow-hidden" tone="elevated">
+              <div className="relative aspect-[16/10] overflow-hidden bg-[radial-gradient(circle_at_top_right,var(--primary),transparent_48%),linear-gradient(135deg,var(--muted),var(--background))]">
+                {form.galleryUrls[0] ? (
+                  <img
+                    src={form.galleryUrls[0]}
+                    alt="Coperta selectată pentru anunț"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl border bg-background/70 shadow-sm backdrop-blur">
+                      <ImageIcon className="h-5 w-5 text-primary" />
+                    </span>
+                    <span className="text-xs font-medium">Coperta va apărea aici</span>
                   </div>
-                  <span className="text-xl font-bold text-primary tabular-nums">{completionPercent}%</span>
+                )}
+                <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+                  <Badge className="bg-background/90 text-foreground shadow-sm backdrop-blur hover:bg-background/90">
+                    {form.transaction === 'INCHIRIERE' ? 'Închiriere' : 'Vânzare'}
+                  </Badge>
+                  {form.type ? (
+                    <Badge variant="secondary" className="bg-background/80 shadow-sm backdrop-blur">
+                      {form.type}
+                    </Badge>
+                  ) : null}
                 </div>
-                <Progress value={completionPercent} className="mt-3 h-1.5" />
               </div>
 
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Proprietate Evidentiata</span>
-                <Switch
-                  checked={form.featured}
-                  onCheckedChange={(v) => updateField('featured', v)}
-                  aria-label="Marcheaza ca featured"
-                />
-              </div>
-              {form.featured && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg p-2.5">
-                  Proprietatile evidensiate apar primele in rezultate si pe pagina principala.
+              <div className="p-5">
+                <p className="line-clamp-2 text-base font-semibold leading-6">
+                  {form.title.trim() || 'Titlul proprietății tale'}
                 </p>
-              )}
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5" />
+                  <span className="truncate">{form.zone || 'Zona'}{form.sector ? `, ${form.sector}` : ''}</span>
+                </p>
+                <p className="mt-4 text-xl font-bold text-primary">
+                  {formatPrice(form.price, form.currency)}
+                  {form.transaction === 'INCHIRIERE' && Number(form.price) > 0 ? (
+                    <span className="text-xs font-medium text-muted-foreground"> / lună</span>
+                  ) : null}
+                </p>
+                <div className="mt-4 grid grid-cols-3 gap-2 border-t pt-4 text-center">
+                  <div>
+                    <p className="truncate text-sm font-semibold">{isLand ? (form.type || '—') : (form.rooms || '—')}</p>
+                    <p className="text-[10px] text-muted-foreground">{isLand ? 'categorie' : 'camere'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{form.areaSqm ? `${form.areaSqm} m²` : '—'}</p>
+                    <p className="text-[10px] text-muted-foreground">suprafață</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{form.galleryUrls.length || '—'}</p>
+                    <p className="text-[10px] text-muted-foreground">fotografii</p>
+                  </div>
+                </div>
+              </div>
+            </PageSurface>
 
-              <Separator />
+            <PageSurface className="sticky top-24 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Pregătire pentru publicare</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    {requiredItems.length === 0
+                      ? 'Toate câmpurile obligatorii sunt complete.'
+                      : `${requiredItems.length} ${requiredItems.length === 1 ? 'câmp obligatoriu rămas' : 'câmpuri obligatorii rămase'}.`}
+                  </p>
+                </div>
+                <span className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
+                  requiredItems.length === 0
+                    ? 'bg-emerald-500/10 text-emerald-600'
+                    : 'bg-amber-500/10 text-amber-600',
+                )}>
+                  {requiredItems.length === 0
+                    ? <CheckCircle2 className="h-5 w-5" />
+                    : <Circle className="h-5 w-5" />}
+                </span>
+              </div>
 
-              {/* Quick summary */}
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Pret</span>
-                  <span className="font-semibold">
-                    {form.price ? `${parseFloat(form.price).toLocaleString('ro-RO')} ${form.currency}` : '—'}
-                  </span>
+              {requiredItems.length > 0 ? (
+                <div className="mt-4 rounded-xl bg-muted/35 px-3 py-2.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mai lipsește</p>
+                  <p className="mt-1 text-xs leading-5">{requiredItems.slice(0, 4).map((item) => item.label).join(', ')}</p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Suprafata</span>
-                  <span>{form.areaSqm ? `${form.areaSqm} m²` : '—'}</span>
+              ) : null}
+
+              <div className="mt-4 space-y-2.5 border-t pt-4 text-xs">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-3.5 w-3.5" /> Pin pe hartă</span>
+                  <span className={hasPin ? 'font-medium text-emerald-600' : 'text-muted-foreground'}>{hasPin ? 'Confirmat' : 'Recomandat'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Camere</span>
-                  <span>{form.rooms || '—'}</span>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 text-muted-foreground"><ImageIcon className="h-3.5 w-3.5" /> Fotografii</span>
+                  <span>{form.galleryUrls.length > 0 ? `${form.galleryUrls.length} adăugate` : 'Recomandate'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Zona</span>
-                  <span className="text-right truncate max-w-[150px]">{form.zone || '—'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Pin hartă</span>
-                  <span className={hasPin ? 'font-medium text-emerald-600' : 'text-muted-foreground'}>
-                    {hasPin ? 'Poziționat' : 'Nesetat'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Imagini</span>
-                  <span>{form.galleryUrls.length > 0 ? `${form.galleryUrls.length} adaugate` : '—'}</span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Tur virtual</span>
-                  <span className="max-w-[155px] truncate text-right">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 text-muted-foreground"><Rotate3D className="h-3.5 w-3.5" /> Tur virtual</span>
+                  <span className="max-w-[150px] truncate text-right">
                     {form.virtualTour.mode === 'NONE'
-                      ? 'Fără tur'
+                      ? 'Opțional'
                       : form.virtualTour.mode === 'NATIVE'
                         ? `${form.virtualTour.scenes.length} camere 360°`
                         : form.virtualTour.provider
@@ -613,52 +900,68 @@ export function PropertyForm({ onSubmit, isSubmitting, onFormChange }: PropertyF
                 </div>
               </div>
 
-              <Separator />
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border bg-muted/20 px-3 py-3">
+                <div>
+                  <Label htmlFor="featured-listing" className="text-xs font-semibold">Evidențiază anunțul</Label>
+                  <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Apare prioritar în selecțiile platformei.</p>
+                </div>
+                <Switch
+                  id="featured-listing"
+                  checked={form.featured}
+                  onCheckedChange={(value) => updateField('featured', value)}
+                  aria-label="Evidențiază anunțul"
+                />
+              </div>
 
-              <Button type="submit" className="w-full h-12 gap-2 text-base" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <>
-                    <Plus className="h-5 w-5" />
-                    Publica Proprietatea
-                  </>
-                )}
-              </Button>
+              <div className="mt-4 grid gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 gap-2"
+                  onClick={() => onPreview(form)}
+                >
+                  <Eye className="h-4 w-4" />
+                  Previzualizează
+                </Button>
+                <Button type="submit" className="h-12 gap-2 text-base" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
+                  {isSubmitting ? 'Se publică…' : 'Publică proprietatea'}
+                </Button>
+              </div>
+            </PageSurface>
 
-              <p className="text-[11px] text-center text-muted-foreground">
-                Prin publicare confirmi ca informatiile sunt corecte
-                si ai dreptul de a publica aceasta proprietate.
+            <PageSurface tone="subtle" className="flex gap-3 p-4">
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <p className="text-[11px] leading-5 text-muted-foreground">
+                Prin publicare confirmi că informațiile sunt corecte și că ai dreptul să promovezi proprietatea.
               </p>
-            </div>
-          </motion.div>
+            </PageSurface>
+          </div>
+        </aside>
+      </div>
 
-          {/* Tips */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card rounded-2xl p-5 space-y-3">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Lightbulb className="h-4 w-4 text-amber-500" /> Sfaturi pentru un anunț bun
-            </h3>
-            <ul className="text-xs text-muted-foreground space-y-2">
-              <li className="flex gap-2">
-                <span className="text-primary mt-0.5">•</span>
-                Adauga poze clare si luminoase — proprietatile cu poze primesc de 3x mai multe vizualizari
-              </li>
-              <li className="flex gap-2">
-                <span className="text-primary mt-0.5">•</span>
-                Scrie o descriere detaliata — include finisaje, dotari, vecinatate
-              </li>
-              <li className="flex gap-2">
-                <span className="text-primary mt-0.5">•</span>
-                Seteaza un pret realist — verifica preturile similare din zona
-              </li>
-              <li className="flex gap-2">
-                <span className="text-primary mt-0.5">•</span>
-                Completeaza adresa exacta pentru cautari mai precise
-              </li>
-            </ul>
-          </motion.div>
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_30px_rgba(15,23,42,0.12)] backdrop-blur lg:hidden">
+        <div className="mx-auto flex max-w-lg items-center gap-2">
+          <div className="min-w-[54px] text-center">
+            <p className="text-sm font-bold tabular-nums text-primary">{qualityPercent}%</p>
+            <p className="text-[9px] text-muted-foreground">calitate</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            onClick={() => onPreview(form)}
+            aria-label="Previzualizează anunțul"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button type="submit" className="h-11 flex-1 gap-2" disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {isSubmitting ? 'Se publică…' : 'Publică proprietatea'}
+          </Button>
         </div>
-      </form>
-    </div>
+      </div>
+    </form>
   )
 }

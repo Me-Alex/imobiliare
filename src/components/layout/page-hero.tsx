@@ -129,7 +129,7 @@ export function PageHero({
 
           <PageContainer className="relative">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
@@ -163,7 +163,10 @@ export function PageHero({
   return (
     <section className="border-b bg-muted/30">
       <PageContainer className="py-6">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div
+          initial={false}
+          animate={{ opacity: 1, y: 0 }}
+        >
           {breadcrumb && <PageBreadcrumb items={breadcrumb} className="mb-4" />}
 
           <div className="flex items-center justify-between flex-wrap gap-4">

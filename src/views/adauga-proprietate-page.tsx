@@ -1,20 +1,28 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Plus, Loader2, MapPin, Ruler, BedDouble, Bath, Calendar,
-  ArrowLeft, Eye, EyeOff, User, Check, List, Rotate3D,
+  ArrowLeft, User, Check, List, Rotate3D, ImageIcon, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { isSupabaseConfigured, supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { EditPropertyDialog } from '@/components/property/edit-property-dialog'
 import { PageHero } from '@/components/layout/page-hero'
+import { PageContainer, PageShell } from '@/components/layout/page-shell'
 import { MyPropertiesList } from '@/components/property/my-properties-list'
 import { PropertyForm } from '@/components/property/property-form'
 import { VirtualTourViewer } from '@/components/property/virtual-tour-viewer'
@@ -52,6 +60,186 @@ function generateSlug(title: string): string {
     + '-' + Date.now().toString(36)
 }
 
+function PropertyPreviewDialog({
+  open,
+  onOpenChange,
+  form,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  form: PropertyFormData | null
+}) {
+  const parsedPreviewTour = form?.virtualTour.mode === 'EXTERNAL'
+    ? parseExternalTourUrl(form.virtualTour.externalUrl)
+    : null
+  const previewTour: VirtualTour | null = form?.virtualTour.mode === 'NATIVE'
+    ? {
+        provider: 'NATIVE',
+        title: `Tur virtual · ${form.title || 'Proprietate'}`,
+        entrySceneId: form.virtualTour.entrySceneId,
+        scenes: form.virtualTour.scenes,
+      }
+    : parsedPreviewTour
+      ? {
+          provider: parsedPreviewTour.provider,
+          title: `Tur virtual · ${form?.title || 'Proprietate'}`,
+          externalUrl: parsedPreviewTour.embedUrl,
+          scenes: [],
+        }
+      : null
+  const isLandPreview = /teren/i.test(form?.type ?? '')
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="max-h-[94vh] max-w-[min(96vw,1040px)] overflow-y-auto p-0 sm:max-w-5xl"
+        showCloseButton={false}
+      >
+        <DialogHeader className="sr-only">
+          <DialogTitle>Previzualizarea anunțului</DialogTitle>
+          <DialogDescription>
+            Verifică modul în care va arăta proprietatea înainte de publicare.
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogClose asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="absolute right-3 top-3 z-30 h-10 w-10 rounded-full border-white/70 bg-background/95 shadow-lg backdrop-blur hover:bg-background"
+            aria-label="Închide previzualizarea"
+            title="Închide previzualizarea"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </DialogClose>
+
+        <div className="overflow-hidden rounded-2xl bg-card">
+          <div className="relative aspect-[16/8] min-h-52 overflow-hidden bg-[radial-gradient(circle_at_top_right,var(--primary),transparent_45%),linear-gradient(135deg,var(--muted),var(--background))] sm:min-h-80">
+            {form?.galleryUrls[0] ? (
+              <img
+                src={form.galleryUrls[0]}
+                alt={form.title || 'Coperta proprietății'}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                <span className="flex h-16 w-16 items-center justify-center rounded-2xl border bg-background/75 shadow-sm backdrop-blur">
+                  <ImageIcon className="h-7 w-7 text-primary" />
+                </span>
+                <p className="text-sm font-medium">Adaugă o fotografie pentru copertă</p>
+              </div>
+            )}
+            <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
+            <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
+              <Badge className="bg-white/95 text-slate-900 hover:bg-white/95">
+                {form?.transaction === 'INCHIRIERE' ? 'Închiriere' : 'Vânzare'}
+              </Badge>
+              <Badge variant="secondary" className="bg-white/90 text-slate-900">
+                {form?.type || 'Tip nespecificat'}
+              </Badge>
+              {form?.featured ? (
+                <Badge className="border-0 bg-amber-500 text-white hover:bg-amber-500">Evidențiat</Badge>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="space-y-6 p-5 sm:p-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Previzualizare anunț</p>
+                <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+                  {form?.title || 'Titlul proprietății'}
+                </h2>
+                <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span>{[form?.address, form?.zone, form?.sector].filter(Boolean).join(', ') || 'Localizarea va apărea aici'}</span>
+                </p>
+              </div>
+              <p className="shrink-0 text-2xl font-bold text-primary sm:text-right">
+                {form?.price
+                  ? `${Number(form.price).toLocaleString('ro-RO')} ${form.currency}`
+                  : 'Preț nesetat'}
+                {form?.transaction === 'INCHIRIERE' && form.price ? (
+                  <span className="block text-xs font-medium text-muted-foreground">pe lună</span>
+                ) : null}
+              </p>
+            </div>
+
+            <div className={`grid grid-cols-2 gap-3 rounded-2xl border bg-muted/20 p-4 ${isLandPreview ? '' : 'sm:grid-cols-4'}`}>
+              <div>
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Ruler className="h-3.5 w-3.5" /> Suprafață</p>
+                <p className="mt-1 text-sm font-semibold">{form?.areaSqm ? `${form.areaSqm} m²` : '—'}</p>
+              </div>
+              {isLandPreview ? (
+                <div>
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><ImageIcon className="h-3.5 w-3.5" /> Fotografii</p>
+                  <p className="mt-1 text-sm font-semibold">{form?.galleryUrls.length || '—'}</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><BedDouble className="h-3.5 w-3.5" /> Camere</p>
+                    <p className="mt-1 text-sm font-semibold">{form?.rooms || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Bath className="h-3.5 w-3.5" /> Băi</p>
+                    <p className="mt-1 text-sm font-semibold">{form?.bathrooms || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Calendar className="h-3.5 w-3.5" /> Construcție</p>
+                    <p className="mt-1 text-sm font-semibold">{form?.yearBuilt || '—'}</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-base font-semibold">Descriere</h3>
+              <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted-foreground">
+                {form?.description || 'Descrierea proprietății va apărea aici.'}
+              </p>
+            </div>
+
+            {previewTour ? (
+              <div className="space-y-3 border-t pt-6">
+                <h3 className="flex items-center gap-2 text-base font-semibold">
+                  <Rotate3D className="h-4 w-4 text-primary" /> Tur virtual
+                </h3>
+                <div className="overflow-hidden rounded-2xl border bg-slate-950">
+                  <VirtualTourViewer
+                    tour={previewTour}
+                    className="h-[min(56vw,480px)] min-h-72"
+                    title={`Tur virtual pentru ${form?.title || 'proprietate'}`}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {form?.lat !== null && form?.lat !== undefined && form.lng !== null && form.lng !== undefined ? (
+              <div className="space-y-3 border-t pt-6">
+                <h3 className="flex items-center gap-2 text-base font-semibold">
+                  <MapPin className="h-4 w-4 text-primary" /> Localizare
+                </h3>
+                <div className="overflow-hidden rounded-2xl border">
+                  <iframe
+                    title="Poziția proprietății pe hartă"
+                    src={getMapEmbedUrl(form.lat, form.lng)}
+                    className="h-72 w-full"
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function AdaugaProprietatePage() {
   const { user, profile, loading: authLoading } = useAuth()
   const navigateTo = useAppStore((s) => s.navigateTo)
@@ -62,7 +250,6 @@ export function AdaugaProprietatePage() {
   const [showMyProps, setShowMyProps] = useState(false)
   const [editProperty, setEditProperty] = useState<UserProperty | null>(null)
   const [editOpen, setEditOpen] = useState(false)
-  const previewDataRef = useRef<PropertyFormData | null>(null)
   const [previewData, setPreviewData] = useState<PropertyFormData | null>(null)
 
   const loadMyProperties = useCallback(async () => {
@@ -93,10 +280,10 @@ export function AdaugaProprietatePage() {
       await archiveManagedProperty(id)
       await loadMyProperties()
       toast.success('Proprietate arhivata', {
-        description: 'Anuntul nu mai este vizibil public, iar istoricul sau ramane disponibil.',
+        description: 'Anunțul nu mai este vizibil public, iar istoricul său rămâne disponibil.',
       })
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Eroare necunoscuta'
+      const message = error instanceof Error ? error.message : 'Eroare necunoscută'
       toast.error('Proprietatea nu a putut fi arhivata', { description: message })
     }
   }, [loadMyProperties])
@@ -114,7 +301,7 @@ export function AdaugaProprietatePage() {
 
       const hasSupabaseConfig = isSupabaseConfigured
       if (!hasSupabaseConfig) {
-        throw new Error('Publicarea proprietatilor nu este configurata. Verifica setarile Supabase.')
+        throw new Error('Publicarea proprietăților nu este configurată. Verifică setările Supabase.')
       }
       let publishedGalleryUrls = form.galleryUrls
       let remotePropertySaved = false
@@ -136,7 +323,7 @@ export function AdaugaProprietatePage() {
       }
 
       if (publishedGalleryUrls.some((url) => url.startsWith('data:'))) {
-        throw new Error('Fotografiile nu au putut fi incarcate. Anuntul nu a fost publicat.')
+        throw new Error('Fotografiile nu au putut fi încărcate. Anunțul nu a fost publicat.')
       }
 
       if (hasSupabaseConfig && publishedGalleryUrls.every((url) => !url.startsWith('data:'))) {
@@ -234,7 +421,7 @@ export function AdaugaProprietatePage() {
         address: form.address,
         zone: form.zone,
         sector: form.sector,
-        city: 'Bucuresti',
+        city: 'București',
         lat: form.lat,
         lng: form.lng,
         featured: form.featured,
@@ -264,7 +451,7 @@ export function AdaugaProprietatePage() {
         console.warn('Managed property cache could not be updated')
       }
 
-      toast.success('Proprietate adaugata cu succes!', {
+      toast.success('Proprietate publicată cu succes!', {
         description: submittedTour
           ? `"${form.title}" este publică, iar turul a fost trimis administratorului pentru verificare.`
           : `"${form.title}" este acum publică pe platformă.`,
@@ -272,7 +459,7 @@ export function AdaugaProprietatePage() {
       setSubmittedCount((c) => c + 1)
       void loadMyProperties()
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Eroare necunoscuta'
+      const msg = err instanceof Error ? err.message : 'Eroare necunoscută'
       console.error('Submit error:', err)
       toast.error('Eroare la salvare', { description: msg })
     } finally {
@@ -292,12 +479,12 @@ export function AdaugaProprietatePage() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
             <User className="h-7 w-7" />
           </div>
-          <h2 className="text-xl font-bold mb-2">Autentifica-te</h2>
+          <h2 className="text-xl font-bold mb-2">Autentifică-te</h2>
           <p className="text-sm text-muted-foreground mb-6">
-            Trebuie sa fii autentificat pentru a adauga proprietati.
+            Autentifică-te pentru a publica și gestiona proprietăți.
           </p>
           <Button onClick={() => navigateTo('login')} className="gap-2">
-            Autentifica-te
+            Autentifică-te
             <ArrowLeft className="h-4 w-4 rotate-180" />
           </Button>
         </motion.div>
@@ -317,136 +504,25 @@ export function AdaugaProprietatePage() {
     return <RoleAccessDenied currentRole={profile.role} allowedRoles={['OWNER', 'AGENT', 'ADMIN']} />
   }
 
-  if (previewMode) {
-    const form = previewData
-    const parsedPreviewTour = form?.virtualTour.mode === 'EXTERNAL'
-      ? parseExternalTourUrl(form.virtualTour.externalUrl)
-      : null
-    const previewTour: VirtualTour | null = form?.virtualTour.mode === 'NATIVE'
-      ? {
-          provider: 'NATIVE',
-          title: `Tur virtual · ${form.title || 'Proprietate'}`,
-          entrySceneId: form.virtualTour.entrySceneId,
-          scenes: form.virtualTour.scenes,
-        }
-      : parsedPreviewTour
-        ? {
-            provider: parsedPreviewTour.provider,
-            title: `Tur virtual · ${form?.title || 'Proprietate'}`,
-            externalUrl: parsedPreviewTour.embedUrl,
-            scenes: [],
-          }
-        : null
-    return (
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <button onClick={() => setPreviewMode(false)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            Inapoi la formular
-          </button>
-          <Button variant="outline" size="sm" onClick={() => setPreviewMode(false)}>
-            <EyeOff className="h-4 w-4 mr-1.5" />
-            Ascunde Preview
-          </Button>
-        </div>
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-2xl overflow-hidden"
-        >
-          {form?.galleryUrls.length ? (
-            <div className="h-64 sm:h-80 bg-muted">
-              <img src={form.galleryUrls[0]} alt={form.title} className="h-full w-full object-cover" />
-            </div>
-          ) : (
-            <div className="h-48 bg-muted/50 flex items-center justify-center">
-              <p className="text-muted-foreground text-sm">Nicio imagine adaugata</p>
-            </div>
-          )}
-          <div className="p-6 space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex gap-2 mb-2">
-                  <Badge variant="outline">{form?.type || 'Tip ne_specificat'}</Badge>
-                  <Badge>{form?.transaction === 'INCHIRIERE' ? 'Inchiriere' : 'Vanzare'}</Badge>
-                  {form?.featured && <Badge className="bg-amber-500 text-white border-0">Featured</Badge>}
-                </div>
-                <h2 className="text-xl font-bold">{form?.title || 'Titlu proprietate'}</h2>
-              </div>
-              <p className="text-2xl font-bold text-primary whitespace-nowrap">
-                {form?.price ? `${parseFloat(form.price).toLocaleString('ro-RO')} ${form.currency}` : 'Pret nesetat'}
-                {form?.transaction === 'INCHIRIERE' && form.price ? '/luna' : ''}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-              {form?.areaSqm && <span className="flex items-center gap-1"><Ruler className="h-4 w-4" />{form.areaSqm} m²</span>}
-              {form?.rooms && <span className="flex items-center gap-1"><BedDouble className="h-4 w-4" />{form.rooms} camere</span>}
-              {form?.bathrooms && <span className="flex items-center gap-1"><Bath className="h-4 w-4" />{form.bathrooms} bai</span>}
-              {form?.yearBuilt && <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />{form.yearBuilt}</span>}
-            </div>
-            <Separator />
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {form?.description || 'Descriere ne specificata...'}
-            </p>
-            {previewTour ? (
-              <div className="space-y-3 border-t pt-5">
-                <h3 className="flex items-center gap-2 text-base font-semibold">
-                  <Rotate3D className="h-4 w-4 text-primary" /> Tur virtual
-                </h3>
-                <div className="overflow-hidden rounded-xl border bg-slate-950">
-                  <VirtualTourViewer tour={previewTour} className="h-[460px]" title={`Tur virtual pentru ${form?.title || 'proprietate'}`} />
-                </div>
-              </div>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              {form?.zone && <Badge variant="secondary" className="gap-1"><MapPin className="h-3 w-3" />{form.zone}</Badge>}
-              {form?.sector && <Badge variant="secondary">{form.sector}</Badge>}
-              {form?.address && <Badge variant="secondary">{form.address}</Badge>}
-            </div>
-            {form?.lat !== null && form?.lat !== undefined && form.lng !== null && form.lng !== undefined && (
-              <div className="overflow-hidden rounded-xl border">
-                <iframe
-                  title="Poziția proprietății pe hartă"
-                  src={getMapEmbedUrl(form.lat, form.lng)}
-                  className="h-64 w-full"
-                  loading="lazy"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                />
-              </div>
-            )}
-          </div>
-        </motion.div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen">
+    <PageShell>
       <PageHero
         variant="border"
         icon={Plus}
-        title={profile?.role === 'OWNER' ? 'Publica proprietatea ta' : 'Adauga Proprietate'}
-        description={`${profile?.role === 'OWNER' ? 'Gestioneaza direct anuntul proprietatii tale' : 'Adauga o proprietate in portofoliul profesional'}${user ? ` (${user.email})` : ''}`}
-        breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Adauga Proprietate' }]}
+        title={profile?.role === 'OWNER' ? 'Publică proprietatea' : 'Adaugă o proprietate în portofoliu'}
+        description="Completează detaliile, poziționează proprietatea pe hartă și verifică anunțul înainte de publicare."
+        breadcrumb={[{ label: 'Acasă', page: 'acasa' }, { label: 'Publică proprietatea' }]}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {myProperties.length > 0 && (
-            <Button variant="outline" size="sm" onClick={() => setShowMyProps(!showMyProps)} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => setShowMyProps(true)} className="gap-1.5">
               <List className="h-4 w-4" />
-              Proprietatile Mele ({myProperties.length})
+              Proprietățile mele
+              <Badge variant="secondary" className="ml-1 h-5 min-w-5 justify-center px-1.5 text-[10px]">
+                {myProperties.length}
+              </Badge>
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setPreviewData(previewDataRef.current)
-              setPreviewMode(true)
-            }}
-          >
-            <Eye className="h-4 w-4 mr-1.5" />
-            Preview
-          </Button>
           {submittedCount > 0 && (
             <Badge variant="secondary" className="gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <Check className="h-3 w-3" />
@@ -456,19 +532,31 @@ export function AdaugaProprietatePage() {
         </div>
       </PageHero>
 
+      <PageContainer className="py-6 sm:py-8">
+        <PropertyForm
+          key={submittedCount}
+          onSubmit={handleFormSubmit}
+          isSubmitting={isSubmitting}
+          onPreview={(data) => {
+            setPreviewData(data)
+            setPreviewMode(true)
+          }}
+        />
+      </PageContainer>
+
       <MyPropertiesList
         properties={myProperties}
         visible={showMyProps}
-        label={profile?.role === 'ADMIN' ? 'Proprietati administrate' : 'Proprietatile tale'}
+        onVisibleChange={setShowMyProps}
+        label={profile?.role === 'ADMIN' ? 'Proprietăți administrate' : 'Proprietățile tale'}
         onEdit={(prop) => { setEditProperty(prop); setEditOpen(true) }}
         onDelete={deleteProperty}
       />
 
-      <PropertyForm
-        key={submittedCount}
-        onSubmit={handleFormSubmit}
-        isSubmitting={isSubmitting}
-        onFormChange={(data) => { previewDataRef.current = data }}
+      <PropertyPreviewDialog
+        open={previewMode}
+        onOpenChange={setPreviewMode}
+        form={previewData}
       />
 
       <EditPropertyDialog
@@ -477,6 +565,6 @@ export function AdaugaProprietatePage() {
         property={editProperty}
         onSaved={() => { void loadMyProperties(); setEditProperty(null) }}
       />
-    </div>
+    </PageShell>
   )
 }

@@ -102,7 +102,7 @@ function CompareRow({ label, values, bestIndex, highlight }: CompareRowProps) {
 }
 
 function PropertyCompare() {
-  const { compareList, toggleCompare } = useAppStore()
+  const { compareList, toggleCompare, currentPage } = useAppStore()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [properties, setProperties] = useState<Property[] | null>(null)
   const [fetchedVersion, setFetchedVersion] = useState('')
@@ -132,7 +132,8 @@ function PropertyCompare() {
     return getBestIndices(displayProperties)
   }, [displayProperties])
 
-  const effectiveSheetOpen = sheetOpen && compareList.length >= 2
+  const compareVisible = currentPage !== 'adauga-proprietate'
+  const effectiveSheetOpen = sheetOpen && compareList.length >= 2 && compareVisible
 
   const handleClear = () => {
     compareList.forEach((id) => toggleCompare(id))
@@ -151,7 +152,7 @@ function PropertyCompare() {
     <>
       {/* Floating Bar */}
       <AnimatePresence>
-        {compareList.length >= 2 && (
+        {compareVisible && compareList.length >= 2 && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
