@@ -307,3 +307,126 @@ export async function notifyNewLeadToTeam(opts: {
     })),
   )
 }
+
+// ─── Appointment Notifications ──────────────────────────────────────────────
+
+export interface AppointmentEmailData {
+  clientName: string
+  clientEmail: string
+  propertyTitle: string
+  appointmentDate: string
+  appointmentTime: string
+  agentName: string
+}
+
+export async function sendAppointmentConfirmationEmail(opts: AppointmentEmailData) {
+  const subject = Confirmare programare vizionare - 
+  const body = [
+    Bună ,,
+    '',
+    'Programarea dumneavoastră a fost confirmată cu succes!',
+    '',
+    'Detalii programare:',
+    • Proprietate: ,
+    • Dată: ,
+    • Oră: ,
+    • Agent: ,
+    '',
+    'Vă așteptăm la proprietate la data și ora indicate.',
+    'Asigurați-vă că aveți la dumneavoastră un act de identitate.',
+    '',
+    'Cu stimă, Echipa HQS Imobiliare',
+  ].join('\n')
+
+  return notify({
+    channel: 'email',
+    to: opts.clientEmail,
+    subject,
+    body,
+    template: 'appointment_confirmation',
+    metadata: { propertyTitle: opts.propertyTitle },
+  })
+}
+
+export async function sendAppointmentReminderEmail(opts: AppointmentEmailData) {
+  const subject = Reminder: Programare vizionare mâine - 
+  const body = [
+    Bună ,,
+    '',
+    'Aceasta este o notificare de reamintire pentru programarea dumneavoastră de mâine.',
+    '',
+    'Detalii programare:',
+    • Proprietate: ,
+    • Dată: ,
+    • Oră: ,
+    • Agent: ,
+    '',
+    'Vă rugăm să fiți prezent la timp.',
+    '',
+    'Cu stimă, Echipa HQS Imobiliare',
+  ].join('\n')
+
+  return notify({
+    channel: 'email',
+    to: opts.clientEmail,
+    subject,
+    body,
+    template: 'appointment_reminder',
+    metadata: { propertyTitle: opts.propertyTitle },
+  })
+}
+
+export async function sendAppointmentCancellationEmail(
+  opts: AppointmentEmailData & { cancellationReason?: string }
+) {
+  const subject = Anulare programare - 
+  const body = [
+    Bună ,,
+    '',
+    'Programarea dumneavoastră a fost anulată.',
+    '',
+    'Detalii programare anulată:',
+    • Proprietate: ,
+    • Dată: ,
+    opts.cancellationReason ? • Motiv:  : null,
+    '',
+    'Cu stimă, Echipa HQS Imobiliare',
+  ].filter(Boolean).join('\n')
+
+  return notify({
+    channel: 'email',
+    to: opts.clientEmail,
+    subject,
+    body,
+    template: 'appointment_cancellation',
+    metadata: { propertyTitle: opts.propertyTitle },
+  })
+}
+
+export async function sendAppointmentUpdateEmail(
+  opts: AppointmentEmailData & { updateDetails?: string }
+) {
+  const subject = Actualizare programare - 
+  const body = [
+    Bună ,,
+    '',
+    'Programarea dumneavoastră a fost actualizată.',
+    '',
+    'Detalii programare:',
+    • Proprietate: ,
+    • Dată: ,
+    • Oră: ,
+    opts.updateDetails ? Modificări:  : null,
+    '',
+    'Cu stimă, Echipa HQS Imobiliare',
+  ].filter(Boolean).join('\n')
+
+  return notify({
+    channel: 'email',
+    to: opts.clientEmail,
+    subject,
+    body,
+    template: 'appointment_update',
+    metadata: { propertyTitle: opts.propertyTitle },
+  })
+}
