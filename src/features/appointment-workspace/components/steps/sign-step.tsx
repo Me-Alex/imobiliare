@@ -316,7 +316,6 @@ export function SignStep({
               <Button
                 onClick={() => handleSubmit(activeDoc)}
                 disabled={!signerName || !consentAccepted || (method === 'TYPED' && !typedSignature) || isLoading}
-                isLoading={isLoading}
               >
                 Semnează
               </Button>
