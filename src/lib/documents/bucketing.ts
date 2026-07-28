@@ -70,6 +70,7 @@ export function bucketForStatus(status: DocumentStatus): DocumentBucket {
     case 'NEEDS_INFO':
       return 'review'
     case 'READY_TO_SIGN':
+    case 'SIGNING_IN_PROGRESS':
     case 'PARTIALLY_SIGNED':
       return 'sign'
     case 'SIGNED':
@@ -78,6 +79,7 @@ export function bucketForStatus(status: DocumentStatus): DocumentBucket {
     case 'REJECTED':
     case 'CANCELLED':
     case 'SUPERSEDED':
+    case 'EXPIRED':
       return 'closed'
   }
 }
