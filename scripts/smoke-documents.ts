@@ -103,7 +103,7 @@ console.assert(data.transaction_type === 'cumpărare')
 
 const txWithDoc: Transaction = { ...transaction, currentStage: 'NEGOTIATION' }
 const docs: Document[] = [
-  { id: 'd_1', transactionId: 'tx_1', kind: 'brokerage_agreement', stage: 'NEGOTIATION', status: 'REQUESTED', data: {}, version: 1, supersedesId: null, file: null, createdBy: 'u_client', createdAt: '2026-01-01', updatedAt: '2026-01-01', expiresAt: null, expirationAction: null, coolingOff: false, signatureEnvelopeId: null },
+  { id: 'd_1', transactionId: 'tx_1', kind: 'brokerage_agreement', stage: 'NEGOTIATION', status: 'REQUESTED', data: {}, version: 1, supersedesId: null, file: null, createdBy: 'u_client', createdAt: '2026-01-01', updatedAt: '2026-01-01', expiresAt: null, expirationAction: null, coolingOff: null, signatureEnvelopeId: null },
 ]
 const staff: Actor = { kind: 'STAFF', role: 'ADMIN', userId: 'u_staff' }
 const a3 = nextAction({ actor: staff, transaction: txWithDoc, documents: docs, signatures: [] })
@@ -113,7 +113,7 @@ console.assert(a3.kind === 'REVIEW')
 // ── 8. Flow: client who has a draft → EDIT_DRAFT ────────────
 
 const docs2: Document[] = [
-  { id: 'd_2', transactionId: 'tx_1', kind: 'brokerage_agreement', stage: 'NEGOTIATION', status: 'DRAFT', data: {}, version: 1, supersedesId: null, file: null, createdBy: 'u_client', createdAt: '2026-01-01', updatedAt: '2026-01-01', expiresAt: null, expirationAction: null, coolingOff: false, signatureEnvelopeId: null },
+  { id: 'd_2', transactionId: 'tx_1', kind: 'brokerage_agreement', stage: 'NEGOTIATION', status: 'DRAFT', data: {}, version: 1, supersedesId: null, file: null, createdBy: 'u_client', createdAt: '2026-01-01', updatedAt: '2026-01-01', expiresAt: null, expirationAction: null, coolingOff: null, signatureEnvelopeId: null },
 ]
 const txFullClientId: Transaction = {
   ...transaction,
@@ -129,7 +129,7 @@ console.assert(a4.kind === 'EDIT_DRAFT')
 // ── 9. Flow: client with NEEDS_INFO doc → RESUBMIT ──────────
 
 const docs3: Document[] = [
-  { id: 'd_3', transactionId: 'tx_1', kind: 'brokerage_agreement', stage: 'NEGOTIATION', status: 'NEEDS_INFO', data: {}, version: 1, supersedesId: null, file: null, createdBy: 'u_client', createdAt: '2026-01-01', updatedAt: '2026-01-01', expiresAt: null, expirationAction: null, coolingOff: false, signatureEnvelopeId: null },
+  { id: 'd_3', transactionId: 'tx_1', kind: 'brokerage_agreement', stage: 'NEGOTIATION', status: 'NEEDS_INFO', data: {}, version: 1, supersedesId: null, file: null, createdBy: 'u_client', createdAt: '2026-01-01', updatedAt: '2026-01-01', expiresAt: null, expirationAction: null, coolingOff: null, signatureEnvelopeId: null },
 ]
 const a5 = nextAction({ actor: clientNoId, transaction: txFullClientId, documents: docs3, signatures: [] })
 console.log('9. Client w/ NEEDS_INFO doc →', a5.kind)
@@ -138,7 +138,7 @@ console.assert(a5.kind === 'RESUBMIT')
 // ── 10. Flow: client with pending signature → SIGN ──────────
 
 const docs4: Document[] = [
-  { id: 'd_4', transactionId: 'tx_1', kind: 'brokerage_agreement', stage: 'NEGOTIATION', status: 'READY_TO_SIGN', data: {}, version: 1, supersedesId: null, file: null, createdBy: 'u_staff', createdAt: '2026-01-01', updatedAt: '2026-01-01', expiresAt: null, expirationAction: null, coolingOff: false, signatureEnvelopeId: null },
+  { id: 'd_4', transactionId: 'tx_1', kind: 'brokerage_agreement', stage: 'NEGOTIATION', status: 'READY_TO_SIGN', data: {}, version: 1, supersedesId: null, file: null, createdBy: 'u_staff', createdAt: '2026-01-01', updatedAt: '2026-01-01', expiresAt: null, expirationAction: null, coolingOff: null, signatureEnvelopeId: null },
 ]
 const sigs: DocumentSignature[] = [
   { id: 's_1', documentId: 'd_4', participantId: 'p_client', required: true, status: 'PENDING', signedAt: null, signatureRef: null, signerIp: null, signerUserAgent: null, consentProof: null },
