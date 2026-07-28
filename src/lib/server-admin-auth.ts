@@ -30,7 +30,7 @@ function forbidden() {
   return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
 }
 
-function hasResponse(result: AccountAuthResult | AdminAuthResult): result is { response: NextResponse } {
+export function hasResponse(result: AccountAuthResult | AdminAuthResult): result is { response: NextResponse } {
   return 'response' in result
 }
 
