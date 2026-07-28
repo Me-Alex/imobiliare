@@ -1026,7 +1026,7 @@ async function syncOfflineDocuments() {
 
 ### Monitoring
 - [ ] Set up error tracking (Sentry)
-- [ ] Set up analytics (Plausible/Vercel Analytics)
+- [ ] Set up analytics (Plausible/Cloudflare Web Analytics)
 - [ ] Monitor notification delivery rates
 - [ ] Monitor document upload success rates
 
