@@ -115,7 +115,7 @@ export function PrepareStep({
                   {getStatusIcon(doc.status)}
                   <div>
                     <p className="font-medium">
-                      {DOCUMENT_TYPE_LABELS[doc.documentType as DocumentType] || doc.document_type}
+                      {DOCUMENT_TYPE_LABELS[doc.document_type as DocumentType] || doc.document_type}
                     </p>
                     {doc.rejection_reason && (
                       <p className="text-sm text-destructive mt-1">
