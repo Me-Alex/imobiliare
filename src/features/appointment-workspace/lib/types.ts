@@ -32,7 +32,7 @@ export interface Appointment {
   property_title?: string | null
   agent_id?: string | null
   staff_reference?: string | null
-  staff_name?: string | null
+  agent_name?: string | null
   scheduled_at: string
   scheduled_end: string
   status: AppointmentStatus
