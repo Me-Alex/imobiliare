@@ -1,13 +1,13 @@
 // Components
-export { AppointmentWorkspace } from './components/appointment-workspace'
-export { AppointmentStepIndicator } from './components/step-indicator'
-export { ScheduleStep } from './components/steps/schedule-step'
-export { PrepareStep } from './components/steps/prepare-step'
-export { SignStep } from './components/steps/sign-step'
-export { ConfirmStep } from './components/steps/confirm-step'
+export { AppointmentWorkspace } from './appointment-workspace'
+export { AppointmentStepIndicator } from './step-indicator'
+export { ScheduleStep } from './steps/schedule-step'
+export { PrepareStep } from './steps/prepare-step'
+export { SignStep } from './steps/sign-step'
+export { ConfirmStep } from './steps/confirm-step'
 
 // Hooks
-export { useAppointmentWorkspace } from './hooks/use-appointment-workspace'
+export { useAppointmentWorkspace } from '../hooks/use-appointment-workspace'
 
 // Types
-export * from './lib/types'
+export * from '../lib/types'
