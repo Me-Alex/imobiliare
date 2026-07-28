@@ -67,7 +67,6 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "next-env.d.ts",
     "examples/**",
     "skills/**",
-    ".vercel/**",
     "tool-results/**",
   ]
 }];
