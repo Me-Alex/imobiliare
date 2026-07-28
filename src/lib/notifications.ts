@@ -320,17 +320,17 @@ export interface AppointmentEmailData {
 }
 
 export async function sendAppointmentConfirmationEmail(opts: AppointmentEmailData) {
-  const subject = Confirmare programare vizionare - 
+  const subject = `Confirmare programare vizionare - ${opts.propertyTitle}`
   const body = [
-    Bună ,,
+    `Bună ${opts.clientName},`,
     '',
     'Programarea dumneavoastră a fost confirmată cu succes!',
     '',
     'Detalii programare:',
-    • Proprietate: ,
-    • Dată: ,
-    • Oră: ,
-    • Agent: ,
+    `• Proprietate: ${opts.propertyTitle}`,
+    `• Dată: ${opts.appointmentDate}`,
+    `• Oră: ${opts.appointmentTime}`,
+    `• Agent: ${opts.agentName}`,
     '',
     'Vă așteptăm la proprietate la data și ora indicate.',
     'Asigurați-vă că aveți la dumneavoastră un act de identitate.',
@@ -349,17 +349,17 @@ export async function sendAppointmentConfirmationEmail(opts: AppointmentEmailDat
 }
 
 export async function sendAppointmentReminderEmail(opts: AppointmentEmailData) {
-  const subject = Reminder: Programare vizionare mâine - 
+  const subject = `Reminder: Programare vizionare mâine - ${opts.propertyTitle}`
   const body = [
-    Bună ,,
+    `Bună ${opts.clientName},`,
     '',
     'Aceasta este o notificare de reamintire pentru programarea dumneavoastră de mâine.',
     '',
     'Detalii programare:',
-    • Proprietate: ,
-    • Dată: ,
-    • Oră: ,
-    • Agent: ,
+    `• Proprietate: ${opts.propertyTitle}`,
+    `• Dată: ${opts.appointmentDate}`,
+    `• Oră: ${opts.appointmentTime}`,
+    `• Agent: ${opts.agentName}`,
     '',
     'Vă rugăm să fiți prezent la timp.',
     '',
@@ -379,16 +379,16 @@ export async function sendAppointmentReminderEmail(opts: AppointmentEmailData) {
 export async function sendAppointmentCancellationEmail(
   opts: AppointmentEmailData & { cancellationReason?: string }
 ) {
-  const subject = Anulare programare - 
+  const subject = `Anulare programare - ${opts.propertyTitle}`
   const body = [
-    Bună ,,
+    `Bună ${opts.clientName},`,
     '',
     'Programarea dumneavoastră a fost anulată.',
     '',
     'Detalii programare anulată:',
-    • Proprietate: ,
-    • Dată: ,
-    opts.cancellationReason ? • Motiv:  : null,
+    `• Proprietate: ${opts.propertyTitle}`,
+    `• Dată: ${opts.appointmentDate}`,
+    opts.cancellationReason ? `• Motiv: ${opts.cancellationReason}` : null,
     '',
     'Cu stimă, Echipa HQS Imobiliare',
   ].filter(Boolean).join('\n')
@@ -406,17 +406,17 @@ export async function sendAppointmentCancellationEmail(
 export async function sendAppointmentUpdateEmail(
   opts: AppointmentEmailData & { updateDetails?: string }
 ) {
-  const subject = Actualizare programare - 
+  const subject = `Actualizare programare - ${opts.propertyTitle}`
   const body = [
-    Bună ,,
+    `Bună ${opts.clientName},`,
     '',
     'Programarea dumneavoastră a fost actualizată.',
     '',
     'Detalii programare:',
-    • Proprietate: ,
-    • Dată: ,
-    • Oră: ,
-    opts.updateDetails ? Modificări:  : null,
+    `• Proprietate: ${opts.propertyTitle}`,
+    `• Dată: ${opts.appointmentDate}`,
+    `• Oră: ${opts.appointmentTime}`,
+    opts.updateDetails ? `• Modificări: ${opts.updateDetails}` : null,
     '',
     'Cu stimă, Echipa HQS Imobiliare',
   ].filter(Boolean).join('\n')
