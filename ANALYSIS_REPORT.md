@@ -1,368 +1,582 @@
-# HQS Imobiliare - Comprehensive Repository Analysis
+# HQS Imobiliare — Architecture & Codebase Analysis
 
-**Repository:** Me-Alex/imobiliare  
-**Generated:** 2026-07-25  
-**Branch:** main
-
----
-
-## 1. Project Overview
-
-### Description
-**HQS Imobiliare** is a responsive real-estate platform for Bucharest, Romania. It is a full-stack web application built with modern technologies for property listings, CRM, document management, virtual tours, and AI-powered features.
-
-### Repository Metadata
-| Metric | Value |
-|--------|-------|
-| Language | TypeScript |
-| Stars | 0 |
-| Forks | 0 |
-| Open Issues | 20 |
-| Watchers | 0 |
-| Default Branch | main |
-| Created | 2026-04-25 |
-| Last Updated | 2026-07-24 |
-| Last Push | 2026-07-25 |
+> **Repository:** [Me-Alex/imobiliare](https://github.com/Me-Alex/imobiliare)
+> **Last reviewed:** 2026-07-29
+> **Branch:** main
 
 ---
 
-## 2. Technology Stack
+## Table of Contents
 
-### Core Framework
-- **Next.js 16.2.6** - React framework with App Router
-- **React 19.0.0** - UI library
-- **TypeScript 5** - Type safety
+1. [What This Is](#1-what-this-is)
+2. [Tech Stack](#2-tech-stack)
+3. [Architecture](#3-architecture)
+4. [Database Design](#4-database-design)
+5. [API Surface](#5-api-surface)
+6. [Security Posture](#6-security-posture)
+7. [Testing](#7-testing)
+8. [CI/CD Pipeline](#8-cicd-pipeline)
+9. [Code Quality](#9-code-quality)
+10. [Risks & Gaps](#10-risks--gaps)
+11. [Recommendations](#11-recommendations)
 
-### Database & ORM
-- **Prisma 6.11.1** - ORM with SQLite (local dev) / D1 (Cloudflare)
-- **Supabase 2.110.0** - Authentication and user data mirroring
-- **SQLite** - Local development database
+---
 
-### Deployment
-- **Cloudflare Workers** - Primary deployment target
-- **OpenNext** - Build adapter for Cloudflare
-- **Wrangler 4.110.0** - Cloudflare CLI
+## 1. What This Is
 
-### Styling & UI
-- **Tailwind CSS 4** - Utility-first CSS
-- **Radix UI** - 25+ accessible component primitives
-- **Framer Motion 12** - Animations
-- **Recharts 2** - Data visualization
-- **Lucide React** - Icons
+HQS Imobiliare is a full-stack real-estate platform targeting Bucharest, Romania. It serves property buyers, sellers, and real-estate agents with:
 
-### State Management & Data
-- **Zustand 5** - Global state management
-- **TanStack Query 5** - Server state management
-- **React Hook Form 7** - Form handling
-- **Zod 4** - Schema validation
+- **Property listings** with search, filters, map view (Leaflet), and comparison
+- **CRM pipeline** — lead tracking from initial contact through offer to close
+- **Document management** — a state-machine-driven workflow for contracts, mandates, and viewing reports
+- **AI chat assistant** — property Q&A powered by an external LLM provider
+- **Market analytics** — zone-level pricing, demand metrics, historical trends
+- **Admin dashboard** — staff management, virtual tour review, deal room
+- **Notifications** — email (Resend), SMS (Twilio), in-app via notification log
 
-### Other Key Dependencies
-| Category | Libraries |
-|----------|----------|
-| PDF | pdf-lib 1.17.1 |
+The site is in Romanian. The domain is `hqsimobiliare.ro`.
+
+---
+
+## 2. Tech Stack
+
+### Runtime & Framework
+
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Language | TypeScript | 5.x |
+| Framework | Next.js (App Router) | 16.2.6 |
+| UI Library | React | 19.0.0 |
+| Package Manager | Bun | 1.3.6 |
+| Edge Runtime | Cloudflare Workers | via OpenNext |
+
+### Data
+
+| Purpose | Technology |
+|---------|-----------|
+| ORM | Prisma 6.11 (SQLite for dev, D1 for prod) |
+| Auth & Realtime | Supabase 2.110 |
+| State Management | Zustand 5 |
+| Server State | TanStack Query 5 |
+| Validation | Zod 4 |
+
+### UI & Styling
+
+| Purpose | Technology |
+|---------|-----------|
+| CSS | Tailwind CSS 4 |
+| Component Primitives | 25+ Radix UI packages |
+| Animations | Framer Motion 12 |
+| Charts | Recharts 2 |
 | Maps | Leaflet 1.9.4 |
-| Markdown | react-markdown 10.1.0 |
-| MDX | @mdxeditor/editor 3.39.1 |
-| i18n | next-intl 4.3.4 |
-| Image Processing | Sharp 0.34.3 |
-| Notifications | Sonner 2.0.6 |
-| Authentication | next-auth 4.24.11 |
+| Icons | Lucide React |
+
+### Infrastructure
+
+| Purpose | Technology |
+|---------|-----------|
+| Deployment | Cloudflare Workers (via OpenNext) |
+| Build CLI | Wrangler 4.110 |
+| Database | Cloudflare D1 |
+| Reverse Proxy (dev) | Caddy |
+| CI/CD | GitHub Actions |
+| Email | Resend |
+| SMS | Twilio (optional) |
+
+### Notable Libraries
+
+- `pdf-lib` — PDF generation for contracts/documents
+- `@mdxeditor/editor` — Rich MDX editing
+- `next-intl` — Internationalization (currently Romanian-only)
+- `sharp` — Server-side image processing
+- `react-hook-form` + `@hookform/resolvers` — Form management
+- `@dnd-kit` — Drag-and-drop for sortable lists
+- `sonner` — Toast notifications
+- `embla-carousel-react` — Carousel component
+- `z-ai-web-dev-sdk` — AI provider integration
 
 ---
 
-## 3. Project Structure
+## 3. Architecture
+
+### Directory Layout
 
 ```
-imobiliare/
-├── src/
-│   ├── app/                 # Next.js App Router pages
-│   │   ├── api/            # API routes (15+ endpoints)
-│   │   ├── proprietati/     # Properties listing
-│   │   ├── evaluare/        # Property valuation
-│   │   ├── zona/           # Zone/area pages
-│   │   └── [various pages]
-│   ├── components/          # React components (13 categories)
-│   │   ├── account/        # User account components
-│   │   ├── admin/          # Admin dashboard components
-│   │   ├── documents-v2/   # Document management
-│   │   ├── features/       # Feature components
-│   │   ├── layout/         # Layout components
-│   │   ├── marketing/      # Marketing components
-│   │   ├── property/       # Property listing cards/details
-│   │   ├── ui/            # Base UI components
-│   │   └── vizionare/      # Viewing/scheduling components
-│   ├── lib/                # Core utilities (50+ files)
-│   ├── hooks/             # Custom React hooks
-│   ├── contexts/          # React contexts
-│   ├── store/             # Zustand stores
-│   └── views/             # Page-level components
-├── prisma/
-│   ├── schema.prisma      # Database schema
-│   └── seed.ts            # Database seeding
-├── supabase/
-│   └── migrations/        # 30+ SQL migrations
-├── public/                # Static assets
-├── scripts/              # Build/deploy scripts
-└── db/                   # Local SQLite database
+src/
+├── app/                          # Next.js App Router
+│   ├── api/                      # 20+ API route handlers
+│   │   ├── admin/                # Dashboard, virtual tours
+│   │   ├── appointments-v2/      # Viewing scheduling (CRUD, signatures, notifications)
+│   │   ├── ai-chat/              # AI assistant endpoint
+│   │   ├── ai-listing-description/ # AI-generated property descriptions
+│   │   ├── contact/              # Contact form
+│   │   ├── geocode/              # Address → coordinates
+│   │   ├── leads/                # CRM lead management
+│   │   ├── market-data/          # Zone pricing data
+│   │   ├── newsletter/           # Email subscriptions
+│   │   ├── offers/               # Negotiation/offer management
+│   │   ├── price-alerts/         # Price drop notifications
+│   │   ├── properties/           # Property CRUD + comparison
+│   │   ├── search/               # Autocomplete suggestions
+│   │   ├── valuation/            # Property valuation
+│   │   ├── vizionari/            # Viewing appointments
+│   │   └── zones/                # Zone data
+│   ├── proprietati/              # Property listing pages
+│   ├── evaluare/                 # Property valuation page
+│   ├── zona/                     # Zone detail pages
+│   ├── analiza-piata/            # Market analysis page
+│   ├── servicii/                 # Services page
+│   ├── despre-noi/               # About page
+│   ├── confidentialitate/        # Privacy policy
+│   ├── dev/                      # Dev-only preview routes
+│   └── layout.tsx                # Root layout (fonts, metadata, providers)
+│
+├── components/                   # 13 component categories
+│   ├── account/                  # Account gate, role access denied
+│   ├── admin/                    # Virtual tour review panel
+│   ├── dialogs/                  # Auth, contact, gallery, save search, feedback
+│   ├── documents-v2/             # Document workspace, card, preview, timeline, state pill
+│   ├── features/                 # AI chat, market analytics, mortgage calc, documents
+│   ├── layout/                   # Navigation, footer, theme toggle
+│   ├── marketing/                # Hero, featured properties, CTA sections
+│   ├── monede/                   # Coin/credit system components
+│   ├── panels/                   # Side panels
+│   ├── property/                 # Property cards, details, filters, comparison
+│   ├── ui/                       # Base UI primitives (Radix wrappers)
+│   ├── vizionare/                # Viewing/scheduling components
+│   └── zone/                     # Zone cards and details
+│
+├── lib/                          # 60+ utility modules
+│   ├── documents/                # Document engine (state machine, templates, fields, bucketing)
+│   │   ├── state-machine.ts      # Core state transition logic
+│   │   ├── flow.ts               # Document flow orchestration
+│   │   ├── templates/            # 6 document templates
+│   │   └── fields/               # Field definitions per role
+│   ├── notifications/            # Email templates
+│   ├── db.ts                     # Prisma client (Node runtime)
+│   ├── db-d1.ts                  # D1 adapter (Edge runtime) — 400+ lines
+│   ├── edge-db.ts                # Runtime-aware DB selector
+│   ├── ai-edge.ts                # AI provider adapter (server-only)
+│   ├── rate-limit.ts             # IP-based sliding window rate limiter
+│   ├── validators.ts             # Email and input validation
+│   ├── server-admin-auth.ts      # Role-based auth middleware
+│   ├── crm.ts / crm-api.ts      # CRM business logic
+│   ├── supabase.ts               # Supabase client setup
+│   └── ...
+│
+├── hooks/                        # Custom React hooks
+├── contexts/                     # React context providers
+├── store/                        # Zustand stores
+└── views/                        # Page-level composite components
 ```
+
+### Data Flow
+
+```
+Browser
+  │
+  ├─► Next.js App Router (SSR/SSG)
+  │     ├─► API Routes (server-side)
+  │     │     ├─► Prisma → SQLite (dev) / D1 (prod)
+  │     │     ├─► Supabase (auth, realtime, RLS)
+  │     │     └─► External APIs (AI, Resend, Twilio)
+  │     └─► Server Components → HTML
+  │
+  └─► Client Components
+        ├─► Zustand (local state)
+        ├─► TanStack Query (server state cache)
+        └─► Supabase Client (auth, realtime subscriptions)
+```
+
+### Dual Database Strategy
+
+The app runs two database layers simultaneously:
+
+1. **Prisma + SQLite** — Used in local development and standard Node.js runtime. The schema in `prisma/schema.prisma` defines 15 models.
+
+2. **Custom D1 Adapter** (`src/lib/db-d1.ts`) — A hand-rolled Prisma-compatible query builder for Cloudflare's D1. It supports `findMany`, `findFirst`, `findUnique`, `create`, `update`, `delete`, `count`, `aggregate`, and `groupBy`. This is necessary because Prisma's D1 adapter doesn't work in the OpenNext edge runtime.
+
+The `edge-db.ts` module detects the runtime and returns the appropriate client.
 
 ---
 
-## 4. Database Schema Analysis
+## 4. Database Design
 
-### Core Models (15 total)
+### Models (15 total)
 
-#### User & Authentication
-- **User** - Basic user accounts (email, name)
-- **UserProfile** - Extended user profiles with preferences
-- **StaffMember** - Agents (AGENT, ADMIN, DIRECTOR roles)
+#### User & Auth
+| Model | Purpose |
+|-------|---------|
+| `User` | Basic account (email, name) |
+| `UserProfile` | Extended profile with notification/display preferences |
+| `StaffMember` | Agents with roles: AGENT, ADMIN, DIRECTOR |
 
 #### Real Estate
-- **Property** - Listings with 20+ fields (price, area, rooms, location, coordinates)
-- **PropertyAnalytics** - Weekly view/inquiry tracking
-- **MarketData** - Zone-wise market statistics
-- **Zone** - Geographic zones with demand metrics
+| Model | Purpose |
+|-------|---------|
+| `Property` | Listings — 20+ fields including price, area, rooms, coordinates, gallery |
+| `PropertyAnalytics` | Weekly view/inquiry/save counts per property |
+| `MarketData` | Zone-level market stats (avg price/sqm, supply, demand) |
+| `Zone` | Geographic zones with demand metrics and popular-for tags |
 
-#### CRM & Sales
-- **Lead** - Pipeline tracking (NEW → CONTACTED → QUALIFIED → VIEWING_SCHEDULED → OFFER → WON/LOST)
-- **LeadActivity** - Activity log (notes, calls, emails, status changes)
-- **Offer** - Negotiation management with counter-offer support
-- **Vizionare** - Property viewing appointments
+#### CRM
+| Model | Purpose |
+|-------|---------|
+| `Lead` | Pipeline: NEW → CONTACTED → QUALIFIED → VIEWING_SCHEDULED → OFFER → WON/LOST |
+| `LeadActivity` | Activity log (notes, calls, emails, status changes) |
+| `Offer` | Negotiation with counter-offer chain support |
+| `Vizionare` | Property viewing appointments |
 
 #### Communication
-- **ContactSubmission** - Website contact form submissions
-- **NewsletterSubscription** - Email newsletter signups
-- **PriceAlert** - User-defined price alerts
-- **NotificationLog** - Notification delivery tracking
+| Model | Purpose |
+|-------|---------|
+| `ContactSubmission` | Website contact form |
+| `NewsletterSubscription` | Email signups |
+| `PriceAlert` | User-configured price drop alerts |
+| `NotificationLog` | Delivery tracking (email, SMS, push, in-app) |
 
-### Database Features
-- Proper indexing on frequently queried fields
-- JSON fields for flexible data (gallery URLs, preferences)
-- Unique constraints for data integrity
-- Cascade deletes where appropriate
+#### Other
+| Model | Purpose |
+|-------|---------|
+| `Post` | Legacy/placeholder — not actively used |
 
----
+### Schema Highlights
 
-## 5. API Routes (16 endpoints)
+- **Indexing:** Key fields indexed (`zone`, `type`, `transaction`, `status`, `assignedToId`, `email`, `createdAt`)
+- **JSON fields:** `galleryUrls`, `preferredZones`, `preferredTypes`, `notificationPreferences`, `displayPreferences` stored as JSON strings
+- **Unique constraints:** Property slugs, zone names, user emails, weekly analytics
+- **Cascade deletes:** `LeadActivity` cascades when `Lead` is deleted
+- **Counter-offer chains:** `Offer.parentOfferId` self-relation for negotiation tracking
 
-### Public APIs
-| Endpoint | Purpose |
-|----------|---------|
-| `/api/properties` | CRUD for property listings |
-| `/api/search/suggestions` | Autocomplete suggestions |
-| `/api/zones` | Zone/area data |
-| `/api/market-data` | Market statistics |
-| `/api/valuation` | Property valuation |
-| `/api/geocode` | Address geocoding |
+### Supabase Migrations
 
-### Communication APIs
-| Endpoint | Purpose |
-|----------|---------|
-| `/api/contact` | Contact form submissions |
-| `/api/newsletter` | Newsletter subscriptions |
-| `/api/price-alerts` | Price alert management |
-
-### CRM & Sales APIs
-| Endpoint | Purpose |
-|----------|---------|
-| `/api/leads` | Lead management |
-| `/api/offers` | Offer/negotiation management |
-| `/api/vizionari` | Viewing appointments |
-
-### Admin APIs
-| Endpoint | Purpose |
-|----------|---------|
-| `/api/admin/dashboard` | Admin dashboard data |
-| `/api/admin/virtual-tours` | Virtual tour management |
-
-### AI Features
-| Endpoint | Purpose |
-|----------|---------|
-| `/api/ai-chat` | AI-powered chat |
-| `/api/ai-listing-description` | AI-generated property descriptions |
+30+ SQL migration files covering:
+- Account roles and profiles
+- Document workflows and contracts
+- Legal document request pipelines
+- Coin/credit wallet system
+- Property coordinates
+- Security hardening (RLS policies)
 
 ---
 
-## 6. Security Analysis
+## 5. API Surface
+
+### Public Endpoints
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/properties` | List properties with filters |
+| GET | `/api/properties/[slug]` | Single property detail |
+| GET | `/api/properties/compare` | Side-by-side comparison |
+| GET | `/api/search/suggestions` | Autocomplete |
+| GET | `/api/zones` | Zone listings |
+| GET | `/api/market-data` | Market statistics |
+| POST | `/api/valuation` | Property valuation estimate |
+| GET | `/api/geocode` | Address → lat/lng |
+| POST | `/api/contact` | Contact form submission |
+| POST | `/api/newsletter` | Newsletter signup |
+| POST | `/api/price-alerts` | Create price alert |
+| GET/PUT/DELETE | `/api/price-alerts/[id]` | Manage alerts |
+
+### Authenticated Endpoints
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET/POST | `/api/leads` | CRM lead management |
+| GET/PUT/DELETE | `/api/leads/[id]` | Single lead operations |
+| GET/POST | `/api/offers` | Offer management |
+| GET/PUT | `/api/offers/[id]` | Single offer operations |
+| GET/POST | `/api/vizionari` | Viewing appointments |
+| GET/POST | `/api/appointments-v2` | Enhanced appointments |
+| POST | `/api/appointments-v2/signatures` | Document signatures |
+| POST | `/api/appointments-v2/notify` | Send notifications |
+
+### Admin Endpoints
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/admin/dashboard` | Admin overview data |
+| GET/POST | `/api/admin/virtual-tours` | Virtual tour management |
+
+### AI Endpoints
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| POST | `/api/ai-chat` | Conversational AI assistant |
+| POST | `/api/ai-listing-description` | Generate property descriptions |
+
+---
+
+## 6. Security Posture
 
 ### Strengths
 
-#### 1. Content Security Policy (CSP)
-```typescript
-- Restricts scripts to 'self' and Supabase origins
-- Limits connect-src to specific trusted domains
-- Prevents frame embedding (X-Frame-Options: DENY)
-- Restricts form actions to same origin
-```
+**Content Security Policy** — Well-configured in `next.config.ts`:
+- `default-src 'self'`
+- `script-src` limited to self + Supabase
+- `connect-src` explicitly lists Supabase, Nominatim, OpenStreetMap tiles, and the Worker URL
+- `frame-ancestors 'none'` prevents clickjacking
+- `object-src 'none'` blocks plugin injection
 
-#### 2. Input Validation
-- Email validation with RFC 5322-lite regex
+**Security Headers** — Full suite:
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+
+**Input Validation:**
+- Zod schemas validate all API request bodies
+- Custom email validator (`validators.ts`) — pragmatic RFC 5322-lite
 - Input sanitization before database operations
-- Zod schema validation
 
-#### 3. Rate Limiting
-- IP-based rate limiter implemented
-- Sliding window algorithm
-- Memory-bounded with automatic pruning
-- Configurable limits per endpoint
+**Authentication:**
+- Supabase Auth with Bearer token verification
+- Role-based access control: AGENT, ADMIN, DIRECTOR
+- Admin check via Supabase RPC (`is_admin_user`)
+- `server-admin-auth.ts` provides `requireStaff`, `requireAdmin`, `requireAccountRole`
 
-#### 4. Security Headers
-```typescript
-- X-Content-Type-Options: nosniff
-- X-Frame-Options: DENY
-- Referrer-Policy: strict-origin-when-cross-origin
-- Strict-Transport-Security: max-age=63072000
-- Permissions-Policy: camera=(), microphone=(), geolocation=()
-```
+**Rate Limiting:**
+- Shared IP-based sliding window (`rate-limit.ts`)
+- Per-route instances (e.g., AI chat: 10 req/min, Lead creation: 30 req/min)
+- Memory-bounded with automatic pruning (5000 IP cap)
 
-#### 5. Authentication
-- NextAuth.js integration
-- Supabase authentication
-- Admin authentication system
-- Role-based access (AGENT, ADMIN, DIRECTOR)
+**SSRF Protection:**
+- Caddyfile's `XTransformPort` restricted to `127.0.0.1` and `::1`
 
-#### 6. Database Security
-- Prisma ORM for SQL injection prevention
-- Parameterized queries
-- Row-level security policies in Supabase
-- Secure document bucket policies
+**SQL Injection Prevention:**
+- Prisma ORM with parameterized queries
+- D1 adapter uses parameterized bindings (`?1`, `?2`, etc.)
 
-### Areas for Improvement
+**Document Security:**
+- Supabase RLS policies on document buckets
+- State machine enforces valid transitions with actor authorization
+- Audit snapshots for legal document requests
 
-1. **Rate Limiting on Cloudflare Workers**
-   - Current implementation is per-isolate, not global
-   - Recommendation: Use Durable Objects or Workers KV for global rate limiting
+### Weaknesses
 
-2. **Missing Security Headers**
-   - Consider adding `X-XSS-Protection` (deprecated but still useful for older browsers)
-   - Consider `Content-Type-Options: nosniff` is present
+1. **Per-isolate rate limiting** — The in-memory rate limiter resets per Cloudflare Worker isolate. A distributed attack multiplies the effective limit by the number of isolates. The code explicitly documents this limitation.
 
-3. **API Rate Limit Configuration**
-   - No per-endpoint rate limit configuration visible
-   - Recommendation: Implement stricter limits for sensitive endpoints (auth, leads)
+2. **Hardcoded Supabase key in `wrangler.toml`** — The `NEXT_PUBLIC_SUPABASE_ANON_KEY` is committed to the repo. While this is a publishable key (not a service-role key), it should still be managed via Cloudflare dashboard variables.
 
-4. **Dependency Updates**
-   - Some packages may have newer versions with security patches
-   - Regular `npm audit` recommended
+3. **`__name` polyfill in root layout** — An inline `<script>` sets `globalThis.__name`. This is a known OpenNext/esbuild workaround but adds a CSP consideration.
+
+4. **AI chat rate limiter is inline, not shared** — `ai-chat/route.ts` implements its own rate limiter instead of using the shared `createIpRateLimiter`. This duplicates logic and could drift.
+
+5. **No CSRF protection** — API routes rely on Bearer tokens for auth but don't validate origin headers for state-changing requests from the browser.
+
+6. **Legacy `Post` model** — Still in the schema but appears unused. Dead schema increases attack surface.
 
 ---
 
-## 7. Recent Development Activity
+## 7. Testing
 
-### Latest Commits (Top 20)
-```
-2d7e083 feat(client-flow): form is gone, the document preview is the form
-678d8ae feat(client-flow): editable document preview
-cfbbbd5 feat(client-flow): live document preview as the client types
-24e69aa feat(client-flow): wire ClientFlow into booking, dispatch on property transaction
-1019df2 fix(dev): rename _dev to dev so the preview routes are reachable
-96f893f feat(client-flow): simplified booking + 1-form rental, 3-stage sale
-0903771 feat(documents): new visual surface, 5-state bucketing, preview route
-b4caf51 chore(deps): refresh bun.lock for vitest
-307d8d9 chore(security): rate limits, audit-trail integrity, headers, tests
-1222bed feat(documents): new foundation module (types, state-machine, templates, flow)
-dad60cd Unify product experience and account flows
-7c29df1 Harden Cloudflare runtime and data workflows
-e1e700a Harden API access and Cloudflare delivery
-f3cda62 Unify workspace navigation and transaction flows
-38318a9 Simplify document workflow across roles
-2bbfa9d Add navigable multi-room virtual tours
-73e2fbc Add demo virtual tours and listing filter
-8a150d8 Add property services hub
-fc7fc20 Simplify admin workflow
-2a602c5 Build secure admin control center
-```
+### Current State
 
-### Focus Areas (Recent)
-1. **Document Management** - Client flow, editable previews, multi-state workflows
-2. **Security Hardening** - Rate limits, audit trails, security headers
-3. **User Experience** - Accessibility improvements (ARIA labels)
-4. **Virtual Tours** - Multi-room navigation
-5. **CRM Enhancements** - Deal room, analytics
+5 test files exist:
 
-### Active Feature Branches
-- 60+ branches with focus on:
-  - Accessibility improvements (a11y-* branches)
-  - UX polish (ux-*, palette-* branches)
-  - Admin dashboard improvements
-  - Performance optimization
+| File | Tests |
+|------|-------|
+| `documents/state-machine.test.ts` | State transition logic |
+| `documents/bucketing.test.ts` | Document bucketing |
+| `documents/flow-shape.test.ts` | Document flow shapes |
+| `rate-limit.test.ts` | Rate limiter behavior |
+| `validators.test.ts` | Email validation |
+
+### Coverage
+
+- **Core business logic:** Well-covered (state machine, validators, rate limiter)
+- **API routes:** No visible tests
+- **Components:** No visible tests
+- **Integration/E2E:** None
+- **Coverage reporting:** Not configured
+
+### Test Infrastructure
+
+- Vitest 2.1 configured
+- `bun run test` executes `vitest run`
+- `bun run check` chains lint + typecheck + test
 
 ---
 
 ## 8. CI/CD Pipeline
 
-### GitHub Actions Workflows
+### CI Workflow (`.github/workflows/ci.yml`)
 
-#### CI Workflow (`.github/workflows/ci.yml`)
-- Runs on: push and pull_request
-- Steps:
-  - Lint (ESLint)
-  - TypeScript type check
-  - Build verification
-  - Unit tests (Vitest)
+Triggers on push to `main` and all pull requests.
 
-#### Deploy Workflow (`.github/workflows/deploy-cloudflare.yml`)
-- Runs on: push to main branch
-- Requires: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
-- Steps:
-  - Lint check
-  - Type check
-  - OpenNext build
-  - Cloudflare deployment
+```
+checkout → bun install → prisma generate → lint + typecheck → test → cf:build
+```
 
----
+Environment variables use placeholders (no real secrets).
 
-## 9. Environment Configuration
+### Deploy Workflow (`.github/workflows/deploy-cloudflare.yml`)
 
-### Required Variables
-| Variable | Purpose | Sensitivity |
-|----------|---------|-------------|
-| `DATABASE_URL` | SQLite path for local dev | Low |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Public |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Supabase key | Public |
-| `ZAI_API_KEY` | AI provider key (Worker secret) | High |
-| `ZAI_API_URL` | AI API endpoint | Medium |
-| `RESEND_API_KEY` | Email service | High |
-| `NOTIFICATION_FROM_EMAIL` | Email sender address | Low |
-| `CRM_TEAM_EMAILS` | Lead notification recipients | Low |
-| `TWILIO_*` | SMS configuration (optional) | High |
+Triggers on push to `main` and manual dispatch.
+
+**Quality job:** Same as CI (lint, typecheck, test, cf:verify)
+
+**Deploy job:** Depends on quality passing.
+- Requires `CLOUDFLARE_API_TOKEN` secret and `CLOUDFLARE_ACCOUNT_ID` variable
+- Uses `--keep-vars` to preserve dashboard-managed variables
+- Concurrency group `cloudflare-production` with `cancel-in-progress: false`
+
+### Observations
+
+- Both workflows run quality checks independently (could be deduplicated)
+- No branch protection rules visible
+- No Dependabot or security scanning configured
+- No preview deployments for PRs
 
 ---
 
-## 10. Recommendations
+## 9. Code Quality
 
-### Immediate Actions
-1. **Review 20 Open Issues** - Prioritize security-related issues
-2. **Update Dependencies** - Run `bun outdated` and update
-3. **Enable Branch Protection** - Protect main branch with PR reviews
-4. **Add Security Scanning** - Integrate Dependabot or Snyk
+### Strengths
 
-### Medium-term Improvements
-1. **Global Rate Limiting** - Implement Workers KV or Durable Objects
-2. **Comprehensive Testing** - Increase test coverage beyond unit tests
-3. **API Documentation** - Generate OpenAPI/Swagger docs
-4. **Monitoring** - Add error tracking (Sentry) and analytics
+- **TypeScript strict mode** enabled
+- **Consistent naming** — camelCase for JS/TS, kebab-case for files
+- **Separation of concerns** — lib/ for logic, components/ for UI, api/ for routes
+- **Well-documented modules** — JSDoc comments explain intent, not just behavior
+- **Defensive coding** — Null checks, fallback values, graceful degradation
+- **Edge-runtime awareness** — Separate DB adapters for Node vs. Cloudflare
 
-### Long-term Considerations
-1. **Microservices Architecture** - Consider splitting admin/CMS from public app
-2. **CDN Optimization** - Implement edge caching for property images
-3. **Search Engine** - Consider Algolia or Elasticsearch for property search
-4. **Mobile App** - PWA improvements or native mobile app
+### Concerns
 
----
+- **D1 adapter is 400+ lines** of hand-rolled query building. This is fragile and could diverge from Prisma's behavior. Consider using Prisma's official D1 adapter once it stabilizes.
+- **Duplicate rate limiting** — AI chat has its own inline implementation instead of using the shared module.
+- **`legacy-crm.ts`** suggests there's a migration in progress. Legacy code should be tracked and removed.
+- **Some components are large** — `documents-v2/` components handle multiple responsibilities.
 
-## 11. Summary Scores
+### File Counts
 
-| Category | Score | Notes |
-|----------|-------|-------|
-| Code Quality | 9/10 | TypeScript, proper typing, good structure |
-| Security | 8/10 | Good CSP, headers, validation; improve global rate limits |
-| Documentation | 9/10 | Comprehensive README, clear setup instructions |
-| Testing | 6/10 | Unit tests exist; coverage unknown |
-| Modern Practices | 10/10 | Next.js 16, React 19, Bun, Cloudflare Workers |
-| Scalability | 7/10 | Good for medium scale; global rate limiting needed |
-| Maintainability | 9/10 | Clean structure, good organization |
+| Category | Count |
+|----------|-------|
+| Total TypeScript files | 277 |
+| API route files | 20+ |
+| Component directories | 13 |
+| Lib utility files | 60+ |
+| Test files | 5 |
+| Supabase migrations | 30+ |
+| Prisma models | 15 |
 
 ---
 
-*Report generated by Matrix Agent*
+## 10. Risks & Gaps
+
+### Critical
+
+| Risk | Impact | Likelihood |
+|------|--------|------------|
+| Per-isolate rate limiting bypass | API abuse, data scraping | Medium |
+| No CSRF protection on state-changing API routes | Unauthorized actions via browser | Low-Medium |
+| 20 open issues unaddressed | Accumulated bugs/vulnerabilities | Medium |
+
+### High
+
+| Risk | Impact | Likelihood |
+|------|--------|------------|
+| No integration or E2E tests | Regressions reach production | High |
+| No branch protection on `main` | Force push, accidental deletion | Medium |
+| No dependency scanning (Dependabot/Snyk) | Known vulnerabilities in dependencies | Medium |
+| D1 adapter hand-rolled, not battle-tested | Query bugs, data corruption | Low-Medium |
+
+### Medium
+
+| Risk | Impact | Likelihood |
+|------|--------|------------|
+| Hardcoded Supabase anon key in wrangler.toml | Credential exposure | Low |
+| Legacy Post model still in schema | Confusion, unnecessary surface area | Low |
+| No error monitoring (Sentry etc.) | Silent failures in production | Medium |
+| No preview deployments | PRs merged without visual verification | Medium |
+
+---
+
+## 11. Recommendations
+
+### Immediate (This Week)
+
+1. **Enable branch protection on `main`**
+   - Require PR reviews
+   - Require status checks (CI) to pass
+   -禁止 force push
+
+2. **Add Dependabot**
+   - Create `.github/dependabot.yml` for npm and GitHub Actions
+   - Auto-merge minor/patch updates with CI passing
+
+3. **Move Supabase key out of `wrangler.toml`**
+   - Use Cloudflare dashboard variables
+   - Keep only `SUPABASE_URL` in code (it's not sensitive)
+
+4. **Unify rate limiting**
+   - Refactor `ai-chat/route.ts` to use `createIpRateLimiter` from the shared module
+   - Eliminate duplicate code
+
+### Short-Term (This Month)
+
+5. **Add global rate limiting**
+   - Implement Durable Objects or Workers KV-based counters
+   - Critical for production with multiple isolates
+
+6. **Add API route tests**
+   - At minimum: test each route's happy path and auth rejection
+   - Use Vitest with mocked Supabase/Prisma
+
+7. **Set up error monitoring**
+   - Integrate Sentry or equivalent
+   - Track 5xx rates, unhandled rejections, D1 query failures
+
+8. **Add preview deployments**
+   - Cloudflare Pages preview for each PR
+   - Visual verification before merge
+
+### Medium-Term (This Quarter)
+
+9. **Migrate D1 adapter to Prisma's official D1 support**
+   - When `@prisma/adapter-d1` stabilizes
+   - Eliminates 400+ lines of custom code
+
+10. **Add component tests**
+    - React Testing Library for critical UI flows
+    - Property search, document workflow, lead management
+
+11. **Remove legacy code**
+    - Clean up `Post` model
+    - Complete `legacy-crm.ts` migration
+    - Remove dead routes/components
+
+12. **Add API documentation**
+    - OpenAPI/Swagger spec
+    - Auto-generated from Zod schemas
+
+### Long-Term
+
+13. **Search engine upgrade** — Algolia or Elasticsearch for property search
+14. **CDN image optimization** — Cloudflare Image Resizing for property photos
+15. **PWA support** — Offline capability, install prompt
+16. **Multi-language** — `next-intl` is already installed; add English support
+
+---
+
+## Appendix: Key File Reference
+
+| File | Purpose |
+|------|---------|
+| `prisma/schema.prisma` | Database schema (15 models) |
+| `src/lib/db-d1.ts` | D1 database adapter (Edge runtime) |
+| `src/lib/db.ts` | Prisma client (Node runtime) |
+| `src/lib/edge-db.ts` | Runtime-aware DB selector |
+| `src/lib/rate-limit.ts` | IP-based rate limiter |
+| `src/lib/validators.ts` | Input validation |
+| `src/lib/server-admin-auth.ts` | Auth middleware |
+| `src/lib/ai-edge.ts` | AI provider adapter |
+| `src/lib/documents/state-machine.ts` | Document workflow engine |
+| `src/lib/notifications.ts` | Notification service |
+| `next.config.ts` | Security headers, CSP, image config |
+| `wrangler.toml` | Cloudflare Workers config |
+| `Caddyfile` | Dev reverse proxy |
+| `.github/workflows/ci.yml` | CI pipeline |
+| `.github/workflows/deploy-cloudflare.yml` | Production deploy |
