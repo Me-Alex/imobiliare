@@ -72,7 +72,7 @@ function checkPendingSignature(ctx: FlowContext): FlowAction | null {
 
   for (const doc of ctx.documents) {
     if (isTerminal(doc.status)) continue
-    if (doc.status !== 'READY_TO_SIGN' && doc.status !== 'PARTIALLY_SIGNED') continue
+    if (doc.status !== 'READY_TO_SIGN' && doc.status !== 'PARTIALLY_SIGNED' && doc.status !== 'SIGNING_IN_PROGRESS') continue
 
     const mySig = ctx.signatures.find(
       (s) => s.documentId === doc.id && s.participantId === participant.id && s.status === 'PENDING',
@@ -80,6 +80,16 @@ function checkPendingSignature(ctx: FlowContext): FlowAction | null {
     if (!mySig) continue
 
     const template = getTemplate(doc.kind)
+
+    if (doc.status === 'SIGNING_IN_PROGRESS' && doc.signatureEnvelopeId) {
+      return {
+        kind: 'SIGN',
+        documentId: doc.id,
+        label: `Continuă semnarea: ${template.shortTitle}`,
+        description: 'Ai un link de semnare activ. Deschide-l pentru a completa semnătura.',
+        signature: template.signature,
+      }
+    }
 
     if (template.signature === 'SIMPLE') {
       return {

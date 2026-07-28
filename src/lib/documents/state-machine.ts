@@ -17,13 +17,15 @@ const TRANSITIONS: Record<DocumentStatus, readonly DocumentStatus[]> = {
   REQUESTED: ['IN_REVIEW', 'CANCELLED'],
   IN_REVIEW: ['NEEDS_INFO', 'READY_TO_SIGN', 'REJECTED', 'CANCELLED'],
   NEEDS_INFO: ['IN_REVIEW', 'CANCELLED'],
-  READY_TO_SIGN: ['PARTIALLY_SIGNED', 'SIGNED', 'CANCELLED'],
+  READY_TO_SIGN: ['SIGNING_IN_PROGRESS', 'PARTIALLY_SIGNED', 'SIGNED', 'CANCELLED'],
+  SIGNING_IN_PROGRESS: ['PARTIALLY_SIGNED', 'SIGNED', 'CANCELLED', 'EXPIRED'],
   PARTIALLY_SIGNED: ['SIGNED', 'CANCELLED'],
   SIGNED: ['APPROVED', 'SUPERSEDED'],
   APPROVED: ['SUPERSEDED'],
   REJECTED: [],
   CANCELLED: [],
   SUPERSEDED: [],
+  EXPIRED: [],
 }
 
 /** Which actor kinds can trigger each transition. */
@@ -54,9 +56,16 @@ const RULES: Record<DocumentStatus, Partial<Record<DocumentStatus, ActorRule>>> 
     CANCELLED: { kind: 'ANY' },
   },
   READY_TO_SIGN: {
+    SIGNING_IN_PROGRESS: { kind: 'STAFF' }, // staff initiates external signing
     PARTIALLY_SIGNED: { kind: 'PARTICIPANT', role: 'ANY' }, // any required signer
     SIGNED: { kind: 'PARTICIPANT', role: 'ANY' },
     CANCELLED: { kind: 'ANY' },
+  },
+  SIGNING_IN_PROGRESS: {
+    PARTIALLY_SIGNED: { kind: 'SYSTEM' }, // webhook from e-signature provider
+    SIGNED: { kind: 'SYSTEM' }, // webhook: all signatures collected
+    CANCELLED: { kind: 'STAFF' }, // staff cancels external signing
+    EXPIRED: { kind: 'SYSTEM' }, // signing link expired
   },
   PARTIALLY_SIGNED: {
     SIGNED: { kind: 'PARTICIPANT', role: 'ANY' },

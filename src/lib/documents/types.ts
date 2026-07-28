@@ -116,12 +116,14 @@ export type DocumentStatus =
   | 'IN_REVIEW' // staff is reviewing
   | 'NEEDS_INFO' // staff sent it back for changes
   | 'READY_TO_SIGN' // file is generated, signers notified
+  | 'SIGNING_IN_PROGRESS' // external e-signature provider is processing
   | 'PARTIALLY_SIGNED' // some required signers have signed
   | 'SIGNED' // all required signers have signed
   | 'APPROVED' // staff approved, locked
   | 'REJECTED' // staff rejected, terminal
   | 'CANCELLED' // someone cancelled, terminal
   | 'SUPERSEDED' // replaced by a newer version, terminal
+  | 'EXPIRED' // document expired before completion, terminal
 
 /** A filled instance of a template, anchored to a transaction. */
 export interface Document {
@@ -140,6 +142,14 @@ export interface Document {
   file: DocumentFile | null
   /** Who triggered the current state. */
   createdBy: string
+  /** When the document expires (e.g. reservation offers, cooling-off deadlines). */
+  expiresAt: string | null
+  /** What happens when the document expires. */
+  expirationAction: 'CANCEL' | 'SUPERSEDE' | 'NOTIFY_ONLY' | null
+  /** Cooling-off period tracking (EU consumer protection). */
+  coolingOff: CoolingOffPeriod | null
+  /** External e-signature envelope reference. */
+  signatureEnvelopeId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -165,6 +175,12 @@ export interface DocumentSignature {
   signedAt: string | null
   /** External signature reference (e.g. qualified e-signature provider id). */
   signatureRef: string | null
+  /** Audit trail: IP address of the signer at signing time. */
+  signerIp: string | null
+  /** Audit trail: user agent of the signer's browser. */
+  signerUserAgent: string | null
+  /** Audit trail: explicit consent proof with timestamp. */
+  consentProof: ConsentProof | null
 }
 
 /** Immutable audit log entry. */
@@ -188,6 +204,43 @@ export type DocumentEventType =
   | 'FILE_GENERATED'
   | 'NOTE'
   | 'RESENT'
+  | 'EXPIRED'
+  | 'COOLING_OFF_STARTED'
+  | 'COOLING_OFF_EXPIRED'
+  | 'COOLING_OFF_EXERCISED'
+  | 'ENVELOPE_CREATED'
+  | 'ENVELOPE_COMPLETED'
+  | 'ENVELOPE_FAILED'
+
+// ─── Cooling-off & Consent ─────────────────────────────────────
+
+/** EU consumer protection: 14-day withdrawal period tracking. */
+export interface CoolingOffPeriod {
+  /** When the cooling-off period started (document signed at). */
+  startedAt: string
+  /** When the cooling-off period expires (startedAt + 14 days). */
+  expiresAt: string
+  /** Whether the consumer has exercised their right of withdrawal. */
+  exercised: boolean
+  /** When the withdrawal was exercised, if applicable. */
+  exercisedAt: string | null
+  /** Reason for withdrawal, if provided. */
+  reason: string | null
+}
+
+/** Proof of consent for signature audit trail. */
+export interface ConsentProof {
+  /** Exact timestamp when consent was given. */
+  timestamp: string
+  /** The text the user consented to. */
+  consentText: string
+  /** IP address of the consenting party. */
+  ip: string | null
+  /** User agent string. */
+  userAgent: string | null
+  /** Optional geolocation if available. */
+  geoLocation: { lat: number; lng: number } | null
+}
 
 // ─── Flow (what the user sees) ───────────────────────────────
 

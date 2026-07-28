@@ -9,6 +9,8 @@ export * from './types'
 export * from './state-machine'
 export * from './identity'
 export * from './flow'
+export * from './cooling-off'
+export * from './expiration'
 export {
   TEMPLATES,
   TEMPLATES_IN_ORDER,
@@ -27,3 +29,14 @@ export {
   pickClientIdentityFields,
   pickOwnerIdentityFields,
 } from './fields'
+export {
+  type ESignatureProvider,
+  type SignerInfo,
+  type Envelope,
+  type EnvelopeStatus,
+  type SignatureProof,
+  type CreateEnvelopeOptions,
+  MockESignatureProvider,
+  getSignatureProvider,
+  setSignatureProvider,
+} from './e-signature'

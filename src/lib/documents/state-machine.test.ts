@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { canTransition, isTerminal, transition } from './state-machine'
+import { canTransition, isTerminal, transition, deriveStatusAfterSignature } from './state-machine'
 import { TEMPLATES_IN_ORDER, getTemplate } from './templates'
 import { isClientComplete, isOwnerComplete } from './identity'
+import { createCoolingOffPeriod, isCoolingOffExpired, canWithdraw, exerciseWithdrawal, getCoolingOffStatus } from './cooling-off'
+import { isDocumentExpired, shouldAutoExpire, getExpiryTargetStatus } from './expiration'
 
 const STAFF: import('./types').Actor = { kind: 'STAFF', role: 'ADMIN', userId: 'u_staff' }
 const CLIENT: import('./types').Actor = { kind: 'PARTICIPANT', role: 'CLIENT', userId: 'u_client' }
+const SYSTEM: import('./types').Actor = { kind: 'SYSTEM' }
 
 describe('documents state machine', () => {
   it('exposes six templates in deterministic order', () => {
@@ -52,6 +55,35 @@ describe('documents state machine', () => {
     expect(transition('READY_TO_SIGN', 'SIGNED', CLIENT).ok).toBe(true)
     expect(transition('SIGNED', 'APPROVED', STAFF).ok).toBe(true)
   })
+
+  it('allows READY_TO_SIGN → SIGNING_IN_PROGRESS for staff', () => {
+    const result = transition('READY_TO_SIGN', 'SIGNING_IN_PROGRESS', STAFF)
+    expect(result.ok).toBe(true)
+  })
+
+  it('allows SIGNING_IN_PROGRESS → SIGNED for system (webhook)', () => {
+    const result = transition('SIGNING_IN_PROGRESS', 'SIGNED', SYSTEM)
+    expect(result.ok).toBe(true)
+  })
+
+  it('allows SIGNING_IN_PROGRESS → EXPIRED for system', () => {
+    const result = transition('SIGNING_IN_PROGRESS', 'EXPIRED', SYSTEM)
+    expect(result.ok).toBe(true)
+  })
+
+  it('classifies EXPIRED as terminal', () => {
+    expect(isTerminal('EXPIRED')).toBe(true)
+  })
+
+  it('classifies SIGNING_IN_PROGRESS as non-terminal', () => {
+    expect(isTerminal('SIGNING_IN_PROGRESS')).toBe(false)
+  })
+
+  it('blocks transitions from EXPIRED', () => {
+    const result = transition('EXPIRED', 'APPROVED', STAFF)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error.code).toBe('TERMINAL_STATE')
+  })
 })
 
 describe('identity helpers', () => {
@@ -81,5 +113,105 @@ describe('template registry', () => {
     expect(getTemplate('handover_protocol').kind).toBe('handover_protocol')
     expect(getTemplate('reservation_offer').kind).toBe('reservation_offer')
     expect(getTemplate('viewing_report').kind).toBe('viewing_report')
+  })
+})
+
+describe('deriveStatusAfterSignature', () => {
+  it('returns SIGNED when all required signers have signed', () => {
+    expect(deriveStatusAfterSignature({
+      current: 'READY_TO_SIGN',
+      requiredSigners: 2,
+      signedSigners: 2,
+    })).toBe('SIGNED')
+  })
+
+  it('returns PARTIALLY_SIGNED when only some have signed', () => {
+    expect(deriveStatusAfterSignature({
+      current: 'READY_TO_SIGN',
+      requiredSigners: 2,
+      signedSigners: 1,
+    })).toBe('PARTIALLY_SIGNED')
+  })
+
+  it('returns current status when not in signing states', () => {
+    expect(deriveStatusAfterSignature({
+      current: 'IN_REVIEW',
+      requiredSigners: 2,
+      signedSigners: 2,
+    })).toBe('IN_REVIEW')
+  })
+})
+
+describe('cooling-off period', () => {
+  it('creates a 14-day period from signed date', () => {
+    const signedAt = '2026-07-29T10:00:00Z'
+    const co = createCoolingOffPeriod(signedAt)
+    expect(co.startedAt).toBe(signedAt)
+    expect(co.exercised).toBe(false)
+    // 14 days later
+    const expiry = new Date(co.expiresAt)
+    const start = new Date(signedAt)
+    const diffDays = (expiry.getTime() - start.getTime()) / (24 * 60 * 60 * 1_000)
+    expect(diffDays).toBe(14)
+  })
+
+  it('allows withdrawal within the period', () => {
+    const recent = new Date(Date.now() - 60_000).toISOString() // 1 minute ago
+    const co = createCoolingOffPeriod(recent)
+    expect(canWithdraw(co)).toBe(true)
+  })
+
+  it('blocks withdrawal after exercise', () => {
+    const recent = new Date(Date.now() - 60_000).toISOString()
+    const co = createCoolingOffPeriod(recent)
+    const exercised = exerciseWithdrawal(co, 'Changed my mind')
+    expect(exercised).not.toBeNull()
+    expect(canWithdraw(exercised!)).toBe(false)
+    expect(exercised!.reason).toBe('Changed my mind')
+  })
+
+  it('returns a status label', () => {
+    const recent = new Date(Date.now() - 60_000).toISOString()
+    const co = createCoolingOffPeriod(recent)
+    const status = getCoolingOffStatus(co)
+    expect(status.label).toContain('zile rămase')
+  })
+})
+
+describe('document expiration', () => {
+  it('detects expired documents', () => {
+    const doc = {
+      expiresAt: new Date(Date.now() - 1_000).toISOString(), // 1 second ago
+    } as any
+    expect(isDocumentExpired(doc)).toBe(true)
+  })
+
+  it('does not flag documents without expiration', () => {
+    const doc = { expiresAt: null } as any
+    expect(isDocumentExpired(doc)).toBe(false)
+  })
+
+  it('determines auto-expire eligibility', () => {
+    const doc = {
+      status: 'READY_TO_SIGN',
+      expiresAt: new Date(Date.now() - 1_000).toISOString(),
+      expirationAction: 'CANCEL',
+    } as any
+    expect(shouldAutoExpire(doc)).toBe(true)
+  })
+
+  it('skips auto-expire for terminal documents', () => {
+    const doc = {
+      status: 'CANCELLED',
+      expiresAt: new Date(Date.now() - 1_000).toISOString(),
+      expirationAction: 'CANCEL',
+    } as any
+    expect(shouldAutoExpire(doc)).toBe(false)
+  })
+
+  it('maps expiration action to target status', () => {
+    expect(getExpiryTargetStatus('CANCEL')).toBe('EXPIRED')
+    expect(getExpiryTargetStatus('SUPERSEDE')).toBe('SUPERSEDED')
+    expect(getExpiryTargetStatus('NOTIFY_ONLY')).toBeNull()
   })
 })
