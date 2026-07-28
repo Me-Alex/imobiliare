@@ -4,16 +4,11 @@
 // Enums
 // ============================================================================
 
-export enum AppointmentStep {
-  SCHEDULE = 'SCHEDULE',
-  PREPARE = 'PREPARE',
-  SIGN = 'SIGN',
-  CONFIRM = 'CONFIRM',
-}
+export type AppointmentStep = 'SCHEDULE' | 'PREPARE' | 'SIGN' | 'CONFIRM'
 
 export type SignatureMethod = 'TYPED' | 'DRAWN'
 
-export type DocumentChecklistStatus = 'pending' | 'uploaded' | 'verified' | 'rejected'
+export type DocumentChecklistStatus = 'PENDING' | 'UPLOADED' | 'VERIFIED' | 'REJECTED'
 
 export type AppointmentStatus =
   | 'PENDING'
@@ -31,67 +26,64 @@ export type AppointmentStatus =
 
 export interface Appointment {
   id: string
-  clientId?: string | null
-  propertyId: string
-  propertyReference?: string | null
-  propertyTitle?: string | null
-  agentId?: string | null
-  staffReference?: string | null
-  staffName?: string | null
-  startAt: string
-  endAt: string
+  client_id?: string | null
+  property_id: string
+  property_reference?: string | null
+  property_title?: string | null
+  agent_id?: string | null
+  staff_reference?: string | null
+  staff_name?: string | null
+  scheduled_at: string
+  scheduled_end: string
   status: AppointmentStatus
   notes?: string | null
-  clientName?: string | null
-  clientEmail?: string | null
-  clientPhone?: string | null
-  sourceId?: string | null
+  client_name?: string | null
+  client_email?: string | null
+  client_phone?: string | null
+  source_id?: string | null
   rating?: number | null
   feedback?: string | null
-  wouldProceed?: boolean | null
-  confirmedAt?: string | null
-  createdAt: string
-  updatedAt: string
-  completedAt?: string | null
-  checkedInAt?: string | null
-  cancellationReason?: string | null
-  noShowMarkedAt?: string | null
-  noShowEligibleAt?: string | null
-  bookingTermsAcceptedAt?: string | null
+  would_proceed?: boolean | null
+  confirmed_at?: string | null
+  created_at: string
+  updated_at: string
+  completed_at?: string | null
+  checked_in_at?: string | null
+  cancellation_reason?: string | null
+  no_show_marked_at?: string | null
+  no_show_eligible_at?: string | null
+  booking_terms_accepted_at?: string | null
 }
 
 export interface DocumentChecklist {
   id: string
-  appointmentId: string
-  documentType: DocumentType
+  appointment_id: string
+  document_type: DocumentType
   status: DocumentChecklistStatus
   label: string
   description?: string
-  isRequired: boolean
-  uploadedDocumentId?: string | null
-  uploadedAt?: string | null
-  verifiedAt?: string | null
-  verifiedBy?: string | null
-  rejectionReason?: string | null
-  createdAt: string
-  updatedAt: string
+  required: boolean
+  uploaded_document_id?: string | null
+  uploaded_at?: string | null
+  verified_at?: string | null
+  verified_by?: string | null
+  rejection_reason?: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface Signature {
   id: string
-  documentId: string
-  userId: string
-  signerRole: 'CLIENT' | 'OWNER' | 'AGENT' | 'ADMIN'
-  status: 'PENDING' | 'SIGNED' | 'DECLINED'
-  required: boolean
-  signatureName?: string | null
-  signatureMethod?: SignatureMethod | null
-  signatureImageUrl?: string | null
-  consentText?: string | null
-  documentChecksum?: string | null
-  signedAt?: string | null
-  createdAt: string
-  updatedAt: string
+  appointment_id: string
+  document_type: string
+  signer_id: string
+  signer_name: string
+  signer_role: 'CLIENT' | 'AGENT' | 'OWNER' | 'ADMIN'
+  method: SignatureMethod
+  signature_text?: string | null
+  signature_image_url?: string | null
+  consent_accepted_at: string
+  signed_at: string
 }
 
 export interface DocumentUpload {
