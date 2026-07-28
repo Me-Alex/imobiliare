@@ -72,7 +72,7 @@ export function AppointmentWorkspace({
   const handleVerifyDocument = async (checklistId: string) => {
     await updateChecklistItem(checklistId, {
       status: 'VERIFIED',
-      verifiedAt: new Date().toISOString(),
+      verified_at: new Date().toISOString(),
     })
   }
 
@@ -80,7 +80,7 @@ export function AppointmentWorkspace({
   const handleRejectDocument = async (checklistId: string, reason: string) => {
     await updateChecklistItem(checklistId, {
       status: 'REJECTED',
-      rejectionReason: reason,
+      rejection_reason: reason,
     })
   }
 
