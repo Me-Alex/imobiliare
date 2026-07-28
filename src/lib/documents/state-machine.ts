@@ -81,6 +81,7 @@ const RULES: Record<DocumentStatus, Partial<Record<DocumentStatus, ActorRule>>> 
   REJECTED: {},
   CANCELLED: {},
   SUPERSEDED: {},
+  EXPIRED: {},
 }
 
 export type TransitionError =
