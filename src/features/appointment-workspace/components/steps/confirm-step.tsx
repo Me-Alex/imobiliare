@@ -217,7 +217,7 @@ export function ConfirmStep({
           )}
           <Button
             onClick={onConfirm}
-            isLoading={isLoading}
+            disabled={isLoading}
             className="min-w-[200px]"
           >
             Confirmă Programare
