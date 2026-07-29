@@ -1,9 +1,11 @@
 'use client'
 
+import { useSyncExternalStore } from 'react'
 import { motion } from 'framer-motion'
 import {
   CalendarDays, Clock, Star, CalendarClock, MessageSquarePlus,
-  XCircle, CheckCircle2, UserCheck, UserX, WalletCards,
+  XCircle, CheckCircle2, UserCheck, UserX, WalletCards, FileSignature,
+  MoreHorizontal, ArrowRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -14,13 +16,34 @@ import { useAppStore } from '@/store/use-app-store'
 import { DEFAULT_STAFF } from '@/lib/constants'
 import type { Vizionare } from '@/lib/types'
 import { StarRating } from '@/components/dialogs/vizionare-feedback-dialog'
-import { formatDateRO } from '@/lib/utils'
-import { openDealRoomForViewing } from '@/lib/document-navigation'
+import { cn, formatDateRO } from '@/lib/utils'
+import { openDealRoomForViewing, openViewingDocuments } from '@/lib/document-navigation'
+import { getViewingGuidance, type ViewingPrimaryAction } from '@/lib/viewing-guidance'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function getStaffById(id: string) {
   return DEFAULT_STAFF.find(s => s.id === id)
+}
+
+function subscribeToClock(callback: () => void) {
+  const timer = window.setInterval(callback, 30_000)
+  return () => window.clearInterval(timer)
+}
+
+function getClockSnapshot() {
+  return Math.floor(Date.now() / 30_000)
+}
+
+function getServerClockSnapshot() {
+  return 0
 }
 
 // ─── Vizionare Card ─────────────────────────────────────────────────────────
@@ -64,13 +87,61 @@ export function VizionareCard({
   const isCompleted = vizionare.status === 'completed'
   const hasFeedback = typeof vizionare.rating === 'number' && vizionare.rating > 0
   const canClientManage = !canManage && vizionare.clientId === currentUserId
+  const audience = canManage ? 'staff' : canClientManage ? 'client' : 'observer'
+  const guidance = getViewingGuidance(vizionare, audience)
+  const clockSnapshot = useSyncExternalStore(subscribeToClock, getClockSnapshot, getServerClockSnapshot)
+  const currentTime = clockSnapshot * 30_000
   const noShowEligible = Boolean(
-    vizionare.noShowEligibleAt && Date.now() >= new Date(vizionare.noShowEligibleAt).getTime(),
+    vizionare.noShowEligibleAt && currentTime >= new Date(vizionare.noShowEligibleAt).getTime(),
   )
 
   const handleDealRoom = () => {
     openDealRoomForViewing(navigateTo, vizionare.id)
   }
+
+  const handleDocuments = () => {
+    openViewingDocuments(navigateTo, vizionare.id)
+  }
+
+  const handlePrimaryAction = (action: ViewingPrimaryAction) => {
+    switch (action) {
+      case 'confirm':
+        onConfirm(vizionare.id)
+        break
+      case 'check_in':
+        onCheckIn(vizionare.id)
+        break
+      case 'complete':
+        onComplete(vizionare.id)
+        break
+      case 'feedback':
+        onAddFeedback(vizionare)
+        break
+      case 'documents':
+        handleDocuments()
+        break
+      case 'deal_room':
+        handleDealRoom()
+        break
+      case 'reschedule':
+        onReschedule(vizionare)
+        break
+      case 'none':
+        break
+    }
+  }
+
+  const GuidanceIcon = guidance.action === 'documents'
+    ? FileSignature
+    : guidance.action === 'deal_room'
+      ? WalletCards
+      : guidance.action === 'feedback'
+        ? MessageSquarePlus
+        : guidance.action === 'reschedule'
+          ? CalendarClock
+          : guidance.action === 'check_in'
+            ? UserCheck
+            : CheckCircle2
 
   return (
     <motion.div
@@ -171,37 +242,53 @@ export function VizionareCard({
             </p>
           )}
 
-          {/* Actions */}
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50 flex-wrap">
-            <Button
-              variant="default"
-              size="sm"
-              className="gap-1.5 text-xs h-8"
-              onClick={handleDealRoom}
-            >
-              <WalletCards className="h-3.5 w-3.5" />
-              Continuă tranzacția
-            </Button>
+          {/* One clear next step, followed by optional secondary actions. */}
+          <div
+            className={cn(
+              'mt-3 rounded-xl border p-3.5',
+              guidance.tone === 'warning' && 'border-amber-200 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20',
+              guidance.tone === 'info' && 'border-blue-200 bg-blue-50/70 dark:border-blue-900 dark:bg-blue-950/20',
+              guidance.tone === 'success' && 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/20',
+              guidance.tone === 'neutral' && 'border-border bg-muted/35',
+            )}
+          >
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Pasul următor
+            </p>
+            <p className="text-sm font-semibold text-foreground">{guidance.title}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{guidance.description}</p>
+          </div>
 
-            {/* Add Feedback button — completed vizionari without rating */}
-            {canClientManage && isCompleted && !hasFeedback && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
+            {guidance.action !== 'none' && (
               <Button
-                variant="outline"
                 size="sm"
-                className="gap-1.5 text-xs h-8 text-amber-700 border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-900/20"
-                onClick={() => onAddFeedback(vizionare)}
+                className="h-9 flex-1 gap-1.5 text-xs sm:flex-none"
+                onClick={() => handlePrimaryAction(guidance.action)}
               >
-                <MessageSquarePlus className="h-3.5 w-3.5" />
-                Adaugă feedback
+                <GuidanceIcon className="h-3.5 w-3.5" />
+                {guidance.actionLabel}
+                <ArrowRight className="h-3.5 w-3.5" />
               </Button>
             )}
 
-            {/* Edit Feedback button — completed vizionari with rating */}
+            {canClientManage && isActive && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 text-xs"
+                onClick={() => onReschedule(vizionare)}
+              >
+                <CalendarClock className="h-3.5 w-3.5" />
+                Reprogramează
+              </Button>
+            )}
+
             {canClientManage && isCompleted && hasFeedback && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1.5 text-xs h-8 text-muted-foreground"
+                className="h-9 gap-1.5 text-xs text-muted-foreground"
                 onClick={() => onAddFeedback(vizionare)}
               >
                 <MessageSquarePlus className="h-3.5 w-3.5" />
@@ -209,77 +296,47 @@ export function VizionareCard({
               </Button>
             )}
 
-            {/* Reschedule button — active vizionari */}
-            {canClientManage && [
-              'pending', 'confirmed', 'cancelled', 'cancelled_by_client',
-              'cancelled_by_agent', 'no_show',
-            ].includes(vizionare.status) && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs h-8 text-primary border-primary/30 hover:bg-primary/5 dark:border-primary/50"
-                onClick={() => onReschedule(vizionare)}
-              >
-                <CalendarClock className="h-3.5 w-3.5" />
-                {vizionare.status === 'pending' || vizionare.status === 'confirmed'
-                  ? 'Reprogramare'
-                  : 'Programează din nou'}
+            {canManage && isCompleted && vizionare.wouldProceed === true && (
+              <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs" onClick={handleDealRoom}>
+                <WalletCards className="h-3.5 w-3.5" />
+                Continuă tranzacția
               </Button>
             )}
 
-            {/* Cancel button — pending vizionari */}
-            {canClientManage && (vizionare.status === 'pending' || vizionare.status === 'confirmed') && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-xs h-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 ml-auto"
-                onClick={() => onCancel(vizionare.id)}
-              >
-                <XCircle className="h-3.5 w-3.5" />
-                Anulează
-              </Button>
-            )}
-
-            {canManage && vizionare.status === 'pending' && (
-              <Button size="sm" className="gap-1.5 text-xs h-8" onClick={() => onConfirm(vizionare.id)}>
-                <CheckCircle2 className="h-3.5 w-3.5" /> Confirmă
-              </Button>
-            )}
-
-            {canManage && vizionare.status === 'confirmed' && (
-              <Button size="sm" className="gap-1.5 text-xs h-8" onClick={() => onCheckIn(vizionare.id)}>
-                <UserCheck className="h-3.5 w-3.5" /> Client prezent
-              </Button>
-            )}
-
-            {canManage && vizionare.status === 'checked_in' && (
-              <Button size="sm" className="gap-1.5 text-xs h-8" onClick={() => onComplete(vizionare.id)}>
-                <CheckCircle2 className="h-3.5 w-3.5" /> Finalizează vizionarea
-              </Button>
-            )}
-
-            {canManage && (vizionare.status === 'pending' || vizionare.status === 'confirmed') && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!noShowEligible}
-                title={noShowEligible ? 'Consemnează neprezentarea' : 'Disponibil după interval și cele 15 minute de grație'}
-                className="gap-1.5 text-xs h-8 text-orange-700 border-orange-300"
-                onClick={() => onNoShow(vizionare.id)}
-              >
-                <UserX className="h-3.5 w-3.5" /> Nu s-a prezentat
-              </Button>
-            )}
-
-            {canManage && isActive && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-xs h-8 text-red-600 ml-auto"
-                onClick={() => onCancelByAgent(vizionare.id)}
-              >
-                <XCircle className="h-3.5 w-3.5" /> Anulează agenția
-              </Button>
+            {((canClientManage && isActive) || (canManage && isActive)) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-auto h-9 w-9"
+                    aria-label="Mai multe acțiuni"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {canManage && (vizionare.status === 'pending' || vizionare.status === 'confirmed') && (
+                    <DropdownMenuItem
+                      disabled={!noShowEligible}
+                      onSelect={() => onNoShow(vizionare.id)}
+                    >
+                      <UserX />
+                      {noShowEligible ? 'Consemnează neprezentarea' : 'Neprezentare — după grație'}
+                    </DropdownMenuItem>
+                  )}
+                  {canManage && (vizionare.status === 'pending' || vizionare.status === 'confirmed') && (
+                    <DropdownMenuSeparator />
+                  )}
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={() => canManage ? onCancelByAgent(vizionare.id) : onCancel(vizionare.id)}
+                  >
+                    <XCircle />
+                    {canManage ? 'Anulează din partea agenției' : 'Anulează programarea'}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </CardContent>

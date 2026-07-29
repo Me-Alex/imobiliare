@@ -8,6 +8,16 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
@@ -58,6 +68,9 @@ export function VizionarileMelePage() {
   // Feedback dialog state
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackVizionare, setFeedbackVizionare] = useState<Vizionare | null>(null)
+  const [cancelRequest, setCancelRequest] = useState<{ id: string; actor: 'client' | 'agency' } | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelSubmitting, setCancelSubmitting] = useState(false)
 
   const refreshViewings = useCallback(async () => {
     if (!user) return
@@ -89,31 +102,58 @@ export function VizionarileMelePage() {
     [vizionari]
   )
 
-  const handleCancel = useCallback(async (id: string) => {
+  const releaseLocalSlot = useCallback((id: string) => {
+    const cancelled = vizionari.find((viewing) => viewing.id === id)
+    if (!cancelled) return
+    const slots = loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
+    const slotIdx = slots.findIndex((slot) =>
+      slot.staffId === cancelled.staffId && slot.date === cancelled.date &&
+      slot.startTime === cancelled.startTime && slot.isBooked
+    )
+    if (slotIdx === -1) return
+    slots[slotIdx].isBooked = false
+    slots[slotIdx].bookedBy = null
+    slots[slotIdx].bookedByName = null
+    saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
+  }, [vizionari])
+
+  const requestCancellation = useCallback((id: string, actor: 'client' | 'agency') => {
+    setCancelReason('')
+    setCancelRequest({ id, actor })
+  }, [])
+
+  const confirmCancellation = useCallback(async () => {
+    if (!cancelRequest) return
+    const reason = cancelReason.trim()
+    if (cancelRequest.actor === 'agency' && reason.length < 3) {
+      toast.error('Adaugă un motiv de cel puțin 3 caractere pentru client.')
+      return
+    }
+
+    setCancelSubmitting(true)
     try {
-      await cancelViewing(id)
-      const cancelled = vizionari.find((viewing) => viewing.id === id)
-      if (cancelled) {
-        const slots = loadFromLS<AvailabilitySlot[]>(LS_KEYS.STAFF_AVAILABILITY, [])
-        const slotIdx = slots.findIndex((slot) =>
-          slot.staffId === cancelled.staffId && slot.date === cancelled.date &&
-          slot.startTime === cancelled.startTime && slot.isBooked
-        )
-        if (slotIdx !== -1) {
-          slots[slotIdx].isBooked = false
-          slots[slotIdx].bookedBy = null
-          slots[slotIdx].bookedByName = null
-          saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
-        }
+      if (cancelRequest.actor === 'agency') {
+        await cancelViewingByAgent(cancelRequest.id, reason)
+      } else {
+        await cancelViewing(cancelRequest.id, reason || 'Anulare solicitată de client')
       }
+      releaseLocalSlot(cancelRequest.id)
       await refreshViewings()
-      toast.success('Vizionare anulată', { description: 'Programarea a fost anulată cu succes.' })
+      toast.success('Vizionare anulată', {
+        description: cancelRequest.actor === 'agency'
+          ? 'Clientul va vedea motivul, iar intervalul a fost eliberat.'
+          : 'Intervalul a fost eliberat. Poți programa o altă dată.',
+      })
+      setCancelRequest(null)
+      setCancelReason('')
     } catch (error) {
       toast.error('Vizionarea nu a putut fi anulată.', {
         description: error instanceof Error ? error.message : undefined,
       })
+    } finally {
+      setCancelSubmitting(false)
     }
-  }, [refreshViewings, vizionari])
+  }, [cancelReason, cancelRequest, refreshViewings, releaseLocalSlot])
 
   const handleAddFeedback = useCallback((v: Vizionare) => {
     setFeedbackVizionare(v)
@@ -180,12 +220,6 @@ export function VizionarileMelePage() {
       })
     }
   }, [refreshViewings])
-
-  const handleCancelByAgent = useCallback((id: string) => {
-    const reason = window.prompt('Motivul anulării de către agenție:')
-    if (!reason) return
-    void runOperationalAction(id, () => cancelViewingByAgent(id, reason), 'Vizionarea a fost anulată de agenție.')
-  }, [runOperationalAction])
 
   const canManage = profile?.role === 'AGENT' || profile?.role === 'ADMIN'
 
@@ -281,14 +315,14 @@ export function VizionarileMelePage() {
                       vizionare={v}
                       canManage={canManage}
                       currentUserId={user.id}
-                      onCancel={handleCancel}
+                      onCancel={(id) => requestCancellation(id, 'client')}
                       onAddFeedback={handleAddFeedback}
                       onReschedule={handleReschedule}
                       onConfirm={(id) => void runOperationalAction(id, () => confirmViewing(id), 'Programarea a fost confirmată.')}
                       onCheckIn={(id) => void runOperationalAction(id, () => checkInViewing(id), 'Prezența clientului a fost confirmată.')}
                       onComplete={(id) => void runOperationalAction(id, () => completeViewing(id), 'Vizionarea a fost finalizată. Fișa poate fi generată.')}
                       onNoShow={(id) => void runOperationalAction(id, () => markViewingNoShow(id), 'Neprezentarea a fost consemnată fără penalizare automată.')}
-                      onCancelByAgent={handleCancelByAgent}
+                      onCancelByAgent={(id) => requestCancellation(id, 'agency')}
                     />
                   ))}
                 </div>
@@ -333,14 +367,14 @@ export function VizionarileMelePage() {
                           vizionare={v}
                           canManage={canManage}
                           currentUserId={user.id}
-                          onCancel={handleCancel}
+                          onCancel={(id) => requestCancellation(id, 'client')}
                           onAddFeedback={handleAddFeedback}
                           onReschedule={handleReschedule}
                           onConfirm={(id) => void runOperationalAction(id, () => confirmViewing(id), 'Programarea a fost confirmată.')}
                           onCheckIn={(id) => void runOperationalAction(id, () => checkInViewing(id), 'Prezența clientului a fost confirmată.')}
                           onComplete={(id) => void runOperationalAction(id, () => completeViewing(id), 'Vizionarea a fost finalizată. Fișa poate fi generată.')}
                           onNoShow={(id) => void runOperationalAction(id, () => markViewingNoShow(id), 'Neprezentarea a fost consemnată fără penalizare automată.')}
-                          onCancelByAgent={handleCancelByAgent}
+                          onCancelByAgent={(id) => requestCancellation(id, 'agency')}
                         />
                       </div>
                     ))}
@@ -358,6 +392,65 @@ export function VizionarileMelePage() {
           </TabsContent>
         </Tabs>
       </PageContainer>
+
+      <Dialog
+        open={Boolean(cancelRequest)}
+        onOpenChange={(open) => {
+          if (open || cancelSubmitting) return
+          setCancelRequest(null)
+          setCancelReason('')
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {cancelRequest?.actor === 'agency' ? 'Anulezi vizionarea din partea agenției?' : 'Anulezi programarea?'}
+            </DialogTitle>
+            <DialogDescription>
+              {cancelRequest?.actor === 'agency'
+                ? 'Clientul va vedea motivul anulării, iar intervalul va deveni din nou disponibil.'
+                : 'Intervalul va fi eliberat. Proprietatea rămâne disponibilă și poți alege imediat o altă dată.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="viewing-cancel-reason">
+              Motiv {cancelRequest?.actor === 'agency' ? '(obligatoriu)' : '(opțional)'}
+            </Label>
+            <Textarea
+              id="viewing-cancel-reason"
+              value={cancelReason}
+              onChange={(event) => setCancelReason(event.target.value.slice(0, 500))}
+              placeholder={cancelRequest?.actor === 'agency'
+                ? 'Ex.: proprietatea nu este disponibilă în intervalul confirmat'
+                : 'Spune-ne pe scurt ce s-a schimbat'}
+              rows={3}
+              autoFocus
+            />
+            <p className="text-right text-xs text-muted-foreground">{cancelReason.length}/500</p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={cancelSubmitting}
+              onClick={() => {
+                setCancelRequest(null)
+                setCancelReason('')
+              }}
+            >
+              Păstrează programarea
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={cancelSubmitting || (cancelRequest?.actor === 'agency' && cancelReason.trim().length < 3)}
+              onClick={() => void confirmCancellation()}
+            >
+              {cancelSubmitting ? 'Se anulează…' : 'Confirmă anularea'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Feedback Dialog */}
       <VizionareFeedbackDialog
