@@ -32,6 +32,8 @@ import {
 } from '@/lib/account-roles'
 import { fetchCrmSnapshot, fetchDealRooms, fetchOwnerSnapshot, type DealRoom } from '@/lib/transaction-workspace'
 import { listViewings } from '@/lib/viewing-documents'
+import { getAccountGuidance, getAccountJourney } from '@/lib/account-guidance'
+import { AccountGuidancePanel } from '@/components/account/account-guidance-panel'
 
 interface DashboardAction {
   label: string
@@ -45,13 +47,14 @@ interface DashboardStat {
   value: number
   icon: React.ElementType
   color: string
+  page: PageKey
 }
 
 interface WorkspaceSummary {
   viewings: Vizionare[]
   deals: DealRoom[]
   propertyCount: number
-  requirementCount: number
+  openRequirementCount: number
   totalViews: number
   leadCount: number
 }
@@ -60,7 +63,7 @@ const EMPTY_SUMMARY: WorkspaceSummary = {
   viewings: [],
   deals: [],
   propertyCount: 0,
-  requirementCount: 0,
+  openRequirementCount: 0,
   totalViews: 0,
   leadCount: 0,
 }
@@ -111,7 +114,6 @@ export function DashboardPage() {
 
   const savedSearches = useMemo(() => loadFromLS<Array<{ id: string }>>(LS_KEYS.SAVED_SEARCHES, []), [])
   const activeVizionari = workspace.viewings.filter((item) => ['pending', 'confirmed', 'checked_in'].includes(item.status))
-  const openRequirements = workspace.deals.flatMap((deal) => deal.deal_document_requirements || []).filter((item) => !['APPROVED', 'WAIVED'].includes(item.status))
 
   useEffect(() => {
     if (!user || !profile) {
@@ -128,14 +130,18 @@ export function DashboardPage() {
       try {
         const [viewings, deals] = await Promise.all([listViewings(), fetchDealRooms()])
         let propertyCount = new Set(deals.map((deal) => deal.property_id)).size
-        let requirementCount = deals.flatMap((deal) => deal.deal_document_requirements || []).length
+        const dealRequirements = deals.flatMap((deal) => deal.deal_document_requirements || [])
+        let openRequirementCount = dealRequirements.filter((item) => !['APPROVED', 'WAIVED'].includes(item.status)).length
         let totalViews = 0
         let leadCount = 0
 
         if (profile.role === 'OWNER') {
           const ownerSnapshot = await fetchOwnerSnapshot(user.id)
           propertyCount = ownerSnapshot.properties.length
-          requirementCount = ownerSnapshot.requirements.length
+          openRequirementCount = ownerSnapshot.requirements.filter((item) => {
+            const status = typeof item.status === 'string' ? item.status : ''
+            return !['APPROVED', 'WAIVED'].includes(status)
+          }).length
           totalViews = ownerSnapshot.metrics.reduce((sum, metric) => sum + Number(metric.views || 0), 0)
         }
 
@@ -145,7 +151,7 @@ export function DashboardPage() {
         }
 
         if (!cancelled) {
-          setWorkspace({ viewings, deals, propertyCount, requirementCount, totalViews, leadCount })
+          setWorkspace({ viewings, deals, propertyCount, openRequirementCount, totalViews, leadCount })
         }
       } catch (error) {
         if (!cancelled) {
@@ -193,33 +199,45 @@ export function DashboardPage() {
   const role = profile.role
   const roleDefinition = ACCOUNT_ROLE_DEFINITIONS[role]
   const actions = getActions(role)
+  const activeDealsCount = workspace.deals.filter((deal) => deal.status === 'ACTIVE').length
+  const guidance = getAccountGuidance(role, {
+    dataAvailable: !workspaceError,
+    favorites: favorites.length,
+    activeViewings: activeVizionari.length,
+    openRequirements: workspace.openRequirementCount,
+    propertyCount: workspace.propertyCount,
+    totalViews: workspace.totalViews,
+    leadCount: workspace.leadCount,
+    activeDeals: activeDealsCount,
+  })
+  const journey = getAccountJourney(role)
 
   const stats: DashboardStat[] = role === 'CLIENT'
     ? [
-          { label: 'Favorite', value: favorites.length, icon: Heart, color: 'text-rose-600 bg-rose-100 dark:bg-rose-900/30' },
-          { label: 'Vizionări active', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
-          { label: 'Documente de rezolvat', value: openRequirements.length, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
-        { label: 'Căutări salvate', value: savedSearches.length, icon: Search, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+          { label: 'Favorite', value: favorites.length, icon: Heart, color: 'text-rose-600 bg-rose-100 dark:bg-rose-900/30', page: 'proprietati' },
+          { label: 'Vizionări active', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30', page: 'vizionarile-mele' },
+          { label: 'Documente de rezolvat', value: workspace.openRequirementCount, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30', page: 'documente' },
+        { label: 'Căutări salvate', value: savedSearches.length, icon: Search, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30', page: 'proprietati' },
       ]
     : role === 'OWNER'
       ? [
-          { label: 'Proprietăți proprii', value: workspace.propertyCount, icon: Building2, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
-          { label: 'Solicitări active', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
-          { label: 'Cerințe documente', value: workspace.requirementCount, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
-          { label: 'Vizualizări', value: workspace.totalViews, icon: Eye, color: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30' },
+          { label: 'Proprietăți proprii', value: workspace.propertyCount, icon: Building2, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30', page: 'adauga-proprietate' },
+          { label: 'Solicitări active', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30', page: 'vizionarile-mele' },
+          { label: 'Documente de rezolvat', value: workspace.openRequirementCount, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30', page: 'documente' },
+          { label: 'Vizualizări', value: workspace.totalViews, icon: Eye, color: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30', page: 'owner-dashboard' },
         ]
       : role === 'AGENT'
         ? [
-            { label: 'Tranzacții active', value: workspace.deals.filter((deal) => deal.status === 'ACTIVE').length, icon: Building2, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
-            { label: 'Vizionări alocate', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
-            { label: 'Cerințe documente', value: openRequirements.length, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
-            { label: 'Lead-uri active', value: workspace.leadCount, icon: Users, color: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30' },
+            { label: 'Tranzacții active', value: activeDealsCount, icon: Building2, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30', page: 'deal-room' },
+            { label: 'Vizionări alocate', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30', page: 'vizionarile-mele' },
+            { label: 'Cerințe documente', value: workspace.openRequirementCount, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30', page: 'documente' },
+            { label: 'Lead-uri active', value: workspace.leadCount, icon: Users, color: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30', page: 'crm' },
           ]
         : [
-            { label: 'Tranzacții active', value: workspace.deals.filter((deal) => deal.status === 'ACTIVE').length, icon: Building2, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
-            { label: 'Vizionări', value: workspace.viewings.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
-            { label: 'Cerințe documente', value: openRequirements.length, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
-            { label: 'Lead-uri active', value: workspace.leadCount, icon: Settings, color: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30' },
+            { label: 'Tranzacții active', value: activeDealsCount, icon: Building2, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30', page: 'deal-room' },
+            { label: 'Vizionări', value: workspace.viewings.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30', page: 'vizionarile-mele' },
+            { label: 'Cerințe documente', value: workspace.openRequirementCount, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30', page: 'documente' },
+            { label: 'Lead-uri active', value: workspace.leadCount, icon: Settings, color: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30', page: 'crm' },
           ]
 
   return (
@@ -239,21 +257,29 @@ export function DashboardPage() {
           </p>
         )}
 
+        <AccountGuidancePanel guidance={guidance} journey={journey} onNavigate={navigateTo} />
+
         <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
           {stats.map((stat, index) => (
-            <motion.div
+            <motion.button
               key={stat.label}
+              type="button"
+              onClick={() => navigateTo(stat.page)}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.04 }}
-              className="glass-card rounded-2xl p-5"
+              className="glass-card glass-card-interactive group rounded-2xl p-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`${stat.label}: ${stat.value}. Deschide secțiunea.`}
             >
               <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${stat.color}`}>
                 <stat.icon className="h-5 w-5" />
               </div>
               <p className="text-3xl font-bold">{stat.value}</p>
               <p className="text-sm text-muted-foreground">{stat.label}</p>
-            </motion.div>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100 sm:opacity-100">
+                Vezi detalii <ArrowRight className="h-3 w-3" aria-hidden="true" />
+              </span>
+            </motion.button>
           ))}
         </div>
 
@@ -298,6 +324,29 @@ export function DashboardPage() {
                 icon={CalendarCheck}
                 title="Nu există vizionări active"
                 description="Programările noi vor apărea aici împreună cu statusul lor."
+                action={(
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigateTo(
+                      role === 'CLIENT'
+                        ? 'programare-vizionare'
+                        : role === 'OWNER'
+                          ? 'owner-dashboard'
+                          : role === 'AGENT'
+                            ? 'disponibilitate-staff'
+                            : 'crm',
+                    )}
+                  >
+                    {role === 'CLIENT'
+                      ? 'Programează o vizionare'
+                      : role === 'OWNER'
+                        ? 'Vezi performanța'
+                        : role === 'AGENT'
+                          ? 'Setează disponibilitatea'
+                          : 'Verifică repartizarea'}
+                  </Button>
+                )}
                 className="min-h-36 border-0 bg-transparent shadow-none"
               />
             ) : (
