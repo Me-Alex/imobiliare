@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
@@ -53,7 +54,7 @@ import {
   LEGAL_REQUEST_REQUIRED_ROLES,
   type LegalDocumentKind,
 } from '@/lib/legal-documents'
-import { DOC_TYPE_LABELS, LS_KEYS } from '@/lib/constants'
+import { LS_KEYS } from '@/lib/constants'
 import { loadFromLS, saveToLS } from '@/lib/storage'
 import { getDocumentFlowSummary } from '@/lib/document-flow'
 import { readAppointmentContext, readDealContext, returnToWorkflow, selectDocumentAppointment } from '@/lib/document-navigation'
@@ -72,6 +73,11 @@ import {
   setLegalDocumentRequestStatus,
 } from '@/lib/legal-document-requests'
 import { formatDateRO } from '@/lib/utils'
+import {
+  getViewingWorkspaceLabel,
+  isDocumentWorkspaceClosed,
+  pickDocumentViewingId,
+} from '@/lib/document-workspace'
 
 const ROLE_COPY = {
   CLIENT: 'Completează datele, solicită documentele și semnează numai versiunea verificată de agent.',
@@ -120,8 +126,20 @@ export function DocumentePage() {
     [selectedId, viewings],
   )
 
+  const actionableViewings = useMemo(
+    () => viewings.filter((viewing) => !isDocumentWorkspaceClosed(viewing.status)),
+    [viewings],
+  )
+  const closedViewings = useMemo(
+    () => viewings.filter((viewing) => isDocumentWorkspaceClosed(viewing.status)),
+    [viewings],
+  )
+  const selectedWorkspaceClosed = selectedViewing
+    ? isDocumentWorkspaceClosed(selectedViewing.status)
+    : false
+
   const canGenerateDocuments = profile?.role === 'AGENT' || profile?.role === 'ADMIN'
-  const canUploadDocuments = Boolean(profile)
+  const canUploadDocuments = Boolean(profile) && !selectedWorkspaceClosed
   const uploadedTypes = useMemo(
     () => new Set(documents.filter((document) => document.status !== 'SUPERSEDED').map((document) => document.docType)),
     [documents],
@@ -163,9 +181,7 @@ export function DocumentePage() {
       setViewings(rows)
       const requestedId = readAppointmentContext()
       const storedId = loadFromLS<string | null>(LS_KEYS.SELECTED_VIZIONARE, null)
-      const preferredId = requestedId || storedId
-      const nextId = rows.some((row) => row.id === preferredId) ? preferredId : rows[0]?.id || null
-      setSelectedId(nextId)
+      setSelectedId(pickDocumentViewingId(rows, requestedId, storedId))
     } catch (error) {
       toast.error('Vizionarile nu au putut fi incarcate.', {
         description: error instanceof Error ? error.message : undefined,
@@ -199,6 +215,9 @@ export function DocumentePage() {
 
   const handleFileReady = useCallback(async (docType: DocType, file: File) => {
     if (!user || !selectedViewing) throw new Error('Selecteaza o vizionare.')
+    if (isDocumentWorkspaceClosed(selectedViewing.status)) {
+      throw new Error('Dosarul unei programări închise este disponibil numai pentru consultare.')
+    }
     try {
       await uploadViewingDocument({
         user,
@@ -280,6 +299,7 @@ export function DocumentePage() {
 
   const handleOpenBuilder = async (kind: LegalDocumentKind) => {
     if (!user || !selectedViewing || !canGenerateDocuments) return
+    if (isDocumentWorkspaceClosed(selectedViewing.status)) return
     if (kind === 'viewing_report' && selectedViewing.status !== 'completed') return
     const missing = missingRequestRoles(kind)
     if (missing.length > 0) {
@@ -474,7 +494,7 @@ export function DocumentePage() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <CardTitle className="text-base">Dosarul vizionării</CardTitle>
-                    <CardDescription>Alege tranzacția; contextul rămâne păstrat între Deal Room și documente.</CardDescription>
+                    <CardDescription>Alege vizionarea pentru care vrei să vezi următorul pas sau documentele păstrate.</CardDescription>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => void refreshViewings()} className="gap-2">
                     <RefreshCw className="h-3.5 w-3.5" /> Actualizează
@@ -484,21 +504,38 @@ export function DocumentePage() {
               <CardContent>
                 <select
                   value={selectedId || ''}
-                  onChange={(event) => setSelectedId(event.target.value)}
+                  onChange={(event) => {
+                    setToolsOpen(false)
+                    setSelectedId(event.target.value)
+                  }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                   aria-label="Vizionare selectata"
                 >
-                  {viewings.map((viewing) => (
-                    <option key={viewing.id} value={viewing.id}>
-                      {viewing.propertyTitle} - {formatDateRO(viewing.date)}, {viewing.startTime}
-                    </option>
-                  ))}
+                  {actionableViewings.length > 0 && (
+                    <optgroup label="În lucru">
+                      {actionableViewings.map((viewing) => (
+                        <option key={viewing.id} value={viewing.id}>
+                          {viewing.propertyTitle} — {formatDateRO(viewing.date)}, {viewing.startTime} · {getViewingWorkspaceLabel(viewing.status)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {closedViewings.length > 0 && (
+                    <optgroup label="Închise — doar consultare">
+                      {closedViewings.map((viewing) => (
+                        <option key={viewing.id} value={viewing.id}>
+                          {viewing.propertyTitle} — {formatDateRO(viewing.date)}, {viewing.startTime} · {getViewingWorkspaceLabel(viewing.status)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
 
                 {selectedViewing && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1.5"><Building2 className="h-4 w-4" /> {selectedViewing.propertyTitle}</span>
                     <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> {formatDateRO(selectedViewing.date)}, {selectedViewing.startTime}-{selectedViewing.endTime}</span>
+                    <StatusBadge status={selectedViewing.status} />
                     <Badge variant="outline">{selectedViewing.staffName}</Badge>
                   </motion.div>
                 )}
@@ -509,7 +546,7 @@ export function DocumentePage() {
               <DocumentActionCenter summary={flowSummary} onPrimaryAction={handlePrimaryAction} />
             )}
 
-            <Collapsible open={toolsOpen} onOpenChange={setToolsOpen} className="mb-6">
+            {!selectedWorkspaceClosed && <Collapsible open={toolsOpen} onOpenChange={setToolsOpen} className="mb-6">
               <CollapsibleTrigger asChild>
                 <Button variant="outline" className="h-auto min-h-12 w-full justify-between gap-3 whitespace-normal px-4 py-3">
                   <span className="flex items-center gap-2 text-left">
@@ -615,7 +652,7 @@ export function DocumentePage() {
             )}
                 </div>
               </CollapsibleContent>
-            </Collapsible>
+            </Collapsible>}
 
             <Card id="document-archive" className="scroll-mt-24">
               <CardHeader>
@@ -626,7 +663,11 @@ export function DocumentePage() {
                 {documentsLoading ? (
                   <div className="py-14 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
                 ) : documents.length === 0 ? (
-                  <div className="py-14 px-4 text-center text-sm text-muted-foreground">Nu există încă documente în acest dosar.</div>
+                  <div className="py-14 px-4 text-center text-sm text-muted-foreground">
+                    {selectedWorkspaceClosed
+                      ? 'Programarea s-a închis fără documente asociate. Nu mai este necesară nicio acțiune.'
+                      : 'Nu există încă documente în acest dosar.'}
+                  </div>
                 ) : (
                   <div className="p-4 space-y-3">
                     {documents.length > 4 && <DocumentSearchBar documents={documents} filter={filter} onFilterChange={setFilter} />}
@@ -643,7 +684,8 @@ export function DocumentePage() {
                                   key={document.id}
                                   document={document}
                                   currentUserId={user.id}
-                                  canDelete={!document.lockedAt && document.userId === user.id && !['SIGNED', 'PARTIALLY_SIGNED'].includes(document.status)}
+                                  canDelete={!selectedWorkspaceClosed && !document.lockedAt && document.userId === user.id && !['SIGNED', 'PARTIALLY_SIGNED'].includes(document.status)}
+                                  canSign={!selectedWorkspaceClosed}
                                   onView={handleView}
                                   onDownload={handleDownload}
                                   onDelete={handleDelete}
@@ -659,7 +701,8 @@ export function DocumentePage() {
                               key={document.id}
                               document={document}
                               currentUserId={user.id}
-                              canDelete={!document.lockedAt && document.userId === user.id && !['SIGNED', 'PARTIALLY_SIGNED'].includes(document.status)}
+                              canDelete={!selectedWorkspaceClosed && !document.lockedAt && document.userId === user.id && !['SIGNED', 'PARTIALLY_SIGNED'].includes(document.status)}
+                              canSign={!selectedWorkspaceClosed}
                               onView={handleView}
                               onDownload={handleDownload}
                               onDelete={handleDelete}
@@ -677,7 +720,7 @@ export function DocumentePage() {
         )}
       </div>
 
-      {user && profile && selectedViewing && (profile.role === 'CLIENT' || profile.role === 'OWNER') && (
+      {user && profile && selectedViewing && !selectedWorkspaceClosed && (profile.role === 'CLIENT' || profile.role === 'OWNER') && (
         <LegalDocumentRequestDialog
           kind={requestKind}
           role={profile.role}
@@ -695,7 +738,7 @@ export function DocumentePage() {
         />
       )}
 
-      {user && selectedViewing && canGenerateDocuments && (
+      {user && selectedViewing && !selectedWorkspaceClosed && canGenerateDocuments && (
         <LegalDocumentBuilderDialog
           kind={builderKind}
           user={user}

@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  Archive,
   ArrowRight,
   Check,
   CheckCircle2,
@@ -15,6 +16,17 @@ import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { DocumentFlowSummary } from '@/lib/document-flow'
 
+const PRIMARY_ACTION_LABELS: Record<DocumentFlowSummary['action']['type'], string> = {
+  SIGN: 'Verifică și semnează',
+  EXTERNAL_SIGNATURE: 'Vezi pașii de semnare',
+  EDIT_REQUEST: 'Completează informațiile',
+  CREATE_REQUEST: 'Începe documentul',
+  GENERATE_DOCUMENT: 'Verifică și generează',
+  UPLOAD_IDENTITY: 'Încarcă documentul',
+  OPEN_TOOLS: 'Vezi starea solicitării',
+  OPEN_ARCHIVE: 'Vezi arhiva',
+}
+
 export function DocumentActionCenter({
   summary,
   onPrimaryAction,
@@ -23,15 +35,26 @@ export function DocumentActionCenter({
   onPrimaryAction: () => void
 }) {
   const isComplete = summary.action.type === 'OPEN_ARCHIVE'
+  const primaryLabel = PRIMARY_ACTION_LABELS[summary.action.type]
 
   return (
-    <Card data-testid="document-action-center" className="mb-6 overflow-hidden border-primary/25 bg-gradient-to-br from-primary/[0.08] via-background to-background shadow-sm">
+    <Card
+      data-testid="document-action-center"
+      className={cn(
+        'mb-6 overflow-hidden shadow-sm',
+        summary.readOnly
+          ? 'border-border bg-muted/20'
+          : 'border-primary/25 bg-gradient-to-br from-primary/[0.08] via-background to-background',
+      )}
+    >
       <CardContent className="p-5 sm:p-6">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-center">
           <div>
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <Badge className="border-0 bg-primary text-primary-foreground">Următorul pas</Badge>
-              {summary.pendingSignaturesCount > 0 && (
+              <Badge className={cn('border-0', summary.readOnly ? 'bg-muted-foreground text-background' : 'bg-primary text-primary-foreground')}>
+                {summary.readOnly ? 'Dosar închis' : 'Următorul pas'}
+              </Badge>
+              {!summary.readOnly && summary.pendingSignaturesCount > 0 && (
                 <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                   {summary.pendingSignaturesCount} de semnat
                 </Badge>
@@ -44,43 +67,55 @@ export function DocumentActionCenter({
               variant={isComplete ? 'outline' : 'default'}
               onClick={onPrimaryAction}
             >
-              {summary.action.type === 'SIGN' ? <FileSignature className="h-4 w-4" /> : isComplete ? <FileText className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
               {summary.action.type === 'SIGN'
-                ? 'Verifică și semnează'
+                ? <FileSignature className="h-4 w-4" />
                 : isComplete
-                  ? 'Vezi arhiva'
-                  : 'Continuă acum'}
+                  ? <Archive className="h-4 w-4" />
+                  : <ArrowRight className="h-4 w-4" />}
+              {primaryLabel}
             </Button>
           </div>
 
-          <div className="rounded-2xl border bg-background/85 p-4 shadow-sm">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <span className="text-sm font-semibold">Progresul dosarului</span>
-              <span className="text-sm font-bold text-primary">{summary.progress}%</span>
+          {summary.readOnly ? (
+            <div className="rounded-2xl border bg-background/85 p-5 text-center shadow-sm">
+              <Archive className="mx-auto h-8 w-8 text-muted-foreground" />
+              <p className="mt-3 text-sm font-semibold">Fără acțiuni restante</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {summary.documentsCount > 0
+                  ? `${summary.documentsCount} documente rămân disponibile pentru consultare.`
+                  : 'Această programare nu are documente asociate.'}
+              </p>
             </div>
-            <div className="mb-5 h-2 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${summary.progress}%` }} />
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {summary.steps.map((step) => (
-                <div key={step.label} className="min-w-0 text-center">
-                  <div className={cn(
-                    'mx-auto mb-2 flex h-7 w-7 items-center justify-center rounded-full border-2',
-                    step.state === 'complete' && 'border-primary bg-primary text-primary-foreground',
-                    step.state === 'current' && 'border-primary bg-background text-primary',
-                    step.state === 'pending' && 'border-border bg-muted text-muted-foreground',
-                  )}>
-                    {step.state === 'complete' ? <Check className="h-3.5 w-3.5" /> : <Circle className="h-2.5 w-2.5 fill-current" />}
+          ) : (
+            <div className="rounded-2xl border bg-background/85 p-4 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">Progresul dosarului</span>
+                <span className="text-sm font-bold text-primary">{summary.progress}%</span>
+              </div>
+              <div className="mb-5 h-2 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${summary.progress}%` }} />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {summary.steps.map((step) => (
+                  <div key={step.label} className="min-w-0 text-center">
+                    <div className={cn(
+                      'mx-auto mb-2 flex h-7 w-7 items-center justify-center rounded-full border-2',
+                      step.state === 'complete' && 'border-primary bg-primary text-primary-foreground',
+                      step.state === 'current' && 'border-primary bg-background text-primary',
+                      step.state === 'pending' && 'border-border bg-muted text-muted-foreground',
+                    )}>
+                      {step.state === 'complete' ? <Check className="h-3.5 w-3.5" /> : <Circle className="h-2.5 w-2.5 fill-current" />}
+                    </div>
+                    <p className="truncate text-xs font-semibold">{step.label}</p>
+                    <p className="mt-0.5 hidden text-[10px] leading-snug text-muted-foreground sm:block">{step.description}</p>
                   </div>
-                  <p className="truncate text-xs font-semibold">{step.label}</p>
-                  <p className="mt-0.5 hidden text-[10px] leading-snug text-muted-foreground sm:block">{step.description}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        <div className="mt-5 grid grid-cols-3 gap-2 border-t pt-4 text-center sm:max-w-xl sm:text-left">
+        {!summary.readOnly && <div className="mt-5 grid grid-cols-3 gap-2 border-t pt-4 text-center sm:max-w-xl sm:text-left">
           <div className="flex flex-col items-center gap-1 sm:flex-row sm:gap-2">
             <FileText className="h-4 w-4 text-primary" />
             <span className="text-xs text-muted-foreground"><strong className="text-foreground">{summary.documentsCount}</strong> documente</span>
@@ -93,7 +128,7 @@ export function DocumentActionCenter({
             {summary.pendingSignaturesCount === 0 ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <FileSignature className="h-4 w-4 text-amber-600" />}
             <span className="text-xs text-muted-foreground"><strong className="text-foreground">{summary.pendingSignaturesCount}</strong> semnături</span>
           </div>
-        </div>
+        </div>}
       </CardContent>
     </Card>
   )

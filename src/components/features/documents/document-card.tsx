@@ -89,6 +89,7 @@ interface DocumentActionsProps {
   document: ViewingDocument
   currentUserId: string
   canDelete: boolean
+  canSign?: boolean
   onView: (document: ViewingDocument) => void
   onDownload: (document: ViewingDocument) => void
   onDelete: (document: ViewingDocument) => void
@@ -99,6 +100,7 @@ function DocumentActions({
   document,
   currentUserId,
   canDelete,
+  canSign = true,
   onView,
   onDownload,
   onDelete,
@@ -107,7 +109,7 @@ function DocumentActions({
   const pendingSigner = document.signers.find(
     (signer) => signer.userId === currentUserId && signer.status === 'PENDING',
   )
-  const canSignHere = pendingSigner
+  const canSignHere = canSign && pendingSigner
     && document.signatureRequirement === 'SIMPLE'
     && ['READY_TO_SIGN', 'PARTIALLY_SIGNED'].includes(document.status)
 

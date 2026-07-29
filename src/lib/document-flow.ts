@@ -18,6 +18,7 @@ import type {
   ViewingDocument,
   Vizionare,
 } from '@/lib/types'
+import { isDocumentWorkspaceClosed } from '@/lib/document-workspace'
 
 export type DocumentFlowActionType =
   | 'SIGN'
@@ -47,6 +48,7 @@ export interface DocumentFlowStep {
 
 export interface DocumentFlowSummary {
   action: DocumentFlowAction
+  readOnly: boolean
   progress: number
   documentsCount: number
   openRequestsCount: number
@@ -207,6 +209,28 @@ export function getDocumentFlowSummary({
   requests,
 }: DocumentFlowInput): DocumentFlowSummary {
   const activeDocuments = documents.filter((document) => document.status !== 'SUPERSEDED')
+  const readOnly = isDocumentWorkspaceClosed(viewing.status)
+  const openRequestsCount = requests.filter((request) => OPEN_REQUEST_STATUSES.has(request.status)).length
+
+  if (readOnly) {
+    const noShow = viewing.status === 'no_show'
+    return {
+      action: {
+        type: 'OPEN_ARCHIVE',
+        label: noShow ? 'Vizionare închisă — neprezentare consemnată' : 'Vizionare închisă — programare anulată',
+        description: noShow
+          ? 'Nu se generează fișa de vizionare. Istoricul existent rămâne disponibil doar pentru consultare.'
+          : 'Nu mai sunt necesare date, încărcări sau semnături noi. Documentele deja existente rămân în arhivă.',
+      },
+      readOnly: true,
+      progress: 0,
+      documentsCount: activeDocuments.length,
+      openRequestsCount,
+      pendingSignaturesCount: 0,
+      steps: [],
+    }
+  }
+
   const pendingForUser = activeDocuments.flatMap((document) => {
     const signer = pendingSignerFor(document, userId)
     return signer ? [{ document, signer }] : []
@@ -242,7 +266,6 @@ export function getDocumentFlowSummary({
     action = actionForStaff(viewing, activeDocuments, requests)
   }
 
-  const openRequestsCount = requests.filter((request) => OPEN_REQUEST_STATUSES.has(request.status)).length
   const hasData = requests.some((request) =>
     ['REQUESTED', 'IN_REVIEW', 'FULFILLED'].includes(request.status),
   ) || activeDocuments.length > 0
@@ -274,6 +297,7 @@ export function getDocumentFlowSummary({
 
   return {
     action,
+    readOnly: false,
     progress: Math.round(completed.filter(Boolean).length / completed.length * 100),
     documentsCount: activeDocuments.length,
     openRequestsCount,
