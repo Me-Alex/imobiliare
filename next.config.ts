@@ -19,11 +19,14 @@ const nextConfig: NextConfig = {
     // new third-party origins (analytics, video, etc.) update the
     // corresponding directive here — do NOT loosen `'unsafe-inline'`
     // for scripts without auditing every inline <script> in the app.
+    const scriptSources = process.env.NODE_ENV === 'development'
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co"
+      : "script-src 'self' 'unsafe-inline' https://*.supabase.co"
     const csp = [
       "default-src 'self'",
-      // Next.js / React require eval-free inline + nonce'd scripts; we
-      // currently rely on Next's auto-generated nonces in production.
-      "script-src 'self' 'unsafe-inline' https://*.supabase.co",
+      // Turbopack uses eval for development source maps. Production keeps
+      // the stricter eval-free policy used by the deployed worker.
+      scriptSources,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https://fonts.gstatic.com",

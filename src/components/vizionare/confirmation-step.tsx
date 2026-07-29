@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import {
   CalendarDays, Building2, CalendarCheck, Loader2, ShieldCheck, AlertTriangle,
+  BellRing, UserCheck, PenLine,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,8 +12,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { StaffMember, AvailabilitySlot, UserProperty } from '@/lib/types'
 import { formatDateRO } from '@/lib/utils'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { ClientFlow, type ClientSubmission, type ClientFieldValue } from '@/components/documents-v2'
-import type { TransactionKind } from '@/lib/documents/flow-shape'
 
 interface ConfirmationStepProps {
   property: UserProperty
@@ -31,20 +29,6 @@ interface ConfirmationStepProps {
   complianceLoading: boolean
   isSubmitting: boolean
   onSubmit: () => void
-  /**
-   * RENTAL → single 9-field viewing-report form.
-   * SALE   → three progressive stages (identity → offer → contract).
-   * Driven by the property's transaction type.
-   */
-  clientFlowKind: TransactionKind
-  /** Values pre-filled into the ClientFlow (name/email/phone from auth). */
-  clientFlowPrefill: Record<string, ClientFieldValue>
-  /**
-   * Called for every stage submission. For SALE, the parent should
-   * accumulate submissions keyed by `stageId`; the final stage is the
-   * one with `stageId === 'contract'`.
-   */
-  onClientFlowSubmit: (submission: ClientSubmission) => void
 }
 
 export function ConfirmationStep({
@@ -63,20 +47,7 @@ export function ConfirmationStep({
   complianceLoading,
   isSubmitting,
   onSubmit,
-  clientFlowKind,
-  clientFlowPrefill,
-  onClientFlowSubmit,
 }: ConfirmationStepProps) {
-  // The ClientFlow is considered "done" only when the user has submitted
-  // its final stage: the single RENTAL form, or the SALE `contract` stage.
-  const [flowDone, setFlowDone] = useState(false)
-
-  const handleFlowSubmit = (submission: ClientSubmission) => {
-    onClientFlowSubmit(submission)
-    const isFinal = clientFlowKind === 'RENTAL' || submission.stageId === 'contract'
-    setFlowDone(isFinal)
-  }
-
   return (
     <div className="space-y-5">
       {/* Summary Card */}
@@ -131,33 +102,34 @@ export function ConfirmationStep({
         </CardContent>
       </Card>
 
-      {/* ClientFlow — the new minimal data-collection surface.
-          One form for RENTAL, three progressive stages for SALE. */}
-      <section
-        aria-label={
-          clientFlowKind === 'RENTAL'
-            ? 'Fișă de vizionare'
-            : 'Date pentru ofertă și contract'
-        }
-        className="rounded-xl border border-border/70 bg-card p-4 sm:p-5"
-      >
-        <ClientFlow
-          kind={clientFlowKind}
-          summary={{
-            propertyTitle: property.title,
-            propertyZone:
-              property.address
-              || property.zone
-              || [property.sector, property.city].filter(Boolean).join(', '),
-          }}
-          prefill={clientFlowPrefill}
-          onSubmit={handleFlowSubmit}
-        />
+      <section className="rounded-xl border border-primary/15 bg-primary/[0.03] p-4 sm:p-5" aria-labelledby="after-booking-title">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <BellRing className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <div>
+            <h3 id="after-booking-title" className="text-sm font-semibold">Ce se întâmplă după confirmare</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Acum rezervi doar intervalul. Nu îți cerem date de contract înainte să fie necesare.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          {[
+            { icon: CalendarCheck, label: '1. Confirmare', text: 'Primești programarea în cont.' },
+            { icon: UserCheck, label: '2. Prezență', text: 'Agentul confirmă întâlnirea.' },
+            { icon: PenLine, label: '3. Fișa de vizionare', text: 'Se completează și se semnează la momentul potrivit.' },
+          ].map((item) => (
+            <div key={item.label} className="rounded-lg border bg-background/80 p-3">
+              <item.icon className="mb-2 h-4 w-4 text-primary" aria-hidden="true" />
+              <p className="text-xs font-semibold">{item.label}</p>
+              <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{item.text}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
-      {/* Notes — kept for backward compat. The new ClientFlow is the
-          primary data-collection surface; this textarea captures any
-          free-form observations the user wants to add on top. */}
+      {/* Optional context for the agent; scheduling stays lightweight. */}
       <div className="space-y-2">
         <Label htmlFor="notes" className="text-sm font-medium">
           Observatii <span className="text-muted-foreground font-normal">(optional)</span>
@@ -171,14 +143,6 @@ export function ConfirmationStep({
           className="resize-none"
         />
       </div>
-
-      {!flowDone ? (
-        <p className="text-xs text-muted-foreground">
-          Completează mai întâi{' '}
-          {clientFlowKind === 'RENTAL' ? 'fișa de vizionare' : 'cele 3 etape'} de mai sus
-          ca să poți confirma programarea.
-        </p>
-      ) : null}
 
       <div className="space-y-3 rounded-xl border p-4">
         <div className="flex items-center gap-2 text-sm font-semibold">
@@ -237,7 +201,6 @@ export function ConfirmationStep({
           || !privacyNoticeUrl
           || !termsAccepted
           || !privacyAccepted
-          || !flowDone
         }
         className="w-full h-12 text-base font-semibold gap-2"
         size="lg"

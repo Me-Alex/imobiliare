@@ -2,7 +2,7 @@
 
 import { Check } from 'lucide-react'
 
-const STEP_LABELS = ['Alege Proprietatea', 'Alege Agent si Data', 'Confirmare']
+const STEP_LABELS = ['Proprietate', 'Zi și oră', 'Confirmare']
 
 interface StepIndicatorProps {
   currentStep: number
