@@ -47,6 +47,7 @@ import { PropertyPage } from '@/views/property-page'
 import { DealRoomPage } from '@/views/deal-room-page'
 import { CrmPage } from '@/views/crm-page'
 import { OwnerDashboardPage } from '@/views/owner-dashboard-page'
+import { ProprietatileMelePage } from '@/views/proprietatile-mele-page'
 import { NotificationsPanel } from '@/components/panels/notifications-panel'
 import { useCoinsHydration } from '@/hooks/use-coin-actions'
 import { useAuthReturnRedirect } from '@/hooks/use-auth-return-redirect'
@@ -86,10 +87,11 @@ const pageComponents: Record<string, React.ComponentType<Record<string, unknown>
   'deal-room': DealRoomPage,
   crm: CrmPage,
   'owner-dashboard': OwnerDashboardPage,
+  'proprietatile-mele': ProprietatileMelePage,
 }
 
 // Focused flows keep the shared header, but do not use the public marketing chrome.
-const focusedPages = new Set(['login', 'admin', 'adauga-proprietate', 'dashboard', 'profil', 'programare-vizionare', 'disponibilitate-staff', 'vizionarile-mele', 'documente', 'monede', 'deal-room', 'crm', 'owner-dashboard'])
+const focusedPages = new Set(['login', 'admin', 'adauga-proprietate', 'dashboard', 'profil', 'programare-vizionare', 'disponibilitate-staff', 'vizionarile-mele', 'documente', 'monede', 'deal-room', 'crm', 'owner-dashboard', 'proprietatile-mele'])
 
 function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
   useCoinsHydration()

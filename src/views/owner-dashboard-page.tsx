@@ -133,7 +133,7 @@ export function OwnerDashboardPage() {
             <div className="h-44 bg-muted md:h-full">{property.cover_image_url ? <img src={property.cover_image_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Building2 className="h-10 w-10 text-muted-foreground/40" /></div>}</div>
             <CardContent className="flex flex-col justify-between gap-5 p-5 sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-bold">{property.title}</h2><StatusBadge status={property.status} /></div><p className="mt-2 text-sm text-muted-foreground">{property.address || property.zone || property.city}</p></div><p className="text-2xl font-bold text-primary">{formatMoney(Number(property.price || 0), property.currency || 'EUR')}</p></div>
-              <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => navigateTo('adauga-proprietate')}>Gestionează proprietățile</Button><Button onClick={openSelectedDeal}>Deschide tranzacția <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
+              <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => navigateTo('proprietatile-mele')}>Gestionează proprietățile</Button><Button onClick={openSelectedDeal}>Deschide tranzacția <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
             </CardContent>
           </div>
         </Card>

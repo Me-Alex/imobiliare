@@ -6,7 +6,7 @@ export type PageKey =
   | 'login' | 'admin' | 'adauga-proprietate' | 'dashboard'
   | 'programare-vizionare' | 'disponibilitate-staff' | 'vizionarile-mele' | 'documente'
   | 'servicii' | 'evaluare' | 'profil' | 'monede' | 'proprietate'
-  | 'deal-room' | 'crm' | 'owner-dashboard'
+  | 'deal-room' | 'crm' | 'owner-dashboard' | 'proprietatile-mele'
 
 export interface NavigationSlice {
   currentPage: PageKey
@@ -17,7 +17,7 @@ export const PAGE_KEYS: readonly PageKey[] = [
   'acasa', 'proprietati', 'analiza', 'zone', 'de-ce-noi', 'calculator',
   'login', 'admin', 'adauga-proprietate', 'dashboard', 'programare-vizionare',
   'disponibilitate-staff', 'vizionarile-mele', 'documente', 'servicii', 'evaluare', 'profil',
-  'monede', 'proprietate', 'deal-room', 'crm', 'owner-dashboard',
+  'monede', 'proprietate', 'deal-room', 'crm', 'owner-dashboard', 'proprietatile-mele',
 ]
 
 export function isPageKey(value: string | null): value is PageKey {

@@ -458,6 +458,7 @@ export function AdaugaProprietatePage() {
       })
       setSubmittedCount((c) => c + 1)
       void loadMyProperties()
+      if (profile.role === 'OWNER') navigateTo('proprietatile-mele')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Eroare necunoscută'
       console.error('Submit error:', err)

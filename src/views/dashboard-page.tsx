@@ -221,7 +221,7 @@ export function DashboardPage() {
       ]
     : role === 'OWNER'
       ? [
-          { label: 'Proprietăți proprii', value: workspace.propertyCount, icon: Building2, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30', page: 'adauga-proprietate' },
+          { label: 'Proprietăți proprii', value: workspace.propertyCount, icon: Building2, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30', page: 'proprietatile-mele' },
           { label: 'Solicitări active', value: activeVizionari.length, icon: CalendarCheck, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30', page: 'vizionarile-mele' },
           { label: 'Documente de rezolvat', value: workspace.openRequirementCount, icon: FileText, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30', page: 'documente' },
           { label: 'Vizualizări', value: workspace.totalViews, icon: Eye, color: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30', page: 'owner-dashboard' },
