@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { canAccessAccountPage } from '@/lib/account-roles'
+import { ACCOUNT_ROLES, canAccessAccountPage } from '@/lib/account-roles'
 import { getAccountMenuItems, getWorkspaceNavigation } from '@/lib/navigation-config'
 
 describe('owner property navigation', () => {
@@ -25,5 +25,11 @@ describe('owner property navigation', () => {
     expect(canAccessAccountPage('ADMIN', 'owner-dashboard')).toBe(true)
     expect(getAccountMenuItems('ADMIN').find((item) => item.page === 'proprietatile-mele')?.label).toBe('Portofoliu')
     expect(getWorkspaceNavigation('ADMIN').some((item) => item.page === 'owner-dashboard')).toBe(true)
+  })
+
+  it('keeps the coins wallet reachable from every role workspace', () => {
+    for (const role of ACCOUNT_ROLES) {
+      expect(getWorkspaceNavigation(role).some((item) => item.page === 'monede')).toBe(true)
+    }
   })
 })

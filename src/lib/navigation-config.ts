@@ -62,9 +62,9 @@ const ACCOUNT_MENU_ORDER: Record<AccountRole, readonly string[]> = {
 
 const WORKSPACE_NAV_ORDER: Record<AccountRole, readonly string[]> = {
   CLIENT: ['dashboard', 'vizionarile-mele', 'deal-room', 'documente', 'monede'],
-  OWNER: ['dashboard', 'proprietatile-mele', 'owner-dashboard', 'vizionarile-mele', 'deal-room', 'documente'],
-  AGENT: ['dashboard', 'crm', 'vizionarile-mele', 'deal-room', 'documente', 'disponibilitate-staff'],
-  ADMIN: ['admin', 'crm', 'admin-property-portfolio', 'admin-owner-performance', 'vizionarile-mele', 'deal-room', 'documente', 'disponibilitate-staff'],
+  OWNER: ['dashboard', 'proprietatile-mele', 'owner-dashboard', 'vizionarile-mele', 'deal-room', 'documente', 'monede'],
+  AGENT: ['dashboard', 'crm', 'vizionarile-mele', 'deal-room', 'documente', 'disponibilitate-staff', 'monede'],
+  ADMIN: ['admin', 'crm', 'admin-property-portfolio', 'admin-owner-performance', 'vizionarile-mele', 'deal-room', 'documente', 'disponibilitate-staff', 'monede'],
 }
 
 const ACCOUNT_WORKSPACE_PAGES = new Set<PageKey>([

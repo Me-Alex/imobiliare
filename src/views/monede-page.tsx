@@ -4,25 +4,35 @@ import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   AlertCircle,
+  ArrowRight,
   BellRing,
+  BriefcaseBusiness,
+  Building2,
   CalendarCheck,
   Check,
   CircleDollarSign,
+  ClipboardCheck,
   Clock3,
   Coins,
+  Compass,
+  FileText,
   Flame,
   Gift,
   Heart,
   History,
+  LockKeyhole,
   LogIn,
+  Megaphone,
   MessageSquare,
   RefreshCw,
   Search,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
+  Target,
   TrendingDown,
   TrendingUp,
+  WalletCards,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -31,9 +41,11 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TransactionRow, RewardCard } from '@/components/monede'
 import { useAuth } from '@/contexts/auth-context'
+import type { AccountRole } from '@/lib/account-roles'
+import { getCoinGuidance, type CoinGuidanceTone, type RoleCoinGuidance } from '@/lib/coins-guidance'
 import { COIN_EARN_RULES } from '@/lib/constants'
 import type { CoinRedemption, CoinReward } from '@/lib/types'
-import { useAppStore } from '@/store/use-app-store'
+import { useAppStore, type PageKey } from '@/store/use-app-store'
 
 const EARN_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   view_property: Search,
@@ -72,6 +84,63 @@ const REDEMPTION_STATUS: Record<CoinRedemption['status'], { label: string; class
   CANCELLED: {
     label: 'Anulată',
     className: 'border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+  },
+}
+
+const ROLE_ICONS: Record<AccountRole, React.ComponentType<{ className?: string }>> = {
+  CLIENT: Compass,
+  OWNER: Building2,
+  AGENT: BriefcaseBusiness,
+  ADMIN: ShieldCheck,
+}
+
+const GUIDANCE_STEP_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  daily: Flame,
+  favorite: Heart,
+  viewing: CalendarCheck,
+  publish: Megaphone,
+  performance: TrendingUp,
+  portfolio: Building2,
+  crm: BriefcaseBusiness,
+  redemptions: WalletCards,
+  documents: FileText,
+}
+
+const TONE_STYLES: Record<CoinGuidanceTone, {
+  card: string
+  icon: string
+  badge: string
+  text: string
+}> = {
+  amber: {
+    card: 'border-amber-200 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/20',
+    icon: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
+    badge: 'border-amber-200 text-amber-700 dark:border-amber-800 dark:text-amber-300',
+    text: 'text-amber-700 dark:text-amber-300',
+  },
+  emerald: {
+    card: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/60 dark:bg-emerald-950/20',
+    icon: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
+    badge: 'border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300',
+    text: 'text-emerald-700 dark:text-emerald-300',
+  },
+  sky: {
+    card: 'border-sky-200 bg-sky-50/70 dark:border-sky-900/60 dark:bg-sky-950/20',
+    icon: 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300',
+    badge: 'border-sky-200 text-sky-700 dark:border-sky-800 dark:text-sky-300',
+    text: 'text-sky-700 dark:text-sky-300',
+  },
+  violet: {
+    card: 'border-violet-200 bg-violet-50/70 dark:border-violet-900/60 dark:bg-violet-950/20',
+    icon: 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300',
+    badge: 'border-violet-200 text-violet-700 dark:border-violet-800 dark:text-violet-300',
+    text: 'text-violet-700 dark:text-violet-300',
+  },
+  rose: {
+    card: 'border-rose-200 bg-rose-50/70 dark:border-rose-900/60 dark:bg-rose-950/20',
+    icon: 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300',
+    badge: 'border-rose-200 text-rose-700 dark:border-rose-800 dark:text-rose-300',
+    text: 'text-rose-700 dark:text-rose-300',
   },
 }
 
@@ -135,6 +204,7 @@ function MonedeGuestState({ onLogin }: { onLogin: () => void }) {
 }
 
 function MonedeAuthenticatedPage() {
+  const { profile } = useAuth()
   const {
     balance,
     lifetimeEarned,
@@ -148,17 +218,34 @@ function MonedeAuthenticatedPage() {
     claimDailyLogin,
     redeemReward,
     refreshCoins,
+    navigateTo,
   } = useAppStore()
   const [tab, setTab] = useState('panou')
   const [claiming, setClaiming] = useState(false)
   const [redeemingId, setRedeemingId] = useState<string | null>(null)
+  const role = profile?.role ?? 'CLIENT'
   const claimedToday = streak.lastLoginDate === bucharestDate()
   const recentTransactions = transactions.slice(0, 6)
+  const pendingRedemptions = useMemo(
+    () => redemptions.filter((redemption) => redemption.status === 'REQUESTED').length,
+    [redemptions],
+  )
   const nextReward = useMemo(
     () => rewards.filter((reward) => reward.cost > balance).sort((a, b) => a.cost - b.cost)[0],
     [balance, rewards],
   )
   const nextRewardProgress = nextReward ? Math.min(100, (balance / nextReward.cost) * 100) : 100
+  const guidance = useMemo(
+    () => getCoinGuidance(role, {
+      balance,
+      claimedToday,
+      rewards,
+      transactionsCount: transactions.length,
+      pendingRedemptions,
+      hasError: Boolean(coinsError),
+    }),
+    [balance, claimedToday, coinsError, pendingRedemptions, rewards, role, transactions.length],
+  )
 
   const handleClaimDaily = async () => {
     if (claiming || claimedToday) return
@@ -257,6 +344,8 @@ function MonedeAuthenticatedPage() {
             </Button>
           </div>
         )}
+
+        <RoleCoinsOverview guidance={guidance} onNavigate={navigateTo} />
 
         <Tabs value={tab} onValueChange={setTab} className="space-y-7">
           <TabsList className="grid h-auto w-full grid-cols-3 p-1 sm:w-fit sm:min-w-[28rem]">
@@ -432,6 +521,159 @@ function MonedeAuthenticatedPage() {
         </Tabs>
       </div>
     </div>
+  )
+}
+
+function RoleCoinsOverview({
+  guidance,
+  onNavigate,
+}: {
+  guidance: RoleCoinGuidance
+  onNavigate: (page: PageKey) => void
+}) {
+  const RoleIcon = ROLE_ICONS[guidance.role]
+
+  return (
+    <section className="mb-8 space-y-5">
+      <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="relative overflow-hidden rounded-3xl border bg-card p-6 shadow-sm">
+          <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-amber-300/15 blur-3xl" />
+          <div className="relative">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg shadow-amber-400/20">
+                  <RoleIcon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <Badge variant="outline" className="mb-2 border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300">
+                    {guidance.eyebrow}
+                  </Badge>
+                  <h2 className="text-2xl font-bold tracking-tight">{guidance.title}</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                    {guidance.description}
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-2xl border bg-muted/35 p-3 text-xs text-muted-foreground sm:max-w-56">
+                <div className="mb-2 flex items-center gap-2 font-semibold text-foreground">
+                  <LockKeyhole className="h-4 w-4 text-amber-600" />
+                  Reguli clare
+                </div>
+                Monedele nu se editează manual din browser; fiecare modificare vine din acțiuni sau cereri verificate.
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-3 md:grid-cols-3">
+              {guidance.highlights.map((highlight) => {
+                const tone = TONE_STYLES[highlight.tone]
+                return (
+                  <div key={highlight.id} className={`rounded-2xl border p-4 ${tone.card}`}>
+                    <Badge variant="outline" className={`mb-3 ${tone.badge}`}>{highlight.label}</Badge>
+                    <p className="text-lg font-bold">{highlight.value}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{highlight.description}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border bg-card p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 font-semibold">
+                <Target className="h-5 w-5 text-primary" />
+                Următorul pas
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">Cele mai utile acțiuni pentru rolul tău.</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {guidance.nextActions.map((action) => {
+              const tone = TONE_STYLES[action.tone]
+              return (
+                <button
+                  key={action.id}
+                  type="button"
+                  onClick={() => onNavigate(action.page)}
+                  className={`group w-full rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${tone.card}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold leading-tight">{action.title}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{action.description}</p>
+                    </div>
+                    <ArrowRight className={`mt-0.5 h-4 w-4 shrink-0 transition group-hover:translate-x-1 ${tone.text}`} />
+                  </div>
+                  <span className={`mt-3 inline-flex text-xs font-semibold ${tone.text}`}>{action.actionLabel}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[1fr_0.85fr]">
+        <div className="rounded-3xl border bg-card p-6 shadow-sm">
+          <div className="mb-5 flex items-center gap-2">
+            <ClipboardCheck className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="font-semibold">Drumul recomandat pentru monede</h2>
+              <p className="text-xs text-muted-foreground">Pași simpli, legați de funcționalitățile reale din platformă.</p>
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {guidance.earningPath.map((step, index) => {
+              const StepIcon = GUIDANCE_STEP_ICONS[step.id] ?? Sparkles
+              return (
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={() => onNavigate(step.page)}
+                  className="group rounded-2xl border bg-muted/25 p-4 text-left transition hover:-translate-y-0.5 hover:bg-card hover:shadow-md"
+                >
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <StepIcon className="h-5 w-5" />
+                    </div>
+                    <Badge variant="secondary" className="tabular-nums">{index + 1}</Badge>
+                  </div>
+                  <p className="font-semibold leading-tight">{step.title}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{step.description}</p>
+                  <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+                    <span className="font-semibold text-amber-700 dark:text-amber-300">{step.coinsLabel}</span>
+                    <span className="inline-flex items-center gap-1 text-primary">
+                      {step.actionLabel}
+                      <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border bg-card p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-2">
+            <LockKeyhole className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="font-semibold">Ce rămâne verificabil</h2>
+              <p className="text-xs text-muted-foreground">Micile reguli care țin programul corect.</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {guidance.trustNotes.map((note) => (
+              <div key={note} className="flex gap-3 rounded-2xl border bg-muted/25 p-3">
+                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  <Check className="h-4 w-4" />
+                </div>
+                <p className="text-sm leading-relaxed text-muted-foreground">{note}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
