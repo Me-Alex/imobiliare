@@ -1,11 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { ElementType } from 'react'
 import {
   Archive,
+  ArrowRight,
   BarChart3,
   Building2,
+  Camera,
   CheckCircle2,
+  FileText,
   ImageOff,
   Loader2,
   MapPin,
@@ -35,6 +39,12 @@ import { Input } from '@/components/ui/input'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { useAuth } from '@/contexts/auth-context'
 import { archiveManagedProperty, fetchManagedProperties } from '@/lib/managed-properties'
+import {
+  getPropertyPortfolioGuide,
+  type PropertyPortfolioGuide,
+  type PropertyPortfolioGuideAction,
+  type PropertyPortfolioGuideCard,
+} from '@/lib/property-portfolio-guide'
 import { getPublishedPropertyQuality } from '@/lib/property-publication-readiness'
 import type { UserProperty } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -104,6 +114,44 @@ export function ProprietatileMelePage() {
     : 0
   const withoutCover = properties.filter((property) => !coverUrl(property)).length
   const published = properties.filter((property) => String(property.status).toUpperCase() === 'PUBLISHED').length
+  const portfolioGuide = useMemo(
+    () => canManagePortfolio
+      ? getPropertyPortfolioGuide({
+          role: isAdminPortfolio ? 'ADMIN' : 'OWNER',
+          properties,
+        })
+      : null,
+    [canManagePortfolio, isAdminPortfolio, properties],
+  )
+
+  const handlePortfolioGuideAction = useCallback((action: PropertyPortfolioGuideAction) => {
+    if (action.target === 'publish') {
+      navigateTo('adauga-proprietate')
+      return
+    }
+    if (action.target === 'optimize') {
+      const property = properties.find((item) => String(item.id) === action.propertyId)
+      if (property) {
+        setEditProperty(property)
+        return
+      }
+      navigateTo('adauga-proprietate')
+      return
+    }
+    if (action.target === 'services') {
+      navigateTo('servicii')
+      return
+    }
+    if (action.target === 'performance') {
+      navigateTo('owner-dashboard')
+      return
+    }
+    if (action.target === 'documents') {
+      navigateTo('documente')
+      return
+    }
+    navigateTo('admin')
+  }, [navigateTo, properties])
 
   const confirmArchive = async () => {
     if (!archiveProperty) return
@@ -192,6 +240,13 @@ export function ProprietatileMelePage() {
           </PageSurface>
         ) : (
           <>
+            {portfolioGuide && (
+              <PropertyPortfolioGuidePanel
+                guide={portfolioGuide}
+                onAction={handlePortfolioGuideAction}
+              />
+            )}
+
             <section aria-label="Rezumat portofoliu" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <PortfolioStat icon={Building2} label={isAdminPortfolio ? 'Proprietăți gestionate' : 'Proprietăți active'} value={properties.length} />
               <PortfolioStat icon={CheckCircle2} label="Publicate" value={published} />
@@ -319,6 +374,121 @@ export function ProprietatileMelePage() {
         </DialogContent>
       </Dialog>
     </PageShell>
+  )
+}
+
+const PORTFOLIO_GUIDE_ICONS: Record<PropertyPortfolioGuideCard['id'], ElementType> = {
+  publication: Plus,
+  quality: Sparkles,
+  media: Camera,
+  operations: FileText,
+}
+
+const PORTFOLIO_GUIDE_TONES: Record<PropertyPortfolioGuideCard['tone'], {
+  card: string
+  icon: string
+  badge: string
+  action: string
+}> = {
+  primary: {
+    card: 'border-primary/30 bg-primary/[0.06]',
+    icon: 'bg-primary text-primary-foreground',
+    badge: 'border-primary/30 bg-primary/10 text-primary',
+    action: 'text-primary',
+  },
+  warning: {
+    card: 'border-amber-300 bg-amber-50/70 dark:border-amber-900/70 dark:bg-amber-950/25',
+    icon: 'bg-amber-500 text-white',
+    badge: 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+    action: 'text-amber-700 dark:text-amber-300',
+  },
+  success: {
+    card: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
+    icon: 'bg-emerald-600 text-white',
+    badge: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300',
+    action: 'text-emerald-700 dark:text-emerald-300',
+  },
+  neutral: {
+    card: 'border-border bg-muted/25',
+    icon: 'bg-muted text-muted-foreground',
+    badge: 'border-border bg-background text-muted-foreground',
+    action: 'text-primary',
+  },
+}
+
+function PropertyPortfolioGuidePanel({
+  guide,
+  onAction,
+}: {
+  guide: PropertyPortfolioGuide
+  onAction: (action: PropertyPortfolioGuideAction) => void
+}) {
+  return (
+    <PageSurface className="overflow-hidden p-0">
+      <div className="border-b bg-gradient-to-br from-primary/[0.08] via-background to-background p-5 sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <span className="mb-3 inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              Următorul pas din portofoliu
+            </span>
+            <h2 className="text-2xl font-bold tracking-tight">{guide.headline}</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{guide.description}</p>
+          </div>
+          <Button className="gap-2 lg:mt-1" onClick={() => onAction(guide.primaryAction)}>
+            {guide.primaryAction.label}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MiniMetric label="Active" value={guide.metrics.active} />
+          <MiniMetric label="Publicate" value={guide.metrics.published} />
+          <MiniMetric label="Calitate medie" value={`${guide.metrics.averageQuality}%`} />
+          <MiniMetric label="Fără tur virtual" value={guide.metrics.missingTour} />
+        </div>
+      </div>
+
+      <div className="grid gap-3 p-4 sm:p-5 lg:grid-cols-4">
+        {guide.cards.map((card) => {
+          const Icon = PORTFOLIO_GUIDE_ICONS[card.id]
+          const tone = PORTFOLIO_GUIDE_TONES[card.tone]
+          return (
+            <button
+              key={card.id}
+              type="button"
+              onClick={() => onAction(card.action)}
+              className={cn(
+                'group rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                tone.card,
+              )}
+            >
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl', tone.icon)}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className={cn('rounded-full border px-2.5 py-1 text-[10px] font-semibold', tone.badge)}>
+                  {card.badgeLabel}
+                </span>
+              </div>
+              <p className="font-semibold leading-tight">{card.title}</p>
+              <p className="mt-2 min-h-16 text-sm leading-5 text-muted-foreground">{card.description}</p>
+              <span className={cn('mt-4 inline-flex items-center gap-1 text-sm font-medium', tone.action)}>
+                {card.action.label}
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </PageSurface>
+  )
+}
+
+function MiniMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-2xl border bg-background/80 px-4 py-3 shadow-sm">
+      <p className="text-lg font-bold tabular-nums">{value}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
+    </div>
   )
 }
 
