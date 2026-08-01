@@ -46,18 +46,46 @@ export interface AdminPropertyRow {
   id: string
   title: string
   slug: string
+  description: string | null
   price: number
   currency: string
   type: string
+  transaction_type: string | null
   status: AdminPropertyStatus
+  area_sqm: number | string | null
+  rooms: number | string | null
+  bathrooms: number | string | null
+  year_built: number | string | null
+  address: string | null
   city: string | null
   zone: string | null
+  sector: string | null
+  lat: number | string | null
+  lng: number | string | null
+  cover_image_url: string | null
+  gallery_urls: string[] | string | null
+  amenities: string[] | string | null
   owner_id: string | null
   agent_id: string | null
   featured: boolean
   published_at: string | null
   created_at: string
   updated_at: string
+  virtual_tours?: Array<{
+    id?: string | null
+    status?: string | null
+    provider?: string | null
+    external_url?: string | null
+    entry_scene_id?: string | null
+    title?: string | null
+  }> | {
+    id?: string | null
+    status?: string | null
+    provider?: string | null
+    external_url?: string | null
+    entry_scene_id?: string | null
+    title?: string | null
+  } | null
 }
 
 export interface AdminLeadRow {

@@ -11,12 +11,12 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
-  Clock3,
   Coins,
   ExternalLink,
   FileCheck2,
   FileWarning,
   Handshake,
+  ImageOff,
   Inbox,
   LayoutDashboard,
   ListTodo,
@@ -30,6 +30,7 @@ import {
   Settings2,
   Shield,
   ShieldAlert,
+  Sparkles,
   UserCheck,
   Users,
   UserX,
@@ -59,6 +60,7 @@ import {
   type AdminDashboardData,
   type AdminPropertyStatus,
 } from '@/lib/admin-dashboard'
+import { getPublishedPropertyQuality } from '@/lib/property-publication-readiness'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -112,6 +114,8 @@ const STATUS_LABELS: Record<string, string> = {
   ARCHIVED: 'Arhivat',
 }
 
+const CLOSED_PROPERTY_STATUSES = new Set<AdminPropertyStatus>(['SOLD', 'RENTED', 'ARCHIVED'])
+
 type Confirmation = {
   title: string
   description: string
@@ -132,7 +136,8 @@ type AdminTab =
   | 'virtual-tours'
   | 'audit'
 
-type WorkDestination = 'crm' | 'properties' | 'transactions' | 'documents' | 'compliance'
+type WorkDestination = 'crm' | 'properties' | 'property_quality' | 'property_unassigned' | 'transactions' | 'documents' | 'compliance'
+type PropertyQualityFilter = 'ALL' | 'NEEDS_OPTIMIZATION' | 'UNASSIGNED' | 'READY_TO_PUBLISH'
 
 type WorkItem = {
   id: string
@@ -267,6 +272,7 @@ export function AdminPage() {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<'ALL' | AccountRole>('ALL')
   const [propertyFilter, setPropertyFilter] = useState<'ALL' | AdminPropertyStatus>('ALL')
+  const [propertyQualityFilter, setPropertyQualityFilter] = useState<PropertyQualityFilter>('ALL')
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
   const [redemptionNotes, setRedemptionNotes] = useState<Record<string, string>>({})
@@ -339,15 +345,44 @@ export function AdminPage() {
     })
   }, [data, roleFilter, search])
 
+  const propertyQualitySummary = useMemo(() => {
+    const rows = (data?.properties || []).map((property) => ({
+      property,
+      quality: getPublishedPropertyQuality(property),
+    }))
+    const operationalRows = rows.filter(({ property }) => !CLOSED_PROPERTY_STATUSES.has(property.status))
+    const needsOptimization = operationalRows.filter(({ quality }) => quality.score < 80)
+    const unassigned = operationalRows.filter(({ property }) => !property.agent_id)
+    const readyToPublish = rows.filter(({ property, quality }) => (
+      property.status === 'DRAFT'
+      && Boolean(property.agent_id)
+      && quality.score >= 80
+    ))
+    const missingVirtualTour = operationalRows.filter(({ quality }) => (
+      quality.recommendations.some((item) => item.id === 'virtual-tour')
+    ))
+    const averageScore = rows.length
+      ? Math.round(rows.reduce((total, row) => total + row.quality.score, 0) / rows.length)
+      : 0
+
+    return { rows, operationalRows, needsOptimization, unassigned, readyToPublish, missingVirtualTour, averageScore }
+  }, [data])
+
   const filteredProperties = useMemo(() => {
     if (!data) return []
     const query = search.trim().toLocaleLowerCase('ro-RO')
     return data.properties.filter((item) => {
       const matchesStatus = propertyFilter === 'ALL' || item.status === propertyFilter
-      const haystack = `${item.title} ${item.city || ''} ${item.zone || ''} ${item.type}`.toLocaleLowerCase('ro-RO')
-      return matchesStatus && (!query || haystack.includes(query))
+      const quality = propertyQualitySummary.rows.find((row) => row.property.id === item.id)?.quality ?? getPublishedPropertyQuality(item)
+      const isOperational = !CLOSED_PROPERTY_STATUSES.has(item.status)
+      const matchesQuality = propertyQualityFilter === 'ALL'
+        || (propertyQualityFilter === 'NEEDS_OPTIMIZATION' && isOperational && quality.score < 80)
+        || (propertyQualityFilter === 'UNASSIGNED' && isOperational && !item.agent_id)
+        || (propertyQualityFilter === 'READY_TO_PUBLISH' && item.status === 'DRAFT' && Boolean(item.agent_id) && quality.score >= 80)
+      const haystack = `${item.title} ${item.city || ''} ${item.zone || ''} ${item.sector || ''} ${item.address || ''} ${item.type}`.toLocaleLowerCase('ro-RO')
+      return matchesStatus && matchesQuality && (!query || haystack.includes(query))
     })
-  }, [data, propertyFilter, search])
+  }, [data, propertyFilter, propertyQualityFilter, propertyQualitySummary.rows, search])
 
   const agents = useMemo(
     () => data?.users.filter((item) => item.role === 'AGENT' && item.is_active) || [],
@@ -421,6 +456,30 @@ export function AdminPage() {
         icon: Building2,
       })
     }
+    if (propertyQualitySummary.needsOptimization.length > 0) {
+      items.push({
+        id: 'listing-quality',
+        title: 'Anunțuri care necesită optimizare',
+        description: 'Prioritizează fotografiile, descrierea, pinul pe hartă și turul virtual înainte de promovare.',
+        count: propertyQualitySummary.needsOptimization.length,
+        priority: 'normal',
+        destination: 'property_quality',
+        actionLabel: 'Vezi recomandările',
+        icon: Sparkles,
+      })
+    }
+    if (propertyQualitySummary.unassigned.length > 0) {
+      items.push({
+        id: 'unassigned-properties',
+        title: 'Proprietăți fără agent',
+        description: 'Repartizarea unui agent clarifică responsabilul pentru lead-uri, vizionări și documente.',
+        count: propertyQualitySummary.unassigned.length,
+        priority: 'normal',
+        destination: 'property_unassigned',
+        actionLabel: 'Repartizează agent',
+        icon: UserCheck,
+      })
+    }
     if (pendingAppointments > 0) {
       items.push({
         id: 'pending-appointments',
@@ -459,7 +518,7 @@ export function AdminPage() {
     }
 
     return items
-  }, [data])
+  }, [data, propertyQualitySummary.needsOptimization.length, propertyQualitySummary.unassigned.length])
 
   const globalSearchResults = useMemo<GlobalSearchResult[]>(() => {
     if (!data || globalSearch.trim().length < 2) return []
@@ -511,8 +570,21 @@ export function AdminPage() {
       navigateTo('documente')
       return
     }
+    if (destination === 'property_quality') {
+      setPropertyFilter('ALL')
+      setPropertyQualityFilter('NEEDS_OPTIMIZATION')
+      openTab('properties')
+      return
+    }
+    if (destination === 'property_unassigned') {
+      setPropertyFilter('ALL')
+      setPropertyQualityFilter('UNASSIGNED')
+      openTab('properties')
+      return
+    }
     if (destination === 'properties') {
       setPropertyFilter('DRAFT')
+      setPropertyQualityFilter('ALL')
       openTab('properties')
       return
     }
@@ -525,7 +597,10 @@ export function AdminPage() {
 
   const openSearchResult = (result: GlobalSearchResult) => {
     if (result.tab === 'people') setRoleFilter('ALL')
-    if (result.tab === 'properties') setPropertyFilter('ALL')
+    if (result.tab === 'properties') {
+      setPropertyFilter('ALL')
+      setPropertyQualityFilter('ALL')
+    }
     setSearch(result.localSearch || '')
     setActiveTab(result.tab)
     setGlobalSearch('')
@@ -781,16 +856,31 @@ export function AdminPage() {
               description="Datele provin din Supabase, aceeași sursă folosită de publicare și paginile publice."
               action={<Button onClick={() => navigateTo('adauga-proprietate')}><Building2 className="mr-2 h-4 w-4" /> Adaugă proprietate</Button>}
             />
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard icon={Sparkles} label="Calitate medie" value={`${propertyQualitySummary.averageScore}%`} note={`${propertyQualitySummary.operationalRows.length} anunțuri operaționale`} tone="bg-primary/10 text-primary" />
+              <MetricCard icon={AlertTriangle} label="De optimizat" value={propertyQualitySummary.needsOptimization.length} note={`${propertyQualitySummary.missingVirtualTour.length} fără tur virtual`} tone="bg-amber-500/10 text-amber-600" />
+              <MetricCard icon={UserCheck} label="Fără agent" value={propertyQualitySummary.unassigned.length} note="necesită responsabil" tone="bg-rose-500/10 text-rose-600" />
+              <MetricCard icon={CheckCircle2} label="Gata de publicat" value={propertyQualitySummary.readyToPublish.length} note="drafturi cu scor bun și agent" tone="bg-emerald-500/10 text-emerald-600" />
+            </div>
             <div className="flex flex-wrap gap-3">
               <div className="relative min-w-64 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Caută după titlu, oraș, zonă sau tip..." className="pl-9" /></div>
               <select value={propertyFilter} onChange={(event) => setPropertyFilter(event.target.value as 'ALL' | AdminPropertyStatus)} className="h-9 rounded-md border bg-background px-3 text-sm">
                 <option value="ALL">Toate statusurile</option>
                 {ADMIN_PROPERTY_STATUSES.map((status) => <option key={status} value={status}>{PROPERTY_STATUS_LABELS[status]}</option>)}
               </select>
+              <select value={propertyQualityFilter} onChange={(event) => setPropertyQualityFilter(event.target.value as PropertyQualityFilter)} className="h-9 rounded-md border bg-background px-3 text-sm">
+                <option value="ALL">Toate prioritățile</option>
+                <option value="NEEDS_OPTIMIZATION">Necesită optimizare</option>
+                <option value="UNASSIGNED">Fără agent</option>
+                <option value="READY_TO_PUBLISH">Gata de publicat</option>
+              </select>
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               {filteredProperties.map((property) => {
                 const key = `property:${property.id}`
+                const quality = propertyQualitySummary.rows.find((row) => row.property.id === property.id)?.quality ?? getPublishedPropertyQuality(property)
+                const nextRecommendation = quality.recommendations[0]
+                const missingAgent = !property.agent_id && !CLOSED_PROPERTY_STATUSES.has(property.status)
                 return (
                   <Card key={property.id} className="gap-4 py-5">
                     <CardHeader className="px-5">
@@ -801,6 +891,30 @@ export function AdminPage() {
                     </CardHeader>
                     <CardContent className="space-y-4 px-5">
                       <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-xl font-bold">{formatPrice(property.price, property.currency)}</span><span className="text-xs text-muted-foreground">Actualizat {formatDate(property.updated_at)}</span></div>
+                      <div className={cn('rounded-xl border p-3', quality.score < 80 ? 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/10' : 'border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/10')}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="flex items-center gap-1.5 text-sm font-semibold">
+                              <Sparkles className="h-4 w-4 text-primary" />
+                              Calitate {quality.score}% · {quality.label}
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                              {nextRecommendation
+                                ? `${nextRecommendation.title}: ${nextRecommendation.description}`
+                                : 'Anunțul este complet pentru promovare și comparații.'}
+                            </p>
+                          </div>
+                          {quality.score < 80 ? <Badge variant="secondary">Optimizare</Badge> : <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10">Bun</Badge>}
+                        </div>
+                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-background">
+                          <div className={cn('h-full rounded-full', quality.score < 80 ? 'bg-amber-500' : 'bg-emerald-500')} style={{ width: `${quality.score}%` }} />
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {missingAgent ? <Badge variant="destructive" className="gap-1.5"><UserCheck className="h-3.5 w-3.5" /> Fără agent</Badge> : null}
+                          {quality.recommendations.some((item) => item.id === 'cover-photo' || item.id === 'gallery-depth') ? <Badge variant="outline" className="gap-1.5"><ImageOff className="h-3.5 w-3.5" /> Media incompletă</Badge> : null}
+                          {quality.recommendations.some((item) => item.id === 'virtual-tour') ? <Badge variant="outline" className="gap-1.5"><Rotate3D className="h-3.5 w-3.5" /> Fără tur virtual</Badge> : null}
+                        </div>
+                      </div>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <label className="space-y-1.5 text-xs font-medium text-muted-foreground">Status
                           <select

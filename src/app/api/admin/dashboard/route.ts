@@ -11,6 +11,13 @@ import { requireAdmin } from '@/lib/server-admin-auth'
 
 type QueryResult = { data: unknown; error: { message: string } | null }
 
+const ADMIN_PROPERTY_SELECT = `
+  id,title,slug,description,price,currency,type,transaction_type,status,area_sqm,rooms,bathrooms,
+  year_built,address,city,zone,sector,lat,lng,cover_image_url,gallery_urls,amenities,
+  owner_id,agent_id,featured,published_at,created_at,updated_at,
+  virtual_tours(id,status,provider,external_url,entry_scene_id,title)
+`
+
 async function readList(
   source: string,
   operation: PromiseLike<QueryResult>,
@@ -98,7 +105,7 @@ export async function GET(request: NextRequest) {
       .limit(200), warnings),
     readList('Supabase proprietati', auth.client
       .from('properties')
-      .select('id,title,slug,price,currency,type,status,city,zone,owner_id,agent_id,featured,published_at,created_at,updated_at')
+      .select(ADMIN_PROPERTY_SELECT)
       .order('updated_at', { ascending: false })
       .limit(200), warnings),
     readList('Supabase lead-uri', auth.client
@@ -351,7 +358,7 @@ export async function PATCH(request: NextRequest) {
       .from('properties')
       .update(updates)
       .eq('id', propertyId)
-      .select('id,title,slug,price,currency,type,status,city,zone,owner_id,agent_id,featured,published_at,created_at,updated_at')
+      .select(ADMIN_PROPERTY_SELECT)
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
