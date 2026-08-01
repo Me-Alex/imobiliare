@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ElementType } from 'react'
 import {
   ArrowRight,
   Building2,
@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
@@ -52,6 +53,13 @@ import {
   transitionDealOffer,
   updateDealNextStep,
 } from '@/lib/transaction-workspace'
+import {
+  getDealRoomJourney,
+  type DealRoomJourney,
+  type DealRoomJourneyStage,
+  type DealRoomJourneyState,
+  type DealRoomJourneyTarget,
+} from '@/lib/deal-room-journey'
 import {
   openViewingDocuments,
   readAppointmentContext,
@@ -81,6 +89,135 @@ function formatDate(value?: string | null, includeTime = true) {
 
 function formatMoney(value: number | string, currency = 'EUR') {
   return new Intl.NumberFormat('ro-RO', { style: 'currency', currency, maximumFractionDigits: 0 }).format(Number(value))
+}
+
+const DEAL_JOURNEY_ICONS: Record<DealRoomJourneyStage['id'], ElementType> = {
+  viewing: CalendarCheck,
+  participants: Users,
+  offer: HandCoins,
+  documents: FileSignature,
+  nextStep: ArrowRight,
+}
+
+const DEAL_JOURNEY_STATE_META: Record<DealRoomJourneyState, {
+  label: string
+  icon: ElementType
+  className: string
+  markerClassName: string
+  badgeClassName: string
+}> = {
+  blocked: {
+    label: 'Blocat',
+    icon: XCircle,
+    className: 'border-rose-300 bg-rose-50/80 dark:border-rose-900/70 dark:bg-rose-950/25',
+    markerClassName: 'bg-rose-600 text-white',
+    badgeClassName: 'bg-rose-600 text-white hover:bg-rose-600',
+  },
+  attention: {
+    label: 'Atenție',
+    icon: ShieldCheck,
+    className: 'border-amber-300 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/25',
+    markerClassName: 'bg-amber-500 text-white',
+    badgeClassName: 'bg-amber-500 text-white hover:bg-amber-500',
+  },
+  active: {
+    label: 'Activ',
+    icon: ArrowRight,
+    className: 'border-primary/25 bg-primary/[0.05]',
+    markerClassName: 'bg-primary text-primary-foreground',
+    badgeClassName: 'bg-primary text-primary-foreground',
+  },
+  waiting: {
+    label: 'Așteaptă',
+    icon: Clock3,
+    className: 'border-blue-200 bg-blue-50/70 dark:border-blue-900/70 dark:bg-blue-950/25',
+    markerClassName: 'bg-blue-600 text-white',
+    badgeClassName: 'bg-blue-600 text-white hover:bg-blue-600',
+  },
+  complete: {
+    label: 'Complet',
+    icon: CheckCircle2,
+    className: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
+    markerClassName: 'bg-emerald-600 text-white',
+    badgeClassName: 'bg-emerald-600 text-white hover:bg-emerald-600',
+  },
+}
+
+function DealRoomJourneyPanel({
+  journey,
+  onFocus,
+}: {
+  journey: DealRoomJourney
+  onFocus: (target: DealRoomJourneyTarget) => void
+}) {
+  const PrimaryIcon = DEAL_JOURNEY_ICONS[journey.primaryStage.id]
+
+  return (
+    <Card className="overflow-hidden border-primary/15">
+      <CardHeader className="border-b bg-background/75 pb-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">
+              Hartă tranzacție
+            </Badge>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <PrimaryIcon className="h-5 w-5 text-primary" />
+              {journey.headline}
+            </CardTitle>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+              {journey.description}
+            </p>
+          </div>
+          <div className="min-w-[220px] rounded-2xl border bg-card p-4 shadow-sm">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  progres tranzacție
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{journey.progressPercent}%</p>
+              </div>
+              <Badge variant="secondary">
+                {journey.completedCount}/{journey.totalCount} gata
+              </Badge>
+            </div>
+            <Progress value={journey.progressPercent} className="mt-3 h-2" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-5">
+        {journey.stages.map((stageItem) => {
+          const Icon = DEAL_JOURNEY_ICONS[stageItem.id]
+          const meta = DEAL_JOURNEY_STATE_META[stageItem.state]
+          const StatusIcon = meta.icon
+
+          return (
+            <button
+              key={stageItem.id}
+              type="button"
+              onClick={() => onFocus(stageItem.target)}
+              className={`group rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${meta.className}`}
+            >
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${meta.markerClassName}`}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <Badge className={`gap-1 text-[10px] ${meta.badgeClassName}`}>
+                  <StatusIcon className="h-3 w-3" />
+                  {meta.label}
+                </Badge>
+              </div>
+              <p className="text-sm font-semibold">{stageItem.title}</p>
+              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{stageItem.description}</p>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                {stageItem.value}
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              </span>
+            </button>
+          )
+        })}
+      </CardContent>
+    </Card>
+  )
 }
 
 export function DealRoomPage() {
@@ -223,10 +360,29 @@ export function DealRoomPage() {
           : hasAcceptedOffer
             ? 'Pregateste contractele si semnaturile finale.'
             : room.next_step || 'Stabiliti urmatoarea actiune pentru tranzactie.'
+  const dealJourney = getDealRoomJourney({
+    room,
+    appointments,
+    participants,
+    offers,
+    requirements,
+    selectedStage: stage,
+  })
 
   const handleOpenDocuments = () => {
     if (appointmentId) openViewingDocuments(navigateTo, appointmentId, room.id)
     else navigateTo('documente')
+  }
+
+  const handleJourneyFocus = (target: DealRoomJourneyTarget) => {
+    const targetId: Record<DealRoomJourneyTarget, string> = {
+      viewing: 'deal-viewing',
+      participants: 'deal-participants',
+      offers: 'deal-offers',
+      documents: 'deal-documents',
+      'next-step': 'deal-next-step',
+    }
+    document.getElementById(targetId[target])?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const handleRoleAction = () => {
@@ -363,6 +519,8 @@ export function DealRoomPage() {
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-7 sm:px-6 lg:px-8">
         <StageProgress current={room.stage} />
 
+        <DealRoomJourneyPanel journey={dealJourney} onFocus={handleJourneyFocus} />
+
         <Card className={roleAction.priority === 'high' ? 'border-amber-300/60 bg-amber-500/[0.06]' : 'border-primary/20 bg-primary/[0.03]'}>
           <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-start gap-4">
@@ -394,7 +552,7 @@ export function DealRoomPage() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
-              <Card>
+              <Card id="deal-viewing" className="scroll-mt-24">
                 <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><CalendarCheck className="h-4 w-4 text-primary" /> Vizionare și prezență</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   {appointments.length === 0 ? <EmptyLine text="Nicio vizionare asociată." /> : appointments.map((link) => {
@@ -412,7 +570,7 @@ export function DealRoomPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card id="deal-participants" className="scroll-mt-24">
                 <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Users className="h-4 w-4 text-primary" /> Participanți</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   {participants.map((participant) => {
