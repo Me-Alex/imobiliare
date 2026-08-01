@@ -46,6 +46,17 @@ const STAGE_META: Record<CrmStage, { label: string; dot: string; accent: string 
   CONTRACT: { label: 'Contract', dot: 'bg-emerald-500', accent: 'border-t-emerald-500' },
 }
 
+type CrmPriorityTone = 'rose' | 'amber' | 'blue' | 'emerald' | 'violet'
+
+interface CrmPriorityItem {
+  id: string
+  title: string
+  description: string
+  count: number
+  icon: React.ElementType
+  tone: CrmPriorityTone
+}
+
 function shortDate(value?: string | null) {
   if (!value) return '—'
   return new Intl.DateTimeFormat('ro-RO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
@@ -60,6 +71,24 @@ function sourceLabel(source?: string | null) {
   return 'Website'
 }
 
+const TERMINAL_LEAD_STATUSES = new Set(['WON', 'CLOSED', 'LOST'])
+
+function isLeadTerminal(lead: CrmLead) {
+  return TERMINAL_LEAD_STATUSES.has(lead.status)
+}
+
+function isLeadResponseOverdue(lead: CrmLead, now = Date.now()) {
+  if (lead.status !== 'NEW') return false
+  const dueAt = Date.parse(lead.response_due_at || lead.created_at)
+  return Number.isFinite(dueAt) && dueAt < now
+}
+
+function endOfToday() {
+  const date = new Date()
+  date.setHours(23, 59, 59, 999)
+  return date.getTime()
+}
+
 export function CrmPage() {
   const { user, profile, loading: authLoading } = useAuth()
   const [leads, setLeads] = useState<CrmLead[]>([])
@@ -68,6 +97,7 @@ export function CrmPage() {
   const [loading, setLoading] = useState(true)
   const [workingId, setWorkingId] = useState('')
   const [error, setError] = useState('')
+  const [leadScope, setLeadScope] = useState<'mine' | 'all'>('all')
 
   const load = useCallback(async () => {
     if (!user) { setLoading(false); return }
@@ -87,22 +117,113 @@ export function CrmPage() {
 
   useEffect(() => { void load() }, [load])
 
+  useEffect(() => {
+    if (profile?.role === 'AGENT') setLeadScope('mine')
+    if (profile?.role === 'ADMIN') setLeadScope('all')
+  }, [profile?.role])
+
+  const scopedLeads = useMemo(() => {
+    if (leadScope !== 'mine' || !user) return leads
+    return leads.filter((lead) => lead.agent_id === user.id)
+  }, [leadScope, leads, user])
+
+  const activeLeads = useMemo(() => scopedLeads.filter((lead) => !isLeadTerminal(lead)), [scopedLeads])
+  const openFollowUps = useMemo(() => followUps.filter((item) => item.status === 'OPEN'), [followUps])
+  const scopedFollowUps = useMemo(() => {
+    if (leadScope !== 'mine' || !user) return openFollowUps
+    return openFollowUps.filter((item) => item.assigned_to === user.id)
+  }, [leadScope, openFollowUps, user])
+  const scopedAppointments = useMemo(() => {
+    if (leadScope !== 'mine' || !user) return appointments
+    return appointments.filter((item) => item.agent_id === user.id)
+  }, [appointments, leadScope, user])
+
   const metrics = useMemo(() => {
-    const responded = leads.filter((lead) => lead.first_response_at)
+    const responded = activeLeads.filter((lead) => lead.first_response_at)
     const responseMinutes = responded.map((lead) => Math.max(0, (+new Date(lead.first_response_at as string) - +new Date(lead.created_at)) / 60000))
     const averageResponse = responseMinutes.length ? Math.round(responseMinutes.reduce((sum, value) => sum + value, 0) / responseMinutes.length) : 0
-    const converted = leads.filter((lead) => ['OFFER', 'CONTRACT', 'WON', 'CLOSED'].includes(lead.status)).length
-    const unanswered = leads.filter((lead) => lead.status === 'NEW' && +new Date(lead.response_due_at || lead.created_at) < Date.now()).length
+    const converted = activeLeads.filter((lead) => ['OFFER', 'CONTRACT'].includes(lead.status)).length
+    const unanswered = activeLeads.filter((lead) => isLeadResponseOverdue(lead)).length
     return {
       averageResponse,
-      conversion: leads.length ? Math.round(converted / leads.length * 100) : 0,
+      conversion: activeLeads.length ? Math.round(converted / activeLeads.length * 100) : 0,
       unanswered,
-      upcoming: appointments.length,
+      upcoming: scopedAppointments.length,
     }
-  }, [appointments.length, leads])
+  }, [activeLeads, scopedAppointments.length])
 
-  const grouped = useMemo(() => Object.fromEntries(CRM_STAGES.map((stage) => [stage, leads.filter((lead) => normalizeCrmStage(lead.status) === stage)])) as Record<CrmStage, CrmLead[]>, [leads])
-  const openFollowUps = followUps.filter((item) => item.status === 'OPEN')
+  const grouped = useMemo(() => Object.fromEntries(CRM_STAGES.map((stage) => [stage, activeLeads.filter((lead) => normalizeCrmStage(lead.status) === stage)])) as Record<CrmStage, CrmLead[]>, [activeLeads])
+  const overdueFollowUps = useMemo(() => scopedFollowUps.filter((item) => Date.parse(item.due_at) < Date.now()), [scopedFollowUps])
+  const todayFollowUps = useMemo(() => scopedFollowUps.filter((item) => Date.parse(item.due_at) <= endOfToday()), [scopedFollowUps])
+  const overdueLeads = useMemo(() => activeLeads.filter((lead) => isLeadResponseOverdue(lead)), [activeLeads])
+  const unassignedLeads = useMemo(() => leads.filter((lead) => !isLeadTerminal(lead) && !lead.agent_id), [leads])
+  const nextAppointment = useMemo(() => scopedAppointments[0] || null, [scopedAppointments])
+  const dailyPriorities = useMemo(() => {
+    const items: CrmPriorityItem[] = []
+
+    if (overdueFollowUps.length > 0) {
+      items.push({
+        id: 'overdue-followups',
+        title: 'Follow-up-uri întârziate',
+        description: 'Închide sau reprogramează contactările care au depășit termenul.',
+        count: overdueFollowUps.length,
+        icon: CalendarClock,
+        tone: 'rose',
+      })
+    }
+    if (overdueLeads.length > 0) {
+      items.push({
+        id: 'unanswered-leads',
+        title: 'Lead-uri fără răspuns',
+        description: 'Contactează lead-urile noi înainte să se răcească interesul.',
+        count: overdueLeads.length,
+        icon: MessageCircleWarning,
+        tone: 'amber',
+      })
+    }
+    if (todayFollowUps.length > 0) {
+      items.push({
+        id: 'today-followups',
+        title: 'Contactări de azi',
+        description: 'Agenda zilei este grupată aici ca să nu cauți în fiecare coloană.',
+        count: todayFollowUps.length,
+        icon: PhoneCall,
+        tone: 'blue',
+      })
+    }
+    if (nextAppointment) {
+      items.push({
+        id: 'next-viewing',
+        title: 'Următoarea vizionare',
+        description: `${String(nextAppointment.property_title || 'Proprietate')} · ${shortDate(String(nextAppointment.start_at || nextAppointment.requested_at || ''))}`,
+        count: 1,
+        icon: CalendarDays,
+        tone: 'violet',
+      })
+    }
+    if (profile?.role === 'ADMIN' && unassignedLeads.length > 0) {
+      items.push({
+        id: 'unassigned-leads',
+        title: 'Lead-uri nerepartizate',
+        description: 'Folosește repartizarea automată sau alocă manual în funcție de zonă și încărcare.',
+        count: unassignedLeads.length,
+        icon: UserRoundPlus,
+        tone: 'amber',
+      })
+    }
+    if (items.length === 0) {
+      items.push({
+        id: 'healthy',
+        title: 'Agenda CRM este la zi',
+        description: 'Nu există întârzieri critice. Următorul pas bun este calificarea lead-urilor din pipeline.',
+        count: activeLeads.length,
+        icon: CheckCircle2,
+        tone: 'emerald',
+      })
+    }
+
+    return items
+  }, [activeLeads.length, nextAppointment, overdueFollowUps, overdueLeads, profile?.role, todayFollowUps, unassignedLeads])
 
   if (authLoading || loading) return <div className="flex min-h-[65vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   if (!user || !profile) return <SimpleState icon={Users} title="Autentificare necesară" description="CRM-ul este disponibil agenților și administratorilor autentificați." />
@@ -173,7 +294,11 @@ export function CrmPage() {
         <div className="mx-auto max-w-[1600px] px-4 py-7 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div><Badge className="mb-2 border-0 bg-primary/10 text-primary hover:bg-primary/10">CRM agenți</Badge><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Pipeline comercial</h1><p className="mt-2 text-sm text-muted-foreground">Lead-uri, follow-up-uri, vizionări și rezultate într-un singur flux.</p></div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <div className="flex rounded-md border bg-background p-1">
+                <Button type="button" variant={leadScope === 'mine' ? 'default' : 'ghost'} size="sm" onClick={() => setLeadScope('mine')}>Ale mele</Button>
+                <Button type="button" variant={leadScope === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setLeadScope('all')}>Tot CRM-ul</Button>
+              </div>
               {profile.role === 'ADMIN' ? <Button variant="outline" onClick={() => void handleAutoAssign()} disabled={workingId === 'auto-assign'}>{workingId === 'auto-assign' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />} Repartizează automat</Button> : null}
               <Button variant="outline" size="icon" aria-label="Reîncarcă CRM" onClick={() => void load()}><RefreshCw className="h-4 w-4" /></Button>
             </div>
@@ -183,11 +308,26 @@ export function CrmPage() {
 
       <main className="mx-auto max-w-[1600px] space-y-6 px-4 py-7 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Metric icon={Inbox} label="Lead-uri active" value={leads.filter((lead) => !['WON', 'CLOSED', 'LOST'].includes(lead.status)).length} detail={`${leads.filter((lead) => lead.status === 'NEW').length} noi`} tone="violet" />
+          <Metric icon={Inbox} label="Lead-uri active" value={activeLeads.length} detail={`${activeLeads.filter((lead) => lead.status === 'NEW').length} noi ${leadScope === 'mine' ? 'ale mele' : 'în CRM'}`} tone="violet" />
           <Metric icon={Clock3} label="Timp mediu răspuns" value={`${metrics.averageResponse} min`} detail="de la cerere" tone="blue" />
           <Metric icon={Target} label="Rată conversie" value={`${metrics.conversion}%`} detail="până la ofertă" tone="emerald" />
           <Metric icon={MessageCircleWarning} label="Fără răspuns" value={metrics.unanswered} detail={`${metrics.upcoming} vizionări viitoare`} tone={metrics.unanswered ? 'rose' : 'amber'} />
         </div>
+
+        <Card className="overflow-hidden border-primary/20">
+          <CardHeader className="border-b bg-background/70 pb-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base"><Gauge className="h-5 w-5 text-primary" /> Prioritățile zilei</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">Un singur loc pentru ce trebuie contactat, confirmat sau repartizat.</p>
+              </div>
+              <Badge variant="secondary">{leadScope === 'mine' ? 'Munca mea' : 'Toată echipa'}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
+            {dailyPriorities.slice(0, 4).map((item) => <PriorityCard key={item.id} item={item} />)}
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
           <section aria-labelledby="pipeline-heading" className="min-w-0">
@@ -209,9 +349,9 @@ export function CrmPage() {
 
           <aside className="space-y-6">
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><CalendarClock className="h-4 w-4 text-primary" /> Follow-up-uri</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><CalendarClock className="h-4 w-4 text-primary" /> Follow-up-uri <Badge variant="secondary">{scopedFollowUps.length}</Badge></CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                {openFollowUps.length === 0 ? <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground"><CheckCircle2 className="mx-auto mb-2 h-6 w-6 text-emerald-500" /> Agenda este la zi.</div> : openFollowUps.slice(0, 8).map((item) => (
+                {scopedFollowUps.length === 0 ? <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground"><CheckCircle2 className="mx-auto mb-2 h-6 w-6 text-emerald-500" /> Agenda este la zi.</div> : scopedFollowUps.slice(0, 8).map((item) => (
                   <div key={item.id} className="rounded-xl border p-3">
                     <div className="flex items-start gap-3"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{item.title}</p><p className={`mt-1 text-xs ${+new Date(item.due_at) < Date.now() ? 'font-medium text-rose-600' : 'text-muted-foreground'}`}>{shortDate(item.due_at)}</p></div></div>
                     <Button variant="ghost" size="sm" className="mt-2 w-full" disabled={workingId === item.id} onClick={() => void handleComplete(item.id)}><CheckCircle2 className="mr-2 h-4 w-4" /> Marchează finalizat</Button>
@@ -250,6 +390,30 @@ function LeadCard({ lead, isWorking, onAdvance, onFollowUp }: { lead: CrmLead; i
         <Button size="sm" onClick={onAdvance} disabled={isWorking || isLast}>{isWorking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isLast ? <CheckCircle2 className="h-3.5 w-3.5" /> : <><span>Avansează</span><ArrowRight className="ml-1 h-3.5 w-3.5" /></>}</Button>
       </div>
     </article>
+  )
+}
+
+function PriorityCard({ item }: { item: CrmPriorityItem }) {
+  const tones: Record<CrmPriorityTone, string> = {
+    rose: 'border-rose-200 bg-rose-50/70 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/20 dark:text-rose-300',
+    amber: 'border-amber-200 bg-amber-50/70 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-300',
+    blue: 'border-blue-200 bg-blue-50/70 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-300',
+    emerald: 'border-emerald-200 bg-emerald-50/70 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-300',
+    violet: 'border-violet-200 bg-violet-50/70 text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/20 dark:text-violet-300',
+  }
+  const Icon = item.icon
+
+  return (
+    <div className={`rounded-2xl border p-4 ${tones[item.tone]}`}>
+      <div className="flex items-start justify-between gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background/80">
+          <Icon className="h-5 w-5" />
+        </span>
+        <span className="rounded-full bg-background/80 px-2 py-1 text-xs font-bold">{item.count}</span>
+      </div>
+      <p className="mt-4 text-sm font-semibold text-foreground">{item.title}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.description}</p>
+    </div>
   )
 }
 
