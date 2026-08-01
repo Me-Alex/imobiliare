@@ -28,6 +28,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
@@ -45,6 +46,12 @@ import {
   type OwnerDashboardActionTarget,
   type OwnerDashboardSignal,
 } from '@/lib/owner-dashboard-guidance'
+import {
+  getOwnerDashboardJourney,
+  type OwnerDashboardJourney,
+  type OwnerDashboardJourneyStage,
+  type OwnerDashboardJourneyStageState,
+} from '@/lib/owner-dashboard-journey'
 
 type OwnerSnapshot = Awaited<ReturnType<typeof fetchOwnerSnapshot>>
 
@@ -114,7 +121,10 @@ export function OwnerDashboardPage() {
     navigateTo('deal-room')
   }
   const feedbackRows = appointments.filter((item) => typeof item.rating === 'number' || typeof item.feedback === 'string')
-  const averageRating = feedbackRows.length ? feedbackRows.reduce((sum, item) => sum + Number(item.rating || 0), 0) / feedbackRows.filter((item) => Number(item.rating || 0) > 0).length : 0
+  const ratedRows = feedbackRows.filter((item) => Number(item.rating || 0) > 0)
+  const averageRating = ratedRows.length
+    ? ratedRows.reduce((sum, item) => sum + Number(item.rating || 0), 0) / ratedRows.length
+    : 0
   const missingDocuments = requirements.filter((item) => !['APPROVED', 'WAIVED'].includes(String(item.status)))
   const ownerPriority = getOwnerDashboardPriority({
     qualityScore: quality.score,
@@ -125,6 +135,15 @@ export function OwnerDashboardPage() {
     inquiries: totals.inquiries,
     viewings: Math.max(totals.viewings, appointments.length),
     feedbackCount: feedbackRows.length,
+  })
+  const ownerJourney = getOwnerDashboardJourney({
+    qualityScore: quality.score,
+    adjustmentPercent: analysis.adjustmentPercent,
+    views: totals.views,
+    inquiries: totals.inquiries,
+    viewings: Math.max(totals.viewings, appointments.length),
+    feedbackCount: feedbackRows.length,
+    missingDocuments: missingDocuments.length,
   })
   const openSelectedDocuments = () => {
     if (selectedAppointmentId) {
@@ -183,6 +202,8 @@ export function OwnerDashboardPage() {
         </Card>
 
         <OwnerPriorityPanel priority={ownerPriority} onAction={handleOwnerPriority} />
+
+        <OwnerJourneyPanel journey={ownerJourney} onAction={handleOwnerPriority} />
 
         <div id="owner-metrics" className="grid scroll-mt-24 grid-cols-2 gap-4 lg:grid-cols-4">
           <MetricCard icon={Eye} label="Vizualizări" value={totals.views} detail="vizitatori unici/zi" tone="violet" />
@@ -264,6 +285,121 @@ const OWNER_SIGNAL_ICONS: Record<OwnerDashboardSignal['id'], ElementType> = {
   interest: MessageSquare,
   pricing: Scale,
   documents: FileText,
+}
+
+const OWNER_JOURNEY_ICONS: Record<OwnerDashboardJourneyStage['id'], ElementType> = {
+  listing: Sparkles,
+  market: Scale,
+  viewings: CalendarCheck,
+  transaction: FileText,
+}
+
+const OWNER_JOURNEY_STATE_META: Record<OwnerDashboardJourneyStageState, {
+  label: string
+  className: string
+  markerClassName: string
+  badgeClassName: string
+}> = {
+  attention: {
+    label: 'Atenție',
+    className: 'border-amber-300 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/25',
+    markerClassName: 'bg-amber-500 text-white',
+    badgeClassName: 'bg-amber-500 text-white hover:bg-amber-500',
+  },
+  active: {
+    label: 'Activ',
+    className: 'border-primary/25 bg-primary/[0.05]',
+    markerClassName: 'bg-primary text-primary-foreground',
+    badgeClassName: 'bg-primary text-primary-foreground',
+  },
+  waiting: {
+    label: 'Așteaptă',
+    className: 'border-blue-200 bg-blue-50/70 dark:border-blue-900/70 dark:bg-blue-950/25',
+    markerClassName: 'bg-blue-600 text-white',
+    badgeClassName: 'bg-blue-600 text-white hover:bg-blue-600',
+  },
+  good: {
+    label: 'Bine',
+    className: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
+    markerClassName: 'bg-emerald-600 text-white',
+    badgeClassName: 'bg-emerald-600 text-white hover:bg-emerald-600',
+  },
+}
+
+function OwnerJourneyPanel({
+  journey,
+  onAction,
+}: {
+  journey: OwnerDashboardJourney
+  onAction: (target: OwnerDashboardActionTarget) => void
+}) {
+  const PrimaryIcon = OWNER_JOURNEY_ICONS[journey.primaryStage.id]
+
+  return (
+    <Card className="overflow-hidden border-primary/15">
+      <CardHeader className="border-b bg-background/75 pb-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">
+              Parcurs proprietate
+            </Badge>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <PrimaryIcon className="h-5 w-5 text-primary" />
+              {journey.headline}
+            </CardTitle>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+              {journey.description}
+            </p>
+          </div>
+          <div className="min-w-[210px] rounded-2xl border bg-card p-4 shadow-sm">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  progres traseu
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{journey.progressPercent}%</p>
+              </div>
+              <Badge variant="secondary">
+                {journey.completedCount}/{journey.totalCount} gata
+              </Badge>
+            </div>
+            <Progress value={journey.progressPercent} className="mt-3 h-2" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
+        {journey.stages.map((stage) => {
+          const Icon = OWNER_JOURNEY_ICONS[stage.id]
+          const meta = OWNER_JOURNEY_STATE_META[stage.state]
+          const target: OwnerDashboardActionTarget = stage.target === 'monitoring'
+            ? 'monitoring'
+            : stage.target
+
+          return (
+            <button
+              key={stage.id}
+              type="button"
+              onClick={() => onAction(target)}
+              className={`group rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${meta.className}`}
+            >
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${meta.markerClassName}`}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <Badge className={`text-[10px] ${meta.badgeClassName}`}>{meta.label}</Badge>
+              </div>
+              <p className="text-sm font-semibold">{stage.title}</p>
+              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{stage.description}</p>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                {stage.value}
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              </span>
+            </button>
+          )
+        })}
+      </CardContent>
+    </Card>
+  )
 }
 
 function OwnerPriorityPanel({
