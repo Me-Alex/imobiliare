@@ -43,7 +43,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { PageHero } from '@/components/layout/page-hero'
+import { PageContainer, PageHero, PageShell } from '@/components/layout'
+import { PageState } from '@/components/ui/page-state'
 import {
   DocumentUploadArea,
   type DocumentUploadAreaRef,
@@ -101,6 +102,7 @@ import {
   isDocumentWorkspaceClosed,
   pickDocumentViewingId,
 } from '@/lib/document-workspace'
+import { getDocumentWorkspaceEmptyState } from '@/lib/document-workspace-empty-state'
 
 const ROLE_COPY = {
   CLIENT: 'Completează datele, solicită documentele și semnează numai versiunea verificată de agent.',
@@ -550,27 +552,40 @@ export function DocumentePage() {
   }
 
   if (authLoading) {
-    return <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+    return (
+      <PageShell>
+        <PageContainer width="narrow" className="py-10">
+          <PageState
+            tone="loading"
+            title="Încărcăm dosarul digital"
+            description="Sincronizăm vizionările, documentele și semnăturile disponibile pentru contul tău."
+          />
+        </PageContainer>
+      </PageShell>
+    )
   }
 
   if (!user || !profile) {
     return (
-      <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center px-4">
-        <Card className="max-w-md w-full text-center">
-          <CardHeader>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><User className="h-6 w-6" /></div>
-            <CardTitle>Autentifică-te</CardTitle>
-            <CardDescription>Documentele sunt disponibile numai utilizatorilor autentificați.</CardDescription>
-          </CardHeader>
-          <CardContent><Button onClick={() => navigateTo('login')}>Autentificare</Button></CardContent>
-        </Card>
-      </div>
+      <PageShell>
+        <PageContainer width="narrow" className="py-10">
+          <PageState
+            tone="neutral"
+            icon={User}
+            title="Autentifică-te"
+            description="Documentele sunt disponibile numai utilizatorilor autentificați."
+            action={<Button onClick={() => navigateTo('login')}>Autentificare</Button>}
+          />
+        </PageContainer>
+      </PageShell>
     )
   }
 
+  const emptyDocumentState = getDocumentWorkspaceEmptyState(profile.role)
+
   return (
-    <div className="min-h-[calc(100vh-10rem)] py-8 px-4">
-      <div className="max-w-6xl mx-auto">
+    <PageShell>
+      <PageContainer width="default" className="py-8">
         <PageHero
           variant="simple"
           title="Dosar digital"
@@ -581,16 +596,26 @@ export function DocumentePage() {
         />
 
         {loading ? (
-          <div className="py-20 flex justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+          <PageState
+            tone="loading"
+            title="Se încarcă dosarele"
+            description="Pregătim lista de vizionări și documentele asociate."
+          />
         ) : viewings.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-16 text-center">
-              <FolderLock className="h-10 w-10 mx-auto text-muted-foreground/50 mb-4" />
-              <h2 className="font-semibold">Nu există vizionări asociate contului</h2>
-              <p className="text-sm text-muted-foreground mt-1 mb-5">Dosarul digital va fi creat după programarea unei vizionări.</p>
-              {profile.role === 'CLIENT' && <Button onClick={() => navigateTo('programare-vizionare')}>Programează o vizionare</Button>}
-            </CardContent>
-          </Card>
+          <PageState
+            tone="empty"
+            icon={FolderLock}
+            title={emptyDocumentState.title}
+            description={emptyDocumentState.description}
+            action={(
+              <div className="flex max-w-lg flex-col items-center gap-3">
+                <Button onClick={() => navigateTo(emptyDocumentState.actionPage)}>
+                  {emptyDocumentState.actionLabel}
+                </Button>
+                <p className="text-xs leading-5 text-muted-foreground">{emptyDocumentState.secondaryHint}</p>
+              </div>
+            )}
+          />
         ) : (
           <>
             <Card className="mb-6">
@@ -872,7 +897,7 @@ export function DocumentePage() {
             </Card>
           </>
         )}
-      </div>
+      </PageContainer>
 
       {user && profile && selectedViewing && !selectedWorkspaceClosed && (profile.role === 'CLIENT' || profile.role === 'OWNER') && (
         <LegalDocumentRequestDialog
@@ -950,7 +975,7 @@ export function DocumentePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   )
 }
 
