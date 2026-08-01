@@ -22,6 +22,7 @@ const activePlan: DocumentActionPlan = {
 describe('getDocumentQuickActions', () => {
   it('puts the current actionable step first', () => {
     const actions = getDocumentQuickActions({
+      role: 'CLIENT',
       plan: activePlan,
       hasDealRoomContext: true,
       documentsCount: 2,
@@ -34,24 +35,38 @@ describe('getDocumentQuickActions', () => {
       tone: 'primary',
     })
     expect(actions.find((action) => action.id === 'deal-room')?.buttonLabel).toBe('Deschide Deal Room')
+    expect(actions.some((action) => action.id === 'advanced-tools')).toBe(false)
   })
 
-  it('keeps advanced actions available for active dossiers', () => {
+  it('shows operational actions only for staff roles', () => {
     const actions = getDocumentQuickActions({
+      role: 'AGENT',
       plan: activePlan,
       hasDealRoomContext: false,
       documentsCount: 0,
     })
 
     expect(actions.find((action) => action.id === 'advanced-tools')).toMatchObject({
+      title: 'Acțiuni operaționale',
       target: 'advanced',
-      disabled: undefined,
     })
     expect(actions.find((action) => action.id === 'deal-room')?.buttonLabel).toBe('Vezi tranzacția')
   })
 
-  it('turns closed dossiers into archive-first guidance and disables advanced actions', () => {
+  it('keeps participant actions focused on the active step and archive', () => {
     const actions = getDocumentQuickActions({
+      role: 'OWNER',
+      plan: activePlan,
+      hasDealRoomContext: false,
+      documentsCount: 0,
+    })
+
+    expect(actions.map((action) => action.id)).toEqual(['current-step', 'deal-room', 'archive'])
+  })
+
+  it('turns closed dossiers into archive-first guidance without duplicate actions', () => {
+    const actions = getDocumentQuickActions({
+      role: 'ADMIN',
       plan: {
         ...activePlan,
         readOnly: true,
@@ -66,10 +81,7 @@ describe('getDocumentQuickActions', () => {
       target: 'archive',
       tone: 'muted',
     })
-    expect(actions.find((action) => action.id === 'advanced-tools')).toMatchObject({
-      disabled: true,
-      buttonLabel: 'Indisponibil',
-    })
-    expect(actions.find((action) => action.id === 'archive')?.description).toContain('1 document păstrat')
+    expect(actions.map((action) => action.id)).toEqual(['current-step', 'deal-room'])
+    expect(actions.some((action) => action.id === 'advanced-tools')).toBe(false)
   })
 })

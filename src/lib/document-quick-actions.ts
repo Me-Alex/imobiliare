@@ -1,3 +1,4 @@
+import type { AccountRole } from '@/lib/account-roles'
 import type { DocumentActionPlan } from '@/lib/document-action-plan'
 
 export type DocumentQuickActionTarget = 'primary' | 'deal-room' | 'advanced' | 'archive'
@@ -13,6 +14,7 @@ export interface DocumentQuickAction {
 }
 
 interface DocumentQuickActionsInput {
+  role: AccountRole
   plan: DocumentActionPlan
   hasDealRoomContext: boolean
   documentsCount: number
@@ -56,12 +58,14 @@ function currentStepAction(plan: DocumentActionPlan): DocumentQuickAction {
 }
 
 export function getDocumentQuickActions({
+  role,
   plan,
   hasDealRoomContext,
   documentsCount,
 }: DocumentQuickActionsInput): readonly DocumentQuickAction[] {
-  return [
-    currentStepAction(plan),
+  const currentAction = currentStepAction(plan)
+  const actions: DocumentQuickAction[] = [
+    currentAction,
     {
       id: 'deal-room',
       title: 'Context tranzacție',
@@ -72,18 +76,21 @@ export function getDocumentQuickActions({
       target: 'deal-room',
       tone: 'neutral',
     },
-    {
+  ]
+
+  if (!plan.readOnly && (role === 'AGENT' || role === 'ADMIN')) {
+    actions.push({
       id: 'advanced-tools',
-      title: 'Acțiuni avansate',
-      description: plan.readOnly
-        ? 'Solicitările, generarea și încărcările sunt oprite pentru o programare închisă.'
-        : 'Solicitări, generare documente, încărcări manuale și corecturi într-un singur panou.',
-      buttonLabel: plan.readOnly ? 'Indisponibil' : 'Deschide acțiunile',
+      title: 'Acțiuni operaționale',
+      description: 'Solicitări, generare documente, încărcări manuale și corecturi într-un singur panou pentru echipă.',
+      buttonLabel: 'Deschide acțiunile',
       target: 'advanced',
-      tone: plan.readOnly ? 'muted' : 'neutral',
-      disabled: plan.readOnly || undefined,
-    },
-    {
+      tone: 'neutral',
+    })
+  }
+
+  if (currentAction.target !== 'archive') {
+    actions.push({
       id: 'archive',
       title: 'Arhivă și versiuni',
       description: documentsCount > 0
@@ -92,6 +99,8 @@ export function getDocumentQuickActions({
       buttonLabel: 'Vezi arhiva',
       target: 'archive',
       tone: 'neutral',
-    },
-  ]
+    })
+  }
+
+  return actions
 }

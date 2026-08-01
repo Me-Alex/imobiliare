@@ -439,8 +439,9 @@ export function DocumentePage() {
         documentsCount: activeDocumentCount,
       })
     : null
-  const quickActions = actionPlan
+  const quickActions = actionPlan && profile
     ? getDocumentQuickActions({
+        role: profile.role,
         plan: actionPlan,
         hasDealRoomContext: Boolean(readDealContext()),
         documentsCount: activeDocumentCount,
@@ -1213,7 +1214,10 @@ function DocumentQuickActionsPanel({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className={cn(
+          'grid gap-3',
+          actions.length >= 4 ? 'md:grid-cols-4' : actions.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2',
+        )}>
           {actions.map((action) => {
             const Icon = QUICK_ACTION_ICONS[action.id]
             const isPrimary = action.tone === 'primary'
