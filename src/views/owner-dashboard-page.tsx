@@ -76,13 +76,19 @@ export function OwnerDashboardPage() {
   const [selectedId, setSelectedId] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const role = profile?.role
+  const canViewOwnerPerformance = role === 'OWNER' || role === 'ADMIN'
+  const isAdminPerformance = role === 'ADMIN'
 
   const load = useCallback(async () => {
-    if (!user) { setLoading(false); return }
+    if (!user || (role !== 'OWNER' && role !== 'ADMIN')) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError('')
     try {
-      const data = await fetchOwnerSnapshot(user.id)
+      const data = await fetchOwnerSnapshot(user.id, role)
       setSnapshot(data)
       setSelectedId((current) => current && data.properties.some((property) => property.id === current) ? current : data.properties[0]?.id || '')
     } catch (cause) {
@@ -90,7 +96,7 @@ export function OwnerDashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [role, user])
 
   useEffect(() => { void load() }, [load])
 
@@ -104,10 +110,17 @@ export function OwnerDashboardPage() {
 
   if (authLoading || loading) return <div className="flex min-h-[65vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   if (!user || !profile) return <StateBlock icon={Users} title="Autentificare necesară" description="Dashboardul proprietarului conține date private despre anunț și tranzacții." />
-  if (profile.role !== 'OWNER') return <StateBlock icon={Building2} title="Profil de proprietar necesar" description="Acest dashboard este disponibil proprietarilor autentificați." />
+  if (!canViewOwnerPerformance) return <StateBlock icon={Building2} title="Profil de proprietar sau administrator necesar" description="Acest dashboard este disponibil proprietarilor și administratorilor care auditează portofoliul." />
   if (error) return <StateBlock icon={HelpCircle} title="Date indisponibile" description={error} action={<Button onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" /> Reîncearcă</Button>} />
   if (!snapshot || !property || !analysis || !quality) {
-    return <StateBlock icon={ImagePlus} title="Publică prima proprietate" description="După publicare vei vedea aici vizualizările, cererile, feedbackul și recomandările de optimizare." action={<Button onClick={() => navigateTo('adauga-proprietate')}>Adaugă proprietate</Button>} />
+    return <StateBlock
+      icon={ImagePlus}
+      title={isAdminPerformance ? 'Nu există proprietăți de analizat' : 'Publică prima proprietate'}
+      description={isAdminPerformance
+        ? 'Când există proprietăți publicate sau în lucru, admin-ul va vedea aici interesul, feedbackul, documentele și recomandările de preț.'
+        : 'După publicare vei vedea aici vizualizările, cererile, feedbackul și recomandările de optimizare.'}
+      action={<Button onClick={() => navigateTo('adauga-proprietate')}>{isAdminPerformance ? 'Adaugă proprietate demo' : 'Adaugă proprietate'}</Button>}
+    />
   }
 
   const totals = sumMetrics(metrics)
@@ -180,7 +193,19 @@ export function OwnerDashboardPage() {
       <header className="border-b bg-background">
         <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div><Badge className="mb-2 border-0 bg-primary/10 text-primary hover:bg-primary/10">Dashboard proprietar</Badge><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Performanța proprietății tale</h1><p className="mt-2 text-sm text-muted-foreground">Datele ultimelor 30 de zile și următorii pași recomandați.</p></div>
+            <div>
+              <Badge className="mb-2 border-0 bg-primary/10 text-primary hover:bg-primary/10">
+                {isAdminPerformance ? 'Audit portofoliu proprietari' : 'Dashboard proprietar'}
+              </Badge>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                {isAdminPerformance ? 'Performanța proprietăților administrate' : 'Performanța proprietății tale'}
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {isAdminPerformance
+                  ? 'Date operaționale pe ultimele 30 de zile pentru anunțuri, cereri, feedback și documente.'
+                  : 'Datele ultimelor 30 de zile și următorii pași recomandați.'}
+              </p>
+            </div>
             <div className="flex gap-2">
               <label className="sr-only" htmlFor="owner-property">Selectează proprietatea</label>
               <select id="owner-property" className="h-10 min-w-64 rounded-md border bg-background px-3 text-sm" value={property.id} onChange={(event) => setSelectedId(event.target.value)}>{snapshot.properties.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select>
@@ -196,7 +221,7 @@ export function OwnerDashboardPage() {
             <div className="h-44 bg-muted md:h-full">{property.cover_image_url ? <img src={property.cover_image_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Building2 className="h-10 w-10 text-muted-foreground/40" /></div>}</div>
             <CardContent className="flex flex-col justify-between gap-5 p-5 sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-bold">{property.title}</h2><StatusBadge status={property.status} /></div><p className="mt-2 text-sm text-muted-foreground">{property.address || property.zone || property.city}</p></div><p className="text-2xl font-bold text-primary">{formatMoney(Number(property.price || 0), property.currency || 'EUR')}</p></div>
-              <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => navigateTo('proprietatile-mele')}>Gestionează proprietățile</Button><Button onClick={openSelectedDeal}>Deschide tranzacția <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
+              <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => navigateTo('proprietatile-mele')}>{isAdminPerformance ? 'Gestionează portofoliul' : 'Gestionează proprietățile'}</Button><Button onClick={openSelectedDeal}>Deschide tranzacția <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
             </CardContent>
           </div>
         </Card>

@@ -69,9 +69,12 @@ export function ProprietatileMelePage() {
   const [editProperty, setEditProperty] = useState<UserProperty | null>(null)
   const [archiveProperty, setArchiveProperty] = useState<UserProperty | null>(null)
   const [archiving, setArchiving] = useState(false)
+  const role = profile?.role
+  const canManagePortfolio = role === 'OWNER' || role === 'ADMIN'
+  const isAdminPortfolio = role === 'ADMIN'
 
   const load = useCallback(async () => {
-    if (!user || profile?.role !== 'OWNER') {
+    if (!user || (role !== 'OWNER' && role !== 'ADMIN')) {
       setLoading(false)
       return
     }
@@ -79,13 +82,13 @@ export function ProprietatileMelePage() {
     setLoading(true)
     setError('')
     try {
-      setProperties(await fetchManagedProperties({ userId: user.id, role: 'OWNER' }))
+      setProperties(await fetchManagedProperties({ userId: user.id, role }))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Proprietățile nu au putut fi încărcate.')
     } finally {
       setLoading(false)
     }
-  }, [profile?.role, user])
+  }, [role, user])
 
   useEffect(() => { void load() }, [load])
 
@@ -124,8 +127,24 @@ export function ProprietatileMelePage() {
   if (authLoading || loading) {
     return <div className="flex min-h-[65vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" aria-label="Se încarcă proprietățile" /></div>
   }
-  if (profile && profile.role !== 'OWNER') {
-    return <RoleAccessDenied currentRole={profile.role} allowedRoles={['OWNER']} />
+  if (!user || !profile) {
+    return (
+      <PageShell>
+        <PageContainer className="py-8">
+          <PageSurface className="mx-auto max-w-lg p-8 text-center">
+            <Building2 className="mx-auto h-10 w-10 text-primary" />
+            <h1 className="mt-4 text-2xl font-bold">Autentificare necesară</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Portofoliul de proprietăți conține date private despre anunțuri, status și performanță.
+            </p>
+            <Button className="mt-6" onClick={() => navigateTo('login')}>Autentificare</Button>
+          </PageSurface>
+        </PageContainer>
+      </PageShell>
+    )
+  }
+  if (profile && !canManagePortfolio) {
+    return <RoleAccessDenied currentRole={profile.role} allowedRoles={['OWNER', 'ADMIN']} />
   }
 
   return (
@@ -133,9 +152,11 @@ export function ProprietatileMelePage() {
       <PageHero
         variant="border"
         icon={Building2}
-        title="Proprietățile mele"
-        description="Administrează anunțurile într-un singur loc și vezi imediat ce necesită atenție."
-        breadcrumb={[{ label: 'Cont', page: 'dashboard' }, { label: 'Proprietățile mele' }]}
+        title={isAdminPortfolio ? 'Portofoliu proprietăți' : 'Proprietățile mele'}
+        description={isAdminPortfolio
+          ? 'Auditează anunțurile platformei, statusul, calitatea și acțiunile care necesită intervenție.'
+          : 'Administrează anunțurile într-un singur loc și vezi imediat ce necesită atenție.'}
+        breadcrumb={[{ label: 'Cont', page: 'dashboard' }, { label: isAdminPortfolio ? 'Portofoliu proprietăți' : 'Proprietățile mele' }]}
       >
         <Button onClick={() => navigateTo('adauga-proprietate')} className="gap-2">
           <Plus className="h-4 w-4" /> Adaugă proprietate
@@ -156,9 +177,13 @@ export function ProprietatileMelePage() {
               <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <Building2 className="h-7 w-7" />
               </span>
-              <h2 className="mt-4 text-xl font-semibold">Publică prima proprietate</h2>
+              <h2 className="mt-4 text-xl font-semibold">
+                {isAdminPortfolio ? 'Nu există proprietăți de auditat' : 'Publică prima proprietate'}
+              </h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Creezi anunțul o singură dată, apoi urmărești aici starea, calitatea și performanța lui.
+                {isAdminPortfolio
+                  ? 'Când apar proprietăți publicate sau în lucru, le vei putea verifica aici fără să schimbi rolul contului.'
+                  : 'Creezi anunțul o singură dată, apoi urmărești aici starea, calitatea și performanța lui.'}
               </p>
               <Button className="mt-6 gap-2" onClick={() => navigateTo('adauga-proprietate')}>
                 <Plus className="h-4 w-4" /> Începe publicarea
@@ -168,7 +193,7 @@ export function ProprietatileMelePage() {
         ) : (
           <>
             <section aria-label="Rezumat portofoliu" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <PortfolioStat icon={Building2} label="Proprietăți active" value={properties.length} />
+              <PortfolioStat icon={Building2} label={isAdminPortfolio ? 'Proprietăți gestionate' : 'Proprietăți active'} value={properties.length} />
               <PortfolioStat icon={CheckCircle2} label="Publicate" value={published} />
               <PortfolioStat icon={Sparkles} label="Calitate medie" value={`${averageQuality}%`} />
               <PortfolioStat icon={ImageOff} label="Fără fotografie" value={withoutCover} attention={withoutCover > 0} />
@@ -181,7 +206,7 @@ export function ProprietatileMelePage() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Caută după titlu sau adresă"
-                  aria-label="Caută în proprietățile mele"
+                  aria-label={isAdminPortfolio ? 'Caută în portofoliul administrat' : 'Caută în proprietățile mele'}
                   className="pl-9"
                 />
               </div>

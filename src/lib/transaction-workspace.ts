@@ -788,11 +788,16 @@ export async function autoAssignLeads() {
   return Number(data || 0)
 }
 
-export async function fetchOwnerSnapshot(ownerId: string) {
-  const propertyResult = await supabase
+export async function fetchOwnerSnapshot(ownerId: string, role: Extract<AccountRole, 'OWNER' | 'ADMIN'> = 'OWNER') {
+  const propertyQuery = supabase
     .from('properties')
     .select('id,title,slug,address,city,zone,sector,type,transaction_type,status,price,currency,area_sqm,cover_image_url,description,rooms,bathrooms,year_built,lat,lng,gallery_urls,amenities,agent_id,owner_id,virtual_tours(id,status,provider,external_url,entry_scene_id,title)')
-    .eq('owner_id', ownerId)
+
+  const scopedPropertyQuery = role === 'ADMIN'
+    ? propertyQuery
+    : propertyQuery.eq('owner_id', ownerId)
+
+  const propertyResult = await scopedPropertyQuery
     .order('updated_at', { ascending: false })
 
   if (propertyResult.error) throw propertyResult.error

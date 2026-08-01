@@ -41,6 +41,8 @@ const ACCOUNT_ITEMS: Record<string, AccountNavigationItem> = {
   crm: { label: 'CRM', page: 'crm', icon: BriefcaseBusiness, description: 'Lead-uri, follow-up-uri și conversie' },
   'owner-dashboard': { label: 'Performanță', page: 'owner-dashboard', icon: BarChart3, description: 'Interes, feedback și recomandări' },
   'proprietatile-mele': { label: 'Proprietățile mele', page: 'proprietatile-mele', icon: Building2, description: 'Anunțuri, stare și administrare' },
+  'admin-property-portfolio': { label: 'Portofoliu', page: 'proprietatile-mele', icon: Building2, description: 'Audit proprietăți, status și calitate' },
+  'admin-owner-performance': { label: 'Performanță proprietari', page: 'owner-dashboard', icon: BarChart3, description: 'Interes, feedback și prețuri pe proprietăți' },
   'adauga-proprietate': { label: 'Adaugă proprietate', page: 'adauga-proprietate', icon: Plus, description: 'Publică un anunț nou' },
   'programare-vizionare': { label: 'Programează', page: 'programare-vizionare', icon: CalendarPlus, description: 'Alege proprietatea și intervalul' },
   'vizionarile-mele': { label: 'Vizionări', page: 'vizionarile-mele', icon: CalendarCheck, description: 'Programări, prezență și feedback' },
@@ -55,14 +57,14 @@ const ACCOUNT_MENU_ORDER: Record<AccountRole, readonly string[]> = {
   CLIENT: ['dashboard', 'programare-vizionare', 'vizionarile-mele', 'deal-room', 'documente', 'monede', 'profil'],
   OWNER: ['dashboard', 'proprietatile-mele', 'owner-dashboard', 'vizionarile-mele', 'deal-room', 'documente', 'monede', 'profil'],
   AGENT: ['dashboard', 'crm', 'adauga-proprietate', 'vizionarile-mele', 'deal-room', 'documente', 'disponibilitate-staff', 'monede', 'profil'],
-  ADMIN: ['admin', 'dashboard', 'crm', 'adauga-proprietate', 'vizionarile-mele', 'deal-room', 'documente', 'disponibilitate-staff', 'monede', 'profil'],
+  ADMIN: ['admin', 'dashboard', 'crm', 'admin-property-portfolio', 'admin-owner-performance', 'adauga-proprietate', 'vizionarile-mele', 'deal-room', 'documente', 'disponibilitate-staff', 'monede', 'profil'],
 }
 
 const WORKSPACE_NAV_ORDER: Record<AccountRole, readonly string[]> = {
   CLIENT: ['dashboard', 'vizionarile-mele', 'deal-room', 'documente', 'monede'],
   OWNER: ['dashboard', 'proprietatile-mele', 'owner-dashboard', 'vizionarile-mele', 'deal-room', 'documente'],
   AGENT: ['dashboard', 'crm', 'vizionarile-mele', 'deal-room', 'documente', 'disponibilitate-staff'],
-  ADMIN: ['admin', 'crm', 'vizionarile-mele', 'deal-room', 'documente', 'disponibilitate-staff'],
+  ADMIN: ['admin', 'crm', 'admin-property-portfolio', 'admin-owner-performance', 'vizionarile-mele', 'deal-room', 'documente', 'disponibilitate-staff'],
 }
 
 const ACCOUNT_WORKSPACE_PAGES = new Set<PageKey>([

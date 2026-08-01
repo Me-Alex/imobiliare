@@ -17,10 +17,13 @@ describe('owner property navigation', () => {
     expect(getAccountMenuItems('ADMIN').find((item) => item.page === 'adauga-proprietate')?.label).toBe('Adaugă proprietate')
   })
 
-  it('limits the private portfolio to owners', () => {
+  it('lets admins audit owner portfolio without giving access to client and agent accounts', () => {
     expect(canAccessAccountPage('OWNER', 'proprietatile-mele')).toBe(true)
     expect(canAccessAccountPage('CLIENT', 'proprietatile-mele')).toBe(false)
     expect(canAccessAccountPage('AGENT', 'proprietatile-mele')).toBe(false)
-    expect(canAccessAccountPage('ADMIN', 'proprietatile-mele')).toBe(false)
+    expect(canAccessAccountPage('ADMIN', 'proprietatile-mele')).toBe(true)
+    expect(canAccessAccountPage('ADMIN', 'owner-dashboard')).toBe(true)
+    expect(getAccountMenuItems('ADMIN').find((item) => item.page === 'proprietatile-mele')?.label).toBe('Portofoliu')
+    expect(getWorkspaceNavigation('ADMIN').some((item) => item.page === 'owner-dashboard')).toBe(true)
   })
 })
