@@ -8,6 +8,8 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarCheck,
+  CheckCircle2,
+  CircleDot,
   Eye,
   FileText,
   Heart,
@@ -25,6 +27,7 @@ import { PageContainer, PageHero, PageSection, PageShell, PageSurface, SectionHe
 import { useAppStore, type PageKey } from '@/store/use-app-store'
 import { loadFromLS } from '@/lib/storage'
 import { LS_KEYS } from '@/lib/constants'
+import { cn } from '@/lib/utils'
 import type { Vizionare } from '@/lib/types'
 import {
   ACCOUNT_ROLE_DEFINITIONS,
@@ -38,7 +41,12 @@ import {
   type DealRoom,
 } from '@/lib/transaction-workspace'
 import { listViewings } from '@/lib/viewing-documents'
-import { getAccountGuidance, getAccountJourney } from '@/lib/account-guidance'
+import {
+  getAccountGuidance,
+  getAccountJourney,
+  getClientProcessSteps,
+  type ClientProcessStep,
+} from '@/lib/account-guidance'
 import { AccountGuidancePanel } from '@/components/account/account-guidance-panel'
 
 interface DashboardAction {
@@ -205,7 +213,7 @@ export function DashboardPage() {
   const roleDefinition = ACCOUNT_ROLE_DEFINITIONS[role]
   const actions = getActions(role)
   const activeDealsCount = workspace.deals.filter((deal) => deal.status === 'ACTIVE').length
-  const guidance = getAccountGuidance(role, {
+  const guidanceSnapshot = {
     dataAvailable: !workspaceError,
     favorites: favorites.length,
     activeViewings: activeVizionari.length,
@@ -214,8 +222,10 @@ export function DashboardPage() {
     totalViews: workspace.totalViews,
     leadCount: workspace.leadCount,
     activeDeals: activeDealsCount,
-  })
+  }
+  const guidance = getAccountGuidance(role, guidanceSnapshot)
   const journey = getAccountJourney(role)
+  const clientProcessSteps = role === 'CLIENT' ? getClientProcessSteps(guidanceSnapshot) : []
 
   const stats: DashboardStat[] = role === 'CLIENT'
     ? [
@@ -263,6 +273,10 @@ export function DashboardPage() {
         )}
 
         <AccountGuidancePanel guidance={guidance} journey={journey} onNavigate={navigateTo} />
+
+        {role === 'CLIENT' && (
+          <ClientProcessOverview steps={clientProcessSteps} onNavigate={navigateTo} />
+        )}
 
         <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
           {stats.map((stat, index) => (
@@ -387,5 +401,97 @@ export function DashboardPage() {
         </div>
       </PageContainer>
     </PageShell>
+  )
+}
+
+function ClientProcessOverview({
+  steps,
+  onNavigate,
+}: {
+  steps: readonly ClientProcessStep[]
+  onNavigate: (page: PageKey) => void
+}) {
+  const statusMeta = {
+    done: {
+      label: 'Gata',
+      className: 'border-emerald-200 bg-emerald-50/70 text-emerald-950 dark:border-emerald-900/70 dark:bg-emerald-950/25 dark:text-emerald-100',
+      markerClassName: 'bg-emerald-600 text-white',
+      badgeClassName: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-200',
+    },
+    active: {
+      label: 'Acum',
+      className: 'border-primary/35 bg-primary/[0.08] text-foreground shadow-sm shadow-primary/10',
+      markerClassName: 'bg-primary text-primary-foreground',
+      badgeClassName: 'bg-primary/10 text-primary',
+    },
+    next: {
+      label: 'Următor',
+      className: 'border-border/80 bg-background/70 text-foreground hover:border-primary/25 hover:bg-primary/[0.04]',
+      markerClassName: 'bg-muted text-muted-foreground',
+      badgeClassName: 'bg-muted text-muted-foreground',
+    },
+  } satisfies Record<ClientProcessStep['status'], {
+    label: string
+    className: string
+    markerClassName: string
+    badgeClassName: string
+  }>
+
+  return (
+    <PageSurface tone="elevated" className="mb-8 overflow-hidden border-primary/15">
+      <div className="border-b border-border/70 bg-gradient-to-r from-primary/[0.08] via-background to-background p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Badge className="mb-3 bg-primary/10 text-primary hover:bg-primary/10">Flow client</Badge>
+            <h2 className="text-2xl font-semibold tracking-tight">Traseul tău simplificat</h2>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Vezi imediat unde ești: de la proprietăți salvate, la vizionare, Deal Room, documente și beneficii.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => onNavigate('vizionarile-mele')}>
+            Vizionările mele
+            <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-5">
+        {steps.map((step, index) => {
+          const meta = statusMeta[step.status]
+          return (
+            <button
+              key={step.id}
+              type="button"
+              onClick={() => onNavigate(step.page)}
+              className={cn(
+                'group flex min-h-44 flex-col rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                meta.className,
+              )}
+              aria-label={`${step.label}: ${step.description} ${step.actionLabel}`}
+            >
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <span className={cn('flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold', meta.markerClassName)}>
+                  {step.status === 'done' ? (
+                    <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+                  ) : step.status === 'active' ? (
+                    <CircleDot className="h-5 w-5" aria-hidden="true" />
+                  ) : (
+                    index + 1
+                  )}
+                </span>
+                <Badge className={cn('hover:bg-current/10', meta.badgeClassName)}>{meta.label}</Badge>
+              </div>
+
+              <p className="text-base font-semibold">{step.label}</p>
+              <p className="mt-2 flex-1 text-sm leading-5 text-muted-foreground">{step.description}</p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
+                {step.actionLabel}
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </PageSurface>
   )
 }

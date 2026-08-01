@@ -26,6 +26,17 @@ export interface AccountJourneyStep {
   page: PageKey
 }
 
+export type ClientProcessStepStatus = 'done' | 'active' | 'next'
+
+export interface ClientProcessStep {
+  id: 'discover' | 'viewing' | 'deal' | 'documents' | 'coins'
+  label: string
+  description: string
+  actionLabel: string
+  page: PageKey
+  status: ClientProcessStepStatus
+}
+
 const JOURNEYS: Record<AccountRole, readonly AccountJourneyStep[]> = {
   CLIENT: [
     { label: 'Descoperă', description: 'Compară și salvează proprietăți', page: 'proprietati' },
@@ -57,6 +68,71 @@ const JOURNEYS: Record<AccountRole, readonly AccountJourneyStep[]> = {
 
 export function getAccountJourney(role: AccountRole): readonly AccountJourneyStep[] {
   return JOURNEYS[role]
+}
+
+export function getClientProcessSteps(snapshot: AccountGuidanceSnapshot): readonly ClientProcessStep[] {
+  const activeId: ClientProcessStep['id'] = snapshot.openRequirements > 0
+    ? 'documents'
+    : snapshot.activeDeals > 0
+      ? 'deal'
+      : snapshot.activeViewings > 0 || snapshot.favorites > 0
+        ? 'viewing'
+        : 'discover'
+
+  const viewingHasBooking = snapshot.activeViewings > 0
+  const steps: Array<Omit<ClientProcessStep, 'status'>> = [
+    {
+      id: 'discover',
+      label: 'Caută',
+      description: snapshot.favorites > 0
+        ? `${snapshot.favorites} ${snapshot.favorites === 1 ? 'favorită salvată' : 'favorite salvate'} pentru comparație.`
+        : 'Alege proprietăți și salvează opțiunile bune.',
+      actionLabel: 'Vezi proprietăți',
+      page: 'proprietati',
+    },
+    {
+      id: 'viewing',
+      label: 'Programează',
+      description: viewingHasBooking
+        ? `${snapshot.activeViewings} ${snapshot.activeViewings === 1 ? 'vizionare activă' : 'vizionări active'} de urmărit.`
+        : snapshot.favorites > 0
+          ? 'Transformă o favorită într-o vizionare.'
+          : 'Alege proprietatea și intervalul potrivit.',
+      actionLabel: viewingHasBooking ? 'Vezi vizionările' : 'Programează',
+      page: viewingHasBooking ? 'vizionarile-mele' : 'programare-vizionare',
+    },
+    {
+      id: 'deal',
+      label: 'Deal Room',
+      description: snapshot.activeDeals > 0
+        ? 'Urmărește oferta, contraoferta și persoana responsabilă.'
+        : 'Se activează când vizionarea avansează spre ofertă.',
+      actionLabel: 'Deschide Deal Room',
+      page: 'deal-room',
+    },
+    {
+      id: 'documents',
+      label: 'Documente',
+      description: snapshot.openRequirements > 0
+        ? `${snapshot.openRequirements} ${snapshot.openRequirements === 1 ? 'cerință deschisă' : 'cerințe deschise'} de completat sau semnat.`
+        : 'Datele și semnăturile apar aici când sunt necesare.',
+      actionLabel: 'Deschide dosarul',
+      page: 'documente',
+    },
+    {
+      id: 'coins',
+      label: 'Coins',
+      description: 'Verifică recompensele și beneficiile disponibile în cont.',
+      actionLabel: 'Vezi Coins',
+      page: 'monede',
+    },
+  ]
+
+  const activeIndex = steps.findIndex((step) => step.id === activeId)
+  return steps.map((step, index) => ({
+    ...step,
+    status: index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'next',
+  }))
 }
 
 export function getAccountGuidance(

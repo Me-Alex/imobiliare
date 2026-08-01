@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getAccountGuidance } from '@/lib/account-guidance'
+import { getAccountGuidance, getClientProcessSteps } from '@/lib/account-guidance'
 
 const EMPTY = {
   favorites: 0,
@@ -40,5 +40,44 @@ describe('getAccountGuidance', () => {
   it('does not infer empty-account actions when live data is unavailable', () => {
     expect(getAccountGuidance('OWNER', { ...EMPTY, dataAvailable: false }).page).toBe('owner-dashboard')
     expect(getAccountGuidance('AGENT', { ...EMPTY, dataAvailable: false }).page).toBe('crm')
+  })
+})
+
+describe('getClientProcessSteps', () => {
+  it('starts a new client in discovery and keeps later steps pending', () => {
+    const steps = getClientProcessSteps(EMPTY)
+
+    expect(steps.map((step) => step.id)).toEqual(['discover', 'viewing', 'deal', 'documents', 'coins'])
+    expect(steps[0]).toMatchObject({ id: 'discover', status: 'active', page: 'proprietati' })
+    expect(steps.slice(1).every((step) => step.status === 'next')).toBe(true)
+  })
+
+  it('moves clients with favorites toward scheduling a viewing', () => {
+    const steps = getClientProcessSteps({ ...EMPTY, favorites: 2 })
+
+    expect(steps[0]).toMatchObject({ id: 'discover', status: 'done' })
+    expect(steps[1]).toMatchObject({ id: 'viewing', status: 'active', page: 'programare-vizionare' })
+  })
+
+  it('sends clients with active viewings to their viewing agenda', () => {
+    const steps = getClientProcessSteps({ ...EMPTY, activeViewings: 1 })
+
+    expect(steps[1]).toMatchObject({ id: 'viewing', status: 'active', page: 'vizionarile-mele' })
+  })
+
+  it('prioritizes active deals after the viewing stage', () => {
+    const steps = getClientProcessSteps({ ...EMPTY, activeDeals: 1 })
+
+    expect(steps[0].status).toBe('done')
+    expect(steps[1].status).toBe('done')
+    expect(steps[2]).toMatchObject({ id: 'deal', status: 'active', page: 'deal-room' })
+  })
+
+  it('makes open document requirements the current client blocker', () => {
+    const steps = getClientProcessSteps({ ...EMPTY, activeDeals: 1, openRequirements: 3 })
+
+    expect(steps[2]).toMatchObject({ id: 'deal', status: 'done' })
+    expect(steps[3]).toMatchObject({ id: 'documents', status: 'active', page: 'documente' })
+    expect(steps[4]).toMatchObject({ id: 'coins', status: 'next' })
   })
 })
