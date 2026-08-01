@@ -129,6 +129,7 @@ export interface DealEvent {
 
 export interface DealOffer {
   id: string
+  user_id?: string | null
   parent_offer_id?: string | null
   created_by?: string | null
   offer_kind: 'OFFER' | 'COUNTER_OFFER'
@@ -140,6 +141,7 @@ export interface DealOffer {
   submitted_at?: string | null
   expires_at?: string | null
   created_at: string
+  updated_at?: string | null
 }
 
 export interface DealRoom {
@@ -214,6 +216,153 @@ export function relationOne<T>(value: T | T[] | null | undefined): T | null {
   return value ?? null
 }
 
+export const TERMINAL_OFFER_STATUSES = ['ACCEPTED', 'REJECTED', 'WITHDRAWN', 'EXPIRED'] as const
+export type DealOfferAction = 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN' | 'COUNTERED'
+
+const COMPLETE_REQUIREMENT_STATUSES = new Set(['APPROVED', 'WAIVED'])
+const RECEIVED_REQUIREMENT_STATUSES = new Set(['UPLOADED', 'UNDER_REVIEW', 'APPROVED', 'WAIVED'])
+const COMPLETE_DOCUMENT_STATUSES = new Set(['SIGNED', 'APPROVED'])
+const BLOCKED_DOCUMENT_STATUSES = new Set(['REJECTED', 'DECLINED', 'EXPIRED'])
+
+export type DealRequirementBucket = 'missing' | 'received' | 'signing' | 'complete' | 'blocked'
+
+export interface DealRequirementState {
+  bucket: DealRequirementBucket
+  displayStatus: string
+  helper: string
+  isReceived: boolean
+  isComplete: boolean
+  needsSignature: boolean
+}
+
+export function getDealRequirementState(requirement: DealRequirement): DealRequirementState {
+  const document = relationOne(requirement.client_documents)
+  const signers = document?.document_signers || []
+  const requiredSigners = signers.filter((signer) => signer.status !== 'DECLINED')
+  const signedCount = signers.filter((signer) => signer.status === 'SIGNED').length
+  const needsSignature = signers.some((signer) => signer.status === 'PENDING')
+
+  if (requirement.status === 'REJECTED' || (document && BLOCKED_DOCUMENT_STATUSES.has(document.status))) {
+    return {
+      bucket: 'blocked',
+      displayStatus: 'REJECTED',
+      helper: 'Documentul trebuie corectat sau reincarcat.',
+      isReceived: false,
+      isComplete: false,
+      needsSignature: false,
+    }
+  }
+
+  if (COMPLETE_REQUIREMENT_STATUSES.has(requirement.status) || (document && COMPLETE_DOCUMENT_STATUSES.has(document.status))) {
+    return {
+      bucket: 'complete',
+      displayStatus: requirement.status === 'WAIVED' ? 'WAIVED' : document?.status || requirement.status,
+      helper: requiredSigners.length > 0
+        ? `Semnaturi complete: ${signedCount}/${requiredSigners.length}.`
+        : 'Document verificat in dosar.',
+      isReceived: true,
+      isComplete: true,
+      needsSignature: false,
+    }
+  }
+
+  if (needsSignature && document) {
+    return {
+      bucket: 'signing',
+      displayStatus: document.status,
+      helper: `Asteapta semnaturi: ${signedCount}/${requiredSigners.length || signers.length}.`,
+      isReceived: true,
+      isComplete: false,
+      needsSignature: true,
+    }
+  }
+
+  if (document || RECEIVED_REQUIREMENT_STATUSES.has(requirement.status)) {
+    return {
+      bucket: 'received',
+      displayStatus: document?.status || requirement.status,
+      helper: document
+        ? 'Document primit. Agentul il verifica si il asociaza cu pasul potrivit.'
+        : 'Document primit, dar legatura cu fisierul nu este vizibila in acest cont.',
+      isReceived: true,
+      isComplete: false,
+      needsSignature: false,
+    }
+  }
+
+  return {
+    bucket: 'missing',
+    displayStatus: requirement.status || 'REQUIRED',
+    helper: 'Document lipsa. Responsabilul trebuie sa il incarce sau sa ceara generarea lui.',
+    isReceived: false,
+    isComplete: false,
+    needsSignature: false,
+  }
+}
+
+export function summarizeDealRequirements(requirements: readonly DealRequirement[]) {
+  const states = requirements.map((requirement) => getDealRequirementState(requirement))
+  return {
+    states,
+    total: requirements.length,
+    received: states.filter((state) => state.isReceived).length,
+    complete: states.filter((state) => state.isComplete).length,
+    missing: states.filter((state) => state.bucket === 'missing').length,
+    blocked: states.filter((state) => state.bucket === 'blocked').length,
+    signatures: states.filter((state) => state.needsSignature).length,
+    receivedProgress: requirements.length ? Math.round(states.filter((state) => state.isReceived).length / requirements.length * 100) : 0,
+    completeProgress: requirements.length ? Math.round(states.filter((state) => state.isComplete).length / requirements.length * 100) : 0,
+  }
+}
+
+export function isTerminalDealOffer(offer: DealOffer): boolean {
+  return (TERMINAL_OFFER_STATUSES as readonly string[]).includes(offer.status)
+}
+
+export function getActiveDealOffer(offers: readonly DealOffer[]): DealOffer | null {
+  return [...offers]
+    .sort((a, b) => +new Date(b.submitted_at || b.created_at) - +new Date(a.submitted_at || a.created_at))
+    .find((offer) => !isTerminalDealOffer(offer)) || null
+}
+
+export function getAllowedDealOfferActions(
+  offer: DealOffer | null,
+  role?: string | null,
+  userId?: string | null,
+  room?: DealRoom | null,
+): DealOfferAction[] {
+  if (!offer || !role || !userId || isTerminalDealOffer(offer) || offer.status !== 'SUBMITTED') return []
+  const normalizedRole = role.toUpperCase()
+  const isClient = normalizedRole === 'CLIENT' || room?.primary_client_id === userId || offer.user_id === userId
+  const isStaffSide = ['OWNER', 'AGENT', 'ADMIN'].includes(normalizedRole)
+
+  if (offer.offer_kind === 'OFFER') {
+    if (isStaffSide) return ['ACCEPTED', 'REJECTED', 'COUNTERED']
+    if (isClient && (offer.created_by === userId || offer.user_id === userId || room?.primary_client_id === userId)) {
+      return ['WITHDRAWN']
+    }
+  }
+
+  if (offer.offer_kind === 'COUNTER_OFFER') {
+    if (isClient) return ['ACCEPTED', 'REJECTED', 'COUNTERED']
+    if (normalizedRole === 'AGENT' || normalizedRole === 'ADMIN') return ['ACCEPTED', 'REJECTED']
+  }
+
+  return []
+}
+
+export function canSubmitDealOffer(
+  role?: string | null,
+  activeOffer?: DealOffer | null,
+): boolean {
+  const normalizedRole = String(role || '').toUpperCase()
+  if (!activeOffer) return normalizedRole === 'CLIENT'
+  if (activeOffer.status !== 'SUBMITTED') return normalizedRole === 'CLIENT'
+  if (activeOffer.offer_kind === 'OFFER') return ['OWNER', 'AGENT', 'ADMIN'].includes(normalizedRole)
+  if (activeOffer.offer_kind === 'COUNTER_OFFER') return normalizedRole === 'CLIENT'
+  return false
+}
+
 export function normalizeCrmStage(status: string): CrmStage {
   if (status === 'CONTACTED') return 'QUALIFIED'
   if (status === 'CLOSED') return 'CONTRACT'
@@ -231,7 +380,7 @@ export async function fetchDealRooms(): Promise<DealRoom[]> {
       deal_appointments(appointment_id,appointments!deal_appointments_appointment_id_fkey(id,requested_at,start_at,end_at,status,checked_in_at,completed_at,rating,feedback,would_proceed,client_name,staff_name)),
       deal_document_requirements(id,document_id,document_type,label,responsible_role,assigned_to,status,due_at,notes,client_documents!deal_document_requirements_document_id_fkey(id,title,type,status,version,signed_at,signature_requirement,document_signers(id,user_id,signer_role,status,signed_at))),
       deal_events(id,actor_id,event_type,summary,metadata,created_at),
-      property_offers!property_offers_deal_id_fkey(id,parent_offer_id,created_by,offer_kind,offer_price,list_price,currency,status,notes,submitted_at,expires_at,created_at)
+      property_offers!property_offers_deal_id_fkey(id,user_id,parent_offer_id,created_by,offer_kind,offer_price,list_price,currency,status,notes,submitted_at,expires_at,created_at,updated_at)
     `)
     .order('updated_at', { ascending: false })
 
@@ -258,6 +407,21 @@ export async function updateDealNextStep(input: {
   if (error) throw error
 }
 
+export async function transitionDealOffer(input: {
+  offerId: string
+  nextStatus: DealOfferAction
+  actor?: string | null
+  note?: string
+}) {
+  const { error } = await supabase.rpc('transition_deal_offer', {
+    p_offer_id: input.offerId,
+    p_next_status: input.nextStatus,
+    p_actor: input.actor || null,
+    p_note: input.note?.trim() || null,
+  })
+  if (error) throw error
+}
+
 export async function submitDealOffer(input: {
   room: DealRoom
   userId: string
@@ -266,6 +430,7 @@ export async function submitDealOffer(input: {
   amount: number
   kind: 'OFFER' | 'COUNTER_OFFER'
   parentOfferId?: string | null
+  actor?: string | null
   notes?: string
 }) {
   const property = relationOne(input.room.properties)
@@ -287,6 +452,17 @@ export async function submitDealOffer(input: {
     notes: input.notes?.trim() || null,
   })
   if (error) throw error
+
+  if (input.parentOfferId) {
+    await transitionDealOffer({
+      offerId: input.parentOfferId,
+      nextStatus: 'COUNTERED',
+      actor: input.actor,
+      note: input.kind === 'COUNTER_OFFER'
+        ? 'Contraoferta trimisa in Deal Room.'
+        : 'Oferta revizuita trimisa in Deal Room.',
+    })
+  }
 }
 
 export async function fetchCrmSnapshot() {

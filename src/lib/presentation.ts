@@ -8,6 +8,7 @@ const ROLE_LABELS: Record<AccountRole, string> = {
 }
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Activă',
+  ACCEPTED: 'Acceptat',
   APPROVED: 'Aprobat',
   ARCHIVED: 'Arhivat',
   CANCELLED: 'Anulată',
@@ -19,6 +20,7 @@ const STATUS_LABELS: Record<string, string> = {
   CLOSED_WON: 'Finalizată',
   COMPLETED: 'Finalizată',
   CONFIRMED: 'Confirmată',
+  COUNTERED: 'Contraofertat',
   DECLINED: 'Refuzat',
   DRAFT: 'Ciornă',
   EXPIRED: 'Expirat',
@@ -33,14 +35,16 @@ const STATUS_LABELS: Record<string, string> = {
   REJECTED: 'Respins',
   REQUIRED: 'Necesar',
   SIGNED: 'Semnat',
+  SUBMITTED: 'Trimis',
   SUPERSEDED: 'Versiune înlocuită',
   UNDER_REVIEW: 'În verificare',
   UPLOADED: 'Încărcat',
   WAIVED: 'Nu este necesar',
+  WITHDRAWN: 'Retras',
 }
 
-const POSITIVE_STATUSES = new Set(['APPROVED', 'COMPLETED', 'CONFIRMED', 'PRESENT', 'PUBLISHED', 'SIGNED', 'WAIVED', 'CLOSED_WON'])
-const ATTENTION_STATUSES = new Set(['DRAFT', 'PENDING', 'READY_TO_SIGN', 'REQUIRED', 'UNDER_REVIEW', 'UPLOADED', 'ON_HOLD', 'QUALIFIED'])
+const POSITIVE_STATUSES = new Set(['ACCEPTED', 'APPROVED', 'COMPLETED', 'CONFIRMED', 'PRESENT', 'PUBLISHED', 'SIGNED', 'WAIVED', 'CLOSED_WON'])
+const ATTENTION_STATUSES = new Set(['COUNTERED', 'DRAFT', 'PENDING', 'READY_TO_SIGN', 'REQUIRED', 'SUBMITTED', 'UNDER_REVIEW', 'UPLOADED', 'ON_HOLD', 'QUALIFIED'])
 const NEGATIVE_STATUSES = new Set(['CANCELLED', 'CANCELLED_BY_AGENT', 'CANCELLED_BY_CLIENT', 'CLOSED_LOST', 'DECLINED', 'EXPIRED', 'NO_SHOW', 'REJECTED'])
 
 function normalize(value: unknown): string {

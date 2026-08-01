@@ -18,9 +18,11 @@ import {
   MessageSquareText,
   RefreshCw,
   ShieldCheck,
+  Undo2,
   UserRoundCheck,
   Users,
   WalletCards,
+  XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -34,11 +36,18 @@ import { useAppStore } from '@/store/use-app-store'
 import { getRoleLabel, getStatusLabel, getStatusTone } from '@/lib/presentation'
 import {
   DEAL_STAGES,
+  canSubmitDealOffer,
   type DealRoom,
+  type DealOfferAction,
   type DealStage,
   fetchDealRooms,
+  getActiveDealOffer,
+  getAllowedDealOfferActions,
+  getDealRequirementState,
+  summarizeDealRequirements,
   relationOne,
   submitDealOffer,
+  transitionDealOffer,
   updateDealNextStep,
 } from '@/lib/transaction-workspace'
 import {
@@ -82,6 +91,7 @@ export function DealRoomPage() {
   const [saving, setSaving] = useState(false)
   const [offerAmount, setOfferAmount] = useState('')
   const [offerNotes, setOfferNotes] = useState('')
+  const [decisionNote, setDecisionNote] = useState('')
   const [stage, setStage] = useState<DealStage>('VIEWING')
   const [nextStep, setNextStep] = useState('')
   const [nextStepOwner, setNextStepOwner] = useState('')
@@ -117,7 +127,6 @@ export function DealRoomPage() {
   const room = useMemo(() => rooms.find((item) => item.id === selectedId) || null, [rooms, selectedId])
   const property = relationOne(room?.properties)
   const canManage = profile?.role === 'AGENT' || profile?.role === 'ADMIN'
-  const canCounter = profile?.role === 'AGENT' || profile?.role === 'OWNER' || profile?.role === 'ADMIN'
 
   useEffect(() => {
     if (!room) return
@@ -170,8 +179,18 @@ export function DealRoomPage() {
   const requirements = room.deal_document_requirements || []
   const offers = [...(room.property_offers || [])].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
   const events = [...(room.deal_events || [])].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
-  const completedDocs = requirements.filter((item) => ['APPROVED', 'WAIVED'].includes(item.status)).length
-  const progress = requirements.length ? Math.round(completedDocs / requirements.length * 100) : 0
+  const documentSummary = summarizeDealRequirements(requirements)
+  const completedDocs = documentSummary.complete
+  const progress = documentSummary.receivedProgress
+  const activeOffer = getActiveDealOffer(offers)
+  const allowedOfferActions = getAllowedDealOfferActions(activeOffer, profile.role, user.id, room)
+  const decisionActions = allowedOfferActions.filter((action) => action !== 'COUNTERED')
+  const canSendOffer = canSubmitDealOffer(profile.role, activeOffer)
+  const offerKind = profile.role === 'CLIENT' ? 'OFFER' : 'COUNTER_OFFER'
+  const offerButtonLabel = activeOffer
+    ? offerKind === 'COUNTER_OFFER' ? 'Trimite contraoferta' : 'Trimite oferta revizuita'
+    : 'Trimite oferta'
+  const hasAcceptedOffer = offers.some((offer) => offer.status === 'ACCEPTED')
   const requestedAppointmentId = readAppointmentContext()
   const appointmentId = requestedAppointmentId && appointments.some((item) => item.appointment_id === requestedAppointmentId)
     ? requestedAppointmentId
@@ -182,11 +201,24 @@ export function DealRoomPage() {
   })
   const nextRequirement = pendingSignatureRequirement
     || requirements.find((requirement) =>
-      !['APPROVED', 'WAIVED'].includes(requirement.status)
+      !getDealRequirementState(requirement).isComplete
       && (canManage || requirement.responsible_role === profile.role || requirement.assigned_to === user.id),
     )
-    || requirements.find((requirement) => !['APPROVED', 'WAIVED'].includes(requirement.status))
+    || requirements.find((requirement) => !getDealRequirementState(requirement).isComplete)
   const visibleRequirements = showAllRequirements ? requirements : requirements.slice(0, 4)
+  const suggestedNextStep = pendingSignatureRequirement
+    ? `Semneaza documentul: ${pendingSignatureRequirement.label}`
+    : documentSummary.blocked > 0
+      ? 'Corecteaza documentele respinse inainte de contract.'
+      : documentSummary.missing > 0
+        ? 'Completeaza documentele lipsa din dosarul tranzactiei.'
+        : activeOffer
+          ? activeOffer.offer_kind === 'COUNTER_OFFER'
+            ? 'Clientul trebuie sa raspunda la contraoferta.'
+            : 'Proprietarul sau agentul trebuie sa raspunda la oferta.'
+          : hasAcceptedOffer
+            ? 'Pregateste contractele si semnaturile finale.'
+            : room.next_step || 'Stabiliti urmatoarea actiune pentru tranzactie.'
 
   const handleOpenDocuments = () => {
     if (appointmentId) openViewingDocuments(navigateTo, appointmentId, room.id)
@@ -194,6 +226,10 @@ export function DealRoomPage() {
   }
 
   const handleOffer = async () => {
+    if (!canSendOffer) {
+      toast.error('Nu exista o actiune de oferta disponibila pentru rolul tau acum.')
+      return
+    }
     const amount = Number(offerAmount)
     if (!Number.isFinite(amount) || amount <= 0) {
       toast.error('Introdu o valoare validă pentru ofertă.')
@@ -207,13 +243,14 @@ export function DealRoomPage() {
         userName: profile.fullName,
         userEmail: user.email || '',
         amount,
-        kind: canCounter && offers.length > 0 ? 'COUNTER_OFFER' : 'OFFER',
-        parentOfferId: offers[0]?.id,
+        kind: offerKind,
+        parentOfferId: activeOffer?.id,
+        actor: profile.role,
         notes: offerNotes,
       })
       setOfferAmount('')
       setOfferNotes('')
-      toast.success(canCounter && offers.length > 0 ? 'Contraoferta a fost înregistrată.' : 'Oferta a fost înregistrată.')
+      toast.success(offerKind === 'COUNTER_OFFER' ? 'Contraoferta a fost înregistrată.' : 'Oferta a fost înregistrată.')
       await loadRooms()
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Oferta nu a putut fi salvată.')
@@ -222,7 +259,37 @@ export function DealRoomPage() {
     }
   }
 
+  const handleOfferDecision = async (nextStatus: DealOfferAction) => {
+    if (!activeOffer) return
+    setSaving(true)
+    try {
+      await transitionDealOffer({
+        offerId: activeOffer.id,
+        nextStatus,
+        actor: profile.role,
+        note: decisionNote,
+      })
+      setDecisionNote('')
+      const copy: Record<DealOfferAction, string> = {
+        ACCEPTED: 'Oferta a fost acceptata.',
+        REJECTED: 'Oferta a fost respinsa.',
+        WITHDRAWN: 'Oferta a fost retrasa.',
+        COUNTERED: 'Negocierea a fost marcata pentru contraoferta.',
+      }
+      toast.success(copy[nextStatus])
+      await loadRooms()
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Oferta nu a putut fi actualizata.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleNextStep = async () => {
+    if ((stage === 'CONTRACT' || stage === 'CLOSED_WON') && !hasAcceptedOffer) {
+      toast.error('Acceptă o ofertă înainte să muți tranzacția în Contract.')
+      return
+    }
     setSaving(true)
     try {
       await updateDealNextStep({
@@ -319,8 +386,8 @@ export function DealRoomPage() {
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div><CardTitle className="flex items-center gap-2 text-base"><FileCheck2 className="h-4 w-4 text-primary" /> Documente, contracte și semnături</CardTitle><p className="mt-1 text-sm text-muted-foreground">{completedDocs} din {requirements.length} cerințe finalizate</p></div>
-                  <div className="min-w-48"><div className="mb-1 flex justify-between text-xs"><span>Completare</span><span>{progress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} /></div></div>
+                  <div><CardTitle className="flex items-center gap-2 text-base"><FileCheck2 className="h-4 w-4 text-primary" /> Documente, contracte și semnături</CardTitle><p className="mt-1 text-sm text-muted-foreground">{documentSummary.received} din {requirements.length} documente primite · {completedDocs} finalizate</p></div>
+                  <div className="min-w-48"><div className="mb-1 flex justify-between text-xs"><span>Primite</span><span>{progress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} /></div></div>
                 </div>
               </CardHeader>
               <CardContent className="grid gap-3 md:grid-cols-2">
@@ -340,15 +407,17 @@ export function DealRoomPage() {
                 {visibleRequirements.map((requirement) => {
                   const document = relationOne(requirement.client_documents)
                   const signers = document?.document_signers || []
+                  const requirementState = getDealRequirementState(requirement)
                   return (
                       <div key={requirement.id} className="rounded-xl border p-4">
-                        <div className="flex items-start justify-between gap-3"><div><p className="font-medium">{requirement.label}</p><p className="mt-1 text-xs text-muted-foreground">Responsabil: {getRoleLabel(requirement.responsible_role)}</p></div><StatusBadge status={requirement.status} /></div>
+                        <div className="flex items-start justify-between gap-3"><div><p className="font-medium">{requirement.label}</p><p className="mt-1 text-xs text-muted-foreground">Responsabil: {getRoleLabel(requirement.responsible_role)}</p></div><StatusBadge status={requirementState.displayStatus} /></div>
                       {document ? (
                         <div className="mt-3 space-y-2 rounded-lg bg-muted/40 p-3 text-xs">
                           <div className="flex items-center justify-between"><span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" /> {document.title}</span><Badge variant="outline">v{document.version}</Badge></div>
                           <div className="flex items-center justify-between"><span>Semnături</span><span className="font-medium">{signers.filter((item) => item.status === 'SIGNED').length}/{signers.length}</span></div>
                         </div>
-                      ) : <p className="mt-3 text-xs text-muted-foreground">Documentul nu a fost încă încărcat.</p>}
+                      ) : null}
+                      <p className="mt-3 text-xs text-muted-foreground">{requirementState.helper}</p>
                     </div>
                   )
                 })}
@@ -364,6 +433,28 @@ export function DealRoomPage() {
             <Card>
               <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><HandCoins className="h-4 w-4 text-primary" /> Ofertă și contraofertă</CardTitle></CardHeader>
               <CardContent>
+                {activeOffer ? (
+                  <div className="mb-5 rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <Badge className="mb-2 border-0 bg-primary/10 text-primary hover:bg-primary/10">Negociere activa</Badge>
+                        <p className="font-semibold">{activeOffer.offer_kind === 'COUNTER_OFFER' ? 'Contraoferta activa' : 'Oferta activa'}: {formatMoney(activeOffer.offer_price, activeOffer.currency)}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{suggestedNextStep}</p>
+                      </div>
+                      <StatusBadge status={activeOffer.status} />
+                    </div>
+                    {decisionActions.length > 0 ? (
+                      <div className="mt-4 space-y-3">
+                        <Textarea value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} placeholder="Nota optionala pentru jurnalul negocierii" rows={2} />
+                        <div className="flex flex-wrap gap-2">
+                          {decisionActions.includes('ACCEPTED') ? <Button className="gap-2" onClick={() => void handleOfferDecision('ACCEPTED')} disabled={saving}><CheckCircle2 className="h-4 w-4" /> Accepta</Button> : null}
+                          {decisionActions.includes('REJECTED') ? <Button variant="outline" className="gap-2" onClick={() => void handleOfferDecision('REJECTED')} disabled={saving}><XCircle className="h-4 w-4" /> Respinge</Button> : null}
+                          {decisionActions.includes('WITHDRAWN') ? <Button variant="outline" className="gap-2" onClick={() => void handleOfferDecision('WITHDRAWN')} disabled={saving}><Undo2 className="h-4 w-4" /> Retrage</Button> : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
                   <div className="space-y-3">
                     {offers.length === 0 ? <EmptyLine text="Nu a fost depusă nicio ofertă." /> : offers.map((offer) => (
@@ -375,10 +466,11 @@ export function DealRoomPage() {
                     ))}
                   </div>
                   <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
-                    <Label htmlFor="deal-offer">{canCounter && offers.length > 0 ? 'Valoare contraofertă' : 'Valoare ofertă'}</Label>
-                    <Input id="deal-offer" type="number" min="1" value={offerAmount} onChange={(event) => setOfferAmount(event.target.value)} placeholder="Ex. 145000" />
-                    <Textarea value={offerNotes} onChange={(event) => setOfferNotes(event.target.value)} placeholder="Condiții, termen de valabilitate, avans…" rows={3} />
-                    <Button className="w-full" onClick={() => void handleOffer()} disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}{canCounter && offers.length > 0 ? 'Trimite contraoferta' : 'Trimite oferta'}</Button>
+                    <Label htmlFor="deal-offer">{offerKind === 'COUNTER_OFFER' ? 'Valoare contraofertă' : activeOffer ? 'Valoare ofertă revizuită' : 'Valoare ofertă'}</Label>
+                    <Input id="deal-offer" type="number" min="1" value={offerAmount} onChange={(event) => setOfferAmount(event.target.value)} placeholder="Ex. 145000" disabled={!canSendOffer || saving} />
+                    <Textarea value={offerNotes} onChange={(event) => setOfferNotes(event.target.value)} placeholder="Condiții, termen de valabilitate, avans…" rows={3} disabled={!canSendOffer || saving} />
+                    {!canSendOffer ? <p className="text-xs text-muted-foreground">Asteapta actiunea celeilalte parti sau foloseste butoanele pentru oferta activa.</p> : null}
+                    <Button className="w-full" onClick={() => void handleOffer()} disabled={saving || !canSendOffer}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}{offerButtonLabel}</Button>
                   </div>
                 </div>
               </CardContent>
@@ -389,6 +481,10 @@ export function DealRoomPage() {
             <Card className="border-primary/20 bg-primary/[0.03]">
               <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><ArrowRight className="h-4 w-4 text-primary" /> Următorul pas</CardTitle></CardHeader>
               <CardContent className="space-y-4">
+                <div className="rounded-xl border bg-background/70 p-3">
+                  <Badge variant="outline" className="mb-2 text-[10px]">Sugestie</Badge>
+                  <p className="text-sm font-medium">{suggestedNextStep}</p>
+                </div>
                 {canManage ? (
                   <>
                     <div><Label htmlFor="deal-stage">Etapă</Label><select id="deal-stage" className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={stage} onChange={(event) => setStage(event.target.value as DealStage)}>{DEAL_STAGES.map((value) => <option key={value} value={value}>{STAGE_LABELS[value]}</option>)}</select></div>
@@ -398,7 +494,7 @@ export function DealRoomPage() {
                     <Button className="w-full" onClick={() => void handleNextStep()} disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Salvează pasul</Button>
                   </>
                 ) : (
-                  <div><p className="font-medium">{room.next_step || 'În curs de stabilire'}</p><p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="h-4 w-4" /> {formatDate(room.next_step_due_at)}</p></div>
+                  <div><p className="font-medium">{room.next_step || suggestedNextStep || 'În curs de stabilire'}</p><p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="h-4 w-4" /> {formatDate(room.next_step_due_at)}</p></div>
                 )}
               </CardContent>
             </Card>

@@ -41,6 +41,40 @@ function formatTimePart(value: Date): string {
   return `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`
 }
 
+export function cleanViewingNotesForDocument(value: string | null | undefined): string {
+  const notes = String(value || '').trim()
+  if (!notes) return 'Fără observații.'
+  if (!notes.startsWith('[ClientFlow]')) return notes
+
+  const raw = notes.slice('[ClientFlow]'.length).trim()
+  try {
+    const parsed = JSON.parse(raw) as { values?: Record<string, unknown>; stageId?: string }
+    const values = parsed.values || {}
+    const safeDetails: string[] = []
+    const addValue = (label: string, key: string) => {
+      const field = values[key]
+      if (typeof field === 'string' && field.trim()) safeDetails.push(`${label}: ${field.trim()}`)
+      if (typeof field === 'number' && Number.isFinite(field)) safeDetails.push(`${label}: ${field}`)
+      if (typeof field === 'boolean' && field) safeDetails.push(label)
+    }
+
+    addValue('Data estimata de mutare', 'moveInDate')
+    addValue('Numar persoane', 'occupants')
+    addValue('Animale de companie', 'hasPets')
+    addValue('Tip finantare', 'financing')
+    addValue('Buget maxim EUR', 'budgetMax')
+    addValue('Conditii oferta', 'conditions')
+    addValue('Alte detalii client', 'notes')
+
+    return [
+      'Datele personale au fost completate prin fluxul digital si sunt pastrate in dosarul securizat.',
+      ...safeDetails,
+    ].join('\n')
+  } catch {
+    return 'Datele au fost completate prin fluxul digital si sunt pastrate in dosarul securizat.'
+  }
+}
+
 function normalizeViewingStatus(value: unknown): Vizionare['status'] {
   const normalized = String(value || '').toUpperCase()
   if (normalized === 'CONFIRMED') return 'confirmed'
@@ -917,7 +951,7 @@ export async function loadLegalDocumentContext(
     actual_completed_at: appointment.completed_at
       ? new Date(String(appointment.completed_at)).toLocaleString('ro-RO')
       : '',
-    notes: viewing.notes || 'Fără observații.',
+    notes: cleanViewingNotesForDocument(viewing.notes),
     contract_start_date: inputDate(now),
     contract_end_date: inputDate(plusYears(now, 1)),
     exclusivity_type: 'neexclusiv',
