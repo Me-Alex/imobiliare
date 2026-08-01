@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ElementType } from 'react'
 import {
   ArrowRight,
   BarChart3,
@@ -24,7 +24,15 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { useAuth } from '@/contexts/auth-context'
+import {
+  getAgentCrmWorkbench,
+  type AgentCrmWorkbench,
+  type AgentCrmWorkbenchFocus,
+  type AgentCrmWorkbenchStage,
+  type AgentCrmWorkbenchStageState,
+} from '@/lib/agent-crm-workbench'
 import {
   CRM_STAGES,
   type CrmLead,
@@ -53,7 +61,7 @@ interface CrmPriorityItem {
   title: string
   description: string
   count: number
-  icon: React.ElementType
+  icon: ElementType
   tone: CrmPriorityTone
 }
 
@@ -87,6 +95,120 @@ function endOfToday() {
   const date = new Date()
   date.setHours(23, 59, 59, 999)
   return date.getTime()
+}
+
+const WORKBENCH_STAGE_ICONS: Record<AgentCrmWorkbenchStage['id'], ElementType> = {
+  response: PhoneCall,
+  qualification: Target,
+  viewing: CalendarDays,
+  offerContract: CheckCircle2,
+}
+
+const WORKBENCH_STATE_META: Record<AgentCrmWorkbenchStageState, {
+  label: string
+  className: string
+  markerClassName: string
+  badgeClassName: string
+}> = {
+  urgent: {
+    label: 'Urgent',
+    className: 'border-amber-300 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/25',
+    markerClassName: 'bg-amber-500 text-white',
+    badgeClassName: 'bg-amber-500 text-white hover:bg-amber-500',
+  },
+  active: {
+    label: 'În lucru',
+    className: 'border-primary/25 bg-primary/[0.05]',
+    markerClassName: 'bg-primary text-primary-foreground',
+    badgeClassName: 'bg-primary text-primary-foreground',
+  },
+  healthy: {
+    label: 'La zi',
+    className: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
+    markerClassName: 'bg-emerald-600 text-white',
+    badgeClassName: 'bg-emerald-600 text-white hover:bg-emerald-600',
+  },
+}
+
+function AgentCrmWorkbenchPanel({
+  workbench,
+  onFocus,
+}: {
+  workbench: AgentCrmWorkbench
+  onFocus: (focus: AgentCrmWorkbenchFocus) => void
+}) {
+  const PrimaryIcon = WORKBENCH_STAGE_ICONS[workbench.primaryStage.id]
+
+  return (
+    <Card className="overflow-hidden border-primary/15">
+      <CardHeader className="border-b bg-background/75 pb-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">
+              Workbench agent
+            </Badge>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <PrimaryIcon className="h-5 w-5 text-primary" />
+              {workbench.headline}
+            </CardTitle>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+              {workbench.description}
+            </p>
+          </div>
+          <div className="min-w-[220px] rounded-2xl border bg-card p-4 shadow-sm">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  sănătate CRM
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{workbench.healthPercent}%</p>
+              </div>
+              <Badge variant={workbench.activeCount > 0 ? 'secondary' : 'default'}>
+                {workbench.activeCount > 0 ? `${workbench.activeCount} acțiuni` : 'la zi'}
+              </Badge>
+            </div>
+            <Progress value={workbench.healthPercent} className="mt-3 h-2" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
+        {workbench.stages.map((stage) => {
+          const Icon = WORKBENCH_STAGE_ICONS[stage.id]
+          const meta = WORKBENCH_STATE_META[stage.state]
+
+          return (
+            <button
+              key={stage.id}
+              type="button"
+              onClick={() => onFocus(stage.focus)}
+              className={`group rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${meta.className}`}
+            >
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${meta.markerClassName}`}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <Badge className={`text-[10px] ${meta.badgeClassName}`}>{meta.label}</Badge>
+              </div>
+              <p className="text-sm font-semibold">{stage.title}</p>
+              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{stage.description}</p>
+              <div className="mt-3 space-y-1.5 border-t border-border/50 pt-3">
+                {stage.signals.slice(0, 3).map((signal) => (
+                  <p key={signal} className="flex items-start gap-1.5 text-[11px] leading-4 text-muted-foreground">
+                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-60" />
+                    {signal}
+                  </p>
+                ))}
+              </div>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                {stage.actionLabel}
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              </span>
+            </button>
+          )
+        })}
+      </CardContent>
+    </Card>
+  )
 }
 
 export function CrmPage() {
@@ -158,6 +280,15 @@ export function CrmPage() {
   const overdueLeads = useMemo(() => activeLeads.filter((lead) => isLeadResponseOverdue(lead)), [activeLeads])
   const unassignedLeads = useMemo(() => leads.filter((lead) => !isLeadTerminal(lead) && !lead.agent_id), [leads])
   const nextAppointment = useMemo(() => scopedAppointments[0] || null, [scopedAppointments])
+  const workbench = useMemo(() => getAgentCrmWorkbench({
+    leads: scopedLeads,
+    followUps: scopedFollowUps,
+    appointments: scopedAppointments.map((appointment) => ({
+      status: typeof appointment.status === 'string' ? appointment.status : null,
+      start_at: typeof appointment.start_at === 'string' ? appointment.start_at : null,
+      requested_at: typeof appointment.requested_at === 'string' ? appointment.requested_at : null,
+    })),
+  }), [scopedAppointments, scopedFollowUps, scopedLeads])
   const dailyPriorities = useMemo(() => {
     const items: CrmPriorityItem[] = []
 
@@ -288,6 +419,19 @@ export function CrmPage() {
     }
   }
 
+  const handleWorkbenchFocus = (focus: AgentCrmWorkbenchFocus) => {
+    const targetId = focus === 'followups'
+      ? 'crm-followups'
+      : focus === 'viewings'
+        ? 'crm-priorities'
+        : 'crm-pipeline'
+
+    document.getElementById(targetId)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
+
   return (
     <div className="min-h-screen bg-muted/20">
       <header className="border-b bg-background">
@@ -314,7 +458,9 @@ export function CrmPage() {
           <Metric icon={MessageCircleWarning} label="Fără răspuns" value={metrics.unanswered} detail={`${metrics.upcoming} vizionări viitoare`} tone={metrics.unanswered ? 'rose' : 'amber'} />
         </div>
 
-        <Card className="overflow-hidden border-primary/20">
+        <AgentCrmWorkbenchPanel workbench={workbench} onFocus={handleWorkbenchFocus} />
+
+        <Card id="crm-priorities" className="scroll-mt-24 overflow-hidden border-primary/20">
           <CardHeader className="border-b bg-background/70 pb-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -330,7 +476,7 @@ export function CrmPage() {
         </Card>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
-          <section aria-labelledby="pipeline-heading" className="min-w-0">
+          <section id="crm-pipeline" aria-labelledby="pipeline-heading" className="min-w-0 scroll-mt-24">
             <h2 id="pipeline-heading" className="sr-only">Etapele pipeline-ului</h2>
             <div className="overflow-x-auto pb-3">
               <div className="grid min-w-[1180px] grid-cols-5 gap-4">
@@ -348,7 +494,7 @@ export function CrmPage() {
           </section>
 
           <aside className="space-y-6">
-            <Card>
+            <Card id="crm-followups" className="scroll-mt-24">
               <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><CalendarClock className="h-4 w-4 text-primary" /> Follow-up-uri <Badge variant="secondary">{scopedFollowUps.length}</Badge></CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 {scopedFollowUps.length === 0 ? <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground"><CheckCircle2 className="mx-auto mb-2 h-6 w-6 text-emerald-500" /> Agenda este la zi.</div> : scopedFollowUps.slice(0, 8).map((item) => (
