@@ -27,7 +27,11 @@ import { PageContainer, PageShell, PageSurface } from '@/components/layout/page-
 import { MyPropertiesList } from '@/components/property/my-properties-list'
 import { PropertyForm } from '@/components/property/property-form'
 import { VirtualTourViewer } from '@/components/property/virtual-tour-viewer'
-import type { PropertyFormData } from '@/components/property/property-form'
+import type { PropertyFormData } from '@/lib/property-form-data'
+import {
+  clearPropertyPublicationDraft,
+  propertyPublicationDraftKey,
+} from '@/lib/property-publication-draft'
 import type { UserProperty } from '@/lib/types'
 import { RoleAccessDenied } from '@/components/account/role-access-denied'
 import { getMapEmbedUrl } from '@/lib/property-details'
@@ -616,6 +620,7 @@ export function AdaugaProprietatePage() {
           ? `"${form.title}" este publică, iar turul a fost trimis administratorului pentru verificare.`
           : `"${form.title}" este acum publică pe platformă.`,
       })
+      clearPropertyPublicationDraft(propertyPublicationDraftKey(user.id))
       setSubmittedCount((c) => c + 1)
       void loadMyProperties()
       if (profile.role === 'OWNER') navigateTo('proprietatile-mele')
@@ -706,6 +711,7 @@ export function AdaugaProprietatePage() {
           key={submittedCount}
           onSubmit={handleFormSubmit}
           isSubmitting={isSubmitting}
+          draftStorageKey={user ? propertyPublicationDraftKey(user.id) : undefined}
           onPreview={(data) => {
             setPreviewData(data)
             setPreviewMode(true)

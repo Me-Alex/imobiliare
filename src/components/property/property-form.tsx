@@ -2,6 +2,8 @@
 
 import {
   useCallback,
+  useEffect,
+  useRef,
   useState,
   type ElementType,
   type FormEvent,
@@ -25,9 +27,11 @@ import {
   Plus,
   Rotate3D,
   Ruler,
+  Save,
   ShieldCheck,
   Sparkles,
   Tag,
+  Trash2,
   Upload,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -53,70 +57,31 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { CURRENCIES, PROPERTY_TYPES, SECTOARE, TRANSACTIONS, ZONES } from '@/lib/constants'
 import {
+  createEmptyPropertyFormData,
+  type PropertyFormData,
+} from '@/lib/property-form-data'
+import {
+  clearPropertyPublicationDraft,
+  loadPropertyPublicationDraft,
+  savePropertyPublicationDraft,
+  type PropertyPublicationDraft,
+} from '@/lib/property-publication-draft'
+import {
   getPropertyPublicationMilestones,
   getPropertyPublicationReadiness,
   type PublicationMilestone,
 } from '@/lib/property-publication-readiness'
 import { cn } from '@/lib/utils'
 import {
-  EMPTY_VIRTUAL_TOUR_DRAFT,
   isVirtualTourDraftValid,
   virtualTourProviderLabel,
-  type VirtualTourDraft,
 } from '@/lib/virtual-tours'
-
-export interface PropertyFormData {
-  title: string
-  description: string
-  type: string
-  transaction: string
-  price: string
-  currency: string
-  areaSqm: string
-  rooms: string
-  bathrooms: string
-  floor: string
-  totalFloors: string
-  yearBuilt: string
-  address: string
-  zone: string
-  sector: string
-  lat: number | null
-  lng: number | null
-  featured: boolean
-  coverUrl: string
-  galleryUrls: string[]
-  virtualTour: VirtualTourDraft
-}
-
-const INITIAL_FORM: PropertyFormData = {
-  title: '',
-  description: '',
-  type: '',
-  transaction: 'VANZARE',
-  price: '',
-  currency: 'EUR',
-  areaSqm: '',
-  rooms: '',
-  bathrooms: '',
-  floor: '',
-  totalFloors: '',
-  yearBuilt: '',
-  address: '',
-  zone: '',
-  sector: '',
-  lat: null,
-  lng: null,
-  featured: false,
-  coverUrl: '',
-  galleryUrls: [],
-  virtualTour: EMPTY_VIRTUAL_TOUR_DRAFT,
-}
 
 interface PropertyFormProps {
   onSubmit: (data: PropertyFormData) => void
   isSubmitting: boolean
   onPreview: (data: PropertyFormData) => void
+  draftStorageKey?: string
 }
 
 interface ListingSectionProps {
@@ -241,9 +206,38 @@ export function PropertyForm({
   onSubmit,
   isSubmitting,
   onPreview,
+  draftStorageKey,
 }: PropertyFormProps) {
-  const [form, setForm] = useState<PropertyFormData>(INITIAL_FORM)
+  const [restoredDraft, setRestoredDraft] = useState<PropertyPublicationDraft | null>(() => (
+    draftStorageKey ? loadPropertyPublicationDraft(draftStorageKey) : null
+  ))
+  const [form, setForm] = useState<PropertyFormData>(() => (
+    restoredDraft?.data || createEmptyPropertyFormData()
+  ))
   const [showValidation, setShowValidation] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(restoredDraft?.savedAt || null)
+  const [draftSaveError, setDraftSaveError] = useState(false)
+  const skipInitialDraftSave = useRef(true)
+
+  useEffect(() => {
+    if (!draftStorageKey) return
+    if (skipInitialDraftSave.current) {
+      skipInitialDraftSave.current = false
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      try {
+        const savedDraft = savePropertyPublicationDraft(draftStorageKey, form)
+        setLastSavedAt(savedDraft?.savedAt || null)
+        setDraftSaveError(false)
+      } catch {
+        setDraftSaveError(true)
+      }
+    }, 650)
+
+    return () => window.clearTimeout(timer)
+  }, [draftStorageKey, form])
 
   const updateField = useCallback(<K extends keyof PropertyFormData>(
     key: K,
@@ -311,8 +305,48 @@ export function PropertyForm({
     updateFields({ ...fields, lat: null, lng: null })
   }
 
+  const discardDraft = () => {
+    if (draftStorageKey) clearPropertyPublicationDraft(draftStorageKey)
+    setForm(createEmptyPropertyFormData())
+    setShowValidation(false)
+    setRestoredDraft(null)
+    setLastSavedAt(null)
+    setDraftSaveError(false)
+    toast.success('Ciorna a fost ștearsă.')
+  }
+
+  const draftTimeLabel = lastSavedAt
+    ? new Intl.DateTimeFormat('ro-RO', { hour: '2-digit', minute: '2-digit' }).format(new Date(lastSavedAt))
+    : null
+
   return (
     <form onSubmit={handleSubmit} className="pb-28 lg:pb-0" noValidate>
+      {restoredDraft ? (
+        <PageSurface tone="subtle" className="mb-6 border-primary/20 bg-primary/[0.04] p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Save className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold">Ai reluat ciorna salvată automat</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Datele anunțului au fost restaurate
+                  {draftTimeLabel ? ` din ${draftTimeLabel}` : ''}.
+                  {restoredDraft.omittedLocalAssets > 0
+                    ? ` Reatașează ${restoredDraft.omittedLocalAssets} ${restoredDraft.omittedLocalAssets === 1 ? 'fișier local' : 'fișiere locale'} înainte de publicare.`
+                    : ' Poți continua exact de unde ai rămas.'}
+                </p>
+              </div>
+            </div>
+            <Button type="button" variant="outline" size="sm" className="shrink-0 gap-2" onClick={discardDraft}>
+              <Trash2 className="h-4 w-4" />
+              Începe de la zero
+            </Button>
+          </div>
+        </PageSurface>
+      ) : null}
+
       <PageSurface tone="elevated" className="mb-6 overflow-hidden">
         <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="min-w-0">
@@ -360,9 +394,29 @@ export function PropertyForm({
             />
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl border bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
-            <Clock3 className="h-4 w-4 text-primary" />
-            Aproximativ 4–6 minute
+          <div className="flex flex-wrap gap-2 lg:max-w-64 lg:justify-end">
+            <div className="flex items-center gap-2 rounded-xl border bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
+              <Clock3 className="h-4 w-4 text-primary" />
+              Aproximativ 4–6 minute
+            </div>
+            {draftStorageKey ? (
+              <div
+                role="status"
+                className={cn(
+                  'flex items-center gap-2 rounded-xl border px-3 py-2 text-xs',
+                  draftSaveError
+                    ? 'border-destructive/25 bg-destructive/5 text-destructive'
+                    : 'bg-muted/25 text-muted-foreground',
+                )}
+              >
+                <Save className="h-4 w-4" />
+                {draftSaveError
+                  ? 'Ciorna nu a putut fi salvată'
+                  : draftTimeLabel
+                    ? `Salvat automat la ${draftTimeLabel}`
+                    : 'Salvarea automată este activă'}
+              </div>
+            ) : null}
           </div>
         </div>
 
