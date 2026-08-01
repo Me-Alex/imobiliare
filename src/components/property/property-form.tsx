@@ -11,7 +11,6 @@ import {
 } from 'react'
 import {
   AlertTriangle,
-  ArrowRight,
   Bath,
   BedDouble,
   Building2,
@@ -30,14 +29,13 @@ import {
   Ruler,
   Save,
   ShieldCheck,
-  Sparkles,
   Tag,
   Trash2,
   Upload,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { PageSurface, SectionHeader } from '@/components/layout/page-shell'
+import { PageSurface } from '@/components/layout/page-shell'
 import { AiDescriptionGenerator } from '@/components/property/ai-description-generator'
 import { ImageGalleryUploader } from '@/components/property/image-gallery-uploader'
 import { PropertyLocationPicker } from '@/components/property/property-location-picker'
@@ -78,9 +76,7 @@ import {
   type PropertyPublicationDraft,
 } from '@/lib/property-publication-draft'
 import {
-  getPropertyPublicationMilestones,
   getPropertyPublicationReadiness,
-  type PublicationMilestone,
 } from '@/lib/property-publication-readiness'
 import { cn } from '@/lib/utils'
 import {
@@ -116,29 +112,28 @@ function ListingSection({
   optional = false,
   children,
 }: ListingSectionProps) {
+  const Icon = icon
+
   return (
     <div id={id} tabIndex={-1} className="scroll-mt-32 focus:outline-none">
-      <PageSurface as="section" className="overflow-hidden" tone="default">
-        <div className="border-b border-border/60 bg-muted/20 px-5 py-5 sm:px-6">
-          <SectionHeader
-            className="mb-0"
-            eyebrow={`Pasul ${step}`}
-            icon={icon}
-            title={title}
-            description={description}
-            actions={(
-              <Badge
-                variant={complete ? 'default' : 'outline'}
-                className={cn(
-                  'gap-1.5',
-                  complete && 'bg-emerald-600 text-white hover:bg-emerald-600',
-                )}
-              >
-                {complete ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
-                {complete ? 'Complet' : optional ? 'Opțional' : 'De completat'}
-              </Badge>
-            )}
-          />
+      <PageSurface as="section" className="overflow-hidden rounded-xl" tone="default">
+        <div className="flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-6">
+          <div className="flex min-w-0 gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <Icon className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div>
+              <h2 className="text-sm font-semibold sm:text-base">{step}. {title}</h2>
+              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{description}</p>
+            </div>
+          </div>
+          <span className={cn(
+            'inline-flex shrink-0 items-center gap-1.5 pt-1 text-xs',
+            complete ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground',
+          )}>
+            {complete ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+            {complete ? 'Complet' : optional ? 'Opțional' : 'De completat'}
+          </span>
         </div>
         <div className="p-5 sm:p-6">{children}</div>
       </PageSurface>
@@ -149,68 +144,6 @@ function ListingSection({
 function formatPrice(value: string, currency: string) {
   const price = Number(value)
   return price > 0 ? `${price.toLocaleString('ro-RO')} ${currency}` : 'Preț nesetat'
-}
-
-function PublicationMilestonesPanel({
-  milestones,
-  onSelect,
-}: {
-  milestones: readonly PublicationMilestone[]
-  onSelect: (sectionId: string) => void
-}) {
-  return (
-    <div className="mt-5 grid gap-3 border-t border-border/60 pt-5 md:grid-cols-3">
-      {milestones.map((milestone) => {
-        const complete = milestone.status === 'complete'
-        const current = milestone.status === 'current'
-        return (
-          <button
-            key={milestone.id}
-            type="button"
-            onClick={() => onSelect(milestone.sectionId)}
-            className={cn(
-              'group rounded-2xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              complete && 'border-emerald-500/25 bg-emerald-500/10',
-              current && 'border-primary/30 bg-primary/[0.06] shadow-sm shadow-primary/5',
-              milestone.status === 'next' && 'border-border/70 bg-background/70 hover:border-primary/25 hover:bg-primary/[0.04]',
-            )}
-          >
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <span className={cn(
-                'flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold',
-                complete
-                  ? 'bg-emerald-600 text-white'
-                  : current
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground',
-              )}>
-                {complete ? <CheckCircle2 className="h-4 w-4" /> : milestone.label}
-              </span>
-              <Badge
-                variant={complete || current ? 'default' : 'outline'}
-                className={cn(
-                  'text-[10px]',
-                  complete && 'bg-emerald-600 text-white hover:bg-emerald-600',
-                  current && 'bg-primary text-primary-foreground',
-                )}
-              >
-                {complete ? 'Gata' : current ? 'Acum' : 'Următor'}
-              </Badge>
-            </div>
-            <p className="text-sm font-semibold">{milestone.title}</p>
-            <p className="mt-1 min-h-10 text-xs leading-5 text-muted-foreground">{milestone.description}</p>
-            <span className={cn(
-              'mt-3 inline-flex items-center gap-1 text-xs font-medium',
-              complete ? 'text-emerald-700 dark:text-emerald-300' : 'text-primary',
-            )}>
-              {milestone.actionLabel}
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-            </span>
-          </button>
-        )
-      })}
-    </div>
-  )
 }
 
 export function PropertyForm({
@@ -294,8 +227,6 @@ export function PropertyForm({
     qualityLabel,
     pricePerSqm,
   } = publicationReadiness
-  const publicationMilestones = getPropertyPublicationMilestones(publicationReadiness)
-
   const isPositiveInteger = (value: string) => Number.isInteger(Number(value)) && Number(value) > 0
   const isOptionalNonNegativeInteger = (value: string) => (
     !value || (Number.isInteger(Number(value)) && Number(value) >= 0)
@@ -348,7 +279,7 @@ export function PropertyForm({
   return (
     <form onSubmit={handleSubmit} className="pb-28 lg:pb-0" noValidate>
       {restoredDraft ? (
-        <PageSurface tone="subtle" className="mb-6 border-primary/20 bg-primary/[0.04] p-4 sm:p-5">
+        <PageSurface tone="subtle" className="mb-6 rounded-xl border-primary/20 bg-primary/[0.04] p-4 sm:p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -374,7 +305,7 @@ export function PropertyForm({
       ) : null}
 
       {transientAssetCount > 0 ? (
-        <div className="mb-6 flex gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm">
+        <div className="mb-6 flex gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
           <div>
             <p className="font-semibold text-amber-900 dark:text-amber-100">
@@ -387,86 +318,64 @@ export function PropertyForm({
         </div>
       ) : null}
 
-      <PageSurface tone="elevated" className="mb-6 overflow-hidden">
-        <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  Calitatea anunțului
-                </div>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Câmpurile obligatorii permit publicarea; fotografiile și pinul cresc calitatea anunțului.
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold tabular-nums text-primary">{qualityPercent}%</p>
-                <p className="text-xs font-medium text-muted-foreground">{qualityLabel}</p>
-              </div>
+      <PageSurface className="mb-6 overflow-hidden rounded-xl">
+        <div className="p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold">Completează anunțul</h2>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                {requiredItems.length > 0
+                  ? `${requiredItems.length} ${requiredItems.length === 1 ? 'câmp obligatoriu rămas' : 'câmpuri obligatorii rămase'}.`
+                  : 'Datele obligatorii sunt completate. Poți previzualiza și publica.'}
+              </p>
             </div>
-            <Progress value={qualityPercent} className="mt-4 h-2" />
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              {recommendations.length > 0 ? recommendations.slice(0, 3).map((item) => (
+            <div className="shrink-0 text-right">
+              <span className="text-xl font-semibold tabular-nums">{qualityPercent}%</span>
+              <span className="ml-2 text-xs text-muted-foreground">{qualityLabel}</span>
+            </div>
+          </div>
+          <Progress value={qualityPercent} className="mt-3 h-1.5" />
+
+          {recommendations.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {recommendations.slice(0, 2).map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => document.getElementById(item.sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                  className={cn(
-                    'rounded-xl border px-3 py-2 text-left text-xs transition-colors hover:border-primary/30 hover:bg-primary/5',
-                    item.priority === 'required'
-                      ? 'border-amber-300/50 bg-amber-500/10'
-                      : 'border-border/70 bg-background/65',
-                  )}
+                  className="rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
-                  <span className="block font-semibold">{item.title}</span>
-                  <span className="mt-0.5 line-clamp-2 block leading-4 text-muted-foreground">{item.description}</span>
+                  {item.title}
                 </button>
-              )) : (
-                <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300 sm:col-span-3">
-                  <span className="font-semibold">Anunt pregatit bine.</span> Poti previzualiza si publica sau poti adauga detalii optionale.
-                </div>
-              )}
+              ))}
             </div>
-            <PublicationMilestonesPanel
-              milestones={publicationMilestones}
-              onSelect={(sectionId) => document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            />
-          </div>
+          ) : null}
 
-          <div className="flex flex-wrap gap-2 lg:max-w-64 lg:justify-end">
-            <div className="flex items-center gap-2 rounded-xl border bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
-              <Clock3 className="h-4 w-4 text-primary" />
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t pt-3 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <Clock3 className="h-3.5 w-3.5" />
               Aproximativ 4–6 minute
-            </div>
+            </span>
             {draftStorageKey ? (
-              <div
-                role="status"
-                className={cn(
-                  'flex items-center gap-2 rounded-xl border px-3 py-2 text-xs',
-                  draftSaveError
-                    ? 'border-destructive/25 bg-destructive/5 text-destructive'
-                    : 'bg-muted/25 text-muted-foreground',
-                )}
-              >
-                <Save className="h-4 w-4" />
+              <span role="status" className={cn('inline-flex items-center gap-1.5', draftSaveError && 'text-destructive')}>
+                <Save className="h-3.5 w-3.5" />
                 {draftSaveError
                   ? 'Ciorna nu a putut fi salvată'
                   : transientAssetCount > 0
                     ? `Detalii salvate · ${transientAssetCount} ${transientAssetCount === 1 ? 'fișier local' : 'fișiere locale'}`
-                  : draftTimeLabel
-                    ? `Salvat automat la ${draftTimeLabel}`
-                    : 'Salvarea automată este activă'}
-              </div>
+                    : draftTimeLabel
+                      ? `Salvat automat la ${draftTimeLabel}`
+                      : 'Salvarea automată este activă'}
+              </span>
             ) : null}
           </div>
         </div>
 
         <nav
           aria-label="Secțiunile formularului"
-          className="property-form-steps overflow-x-auto border-t border-border/60 bg-muted/15 px-4 py-3 sm:px-6"
+          className="property-form-steps overflow-x-auto border-t px-3 py-2 sm:px-4"
         >
-          <div className="flex min-w-max gap-2">
+          <div className="flex min-w-max gap-1">
             {steps.map((step, index) => (
               <button
                 key={step.id}
@@ -476,23 +385,18 @@ export function PropertyForm({
                   block: 'start',
                 })}
                 className={cn(
-                  'flex min-w-[148px] items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors',
+                  'flex min-w-[132px] items-center gap-2 rounded-md px-2.5 py-2 text-left transition-colors',
                   step.complete
-                    ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                    : 'border-border/70 bg-background/70 hover:border-primary/30 hover:bg-primary/5',
+                    ? 'bg-muted text-foreground'
+                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
                 )}
               >
-                <span className={cn(
-                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-                  step.complete ? 'bg-emerald-600 text-white' : 'bg-muted text-muted-foreground',
-                )}>
-                  {step.complete ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center text-xs font-medium">
+                  {step.complete ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : index + 1}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-xs font-semibold">{step.label}</span>
-                  <span className="block text-[10px] text-muted-foreground">
-                    {step.complete ? 'Complet' : step.optional ? 'Opțional' : 'Obligatoriu'}
-                  </span>
+                  <span className="block text-xs font-medium">{step.label}</span>
+                  {!step.complete && step.optional ? <span className="block text-[10px]">Opțional</span> : null}
                 </span>
               </button>
             ))}
@@ -503,7 +407,7 @@ export function PropertyForm({
       {showValidation && requiredItems.length > 0 ? (
         <div
           role="alert"
-          className="mb-6 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm"
+          className="mb-6 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm"
         >
           <p className="font-semibold text-destructive">Anunțul nu este încă pregătit pentru publicare.</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">

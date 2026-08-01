@@ -3,9 +3,9 @@
 import { useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Plus, Loader2, MapPin, Ruler, BedDouble, Bath, Calendar,
+  Loader2, MapPin, Ruler, BedDouble, Bath, Calendar,
   ArrowLeft, ArrowRight, User, Check, List, Rotate3D, ImageIcon, X,
-  BarChart3, ClipboardCheck, FileCheck2, ShieldCheck, Sparkles,
+  ChevronDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -70,9 +70,6 @@ function generateSlug(title: string): string {
     + '-' + Date.now().toString(36)
 }
 
-const PUBLICATION_FLOW_ICONS = [Sparkles, ShieldCheck, ClipboardCheck, FileCheck2] as const
-const PUBLICATION_PREFLIGHT_ICONS = [ClipboardCheck, BarChart3, MapPin, ImageIcon] as const
-
 function PublicationFlowOverview({
   flow,
   onFocusSection,
@@ -92,126 +89,63 @@ function PublicationFlowOverview({
   }
 
   return (
-    <PageSurface tone="elevated" className="mb-6 overflow-hidden">
-      <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="p-5 sm:p-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
-              {flow.roleLabel}
-            </Badge>
-            <Badge variant="outline" className="gap-1.5 bg-background/70">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Flux publicare
-            </Badge>
-          </div>
-
-          <div className="mt-4 max-w-3xl">
-            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{flow.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{flow.description}</p>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {flow.preflight.map((item, index) => {
-              const Icon = PUBLICATION_PREFLIGHT_ICONS[index] ?? ClipboardCheck
-
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handlePreflightAction(item)}
-                  className="group rounded-2xl border bg-background/70 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.04] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <p className="mt-3 text-sm font-semibold">{item.title}</p>
-                  <p className="mt-1 min-h-14 text-xs leading-5 text-muted-foreground">{item.description}</p>
-                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
-                    {item.actionLabel}
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            {flow.stats.map((stat) => (
-              <div key={stat.label} className="rounded-2xl border bg-background/70 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  {stat.label}
-                </p>
-                <p className="mt-2 text-lg font-bold text-foreground">{stat.value}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{stat.description}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-primary/10 bg-primary/[0.04] p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <BarChart3 className="h-5 w-5" />
-              </span>
-              <p className="leading-6 text-muted-foreground">{flow.assurance}</p>
-            </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="gap-1.5 bg-background/80"
-                onClick={() => onNavigate(flow.secondaryActionPage)}
-              >
-                {flow.secondaryActionLabel}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => onNavigate(flow.primaryActionPage)}
-              >
-                {flow.primaryActionLabel}
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
+    <PageSurface className="mb-6 rounded-xl p-5 sm:p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-xs font-medium text-muted-foreground">{flow.roleLabel}</p>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight">{flow.title}</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{flow.description}</p>
         </div>
-
-        <div className="border-t bg-muted/25 p-5 sm:p-6 lg:border-l lg:border-t-0">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold">După publicare</p>
-              <p className="text-xs text-muted-foreground">Traseul real al anunțului în platformă.</p>
-            </div>
-            <Badge variant="secondary">{flow.steps.length} pași</Badge>
-          </div>
-
-          <div className="space-y-3">
-            {flow.steps.map((step, index) => {
-              const Icon = PUBLICATION_FLOW_ICONS[index] ?? Check
-
-              return (
-                <div key={step.id} className="rounded-2xl border bg-background/70 p-3.5">
-                  <div className="flex gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold">{step.title}</p>
-                        <Badge variant="outline" className="bg-background px-1.5 py-0 text-[10px]">
-                          {step.ownerLabel}
-                        </Badge>
-                      </div>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.description}</p>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button type="button" size="sm" variant="ghost" onClick={() => onNavigate(flow.secondaryActionPage)}>
+            {flow.secondaryActionLabel}
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => onNavigate(flow.primaryActionPage)}>
+            {flow.primaryActionLabel}
+          </Button>
         </div>
       </div>
+
+      <div className="mt-5 border-t pt-4">
+        <p className="text-xs font-medium text-muted-foreground">Secțiunile formularului</p>
+        <div className="mt-2 grid gap-x-5 gap-y-1 sm:grid-cols-2 lg:grid-cols-4">
+          {flow.preflight.map((item, index) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => handlePreflightAction(item)}
+              className="group flex gap-3 rounded-lg px-2 py-3 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="pt-0.5 text-xs font-medium tabular-nums text-muted-foreground">{index + 1}.</span>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium">{item.title}</span>
+                <span className="mt-0.5 line-clamp-2 block text-xs leading-5 text-muted-foreground">{item.description}</span>
+                <span className="mt-1 inline-flex items-center gap-1 text-xs text-primary">
+                  {item.actionLabel}
+                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <details className="group mt-3 border-t pt-4">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium">
+          Ce se întâmplă după publicare
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+        </summary>
+        <p className="mt-2 max-w-4xl text-xs leading-5 text-muted-foreground">{flow.assurance}</p>
+        <ol className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {flow.steps.map((step, index) => (
+            <li key={step.id} className="border-l pl-3">
+              <p className="text-xs text-muted-foreground">{index + 1} · {step.ownerLabel}</p>
+              <p className="mt-1 text-sm font-medium">{step.title}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.description}</p>
+            </li>
+          ))}
+        </ol>
+      </details>
     </PageSurface>
   )
 }
@@ -671,34 +605,33 @@ export function AdaugaProprietatePage() {
   }
 
   return (
-    <PageShell>
-      <PageHero
-        variant="border"
-        icon={Plus}
-        title={profile?.role === 'OWNER' ? 'Publică proprietatea' : 'Adaugă o proprietate în portofoliu'}
-        description="Completează detaliile, poziționează proprietatea pe hartă și verifică anunțul înainte de publicare."
-        breadcrumb={[{ label: 'Acasă', page: 'acasa' }, { label: 'Publică proprietatea' }]}
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          {myProperties.length > 0 && (
-            <Button variant="outline" size="sm" onClick={() => setShowMyProps(true)} className="gap-1.5">
-              <List className="h-4 w-4" />
-              Proprietățile mele
-              <Badge variant="secondary" className="ml-1 h-5 min-w-5 justify-center px-1.5 text-[10px]">
-                {myProperties.length}
-              </Badge>
-            </Button>
-          )}
-          {submittedCount > 0 && (
-            <Badge variant="secondary" className="gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <Check className="h-3 w-3" />
-              {submittedCount} publicate
-            </Badge>
-          )}
-        </div>
-      </PageHero>
+    <PageShell className="bg-background">
+      <PageContainer className="pt-6 sm:pt-8">
+        <PageHero
+          variant="simple"
+          title={profile?.role === 'OWNER' ? 'Publică proprietatea' : 'Adaugă o proprietate în portofoliu'}
+          description="Completează detaliile, poziționează proprietatea pe hartă și verifică anunțul înainte de publicare."
+          breadcrumb={[{ label: 'Acasă', page: 'acasa' }, { label: 'Publică proprietatea' }]}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            {myProperties.length > 0 && (
+              <Button variant="outline" size="sm" onClick={() => setShowMyProps(true)} className="gap-1.5">
+                <List className="h-4 w-4" />
+                Proprietățile mele
+                <span className="text-muted-foreground">({myProperties.length})</span>
+              </Button>
+            )}
+            {submittedCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                {submittedCount} publicate în sesiune
+              </span>
+            )}
+          </div>
+        </PageHero>
+      </PageContainer>
 
-      <PageContainer className="py-6 sm:py-8">
+      <PageContainer className="pb-8">
         {publicationFlow ? (
           <PublicationFlowOverview
             flow={publicationFlow}
