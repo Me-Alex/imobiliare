@@ -1,14 +1,18 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ElementType } from 'react'
 import { flushSync } from 'react-dom'
 import { motion } from 'framer-motion'
 import {
+  ArrowRight,
+  BriefcaseBusiness,
   Building2,
   CalendarDays,
   ChevronDown,
   FileCheck2,
   FileSignature,
+  FolderOpen,
   FolderLock,
   Loader2,
   RefreshCw,
@@ -59,7 +63,14 @@ import { LS_KEYS } from '@/lib/constants'
 import { loadFromLS, saveToLS } from '@/lib/storage'
 import { getDocumentFlowSummary } from '@/lib/document-flow'
 import { getDocumentActionPlan } from '@/lib/document-action-plan'
-import { readAppointmentContext, readDealContext, returnToWorkflow, selectDocumentAppointment } from '@/lib/document-navigation'
+import { getDocumentQuickActions, type DocumentQuickAction, type DocumentQuickActionTarget } from '@/lib/document-quick-actions'
+import {
+  openDealRoomForViewing,
+  readAppointmentContext,
+  readDealContext,
+  returnToWorkflow,
+  selectDocumentAppointment,
+} from '@/lib/document-navigation'
 import {
   createDocumentUrl,
   deleteViewingDocument,
@@ -74,7 +85,7 @@ import {
   listLegalDocumentRequests,
   setLegalDocumentRequestStatus,
 } from '@/lib/legal-document-requests'
-import { formatDateRO } from '@/lib/utils'
+import { cn, formatDateRO } from '@/lib/utils'
 import {
   getViewingWorkspaceLabel,
   isDocumentWorkspaceClosed,
@@ -407,6 +418,14 @@ export function DocumentePage() {
         requests,
       })
     : null
+  const activeDocumentCount = documents.filter((document) => document.status !== 'SUPERSEDED').length
+  const quickActions = actionPlan
+    ? getDocumentQuickActions({
+        plan: actionPlan,
+        hasDealRoomContext: Boolean(readDealContext()),
+        documentsCount: activeDocumentCount,
+      })
+    : []
 
   const openTools = (uploadType?: DocType) => {
     flushSync(() => setToolsOpen(true))
@@ -450,6 +469,23 @@ export function DocumentePage() {
       return
     }
     if (action.type === 'OPEN_TOOLS') {
+      openTools()
+      return
+    }
+    document.getElementById('document-archive')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const handleQuickAction = (target: DocumentQuickActionTarget) => {
+    if (target === 'primary') {
+      handlePrimaryAction()
+      return
+    }
+    if (target === 'deal-room') {
+      if (selectedViewing) openDealRoomForViewing(navigateTo, selectedViewing.id, readDealContext())
+      else navigateTo('deal-room')
+      return
+    }
+    if (target === 'advanced') {
       openTools()
       return
     }
@@ -559,6 +595,10 @@ export function DocumentePage() {
 
             {actionPlan && (
               <DocumentActionChecklist plan={actionPlan} onPrimaryAction={handlePrimaryAction} />
+            )}
+
+            {quickActions.length > 0 && (
+              <DocumentQuickActionsPanel actions={quickActions} onAction={handleQuickAction} />
             )}
 
             {!selectedWorkspaceClosed && <Collapsible open={toolsOpen} onOpenChange={setToolsOpen} className="mb-6">
@@ -812,5 +852,77 @@ export function DocumentePage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+const QUICK_ACTION_ICONS: Record<DocumentQuickAction['id'], ElementType> = {
+  'current-step': FileSignature,
+  'deal-room': BriefcaseBusiness,
+  'advanced-tools': Settings2,
+  archive: FolderOpen,
+}
+
+function DocumentQuickActionsPanel({
+  actions,
+  onAction,
+}: {
+  actions: readonly DocumentQuickAction[]
+  onAction: (target: DocumentQuickActionTarget) => void
+}) {
+  return (
+    <Card className="mb-6 border-primary/10 bg-muted/10">
+      <CardHeader className="pb-3">
+        <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">Mod simplu</Badge>
+        <CardTitle className="text-base">Alege acțiunea, nu secțiunea</CardTitle>
+        <CardDescription>
+          Cele mai utile căi sunt scoase în față; panourile detaliate rămân dedesubt pentru verificare și audit.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 md:grid-cols-4">
+          {actions.map((action) => {
+            const Icon = QUICK_ACTION_ICONS[action.id]
+            const isPrimary = action.tone === 'primary'
+            return (
+              <button
+                key={action.id}
+                type="button"
+                disabled={action.disabled}
+                onClick={() => onAction(action.target)}
+                className={cn(
+                  'group flex min-h-44 flex-col rounded-2xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  action.disabled && 'cursor-not-allowed opacity-60',
+                  !action.disabled && 'hover:-translate-y-0.5 hover:shadow-sm',
+                  isPrimary
+                    ? 'border-primary/35 bg-primary/[0.07]'
+                    : action.tone === 'muted'
+                      ? 'border-border bg-muted/35'
+                      : 'border-border bg-background',
+                )}
+              >
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <span className={cn(
+                    'flex h-10 w-10 items-center justify-center rounded-2xl',
+                    isPrimary ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary',
+                  )}>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  {isPrimary ? <Badge className="bg-primary text-primary-foreground">Acum</Badge> : null}
+                </div>
+                <p className="font-semibold">{action.title}</p>
+                <p className="mt-2 flex-1 text-sm leading-5 text-muted-foreground">{action.description}</p>
+                <span className={cn(
+                  'mt-4 inline-flex items-center gap-1 text-sm font-medium',
+                  action.disabled ? 'text-muted-foreground' : 'text-primary',
+                )}>
+                  {action.buttonLabel}
+                  {!action.disabled ? <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /> : null}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
