@@ -109,7 +109,7 @@ export function GalleryLightbox({ images, initialIndex = 0, open, onClose }: Gal
     setSwipeStart({ x: clientX, y: clientY })
   }, [])
 
-  const handlePointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  const handlePointerMove = useCallback((_event: React.MouseEvent | React.TouchEvent) => {
     // Just tracking — no-op during move
   }, [])
 

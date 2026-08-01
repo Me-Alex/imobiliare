@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
@@ -25,7 +24,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { DOC_TYPE_LABELS } from '@/lib/constants'
 import type { ViewingDocument } from '@/lib/types'
-import { cn } from '@/lib/utils'
 
 const STATUS_FILTER_OPTIONS: Array<{ value: ViewingDocument['status']; label: string; icon: React.ElementType }> = [
   { value: 'UPLOADED', label: 'Incarcat', icon: FileText },
@@ -50,8 +48,6 @@ interface DocumentSearchBarProps {
 }
 
 export function DocumentSearchBar({ documents, filter, onFilterChange }: DocumentSearchBarProps) {
-  const [showFilters, setShowFilters] = useState(false)
-
   const availableTypes = Array.from(new Set(documents.map((d) => d.docType)))
   const activeFilterCount = filter.types.size + filter.statuses.size
 

@@ -35,7 +35,6 @@ import { LS_KEYS } from '@/lib/constants'
 import { loadManagedPropertyCache } from '@/lib/managed-properties'
 import {
   ACCOUNT_ROLE_DEFINITIONS,
-  type AccountRole,
 } from '@/lib/account-roles'
 import type { UploadedDocument, Vizionare } from '@/lib/types'
 

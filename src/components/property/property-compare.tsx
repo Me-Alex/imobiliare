@@ -16,10 +16,8 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppStore } from '@/store/use-app-store'
 import { cn, formatPrice, formatPricePerSqm } from '@/lib/utils'

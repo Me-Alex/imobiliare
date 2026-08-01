@@ -80,7 +80,8 @@ console.log('  full owner is complete:', isOwnerComplete({ fullName: 'A', idDocu
 
 // ── 6. Document data composition (auto-fill from identity) ───
 
-const t = getTemplate('brokerage_agreement')
+const brokerageTemplate = getTemplate('brokerage_agreement')
+console.assert(brokerageTemplate.kind === 'brokerage_agreement')
 const fullFields = [
   // pretend we composed the full field list — this is what the form will see
   { key: 'client_name', label: 'Nume', group: 'Client', type: 'text' as const, required: true, source: { type: 'identity' as const, path: 'client' as const, key: 'fullName' } },

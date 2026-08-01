@@ -5,7 +5,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuthenticatedAccount, hasResponse } from '@/lib/server-admin-auth'
-import { supabase } from '@/lib/supabase'
 import { 
   sendAppointmentConfirmationEmail,
   sendAppointmentReminderEmail,
@@ -21,7 +20,7 @@ export async function POST(request: NextRequest) {
   const account = await requireAuthenticatedAccount(request)
   if (hasResponse(account)) return account.response
 
-  const { client, userId, role } = account
+  const { client, role } = account
   const isStaff = role !== 'CLIENT'
 
   let body: Record<string, unknown>

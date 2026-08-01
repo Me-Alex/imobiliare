@@ -39,7 +39,6 @@ export function ConfirmStep({
   })
 
   const uploadedDocs = documents.filter(d => d.status === 'UPLOADED' || d.status === 'VERIFIED')
-  const signedDocs = signatures.map(s => s.document_type)
 
   return (
     <div className="space-y-6">

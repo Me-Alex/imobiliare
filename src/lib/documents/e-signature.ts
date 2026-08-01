@@ -19,7 +19,7 @@
  *   - Owner mandates:          ADVANCED is sufficient
  */
 
-import type { Document, DocumentSignature, SignatureRequirement } from './types'
+import type { Document, SignatureRequirement } from './types'
 
 // ─── Types ───────────────────────────────────────────────────
 

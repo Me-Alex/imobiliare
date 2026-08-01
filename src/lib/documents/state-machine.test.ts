@@ -4,10 +4,30 @@ import { TEMPLATES_IN_ORDER, getTemplate } from './templates'
 import { isClientComplete, isOwnerComplete } from './identity'
 import { createCoolingOffPeriod, isCoolingOffExpired, canWithdraw, exerciseWithdrawal, getCoolingOffStatus } from './cooling-off'
 import { isDocumentExpired, shouldAutoExpire, getExpiryTargetStatus } from './expiration'
+import type { Actor, Document } from './types'
 
-const STAFF: import('./types').Actor = { kind: 'STAFF', role: 'ADMIN', userId: 'u_staff' }
-const CLIENT: import('./types').Actor = { kind: 'PARTICIPANT', role: 'CLIENT', userId: 'u_client' }
-const SYSTEM: import('./types').Actor = { kind: 'SYSTEM' }
+const STAFF: Actor = { kind: 'STAFF', role: 'ADMIN', userId: 'u_staff' }
+const CLIENT: Actor = { kind: 'PARTICIPANT', role: 'CLIENT', userId: 'u_client' }
+const SYSTEM: Actor = { kind: 'SYSTEM' }
+const createDocument = (overrides: Partial<Document> = {}): Document => ({
+  id: 'doc_1',
+  transactionId: 'tx_1',
+  kind: 'reservation_offer',
+  stage: 'NEGOTIATION',
+  status: 'DRAFT',
+  data: {},
+  version: 1,
+  supersedesId: null,
+  file: null,
+  createdBy: STAFF.userId,
+  expiresAt: null,
+  expirationAction: null,
+  coolingOff: null,
+  signatureEnvelopeId: null,
+  createdAt: '2026-07-29T10:00:00Z',
+  updatedAt: '2026-07-29T10:00:00Z',
+  ...overrides,
+})
 
 describe('documents state machine', () => {
   it('exposes six templates in deterministic order', () => {
@@ -161,6 +181,12 @@ describe('cooling-off period', () => {
     expect(canWithdraw(co)).toBe(true)
   })
 
+  it('detects an expired cooling-off period', () => {
+    const oldSignedAt = new Date(Date.now() - 15 * 24 * 60 * 60 * 1_000).toISOString()
+    const co = createCoolingOffPeriod(oldSignedAt)
+    expect(isCoolingOffExpired(co)).toBe(true)
+  })
+
   it('blocks withdrawal after exercise', () => {
     const recent = new Date(Date.now() - 60_000).toISOString()
     const co = createCoolingOffPeriod(recent)
@@ -180,32 +206,32 @@ describe('cooling-off period', () => {
 
 describe('document expiration', () => {
   it('detects expired documents', () => {
-    const doc = {
+    const doc = createDocument({
       expiresAt: new Date(Date.now() - 1_000).toISOString(), // 1 second ago
-    } as any
+    })
     expect(isDocumentExpired(doc)).toBe(true)
   })
 
   it('does not flag documents without expiration', () => {
-    const doc = { expiresAt: null } as any
+    const doc = createDocument({ expiresAt: null })
     expect(isDocumentExpired(doc)).toBe(false)
   })
 
   it('determines auto-expire eligibility', () => {
-    const doc = {
+    const doc = createDocument({
       status: 'READY_TO_SIGN',
       expiresAt: new Date(Date.now() - 1_000).toISOString(),
       expirationAction: 'CANCEL',
-    } as any
+    })
     expect(shouldAutoExpire(doc)).toBe(true)
   })
 
   it('skips auto-expire for terminal documents', () => {
-    const doc = {
+    const doc = createDocument({
       status: 'CANCELLED',
       expiresAt: new Date(Date.now() - 1_000).toISOString(),
       expirationAction: 'CANCEL',
-    } as any
+    })
     expect(shouldAutoExpire(doc)).toBe(false)
   })
 

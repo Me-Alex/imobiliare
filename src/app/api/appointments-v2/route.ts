@@ -4,8 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuthenticatedAccount, requireStaff, hasResponse } from '@/lib/server-admin-auth'
-import { supabase } from '@/lib/supabase'
+import { requireAuthenticatedAccount, hasResponse } from '@/lib/server-admin-auth'
 import { createIpRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
 
 // Rate limiter for creating appointments

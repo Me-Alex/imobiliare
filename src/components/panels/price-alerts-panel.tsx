@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, Plus, Trash2, Loader2, Check, AlertCircle } from 'lucide-react'
+import { Bell, Plus, Trash2, Loader2, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Sheet,

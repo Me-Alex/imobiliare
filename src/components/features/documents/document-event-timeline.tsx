@@ -16,9 +16,7 @@ import {
   Clock,
   ShieldCheck,
   XCircle,
-  User,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import type { DocumentEvent, ViewingDocument } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -135,18 +133,18 @@ export function DocumentEventTimeline({ document }: DocumentEventTimelineProps) 
           >
             <div className="mt-3 space-y-0 relative pl-4">
               <div className="absolute left-[7px] top-1 bottom-1 w-px bg-border" />
-              {visibleItems.map((item, index) => {
+              {visibleItems.map((item) => {
                 const Icon = item.icon
-                const isLast = index === visibleItems.length - 1
                 return (
                   <div key={item.id} className="relative flex items-start gap-2.5 pb-3">
                     <div
                       className={cn(
                         'relative z-10 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border bg-background',
                         item.color.replace('text-', 'border-'),
+                        item.color,
                       )}
                     >
-                      <div className={cn('h-1.5 w-1.5 rounded-full', item.color.replace('text-', 'bg-'))} />
+                      <Icon className="h-2.5 w-2.5" />
                     </div>
                     <div className="min-w-0 flex-1 -mt-0.5">
                       <div className="flex items-center gap-1.5 flex-wrap">

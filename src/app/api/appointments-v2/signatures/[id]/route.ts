@@ -5,7 +5,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuthenticatedAccount, hasResponse } from '@/lib/server-admin-auth'
-import { supabase } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,7 +46,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   // Remove internal join data from response
-  const { appointments_v2, ...signature } = data
+  const { appointments_v2: _appointments_v2, ...signature } = data
 
   return NextResponse.json({ signature })
 }

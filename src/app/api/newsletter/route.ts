@@ -50,9 +50,10 @@ export async function POST(request: NextRequest) {
     await db.newsletterSubscription.create({
       data: { email: normalizedEmail },
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const prismaError = error as { code?: unknown }
     // Unique constraint violation — user is already subscribed
-    if (error?.code === 'P2002') {
+    if (prismaError.code === 'P2002') {
       return NextResponse.json({ success: true, message: 'Esti deja abonat!' })
     }
 

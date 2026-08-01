@@ -25,7 +25,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { LS_KEYS } from '@/lib/constants'
-import { ACCOUNT_ROLE_DEFINITIONS, type AccountRole } from '@/lib/account-roles'
+import { ACCOUNT_ROLE_DEFINITIONS } from '@/lib/account-roles'
 import { getAccountMenuItems, getWorkspaceNavigation, isAccountWorkspacePage, PUBLIC_NAVIGATION } from '@/lib/navigation-config'
 
 function NotificationsBadge() {

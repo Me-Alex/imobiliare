@@ -95,10 +95,11 @@ export function PropertyPage({ initialSlug, initialProperty, standalone = false 
   const slug = initialSlug || selectedPropertySlug
   const { data: property, isLoading, isError } = useProperty(slug, initialProperty)
   const { data: candidateProperties = [] } = useProperties()
+  const propertyId = property?.id
 
   useEffect(() => {
-    if (property) void recordPropertyView(property.id)
-  }, [property?.id])
+    if (propertyId) void recordPropertyView(propertyId)
+  }, [propertyId])
 
   const relatedProperties = useMemo(
     () => property ? getRelatedProperties(property, candidateProperties) : [],

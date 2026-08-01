@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
-import { motion, useInView } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { ShieldCheck, TrendingUp, Headphones, Scale, Bell, Lock } from 'lucide-react'
 
 const trustThemes = [

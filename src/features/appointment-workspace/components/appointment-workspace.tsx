@@ -32,7 +32,6 @@ export function AppointmentWorkspace({
     loadSignatures,
     createSignature,
     setStep,
-    reset,
   } = useAppointmentWorkspace()
 
   const { appointment, currentStep, documents, signatures, isLoading, error } = state

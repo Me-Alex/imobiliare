@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Bookmark, SlidersHorizontal, MapPin, BedDouble, Euro } from 'lucide-react'
+import { Bookmark, SlidersHorizontal } from 'lucide-react'
 import {
   Dialog,
   DialogContent,

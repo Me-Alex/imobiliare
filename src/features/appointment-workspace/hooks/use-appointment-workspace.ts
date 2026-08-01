@@ -185,7 +185,7 @@ export function useAppointmentWorkspace(
   }, [options])
 
   // Cancel appointment
-  const cancelAppointment = useCallback(async (id: string, reason?: string): Promise<void> => {
+  const cancelAppointment = useCallback(async (id: string, _reason?: string): Promise<void> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {

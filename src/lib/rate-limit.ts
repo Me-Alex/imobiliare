@@ -13,7 +13,6 @@
  */
 
 const DEFAULT_MAX_KEYS = 5_000
-const DEFAULT_KEY_TTL_MS = 10 * 60 * 1_000 // 10 minutes of inactivity
 
 export interface RateLimitOptions {
   /** Sliding window length in milliseconds. */

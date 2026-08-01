@@ -3,14 +3,12 @@ import { getSafeDb } from '@/lib/edge-db'
 import { requireStaff } from '@/lib/server-admin-auth'
 import { hasLegacyCrmModels } from '@/lib/legacy-crm'
 import {
-  canTransitionLead,
   isValidLeadStatus,
   LEAD_PRIORITIES,
   LEAD_SOURCES,
   toJsonArray,
   type LeadPriority,
   type LeadSource,
-  type LeadStatus,
 } from '@/lib/crm'
 import { notifyLeadAssigned, notifyNewLeadToTeam } from '@/lib/notifications'
 import { isValidEmail, normalizeEmail } from '@/lib/validators'

@@ -101,7 +101,7 @@ export function PartnersSection() {
           whileInView="visible"
           viewport={{ once: true, amount: 0.15 }}
         >
-          {allPartners.map((name, index) => (
+          {allPartners.map((name) => (
             <motion.div
               key={name}
               variants={cardVariants}

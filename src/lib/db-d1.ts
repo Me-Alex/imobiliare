@@ -24,14 +24,6 @@ export interface D1Database {
 
 // ── Helpers ────────────────────────────────────────────────────
 
-function serializeValue(v: unknown): string {
-  if (v === null || v === undefined) return 'NULL'
-  if (typeof v === 'number') return String(v)
-  if (typeof v === 'boolean') return v ? '1' : '0'
-  if (v instanceof Date) return `'${v.toISOString()}'`
-  return `'${String(v).replace(/'/g, "''")}'`
-}
-
 function deserializeRow<T>(row: Record<string, unknown>): T {
   const result: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(row)) {

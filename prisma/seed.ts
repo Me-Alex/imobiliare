@@ -13,21 +13,6 @@ const COVER_IMAGES = [
   'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800&q=80',
 ]
 
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-}
-
-function pickRandom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)]
-}
-
-function randomBetween(min: number, max: number): number {
-  return Math.round((Math.random() * (max - min) + min) * 100) / 100
-}
-
 async function main() {
   console.log('🌱 Seeding database...')
 

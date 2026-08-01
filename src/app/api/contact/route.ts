@@ -97,9 +97,10 @@ export async function POST(request: NextRequest) {
         propertyTitle: propertyTitle?.trim() || null,
       },
     })
-  } catch (error: any) {
-    if (error?.code === 'P2002') {
-      console.error('Prisma error saving contact:', error.code, error.message)
+  } catch (error: unknown) {
+    const prismaError = error as { code?: unknown; message?: unknown }
+    if (prismaError.code === 'P2002') {
+      console.error('Prisma error saving contact:', prismaError.code, prismaError.message)
     } else {
       console.error('Eroare la trimiterea formularului de contact:', error)
     }
