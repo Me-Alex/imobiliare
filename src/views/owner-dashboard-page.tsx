@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ElementType } from 'react'
 import {
   Activity,
   ArrowDownRight,
@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Eye,
+  FileText,
   FileWarning,
   Heart,
   HelpCircle,
@@ -22,7 +23,6 @@ import {
   Scale,
   Sparkles,
   Star,
-  TrendingUp,
   Users,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -38,8 +38,13 @@ import {
   listingQuality,
   relationOne,
 } from '@/lib/transaction-workspace'
-import { openDealRoomForViewing } from '@/lib/document-navigation'
+import { openDealRoomForViewing, openViewingDocuments } from '@/lib/document-navigation'
 import { getStatusLabel } from '@/lib/presentation'
+import {
+  getOwnerDashboardPriority,
+  type OwnerDashboardActionTarget,
+  type OwnerDashboardSignal,
+} from '@/lib/owner-dashboard-guidance'
 
 type OwnerSnapshot = Awaited<ReturnType<typeof fetchOwnerSnapshot>>
 
@@ -111,6 +116,45 @@ export function OwnerDashboardPage() {
   const feedbackRows = appointments.filter((item) => typeof item.rating === 'number' || typeof item.feedback === 'string')
   const averageRating = feedbackRows.length ? feedbackRows.reduce((sum, item) => sum + Number(item.rating || 0), 0) / feedbackRows.filter((item) => Number(item.rating || 0) > 0).length : 0
   const missingDocuments = requirements.filter((item) => !['APPROVED', 'WAIVED'].includes(String(item.status)))
+  const ownerPriority = getOwnerDashboardPriority({
+    qualityScore: quality.score,
+    qualityNextAction: quality.nextAction,
+    missingDocuments: missingDocuments.length,
+    adjustmentPercent: analysis.adjustmentPercent,
+    views: totals.views,
+    inquiries: totals.inquiries,
+    viewings: Math.max(totals.viewings, appointments.length),
+    feedbackCount: feedbackRows.length,
+  })
+  const openSelectedDocuments = () => {
+    if (selectedAppointmentId) {
+      openViewingDocuments(navigateTo, selectedAppointmentId, selectedDealId)
+      return
+    }
+    navigateTo('documente')
+  }
+  const scrollToOwnerSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  const handleOwnerPriority = (target: OwnerDashboardActionTarget) => {
+    if (target === 'documents') {
+      openSelectedDocuments()
+      return
+    }
+    if (target === 'listing-quality') {
+      scrollToOwnerSection('owner-listing-quality')
+      return
+    }
+    if (target === 'pricing') {
+      scrollToOwnerSection('owner-pricing')
+      return
+    }
+    if (target === 'appointments') {
+      navigateTo('vizionarile-mele')
+      return
+    }
+    scrollToOwnerSection('owner-metrics')
+  }
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -138,7 +182,9 @@ export function OwnerDashboardPage() {
           </div>
         </Card>
 
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <OwnerPriorityPanel priority={ownerPriority} onAction={handleOwnerPriority} />
+
+        <div id="owner-metrics" className="grid scroll-mt-24 grid-cols-2 gap-4 lg:grid-cols-4">
           <MetricCard icon={Eye} label="Vizualizări" value={totals.views} detail="vizitatori unici/zi" tone="violet" />
           <MetricCard icon={Heart} label="Favorite" value={totals.favorites} detail={ratio(totals.favorites, totals.views, 'din vizualizări')} tone="rose" />
           <MetricCard icon={MessageSquare} label="Cereri" value={totals.inquiries} detail={ratio(totals.inquiries, totals.views, 'rată de interes')} tone="blue" />
@@ -151,7 +197,7 @@ export function OwnerDashboardPage() {
             <CardContent><MetricChart metrics={metrics} /></CardContent>
           </Card>
 
-          <Card className={analysis.adjustmentPercent > 0 ? 'border-amber-500/30 bg-amber-500/[0.04]' : 'border-emerald-500/30 bg-emerald-500/[0.04]'}>
+          <Card id="owner-pricing" className={analysis.adjustmentPercent > 0 ? 'scroll-mt-24 border-amber-500/30 bg-amber-500/[0.04]' : 'scroll-mt-24 border-emerald-500/30 bg-emerald-500/[0.04]'}>
             <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Scale className="h-4 w-4 text-primary" /> Poziționare în piață</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div><p className="text-sm text-muted-foreground">Prețul tău / m²</p><p className="text-2xl font-bold">{formatMoney(analysis.propertyPricePerSqm)}</p></div>
@@ -163,7 +209,7 @@ export function OwnerDashboardPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <Card>
+          <Card id="owner-listing-quality" className="scroll-mt-24">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" /> Calitatea anunțului</CardTitle>
@@ -210,6 +256,86 @@ export function OwnerDashboardPage() {
         </Card>
       </main>
     </div>
+  )
+}
+
+const OWNER_SIGNAL_ICONS: Record<OwnerDashboardSignal['id'], ElementType> = {
+  listing: Sparkles,
+  interest: MessageSquare,
+  pricing: Scale,
+  documents: FileText,
+}
+
+function OwnerPriorityPanel({
+  priority,
+  onAction,
+}: {
+  priority: ReturnType<typeof getOwnerDashboardPriority>
+  onAction: (target: OwnerDashboardActionTarget) => void
+}) {
+  const high = priority.guidance.priority === 'high'
+
+  return (
+    <Card className={high ? 'border-amber-300/60 bg-amber-500/[0.06]' : 'border-primary/20 bg-primary/[0.03]'}>
+      <CardContent className="p-5 sm:p-6">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
+          <div className="flex min-w-0 gap-4">
+            <span className={high
+              ? 'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-700 dark:text-amber-300'
+              : 'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary'}
+            >
+              {high ? <Lightbulb className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
+            </span>
+            <div className="min-w-0">
+              <Badge variant={high ? 'destructive' : 'secondary'} className="mb-2">
+                Prioritatea proprietarului
+              </Badge>
+              <h2 className="text-xl font-semibold tracking-tight">{priority.guidance.title}</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{priority.guidance.description}</p>
+              <Button
+                className="mt-4 gap-2"
+                variant={high ? 'default' : 'outline'}
+                onClick={() => onAction(priority.guidance.target)}
+              >
+                {priority.guidance.actionLabel}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {priority.signals.map((signal) => {
+              const Icon = OWNER_SIGNAL_ICONS[signal.id]
+              return (
+                <button
+                  key={signal.id}
+                  type="button"
+                  onClick={() => onAction(signal.id === 'documents'
+                    ? 'documents'
+                    : signal.id === 'pricing'
+                      ? 'pricing'
+                      : signal.id === 'listing'
+                        ? 'listing-quality'
+                        : 'appointments')}
+                  className="rounded-2xl border bg-background/70 p-3 text-left transition-colors hover:border-primary/25 hover:bg-primary/[0.04]"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                      <Icon className="h-3.5 w-3.5 text-primary" />
+                      {signal.label}
+                    </span>
+                    <span className={signal.state === 'attention' ? 'text-xs font-semibold text-amber-600' : signal.state === 'good' ? 'text-xs font-semibold text-emerald-600' : 'text-xs font-semibold text-muted-foreground'}>
+                      {signal.value}
+                    </span>
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{signal.description}</p>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
