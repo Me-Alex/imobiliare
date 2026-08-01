@@ -60,6 +60,18 @@ export interface PropertyPublicationReadiness {
   qualityLabel: string
 }
 
+export type PublicationMilestoneStatus = 'complete' | 'current' | 'next'
+
+export interface PublicationMilestone {
+  id: 'publishable' | 'competitive' | 'premium'
+  label: string
+  title: string
+  description: string
+  actionLabel: string
+  sectionId: string
+  status: PublicationMilestoneStatus
+}
+
 export type PublishedPropertyQualityPriority = 'high' | 'medium'
 
 export interface PublishedPropertyQualityRecommendation {
@@ -308,6 +320,66 @@ export function getPropertyPublicationReadiness(
     qualityPercent,
     qualityLabel: qualityLabel(qualityPercent),
   }
+}
+
+export function getPropertyPublicationMilestones(
+  readiness: PropertyPublicationReadiness,
+): readonly PublicationMilestone[] {
+  const competitiveComplete = readiness.canPublish
+    && readiness.hasPin
+    && readiness.sectionCompletion.images
+    && readiness.qualityPercent >= 70
+  const premiumComplete = competitiveComplete
+    && readiness.hasConfiguredTour
+    && readiness.qualityPercent >= 90
+
+  const milestones: Array<Omit<PublicationMilestone, 'status'>> = [
+    {
+      id: 'publishable',
+      label: '1',
+      title: 'Publicabil',
+      description: readiness.canPublish
+        ? 'Câmpurile obligatorii sunt complete; anunțul poate fi publicat.'
+        : 'Completează minimul legal și operațional pentru a putea publica.',
+      actionLabel: readiness.canPublish ? 'Gata de publicare' : 'Completează obligatorii',
+      sectionId: readiness.requiredItems[0]?.sectionId ?? 'property-step-basic',
+    },
+    {
+      id: 'competitive',
+      label: '2',
+      title: 'Competitiv',
+      description: competitiveComplete
+        ? 'Anunțul are localizare, pin și imagini suficiente pentru comparație.'
+        : 'Adaugă pinul pe hartă și o galerie clară ca să reducă întrebările repetitive.',
+      actionLabel: readiness.hasPin && readiness.sectionCompletion.images ? 'Optimizează detaliile' : 'Adaugă pin și fotografii',
+      sectionId: !readiness.hasPin ? 'property-step-location' : 'property-step-images',
+    },
+    {
+      id: 'premium',
+      label: '3',
+      title: 'Premium',
+      description: premiumComplete
+        ? 'Anunțul este pregătit ca experiență completă, inclusiv tur virtual.'
+        : 'Finalizează turul virtual și detaliile recomandate pentru lead-uri mai bine filtrate.',
+      actionLabel: readiness.hasConfiguredTour ? 'Verifică recomandările' : 'Adaugă tur virtual',
+      sectionId: readiness.hasConfiguredTour
+        ? readiness.recommendations[0]?.sectionId ?? 'property-step-virtual-tour'
+        : 'property-step-virtual-tour',
+    },
+  ]
+
+  const completed = [readiness.canPublish, competitiveComplete, premiumComplete]
+  const currentIndex = completed.findIndex((value) => !value)
+  const activeIndex = currentIndex === -1 ? milestones.length - 1 : currentIndex
+
+  return milestones.map((milestone, index) => ({
+    ...milestone,
+    status: completed[index]
+      ? 'complete'
+      : index === activeIndex
+        ? 'current'
+        : 'next',
+  }))
 }
 
 export function getPublishedPropertyQuality(input: PublishedPropertyQualityInput): PublishedPropertyQuality {

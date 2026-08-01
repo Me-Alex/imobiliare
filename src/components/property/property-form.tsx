@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  ArrowRight,
   Bath,
   BedDouble,
   Building2,
@@ -51,7 +52,11 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { CURRENCIES, PROPERTY_TYPES, SECTOARE, TRANSACTIONS, ZONES } from '@/lib/constants'
-import { getPropertyPublicationReadiness } from '@/lib/property-publication-readiness'
+import {
+  getPropertyPublicationMilestones,
+  getPropertyPublicationReadiness,
+  type PublicationMilestone,
+} from '@/lib/property-publication-readiness'
 import { cn } from '@/lib/utils'
 import {
   EMPTY_VIRTUAL_TOUR_DRAFT,
@@ -170,6 +175,68 @@ function formatPrice(value: string, currency: string) {
   return price > 0 ? `${price.toLocaleString('ro-RO')} ${currency}` : 'Preț nesetat'
 }
 
+function PublicationMilestonesPanel({
+  milestones,
+  onSelect,
+}: {
+  milestones: readonly PublicationMilestone[]
+  onSelect: (sectionId: string) => void
+}) {
+  return (
+    <div className="mt-5 grid gap-3 border-t border-border/60 pt-5 md:grid-cols-3">
+      {milestones.map((milestone) => {
+        const complete = milestone.status === 'complete'
+        const current = milestone.status === 'current'
+        return (
+          <button
+            key={milestone.id}
+            type="button"
+            onClick={() => onSelect(milestone.sectionId)}
+            className={cn(
+              'group rounded-2xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              complete && 'border-emerald-500/25 bg-emerald-500/10',
+              current && 'border-primary/30 bg-primary/[0.06] shadow-sm shadow-primary/5',
+              milestone.status === 'next' && 'border-border/70 bg-background/70 hover:border-primary/25 hover:bg-primary/[0.04]',
+            )}
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className={cn(
+                'flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold',
+                complete
+                  ? 'bg-emerald-600 text-white'
+                  : current
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground',
+              )}>
+                {complete ? <CheckCircle2 className="h-4 w-4" /> : milestone.label}
+              </span>
+              <Badge
+                variant={complete || current ? 'default' : 'outline'}
+                className={cn(
+                  'text-[10px]',
+                  complete && 'bg-emerald-600 text-white hover:bg-emerald-600',
+                  current && 'bg-primary text-primary-foreground',
+                )}
+              >
+                {complete ? 'Gata' : current ? 'Acum' : 'Următor'}
+              </Badge>
+            </div>
+            <p className="text-sm font-semibold">{milestone.title}</p>
+            <p className="mt-1 min-h-10 text-xs leading-5 text-muted-foreground">{milestone.description}</p>
+            <span className={cn(
+              'mt-3 inline-flex items-center gap-1 text-xs font-medium',
+              complete ? 'text-emerald-700 dark:text-emerald-300' : 'text-primary',
+            )}>
+              {milestone.actionLabel}
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function PropertyForm({
   onSubmit,
   isSubmitting,
@@ -275,6 +342,7 @@ export function PropertyForm({
     currentYear,
   })
   const recommendations = publicationReadiness.recommendations
+  const publicationMilestones = getPropertyPublicationMilestones(publicationReadiness)
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -347,6 +415,10 @@ export function PropertyForm({
                 </div>
               )}
             </div>
+            <PublicationMilestonesPanel
+              milestones={publicationMilestones}
+              onSelect={(sectionId) => document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            />
           </div>
 
           <div className="flex items-center gap-2 rounded-xl border bg-muted/25 px-3 py-2 text-xs text-muted-foreground">

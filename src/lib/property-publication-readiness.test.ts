@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  getPropertyPublicationMilestones,
   getPropertyPublicationReadiness,
   getPublishedPropertyQuality,
   type PropertyPublicationReadinessInput,
@@ -111,6 +112,73 @@ describe('getPropertyPublicationReadiness', () => {
     expect(readiness.requiredItems).toContainEqual(expect.objectContaining({
       fieldId: 'property-step-virtual-tour',
     }))
+  })
+})
+
+describe('getPropertyPublicationMilestones', () => {
+  it('starts incomplete listings at the publishable milestone', () => {
+    const milestones = getPropertyPublicationMilestones(getPropertyPublicationReadiness(listing()))
+
+    expect(milestones.map((item) => item.id)).toEqual(['publishable', 'competitive', 'premium'])
+    expect(milestones[0]).toMatchObject({
+      id: 'publishable',
+      status: 'current',
+      sectionId: 'property-step-basic',
+    })
+    expect(milestones[1].status).toBe('next')
+  })
+
+  it('moves publishable listings toward competitive media and map quality', () => {
+    const milestones = getPropertyPublicationMilestones(getPropertyPublicationReadiness(listing({
+      title: 'Apartament luminos cu 3 camere in Dorobanti',
+      description: 'Apartament luminos cu compartimentare eficienta, finisaje moderne si acces rapid la parcuri, scoli si mijloace de transport.',
+      type: 'Apartament',
+      price: '250000',
+      areaSqm: '90',
+      rooms: '3',
+      sector: 'Sector 1',
+      zone: 'Dorobanti',
+      address: 'Strada Dorobanti 45',
+    })))
+
+    expect(milestones[0]).toMatchObject({ id: 'publishable', status: 'complete' })
+    expect(milestones[1]).toMatchObject({
+      id: 'competitive',
+      status: 'current',
+      sectionId: 'property-step-location',
+    })
+  })
+
+  it('marks all milestones complete for a premium listing', () => {
+    const milestones = getPropertyPublicationMilestones(getPropertyPublicationReadiness(listing({
+      title: 'Apartament luminos cu 3 camere in Dorobanti',
+      description: 'Apartament luminos, renovat recent, cu compartimentare eficienta, bucatarie inchisa, doua bai, balcon generos si acces rapid la parcuri, scoli si mijloace de transport in comun. Este potrivit pentru o familie care vrea acces rapid la servicii, transport si zone verzi.',
+      type: 'Apartament',
+      price: '250000',
+      areaSqm: '90',
+      rooms: '3',
+      sector: 'Sector 1',
+      zone: 'Dorobanti',
+      address: 'Strada Dorobanti 45',
+      lat: 44.458,
+      lng: 26.096,
+      galleryUrls: [
+        'https://example.com/1.jpg',
+        'https://example.com/2.jpg',
+        'https://example.com/3.jpg',
+        'https://example.com/4.jpg',
+        'https://example.com/5.jpg',
+      ],
+      yearBuilt: '2020',
+      virtualTourMode: 'NATIVE',
+      virtualTourValid: true,
+    })))
+
+    expect(milestones.every((item) => item.status === 'complete')).toBe(true)
+    expect(milestones[2]).toMatchObject({
+      id: 'premium',
+      actionLabel: 'Verifică recomandările',
+    })
   })
 })
 
