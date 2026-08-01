@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getAccountGuidance, getClientProcessSteps } from '@/lib/account-guidance'
+import { getAccountGuidance, getAccountProcessSteps, getClientProcessSteps } from '@/lib/account-guidance'
 
 const EMPTY = {
   favorites: 0,
@@ -79,5 +79,49 @@ describe('getClientProcessSteps', () => {
     expect(steps[2]).toMatchObject({ id: 'deal', status: 'done' })
     expect(steps[3]).toMatchObject({ id: 'documents', status: 'active', page: 'documente' })
     expect(steps[4]).toMatchObject({ id: 'coins', status: 'next' })
+  })
+})
+
+describe('getAccountProcessSteps', () => {
+  it('gives owners a property lifecycle distinct from clients', () => {
+    const steps = getAccountProcessSteps('OWNER', EMPTY)
+
+    expect(steps.map((step) => step.id)).toEqual(['publish', 'performance', 'viewings', 'deal', 'documents'])
+    expect(steps[0]).toMatchObject({
+      id: 'publish',
+      status: 'active',
+      page: 'adauga-proprietate',
+    })
+  })
+
+  it('moves owners with an existing property into performance before requests arrive', () => {
+    const steps = getAccountProcessSteps('OWNER', { ...EMPTY, propertyCount: 1, totalViews: 24 })
+
+    expect(steps[0]).toMatchObject({ id: 'publish', status: 'done', page: 'proprietatile-mele' })
+    expect(steps[1]).toMatchObject({ id: 'performance', status: 'active', page: 'owner-dashboard' })
+  })
+
+  it('prioritizes assigned viewings before leads for agents', () => {
+    const steps = getAccountProcessSteps('AGENT', { ...EMPTY, leadCount: 3, activeViewings: 1 })
+
+    expect(steps.map((step) => step.id)).toEqual(['availability', 'crm', 'viewings', 'deal', 'documents'])
+    expect(steps[2]).toMatchObject({ id: 'viewings', status: 'active', page: 'vizionarile-mele' })
+  })
+
+  it('gives admins a control flow for platform operations', () => {
+    const steps = getAccountProcessSteps('ADMIN', { ...EMPTY, leadCount: 2 })
+
+    expect(steps.map((step) => step.id)).toEqual(['admin', 'crm', 'documents', 'deals'])
+    expect(steps[0].status).toBe('done')
+    expect(steps[1]).toMatchObject({ id: 'crm', status: 'active', page: 'crm' })
+  })
+
+  it('makes document requirements the current blocker for every role process', () => {
+    for (const role of ['CLIENT', 'OWNER', 'AGENT', 'ADMIN'] as const) {
+      const steps = getAccountProcessSteps(role, { ...EMPTY, openRequirements: 1, activeDeals: 1, leadCount: 2 })
+      const activeStep = steps.find((step) => step.status === 'active')
+
+      expect(activeStep).toMatchObject({ page: 'documente' })
+    }
   })
 })

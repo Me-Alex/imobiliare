@@ -26,15 +26,21 @@ export interface AccountJourneyStep {
   page: PageKey
 }
 
-export type ClientProcessStepStatus = 'done' | 'active' | 'next'
+export type AccountProcessStepStatus = 'done' | 'active' | 'next'
 
-export interface ClientProcessStep {
-  id: 'discover' | 'viewing' | 'deal' | 'documents' | 'coins'
+export interface AccountProcessStep {
+  id: string
   label: string
   description: string
   actionLabel: string
   page: PageKey
-  status: ClientProcessStepStatus
+  status: AccountProcessStepStatus
+}
+
+export type ClientProcessStepStatus = AccountProcessStepStatus
+
+export interface ClientProcessStep extends AccountProcessStep {
+  id: 'discover' | 'viewing' | 'deal' | 'documents' | 'coins'
 }
 
 const JOURNEYS: Record<AccountRole, readonly AccountJourneyStep[]> = {
@@ -68,6 +74,19 @@ const JOURNEYS: Record<AccountRole, readonly AccountJourneyStep[]> = {
 
 export function getAccountJourney(role: AccountRole): readonly AccountJourneyStep[] {
   return JOURNEYS[role]
+}
+
+function applyProcessStatuses<T extends AccountProcessStep>(
+  steps: readonly Omit<T, 'status'>[],
+  activeId: T['id'],
+): readonly T[] {
+  const activeIndex = steps.findIndex((step) => step.id === activeId)
+  const safeActiveIndex = activeIndex === -1 ? 0 : activeIndex
+
+  return steps.map((step, index) => ({
+    ...step,
+    status: index < safeActiveIndex ? 'done' : index === safeActiveIndex ? 'active' : 'next',
+  })) as unknown as readonly T[]
 }
 
 export function getClientProcessSteps(snapshot: AccountGuidanceSnapshot): readonly ClientProcessStep[] {
@@ -128,11 +147,194 @@ export function getClientProcessSteps(snapshot: AccountGuidanceSnapshot): readon
     },
   ]
 
-  const activeIndex = steps.findIndex((step) => step.id === activeId)
-  return steps.map((step, index) => ({
-    ...step,
-    status: index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'next',
-  }))
+  return applyProcessStatuses<ClientProcessStep>(steps, activeId)
+}
+
+function getOwnerProcessSteps(snapshot: AccountGuidanceSnapshot): readonly AccountProcessStep[] {
+  const activeId = snapshot.dataAvailable === false
+    ? 'performance'
+    : snapshot.openRequirements > 0
+      ? 'documents'
+      : snapshot.activeDeals > 0
+        ? 'deal'
+        : snapshot.activeViewings > 0
+          ? 'viewings'
+          : snapshot.propertyCount > 0
+            ? 'performance'
+            : 'publish'
+
+  const steps: readonly Omit<AccountProcessStep, 'status'>[] = [
+    {
+      id: 'publish',
+      label: 'Publică',
+      description: snapshot.propertyCount > 0
+        ? `${snapshot.propertyCount} ${snapshot.propertyCount === 1 ? 'proprietate publicată' : 'proprietăți publicate'} sau în lucru.`
+        : 'Adaugă prima proprietate cu detalii, hartă, fotografii și tur.',
+      actionLabel: snapshot.propertyCount > 0 ? 'Gestionează proprietăți' : 'Publică proprietatea',
+      page: snapshot.propertyCount > 0 ? 'proprietatile-mele' : 'adauga-proprietate',
+    },
+    {
+      id: 'performance',
+      label: 'Măsoară',
+      description: snapshot.totalViews > 0
+        ? `${snapshot.totalViews} vizualizări agregate; verifică feedbackul și recomandările.`
+        : 'Urmărește interesul, calitatea anunțului și ajustările sugerate.',
+      actionLabel: 'Vezi dashboard proprietar',
+      page: 'owner-dashboard',
+    },
+    {
+      id: 'viewings',
+      label: 'Confirmă',
+      description: snapshot.activeViewings > 0
+        ? `${snapshot.activeViewings} ${snapshot.activeViewings === 1 ? 'solicitare activă' : 'solicitări active'} de urmărit.`
+        : 'Solicitările de vizionare apar aici după publicare.',
+      actionLabel: 'Vezi solicitările',
+      page: 'vizionarile-mele',
+    },
+    {
+      id: 'deal',
+      label: 'Negociază',
+      description: snapshot.activeDeals > 0
+        ? 'Urmărește oferta, contraoferta și următorul responsabil.'
+        : 'Deal Room-ul devine activ când o vizionare avansează spre ofertă.',
+      actionLabel: 'Deschide Deal Room',
+      page: 'deal-room',
+    },
+    {
+      id: 'documents',
+      label: 'Semnează',
+      description: snapshot.openRequirements > 0
+        ? `${snapshot.openRequirements} ${snapshot.openRequirements === 1 ? 'cerință deschisă' : 'cerințe deschise'} în dosarul tranzacției.`
+        : 'Documentele și semnăturile apar când tranzacția le cere.',
+      actionLabel: 'Deschide documentele',
+      page: 'documente',
+    },
+  ]
+
+  return applyProcessStatuses<AccountProcessStep>(steps, activeId)
+}
+
+function getAgentProcessSteps(snapshot: AccountGuidanceSnapshot): readonly AccountProcessStep[] {
+  const activeId = snapshot.dataAvailable === false
+    ? 'crm'
+    : snapshot.openRequirements > 0
+      ? 'documents'
+      : snapshot.activeViewings > 0
+        ? 'viewings'
+        : snapshot.leadCount > 0
+          ? 'crm'
+          : snapshot.activeDeals > 0
+            ? 'deal'
+            : 'availability'
+
+  const steps: readonly Omit<AccountProcessStep, 'status'>[] = [
+    {
+      id: 'availability',
+      label: 'Disponibilitate',
+      description: 'Setează intervalele reale ca programările să nu necesite mesaje extra.',
+      actionLabel: 'Setează intervale',
+      page: 'disponibilitate-staff',
+    },
+    {
+      id: 'crm',
+      label: 'Califică lead-uri',
+      description: snapshot.leadCount > 0
+        ? `${snapshot.leadCount} ${snapshot.leadCount === 1 ? 'lead activ' : 'lead-uri active'} așteaptă follow-up.`
+        : 'Lead-urile noi și sursa lor se urmăresc în CRM.',
+      actionLabel: 'Deschide CRM',
+      page: 'crm',
+    },
+    {
+      id: 'viewings',
+      label: 'Planifică vizionări',
+      description: snapshot.activeViewings > 0
+        ? `${snapshot.activeViewings} ${snapshot.activeViewings === 1 ? 'vizionare alocată' : 'vizionări alocate'} de confirmat sau finalizat.`
+        : 'Confirmă participanții, prezența și feedbackul după vizionare.',
+      actionLabel: 'Vezi agenda',
+      page: 'vizionarile-mele',
+    },
+    {
+      id: 'deal',
+      label: 'Condu Deal Room',
+      description: snapshot.activeDeals > 0
+        ? 'Setează oferta, contraoferta și următorul pas responsabil.'
+        : 'Deal Room-ul unește vizionarea, documentele și oferta.',
+      actionLabel: 'Deschide tranzacții',
+      page: 'deal-room',
+    },
+    {
+      id: 'documents',
+      label: 'Închide dosarul',
+      description: snapshot.openRequirements > 0
+        ? `${snapshot.openRequirements} ${snapshot.openRequirements === 1 ? 'cerință de document' : 'cerințe de documente'} necesită acțiune.`
+        : 'Generează, verifică și urmărește semnăturile când sunt necesare.',
+      actionLabel: 'Rezolvă documente',
+      page: 'documente',
+    },
+  ]
+
+  return applyProcessStatuses<AccountProcessStep>(steps, activeId)
+}
+
+function getAdminProcessSteps(snapshot: AccountGuidanceSnapshot): readonly AccountProcessStep[] {
+  const activeId = snapshot.dataAvailable === false
+    ? 'admin'
+    : snapshot.openRequirements > 0
+      ? 'documents'
+      : snapshot.leadCount > 0
+        ? 'crm'
+        : snapshot.activeDeals > 0
+          ? 'deals'
+          : 'admin'
+
+  const steps: readonly Omit<AccountProcessStep, 'status'>[] = [
+    {
+      id: 'admin',
+      label: 'Prioritizează',
+      description: 'Vezi blocajele platformei, utilizatorii și proprietățile care cer decizie.',
+      actionLabel: 'Deschide administrarea',
+      page: 'admin',
+    },
+    {
+      id: 'crm',
+      label: 'Repartizează',
+      description: snapshot.leadCount > 0
+        ? `${snapshot.leadCount} ${snapshot.leadCount === 1 ? 'lead activ' : 'lead-uri active'} de verificat și distribuit.`
+        : 'Alocă lead-uri după zonă, disponibilitate și performanță.',
+      actionLabel: 'Deschide CRM',
+      page: 'crm',
+    },
+    {
+      id: 'documents',
+      label: 'Deblochează',
+      description: snapshot.openRequirements > 0
+        ? `${snapshot.openRequirements} ${snapshot.openRequirements === 1 ? 'cerință' : 'cerințe'} pot bloca tranzacții.`
+        : 'Urmărește aprobările, versiunile și semnăturile documentelor.',
+      actionLabel: 'Verifică documente',
+      page: 'documente',
+    },
+    {
+      id: 'deals',
+      label: 'Auditează',
+      description: snapshot.activeDeals > 0
+        ? 'Controlează termenele, responsabilii și istoricul Deal Room-urilor.'
+        : 'Tranzacțiile active vor apărea aici pentru audit operațional.',
+      actionLabel: 'Deschide Deal Room',
+      page: 'deal-room',
+    },
+  ]
+
+  return applyProcessStatuses<AccountProcessStep>(steps, activeId)
+}
+
+export function getAccountProcessSteps(
+  role: AccountRole,
+  snapshot: AccountGuidanceSnapshot,
+): readonly AccountProcessStep[] {
+  if (role === 'CLIENT') return getClientProcessSteps(snapshot)
+  if (role === 'OWNER') return getOwnerProcessSteps(snapshot)
+  if (role === 'AGENT') return getAgentProcessSteps(snapshot)
+  return getAdminProcessSteps(snapshot)
 }
 
 export function getAccountGuidance(

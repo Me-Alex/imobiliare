@@ -44,8 +44,8 @@ import { listViewings } from '@/lib/viewing-documents'
 import {
   getAccountGuidance,
   getAccountJourney,
-  getClientProcessSteps,
-  type ClientProcessStep,
+  getAccountProcessSteps,
+  type AccountProcessStep,
 } from '@/lib/account-guidance'
 import { AccountGuidancePanel } from '@/components/account/account-guidance-panel'
 
@@ -225,7 +225,7 @@ export function DashboardPage() {
   }
   const guidance = getAccountGuidance(role, guidanceSnapshot)
   const journey = getAccountJourney(role)
-  const clientProcessSteps = role === 'CLIENT' ? getClientProcessSteps(guidanceSnapshot) : []
+  const processSteps = getAccountProcessSteps(role, guidanceSnapshot)
 
   const stats: DashboardStat[] = role === 'CLIENT'
     ? [
@@ -274,9 +274,7 @@ export function DashboardPage() {
 
         <AccountGuidancePanel guidance={guidance} journey={journey} onNavigate={navigateTo} />
 
-        {role === 'CLIENT' && (
-          <ClientProcessOverview steps={clientProcessSteps} onNavigate={navigateTo} />
-        )}
+        <RoleProcessOverview role={role} roleLabel={roleDefinition.label} steps={processSteps} onNavigate={navigateTo} />
 
         <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
           {stats.map((stat, index) => (
@@ -404,13 +402,48 @@ export function DashboardPage() {
   )
 }
 
-function ClientProcessOverview({
+function RoleProcessOverview({
+  role,
+  roleLabel,
   steps,
   onNavigate,
 }: {
-  steps: readonly ClientProcessStep[]
+  role: AccountRole
+  roleLabel: string
+  steps: readonly AccountProcessStep[]
   onNavigate: (page: PageKey) => void
 }) {
+  const copy: Record<AccountRole, { badge: string; title: string; description: string; actionPage: PageKey; actionLabel: string }> = {
+    CLIENT: {
+      badge: 'Flow client',
+      title: 'Traseul tău simplificat',
+      description: 'Vezi imediat unde ești: de la proprietăți salvate, la vizionare, Deal Room, documente și beneficii.',
+      actionPage: 'vizionarile-mele',
+      actionLabel: 'Vizionările mele',
+    },
+    OWNER: {
+      badge: 'Flow proprietar',
+      title: 'Drumul proprietății tale',
+      description: 'Publicare, performanță, vizionări, ofertă și documente — toate legate într-un singur fir.',
+      actionPage: 'owner-dashboard',
+      actionLabel: 'Dashboard proprietar',
+    },
+    AGENT: {
+      badge: 'Flow agent',
+      title: 'Pipeline-ul tău operațional',
+      description: 'Disponibilitate, lead-uri, vizionări, Deal Room și documente într-o ordine clară de lucru.',
+      actionPage: 'crm',
+      actionLabel: 'Deschide CRM',
+    },
+    ADMIN: {
+      badge: 'Flow admin',
+      title: 'Control operațional cap-coadă',
+      description: 'Prioritizează blocajele, repartizează lead-uri, deblochează documente și auditează tranzacții.',
+      actionPage: 'admin',
+      actionLabel: 'Centrul admin',
+    },
+  }
+  const roleCopy = copy[role]
   const statusMeta = {
     done: {
       label: 'Gata',
@@ -430,7 +463,7 @@ function ClientProcessOverview({
       markerClassName: 'bg-muted text-muted-foreground',
       badgeClassName: 'bg-muted text-muted-foreground',
     },
-  } satisfies Record<ClientProcessStep['status'], {
+  } satisfies Record<AccountProcessStep['status'], {
     label: string
     className: string
     markerClassName: string
@@ -442,20 +475,20 @@ function ClientProcessOverview({
       <div className="border-b border-border/70 bg-gradient-to-r from-primary/[0.08] via-background to-background p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Badge className="mb-3 bg-primary/10 text-primary hover:bg-primary/10">Flow client</Badge>
-            <h2 className="text-2xl font-semibold tracking-tight">Traseul tău simplificat</h2>
+            <Badge className="mb-3 bg-primary/10 text-primary hover:bg-primary/10">{roleCopy.badge}</Badge>
+            <h2 className="text-2xl font-semibold tracking-tight">{roleCopy.title}</h2>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Vezi imediat unde ești: de la proprietăți salvate, la vizionare, Deal Room, documente și beneficii.
+              {roleCopy.description}
             </p>
           </div>
-          <Button variant="outline" onClick={() => onNavigate('vizionarile-mele')}>
-            Vizionările mele
+          <Button variant="outline" onClick={() => onNavigate(roleCopy.actionPage)} aria-label={`${roleCopy.actionLabel} pentru ${roleLabel}`}>
+            {roleCopy.actionLabel}
             <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-5">
+      <div className={cn('grid gap-3 p-4 sm:p-5', steps.length >= 5 ? 'md:grid-cols-5' : 'md:grid-cols-4')}>
         {steps.map((step, index) => {
           const meta = statusMeta[step.status]
           return (
