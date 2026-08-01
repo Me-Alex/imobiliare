@@ -3,6 +3,7 @@ import {
   canSubmitDealOffer,
   getActiveDealOffer,
   getAllowedDealOfferActions,
+  getDealStageGate,
   getDealRequirementState,
   summarizeDealRequirements,
   type DealOffer,
@@ -39,6 +40,17 @@ function offer(input: Partial<DealOffer>): DealOffer {
   }
 }
 
+function requirement(input: Partial<DealRequirement> = {}): DealRequirement {
+  return {
+    id: input.id || 'req-1',
+    document_type: input.document_type || 'client_identity',
+    label: input.label || 'Act identitate',
+    responsible_role: input.responsible_role || 'CLIENT',
+    status: input.status || 'REQUIRED',
+    ...input,
+  }
+}
+
 describe('Deal Room negotiation helpers', () => {
   it('lets the owner answer a buyer offer and the client answer a counter-offer', () => {
     const buyerOffer = offer({ offer_kind: 'OFFER', created_by: 'client-1' })
@@ -70,6 +82,64 @@ describe('Deal Room negotiation helpers', () => {
     const rejected = offer({ id: 'rejected', status: 'REJECTED', submitted_at: '2026-07-18T13:00:00Z' })
 
     expect(getActiveDealOffer([old, rejected, active])?.id).toBe('active')
+  })
+})
+
+describe('Deal Room stage gate', () => {
+  it('blocks Contract without an accepted offer', () => {
+    expect(getDealStageGate('CONTRACT', [offer({ status: 'SUBMITTED' })], [])).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining('oferta'),
+    })
+  })
+
+  it('allows Contract after offer acceptance while documents are still in progress', () => {
+    const gate = getDealStageGate('CONTRACT', [offer({ status: 'ACCEPTED' })], [
+      requirement({ id: 'missing', status: 'REQUIRED' }),
+    ])
+
+    expect(gate).toEqual({ ok: true })
+  })
+
+  it('blocks closing the Deal Room until documents and signatures are complete', () => {
+    const gate = getDealStageGate('CLOSED_WON', [offer({ status: 'ACCEPTED' })], [
+      requirement({
+        id: 'signing',
+        status: 'UNDER_REVIEW',
+        client_documents: {
+          id: 'doc-1',
+          title: 'Contract',
+          type: 'contract_sale',
+          status: 'READY_TO_SIGN',
+          version: 1,
+          document_signers: [{ id: 'signer-1', user_id: 'client-1', signer_role: 'CLIENT', status: 'PENDING' }],
+        },
+      }),
+    ])
+
+    expect(gate).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining('semnaturi'),
+    })
+  })
+
+  it('allows closing the Deal Room when accepted offer and checklist are complete', () => {
+    const gate = getDealStageGate('CLOSED_WON', [offer({ status: 'ACCEPTED' })], [
+      requirement({
+        id: 'signed',
+        status: 'APPROVED',
+        client_documents: {
+          id: 'doc-1',
+          title: 'Contract final',
+          type: 'contract_sale',
+          status: 'SIGNED',
+          version: 1,
+          document_signers: [{ id: 'signer-1', user_id: 'client-1', signer_role: 'CLIENT', status: 'SIGNED' }],
+        },
+      }),
+    ])
+
+    expect(gate).toEqual({ ok: true })
   })
 })
 

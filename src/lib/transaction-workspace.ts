@@ -315,6 +315,45 @@ export function summarizeDealRequirements(requirements: readonly DealRequirement
   }
 }
 
+export interface DealStageGate {
+  ok: boolean
+  reason?: string
+}
+
+export function getDealStageGate(
+  stage: DealStage,
+  offers: readonly DealOffer[],
+  requirements: readonly DealRequirement[],
+): DealStageGate {
+  const hasAcceptedOffer = offers.some((offer) => offer.status === 'ACCEPTED')
+  const documentSummary = summarizeDealRequirements(requirements)
+
+  if ((stage === 'CONTRACT' || stage === 'CLOSED_WON') && !hasAcceptedOffer) {
+    return { ok: false, reason: 'Accepta o oferta inainte sa muti tranzactia in Contract.' }
+  }
+
+  if (stage === 'CONTRACT' && documentSummary.blocked > 0) {
+    return { ok: false, reason: 'Corecteaza documentele respinse inainte de etapa Contract.' }
+  }
+
+  if (stage === 'CLOSED_WON') {
+    if (documentSummary.total === 0) {
+      return { ok: false, reason: 'Creeaza checklistul de documente inainte de finalizarea tranzactiei.' }
+    }
+    if (documentSummary.blocked > 0) {
+      return { ok: false, reason: 'Exista documente respinse sau expirate in Deal Room.' }
+    }
+    if (documentSummary.signatures > 0) {
+      return { ok: false, reason: 'Exista semnaturi obligatorii in asteptare.' }
+    }
+    if (documentSummary.complete < documentSummary.total) {
+      return { ok: false, reason: 'Finalizeaza toate documentele obligatorii inainte de inchidere.' }
+    }
+  }
+
+  return { ok: true }
+}
+
 export function isTerminalDealOffer(offer: DealOffer): boolean {
   return (TERMINAL_OFFER_STATUSES as readonly string[]).includes(offer.status)
 }
@@ -395,15 +434,13 @@ export async function updateDealNextStep(input: {
   ownerId: string | null
   dueAt: string | null
 }) {
-  const { error } = await supabase
-    .from('deal_rooms')
-    .update({
-      stage: input.stage,
-      next_step: input.nextStep.trim() || null,
-      next_step_owner_id: input.ownerId,
-      next_step_due_at: input.dueAt,
-    })
-    .eq('id', input.dealId)
+  const { error } = await supabase.rpc('update_deal_next_step', {
+    p_deal_id: input.dealId,
+    p_stage: input.stage,
+    p_next_step: input.nextStep.trim() || null,
+    p_owner_id: input.ownerId,
+    p_due_at: input.dueAt,
+  })
   if (error) throw error
 }
 

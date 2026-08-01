@@ -44,6 +44,7 @@ import {
   getActiveDealOffer,
   getAllowedDealOfferActions,
   getDealRequirementState,
+  getDealStageGate,
   summarizeDealRequirements,
   relationOne,
   submitDealOffer,
@@ -191,6 +192,7 @@ export function DealRoomPage() {
     ? offerKind === 'COUNTER_OFFER' ? 'Trimite contraoferta' : 'Trimite oferta revizuita'
     : 'Trimite oferta'
   const hasAcceptedOffer = offers.some((offer) => offer.status === 'ACCEPTED')
+  const selectedStageGate = getDealStageGate(stage, offers, requirements)
   const requestedAppointmentId = readAppointmentContext()
   const appointmentId = requestedAppointmentId && appointments.some((item) => item.appointment_id === requestedAppointmentId)
     ? requestedAppointmentId
@@ -286,6 +288,10 @@ export function DealRoomPage() {
   }
 
   const handleNextStep = async () => {
+    if (!selectedStageGate.ok) {
+      toast.error(selectedStageGate.reason || 'Etapa selectata nu poate fi salvata in acest moment.')
+      return
+    }
     if ((stage === 'CONTRACT' || stage === 'CLOSED_WON') && !hasAcceptedOffer) {
       toast.error('Acceptă o ofertă înainte să muți tranzacția în Contract.')
       return
@@ -489,9 +495,15 @@ export function DealRoomPage() {
                   <>
                     <div><Label htmlFor="deal-stage">Etapă</Label><select id="deal-stage" className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={stage} onChange={(event) => setStage(event.target.value as DealStage)}>{DEAL_STAGES.map((value) => <option key={value} value={value}>{STAGE_LABELS[value]}</option>)}</select></div>
                     <div><Label htmlFor="next-step">Acțiune</Label><Textarea id="next-step" className="mt-1" value={nextStep} onChange={(event) => setNextStep(event.target.value)} rows={3} /></div>
+                    {!selectedStageGate.ok ? (
+                      <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-500/10 p-3 text-xs text-amber-900 dark:border-amber-500/30 dark:text-amber-100">
+                        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span>{selectedStageGate.reason}</span>
+                      </div>
+                    ) : null}
                     <div><Label htmlFor="next-owner">Responsabil</Label><select id="next-owner" className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={nextStepOwner} onChange={(event) => setNextStepOwner(event.target.value)}><option value="">Nealocat</option>{participants.map((participant) => { const person = relationOne(participant.profiles); return <option key={participant.profile_id} value={participant.profile_id}>{person?.full_name || person?.name || participant.participant_role}</option> })}</select></div>
                     <div><Label htmlFor="next-due">Termen</Label><Input id="next-due" className="mt-1" type="datetime-local" value={nextStepDue} onChange={(event) => setNextStepDue(event.target.value)} /></div>
-                    <Button className="w-full" onClick={() => void handleNextStep()} disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Salvează pasul</Button>
+                    <Button className="w-full" onClick={() => void handleNextStep()} disabled={saving || !selectedStageGate.ok}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Salvează pasul</Button>
                   </>
                 ) : (
                   <div><p className="font-medium">{room.next_step || suggestedNextStep || 'În curs de stabilire'}</p><p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="h-4 w-4" /> {formatDate(room.next_step_due_at)}</p></div>
