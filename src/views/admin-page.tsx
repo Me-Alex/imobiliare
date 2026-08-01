@@ -47,6 +47,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PageHero } from '@/components/layout/page-hero'
 import { RoleAccessDenied } from '@/components/account/role-access-denied'
@@ -60,6 +61,13 @@ import {
   type AdminDashboardData,
   type AdminPropertyStatus,
 } from '@/lib/admin-dashboard'
+import {
+  getAdminOperationsFlow,
+  type AdminOperationsDestination,
+  type AdminOperationsFlow,
+  type AdminOperationsStage,
+  type AdminOperationsStageState,
+} from '@/lib/admin-operations-flow'
 import { getPublishedPropertyQuality } from '@/lib/property-publication-readiness'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -136,7 +144,7 @@ type AdminTab =
   | 'virtual-tours'
   | 'audit'
 
-type WorkDestination = 'crm' | 'properties' | 'property_quality' | 'property_unassigned' | 'transactions' | 'documents' | 'compliance'
+type WorkDestination = AdminOperationsDestination
 type PropertyQualityFilter = 'ALL' | 'NEEDS_OPTIMIZATION' | 'UNASSIGNED' | 'READY_TO_PUBLISH'
 
 type WorkItem = {
@@ -258,6 +266,138 @@ function EmptyState({ icon: Icon, title, description }: { icon: ElementType; tit
       <p className="mt-3 text-sm font-semibold">{title}</p>
       <p className="mt-1 max-w-sm text-xs text-muted-foreground">{description}</p>
     </div>
+  )
+}
+
+const OPERATIONS_STAGE_ICONS: Record<AdminOperationsStage['id'], ElementType> = {
+  compliance: ShieldAlert,
+  portfolio: Building2,
+  transactions: Handshake,
+  closing: FileCheck2,
+}
+
+const OPERATIONS_STAGE_STATE_META: Record<AdminOperationsStageState, {
+  label: string
+  icon: ElementType
+  className: string
+  markerClassName: string
+  badgeClassName: string
+}> = {
+  blocked: {
+    label: 'Blocat',
+    icon: AlertTriangle,
+    className: 'border-rose-300 bg-rose-50/80 dark:border-rose-900/70 dark:bg-rose-950/25',
+    markerClassName: 'bg-rose-600 text-white',
+    badgeClassName: 'bg-rose-600 text-white hover:bg-rose-600',
+  },
+  urgent: {
+    label: 'Urgent',
+    icon: Bell,
+    className: 'border-amber-300 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/25',
+    markerClassName: 'bg-amber-500 text-white',
+    badgeClassName: 'bg-amber-500 text-white hover:bg-amber-500',
+  },
+  active: {
+    label: 'În lucru',
+    icon: Activity,
+    className: 'border-primary/25 bg-primary/[0.05]',
+    markerClassName: 'bg-primary text-primary-foreground',
+    badgeClassName: 'bg-primary text-primary-foreground',
+  },
+  healthy: {
+    label: 'La zi',
+    icon: CheckCircle2,
+    className: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
+    markerClassName: 'bg-emerald-600 text-white',
+    badgeClassName: 'bg-emerald-600 text-white hover:bg-emerald-600',
+  },
+}
+
+function AdminOperationsCockpit({
+  flow,
+  onOpenDestination,
+}: {
+  flow: AdminOperationsFlow
+  onOpenDestination: (destination: WorkDestination) => void
+}) {
+  const PrimaryIcon = OPERATIONS_STAGE_ICONS[flow.primaryStage.id]
+
+  return (
+    <Card className="overflow-hidden border-primary/10">
+      <CardHeader className="border-b bg-muted/15">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">
+              Cockpit operațional
+            </Badge>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <PrimaryIcon className="h-5 w-5 text-primary" />
+              {flow.headline}
+            </CardTitle>
+            <CardDescription className="mt-1 max-w-3xl leading-6">
+              {flow.description}
+            </CardDescription>
+          </div>
+          <div className="min-w-[210px] rounded-2xl border bg-background p-4 shadow-sm">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  sănătate operațională
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{flow.healthPercent}%</p>
+              </div>
+              <Badge variant={flow.activeCount > 0 ? 'secondary' : 'default'}>
+                {flow.activeCount > 0 ? `${flow.activeCount} acțiuni` : 'la zi'}
+              </Badge>
+            </div>
+            <Progress value={flow.healthPercent} className="mt-3 h-2" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
+        {flow.stages.map((stage) => {
+          const StageIcon = OPERATIONS_STAGE_ICONS[stage.id]
+          const meta = OPERATIONS_STAGE_STATE_META[stage.state]
+          const StatusIcon = meta.icon
+
+          return (
+            <button
+              key={stage.id}
+              type="button"
+              onClick={() => onOpenDestination(stage.destination)}
+              className={cn(
+                'group rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                meta.className,
+              )}
+            >
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', meta.markerClassName)}>
+                  <StageIcon className="h-5 w-5" />
+                </span>
+                <Badge className={cn('gap-1.5 text-[10px]', meta.badgeClassName)}>
+                  <StatusIcon className="h-3 w-3" />
+                  {meta.label}
+                </Badge>
+              </div>
+              <p className="text-sm font-semibold">{stage.title}</p>
+              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{stage.description}</p>
+              <div className="mt-3 space-y-1.5 border-t border-border/50 pt-3">
+                {stage.signals.slice(0, 3).map((signal) => (
+                  <p key={signal} className="flex items-start gap-1.5 text-[11px] leading-4 text-muted-foreground">
+                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-60" />
+                    {signal}
+                  </p>
+                ))}
+              </div>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                {stage.actionLabel}
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              </span>
+            </button>
+          )
+        })}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -397,16 +537,36 @@ export function AdminPage() {
     () => data?.appointments.filter((item) => ['PENDING', 'REQUESTED', 'CONFIRMED', 'CHECKED_IN'].includes(item.status)).slice(0, 8) || [],
     [data],
   )
+  const pendingAppointmentsCount = useMemo(
+    () => data?.appointments.filter((item) => ['PENDING', 'REQUESTED'].includes(item.status)).length || 0,
+    [data],
+  )
   const pendingRedemptions = useMemo(
     () => data?.redemptions.filter((item) => item.status === 'REQUESTED') || [],
     [data],
   )
+  const adminOperationsFlow = useMemo<AdminOperationsFlow | null>(() => {
+    if (!data) return null
+
+    return getAdminOperationsFlow({
+      legalProfileReady: data.health.legalProfileReady,
+      templatesPendingReview: data.stats.templatesPendingReview,
+      draftProperties: data.stats.draftProperties,
+      propertiesNeedOptimization: propertyQualitySummary.needsOptimization.length,
+      unassignedProperties: propertyQualitySummary.unassigned.length,
+      openLeads: data.stats.openLeads,
+      overdueLeads: data.stats.overdueLeads,
+      pendingAppointments: pendingAppointmentsCount,
+      activeDeals: data.stats.activeDeals,
+      pendingDocuments: data.stats.pendingDocuments,
+      pendingRedemptions: data.stats.pendingRedemptions,
+    })
+  }, [data, pendingAppointmentsCount, propertyQualitySummary.needsOptimization.length, propertyQualitySummary.unassigned.length])
 
   const workItems = useMemo<WorkItem[]>(() => {
     if (!data) return []
 
     const items: WorkItem[] = []
-    const pendingAppointments = data.appointments.filter((item) => ['PENDING', 'REQUESTED'].includes(item.status)).length
 
     if (data.stats.overdueLeads > 0) {
       items.push({
@@ -480,12 +640,12 @@ export function AdminPage() {
         icon: UserCheck,
       })
     }
-    if (pendingAppointments > 0) {
+    if (pendingAppointmentsCount > 0) {
       items.push({
         id: 'pending-appointments',
         title: 'Vizionări care așteaptă confirmare',
         description: 'Confirmă responsabilul, ora și documentele necesare vizionării.',
-        count: pendingAppointments,
+        count: pendingAppointmentsCount,
         priority: 'normal',
         destination: 'transactions',
         actionLabel: 'Vezi vizionările',
@@ -518,7 +678,7 @@ export function AdminPage() {
     }
 
     return items
-  }, [data, propertyQualitySummary.needsOptimization.length, propertyQualitySummary.unassigned.length])
+  }, [data, pendingAppointmentsCount, propertyQualitySummary.needsOptimization.length, propertyQualitySummary.unassigned.length])
 
   const globalSearchResults = useMemo<GlobalSearchResult[]>(() => {
     if (!data || globalSearch.trim().length < 2) return []
@@ -708,6 +868,13 @@ export function AdminPage() {
               <MetricCard icon={Building2} label="Proprietăți active" value={stats.publishedProperties} note={`${stats.draftProperties} așteaptă verificarea`} tone="bg-emerald-500/10 text-emerald-600" />
               <MetricCard icon={CalendarDays} label="Tranzacții" value={stats.activeDeals} note={`${stats.upcomingViewings} vizionări viitoare`} tone="bg-violet-500/10 text-violet-600" />
             </div>
+
+            {adminOperationsFlow ? (
+              <AdminOperationsCockpit
+                flow={adminOperationsFlow}
+                onOpenDestination={openWorkItem}
+              />
+            ) : null}
 
             <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
               <Card className={cn(workItems[0]?.priority === 'urgent' && 'border-amber-300/70 bg-amber-50/30 dark:bg-amber-950/10')}>
