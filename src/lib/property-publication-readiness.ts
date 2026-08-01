@@ -60,6 +60,55 @@ export interface PropertyPublicationReadiness {
   qualityLabel: string
 }
 
+export type PublishedPropertyQualityPriority = 'high' | 'medium'
+
+export interface PublishedPropertyQualityRecommendation {
+  id: string
+  title: string
+  description: string
+  priority: PublishedPropertyQualityPriority
+}
+
+export interface PublishedPropertyQuality {
+  score: number
+  label: string
+  issues: string[]
+  recommendations: PublishedPropertyQualityRecommendation[]
+  strengths: string[]
+  nextAction: string | null
+}
+
+export interface PublishedPropertyQualityInput {
+  title?: string | null
+  description?: string | null
+  type?: string | null
+  transaction?: string | null
+  transaction_type?: string | null
+  price?: string | number | null
+  currency?: string | null
+  areaSqm?: string | number | null
+  area_sqm?: string | number | null
+  rooms?: string | number | null
+  bathrooms?: string | number | null
+  yearBuilt?: string | number | null
+  year_built?: string | number | null
+  address?: string | null
+  zone?: string | null
+  sector?: string | null
+  city?: string | null
+  lat?: string | number | null
+  lng?: string | number | null
+  coverUrl?: string | null
+  cover_url?: string | null
+  cover_image_url?: string | null
+  galleryUrls?: readonly string[] | string | null
+  gallery_urls?: readonly string[] | string | null
+  amenities?: readonly string[] | string | null
+  virtualTour?: unknown
+  virtual_tour?: unknown
+  virtual_tours?: unknown
+}
+
 const STEP_IDS: Record<PublicationSectionKey, string> = {
   basic: 'property-step-basic',
   details: 'property-step-details',
@@ -81,6 +130,66 @@ function qualityLabel(percent: number) {
   if (percent >= 70) return 'Foarte bun'
   if (percent >= 45) return 'Bun inceput'
   return 'De completat'
+}
+
+function text(value: unknown) {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function positiveNumber(value: unknown) {
+  const parsed = typeof value === 'number' || typeof value === 'string' ? Number(value) : Number.NaN
+  return Number.isFinite(parsed) && parsed > 0
+}
+
+function firstText(...values: unknown[]) {
+  return values.map(text).find(Boolean) || ''
+}
+
+function normalizeStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => text(item)).filter(Boolean)
+  }
+
+  if (typeof value !== 'string') return []
+  const trimmed = value.trim()
+  if (!trimmed) return []
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown
+    return Array.isArray(parsed) ? normalizeStringList(parsed) : []
+  } catch {
+    return trimmed.split(',').map((item) => item.trim()).filter(Boolean)
+  }
+}
+
+function isLandType(value: unknown) {
+  const normalized = text(value).toLocaleLowerCase('ro-RO')
+  return normalized === 'land' || normalized.includes('teren')
+}
+
+function hasCoordinates(lat: unknown, lng: unknown) {
+  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))
+}
+
+function isActiveVirtualTour(value: unknown): boolean {
+  if (!value) return false
+  if (Array.isArray(value)) return value.some(isActiveVirtualTour)
+  if (typeof value === 'string') return value.trim().length > 0
+  if (typeof value !== 'object') return Boolean(value)
+
+  const tour = value as {
+    status?: unknown
+    provider?: unknown
+    externalUrl?: unknown
+    external_url?: unknown
+    scenes?: unknown
+  }
+  const status = text(tour.status).toUpperCase()
+  if (status === 'REJECTED' || status === 'ARCHIVED') return false
+  if (status === 'DRAFT') return false
+  if (status === 'PUBLISHED' || status === 'IN_REVIEW') return true
+
+  return Boolean(text(tour.provider) || text(tour.externalUrl) || text(tour.external_url) || normalizeStringList(tour.scenes).length)
 }
 
 function required(missing: boolean, label: string, fieldId: string, sectionId: string): PublicationRequiredItem | null {
@@ -198,5 +307,124 @@ export function getPropertyPublicationReadiness(
     recommendations: [...requiredRecommendations, ...recommendations].slice(0, 6),
     qualityPercent,
     qualityLabel: qualityLabel(qualityPercent),
+  }
+}
+
+export function getPublishedPropertyQuality(input: PublishedPropertyQualityInput): PublishedPropertyQuality {
+  const title = text(input.title)
+  const description = text(input.description)
+  const galleryUrls = normalizeStringList(input.galleryUrls ?? input.gallery_urls)
+  const amenities = normalizeStringList(input.amenities)
+  const cover = firstText(input.coverUrl, input.cover_url, input.cover_image_url, galleryUrls[0])
+  const isLand = isLandType(input.type)
+  const hasTour = isActiveVirtualTour(input.virtualTour ?? input.virtual_tour ?? input.virtual_tours)
+
+  const checks = [
+    {
+      id: 'title-depth',
+      passed: title.length >= 20,
+      title: 'Fa titlul mai specific',
+      description: 'Include zona, numarul de camere si avantajul principal.',
+      priority: 'high' as const,
+      strength: 'Titlul este suficient de clar pentru lista de rezultate.',
+    },
+    {
+      id: 'description-depth',
+      passed: description.length >= 180,
+      title: 'Extinde descrierea',
+      description: 'Adauga compartimentarea, finisajele, vecinatatile si motivul pentru care merita vazuta proprietatea.',
+      priority: 'high' as const,
+      strength: 'Descrierea ofera context bun pentru client.',
+    },
+    {
+      id: 'price-area',
+      passed: positiveNumber(input.price) && positiveNumber(input.areaSqm ?? input.area_sqm),
+      title: 'Completeaza pretul si suprafata',
+      description: 'Pretul pe metru patrat si comparatia cu piata depind de aceste doua campuri.',
+      priority: 'high' as const,
+      strength: 'Pretul si suprafata permit comparatii corecte.',
+    },
+    {
+      id: 'rooms',
+      passed: isLand || positiveNumber(input.rooms),
+      title: 'Completeaza numarul de camere',
+      description: 'Clientii filtreaza frecvent dupa camere, iar lipsa lor scade calitatea lead-urilor.',
+      priority: 'high' as const,
+      strength: 'Numarul de camere este disponibil pentru filtre.',
+    },
+    {
+      id: 'location',
+      passed: Boolean(firstText(input.address) && firstText(input.zone, input.city)),
+      title: 'Clarifica localizarea',
+      description: 'Adauga adresa si zona ca agentul si clientul sa lucreze cu acelasi context.',
+      priority: 'high' as const,
+      strength: 'Localizarea textuala este clara.',
+    },
+    {
+      id: 'map-pin',
+      passed: hasCoordinates(input.lat, input.lng),
+      title: 'Confirma pinul pe harta',
+      description: 'Pinul ajuta cautarea pe harta si reduce intrebarile despre localizare.',
+      priority: 'medium' as const,
+      strength: 'Pinul pe harta este salvat.',
+    },
+    {
+      id: 'cover-photo',
+      passed: Boolean(cover),
+      title: 'Adauga o fotografie de coperta',
+      description: 'Anunturile fara imagine principala par incomplete in lista de proprietati.',
+      priority: 'high' as const,
+      strength: 'Anuntul are imagine de coperta.',
+    },
+    {
+      id: 'gallery-depth',
+      passed: galleryUrls.length >= 5,
+      title: 'Adauga minimum 5 fotografii',
+      description: 'Include camerele principale, bucataria, baia si exteriorul sau vederea.',
+      priority: 'medium' as const,
+      strength: 'Galeria are suficiente fotografii pentru prima evaluare.',
+    },
+    {
+      id: 'amenities',
+      passed: amenities.length >= 4,
+      title: 'Adauga facilitatile principale',
+      description: 'Bifeaza dotarile care diferentiaza proprietatea: parcare, lift, centrala, balcon, mobilare sau eficienta energetica.',
+      priority: 'medium' as const,
+      strength: 'Facilitatile ajuta clientii sa compare rapid.',
+    },
+    {
+      id: 'year-built',
+      passed: isLand || positiveNumber(input.yearBuilt ?? input.year_built),
+      title: 'Completeaza anul constructiei',
+      description: 'Anul constructiei ajuta la compararea corecta cu proprietati similare.',
+      priority: 'medium' as const,
+      strength: 'Anul constructiei este completat.',
+    },
+    {
+      id: 'virtual-tour',
+      passed: hasTour,
+      title: 'Adauga sau finalizeaza turul virtual',
+      description: 'Turul virtual filtreaza clientii mai bine inainte de vizionare si reduce vizionarile nepotrivite.',
+      priority: 'medium' as const,
+      strength: 'Proprietatea are tur virtual asociat.',
+    },
+  ]
+
+  const failed = checks.filter((check) => !check.passed)
+  const score = Math.round(((checks.length - failed.length) / checks.length) * 100)
+  const recommendations = failed.map(({ id, title, description, priority }) => ({
+    id,
+    title,
+    description,
+    priority,
+  }))
+
+  return {
+    score,
+    label: qualityLabel(score),
+    issues: recommendations.slice(0, 4).map((item) => item.title),
+    recommendations,
+    strengths: checks.filter((check) => check.passed).slice(0, 4).map((check) => check.strength),
+    nextAction: recommendations[0]?.title ?? null,
   }
 }

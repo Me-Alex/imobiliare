@@ -1,6 +1,6 @@
 'use client'
 
-import { Archive, Building2, CalendarDays, MapPin, Pencil } from 'lucide-react'
+import { Archive, Building2, CalendarDays, MapPin, Pencil, Sparkles } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { getPublishedPropertyQuality } from '@/lib/property-publication-readiness'
 import type { UserProperty } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 interface MyPropertiesListProps {
   properties: UserProperty[]
@@ -71,16 +73,21 @@ export function MyPropertiesList({
             </div>
           ) : (
             <div className="space-y-3">
-              {properties.map((property) => (
+              {properties.map((property) => {
+                const quality = getPublishedPropertyQuality(property)
+                const nextRecommendation = quality.recommendations[0]
+                const cover = String(property.cover_url || property.coverUrl || '')
+
+                return (
             <article
               key={property.id as string}
               className="overflow-hidden rounded-2xl border bg-card shadow-sm transition-shadow hover:shadow-md"
             >
               <div className="flex gap-3 p-3 sm:gap-4 sm:p-4">
                 <div className="h-24 w-28 shrink-0 overflow-hidden rounded-xl bg-primary/5 sm:h-28 sm:w-36">
-                  {property.cover_url ? (
+                  {cover ? (
                     <img
-                      src={property.cover_url as string}
+                      src={cover}
                       alt={`Coperta proprietății ${property.title as string}`}
                       className="h-full w-full object-cover"
                     />
@@ -116,6 +123,29 @@ export function MyPropertiesList({
                 </div>
               </div>
 
+              <div className="border-t bg-background px-3 py-3 sm:px-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-1.5 text-[11px] font-medium">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    Calitate {quality.score}% · {quality.label}
+                  </span>
+                  <span className={cn('text-[11px] font-semibold', quality.score >= 80 ? 'text-emerald-600' : 'text-amber-600')}>
+                    {quality.nextAction ? 'De optimizat' : 'Complet'}
+                  </span>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={cn('h-full rounded-full', quality.score >= 80 ? 'bg-emerald-500' : 'bg-amber-500')}
+                    style={{ width: `${quality.score}%` }}
+                  />
+                </div>
+                <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-muted-foreground">
+                  {nextRecommendation
+                    ? `${nextRecommendation.title}: ${nextRecommendation.description}`
+                    : 'Anuntul este complet si pregatit pentru promovare.'}
+                </p>
+              </div>
+
               <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/20 px-3 py-2.5 sm:px-4">
                 <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <CalendarDays className="h-3.5 w-3.5" />
@@ -146,7 +176,8 @@ export function MyPropertiesList({
                 </div>
               </div>
             </article>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

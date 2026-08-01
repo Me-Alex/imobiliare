@@ -4,6 +4,7 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase'
 import { loadFromLS, saveToLS } from '@/lib/storage'
 import type { AccountRole } from '@/lib/account-roles'
 import type { UserProperty } from '@/lib/types'
+import type { VirtualTour } from '@/lib/virtual-tours'
 import { uploadListingImages } from '@/lib/virtual-tour-publishing'
 
 const PROPERTY_CACHE_PREFIX = 'hqs_managed_property_snapshot'
@@ -11,8 +12,18 @@ const PROPERTY_CACHE_PREFIX = 'hqs_managed_property_snapshot'
 const MANAGED_PROPERTY_SELECT = `
   id,title,slug,description,type,transaction_type,price,currency,area_sqm,rooms,bathrooms,
   floor,total_floors,year_built,address,zone,sector,city,lat,lng,status,featured,cover_image_url,
-  gallery_urls,owner_id,agent_id,created_at,updated_at
+  gallery_urls,owner_id,agent_id,created_at,updated_at,
+  virtual_tours(id,status,provider,external_url,entry_scene_id,title)
 `
+
+interface ManagedVirtualTourRow {
+  id: string
+  status: string | null
+  provider: VirtualTour['provider']
+  external_url: string | null
+  entry_scene_id: string | null
+  title: string | null
+}
 
 interface ManagedPropertyRow {
   id: string
@@ -43,6 +54,7 @@ interface ManagedPropertyRow {
   agent_id: string | null
   created_at: string | null
   updated_at: string | null
+  virtual_tours?: ManagedVirtualTourRow[] | ManagedVirtualTourRow | null
 }
 
 export interface ManagedPropertyUpdate {
@@ -106,6 +118,21 @@ function toFormPropertyType(type: string): string {
   }
 }
 
+function toManagedVirtualTour(value: ManagedPropertyRow['virtual_tours']): VirtualTour | null {
+  const row = Array.isArray(value) ? value[0] : value
+  if (!row || ['REJECTED', 'ARCHIVED'].includes(String(row.status))) return null
+
+  return {
+    id: row.id,
+    provider: row.provider,
+    status: row.status as VirtualTour['status'],
+    title: row.title || 'Tur virtual',
+    externalUrl: row.external_url,
+    entrySceneId: row.entry_scene_id,
+    scenes: [],
+  }
+}
+
 export function toManagedUserProperty(value: unknown): UserProperty {
   const row = value as ManagedPropertyRow
   const price = Number(row.price) || 0
@@ -141,6 +168,7 @@ export function toManagedUserProperty(value: unknown): UserProperty {
     coverUrl,
     gallery_urls: JSON.stringify(galleryUrls),
     galleryUrls,
+    virtual_tour: toManagedVirtualTour(row.virtual_tours),
     price_per_sqm: areaSqm > 0 ? Math.round(price / areaSqm) : null,
     status: row.status,
     owner_id: row.owner_id,

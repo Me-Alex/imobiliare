@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { AccountRole } from '@/lib/account-roles'
+import { getPublishedPropertyQuality } from '@/lib/property-publication-readiness'
 
 export const DEAL_STAGES = ['NEW', 'QUALIFIED', 'VIEWING', 'OFFER', 'CONTRACT', 'CLOSED_WON', 'CLOSED_LOST'] as const
 export const CRM_STAGES = ['NEW', 'QUALIFIED', 'VIEWING', 'OFFER', 'CONTRACT'] as const
@@ -22,7 +23,9 @@ export interface WorkspaceProperty {
   address?: string | null
   city?: string | null
   zone?: string | null
+  sector?: string | null
   type?: string | null
+  transaction_type?: string | null
   status?: string | null
   price?: number | string | null
   currency?: string | null
@@ -31,10 +34,28 @@ export interface WorkspaceProperty {
   description?: string | null
   rooms?: number | null
   bathrooms?: number | null
+  year_built?: number | string | null
+  lat?: number | string | null
+  lng?: number | string | null
   gallery_urls?: string[] | null
   amenities?: string[] | null
   agent_id?: string | null
   owner_id?: string | null
+  virtual_tours?: Array<{
+    id?: string | null
+    status?: string | null
+    provider?: string | null
+    external_url?: string | null
+    entry_scene_id?: string | null
+    title?: string | null
+  }> | {
+    id?: string | null
+    status?: string | null
+    provider?: string | null
+    external_url?: string | null
+    entry_scene_id?: string | null
+    title?: string | null
+  } | null
 }
 
 export interface DealParticipant {
@@ -770,7 +791,7 @@ export async function autoAssignLeads() {
 export async function fetchOwnerSnapshot(ownerId: string) {
   const propertyResult = await supabase
     .from('properties')
-    .select('id,title,slug,address,city,zone,type,status,price,currency,area_sqm,cover_image_url,description,rooms,bathrooms,gallery_urls,amenities,agent_id,owner_id')
+    .select('id,title,slug,address,city,zone,sector,type,transaction_type,status,price,currency,area_sqm,cover_image_url,description,rooms,bathrooms,year_built,lat,lng,gallery_urls,amenities,agent_id,owner_id,virtual_tours(id,status,provider,external_url,entry_scene_id,title)')
     .eq('owner_id', ownerId)
     .order('updated_at', { ascending: false })
 
@@ -827,22 +848,14 @@ export async function fetchOwnerSnapshot(ownerId: string) {
 }
 
 export function listingQuality(property: WorkspaceProperty) {
-  const checks = [
-    Boolean(property.title && property.title.length >= 20),
-    Boolean(property.description && property.description.length >= 250),
-    Boolean(property.cover_image_url),
-    Boolean(property.gallery_urls && property.gallery_urls.length >= 5),
-    Boolean(property.address && property.zone),
-    Boolean(property.area_sqm && property.rooms),
-    Boolean(property.amenities && property.amenities.length >= 4),
-  ]
-  const score = Math.round(checks.filter(Boolean).length / checks.length * 100)
-  const issues = [
-    !checks[1] ? 'Extinde descrierea la minimum 250 de caractere.' : null,
-    !checks[3] ? 'Adaugă minimum 5 fotografii relevante.' : null,
-    !checks[6] ? 'Completează facilitățile principale.' : null,
-  ].filter((value): value is string => Boolean(value))
-  return { score, issues }
+  const quality = getPublishedPropertyQuality(property)
+  return {
+    score: quality.score,
+    label: quality.label,
+    issues: quality.issues,
+    recommendations: quality.recommendations,
+    nextAction: quality.nextAction,
+  }
 }
 
 export async function recordPropertyView(propertyId: string) {

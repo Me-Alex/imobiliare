@@ -35,31 +35,14 @@ import { Input } from '@/components/ui/input'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { useAuth } from '@/contexts/auth-context'
 import { archiveManagedProperty, fetchManagedProperties } from '@/lib/managed-properties'
+import { getPublishedPropertyQuality } from '@/lib/property-publication-readiness'
 import type { UserProperty } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/use-app-store'
 
-const QUALITY_FIELDS: Array<keyof UserProperty> = [
-  'title',
-  'description',
-  'price',
-  'areaSqm',
-  'rooms',
-  'address',
-  'zone',
-  'cover_url',
-]
-
 function valuePresent(value: unknown): boolean {
   if (typeof value === 'number') return value > 0
   return typeof value === 'string' ? value.trim().length > 0 : Boolean(value)
-}
-
-function listingQuality(property: UserProperty): number {
-  const present = QUALITY_FIELDS.filter((field) => valuePresent(property[field])).length
-  const hasGallery = Array.isArray(property.galleryUrls) && property.galleryUrls.length > 0
-  const hasTour = Boolean(property.virtual_tour)
-  return Math.round(((present + Number(hasGallery) + Number(hasTour)) / (QUALITY_FIELDS.length + 2)) * 100)
 }
 
 function coverUrl(property: UserProperty): string {
@@ -114,7 +97,7 @@ export function ProprietatileMelePage() {
   }, [properties, query])
 
   const averageQuality = properties.length
-    ? Math.round(properties.reduce((total, property) => total + listingQuality(property), 0) / properties.length)
+    ? Math.round(properties.reduce((total, property) => total + getPublishedPropertyQuality(property).score, 0) / properties.length)
     : 0
   const withoutCover = properties.filter((property) => !coverUrl(property)).length
   const published = properties.filter((property) => String(property.status).toUpperCase() === 'PUBLISHED').length
@@ -216,7 +199,8 @@ export function ProprietatileMelePage() {
             ) : (
               <section aria-label="Lista proprietăților" className="grid gap-4 lg:grid-cols-2">
                 {visibleProperties.map((property) => {
-                  const quality = listingQuality(property)
+                  const quality = getPublishedPropertyQuality(property)
+                  const nextRecommendation = quality.recommendations[0]
                   const image = coverUrl(property)
                   return (
                     <PageSurface key={property.id} as="article" className="overflow-hidden">
@@ -234,8 +218,8 @@ export function ProprietatileMelePage() {
                         <div className="flex min-w-0 flex-1 flex-col p-4 sm:p-5">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <StatusBadge status={property.status || 'DRAFT'} />
-                            <span className={cn('text-xs font-semibold', quality >= 80 ? 'text-emerald-600' : 'text-amber-600')}>
-                              Calitate {quality}%
+                            <span className={cn('text-xs font-semibold', quality.score >= 80 ? 'text-emerald-600' : 'text-amber-600')}>
+                              Calitate {quality.score}% · {quality.label}
                             </span>
                           </div>
                           <h2 className="mt-3 line-clamp-2 text-lg font-semibold">{String(property.title)}</h2>
@@ -243,6 +227,26 @@ export function ProprietatileMelePage() {
                             <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {propertyLocation(property)}
                           </p>
                           <p className="mt-3 text-lg font-bold text-primary">{formatPrice(property)}</p>
+                          <div className="mt-3 rounded-xl border bg-muted/20 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="flex items-center gap-1.5 text-xs font-medium">
+                                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                Recomandare anunt
+                              </span>
+                              <span className="text-xs text-muted-foreground">{quality.score}/100</span>
+                            </div>
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
+                              <div
+                                className={cn('h-full rounded-full', quality.score >= 80 ? 'bg-emerald-500' : 'bg-amber-500')}
+                                style={{ width: `${quality.score}%` }}
+                              />
+                            </div>
+                            <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                              {nextRecommendation
+                                ? `${nextRecommendation.title}: ${nextRecommendation.description}`
+                                : 'Anuntul este complet si pregatit pentru promovare.'}
+                            </p>
+                          </div>
                           <div className="mt-auto flex flex-wrap gap-2 pt-4">
                             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditProperty(property)}>
                               <Pencil className="h-3.5 w-3.5" /> Editează

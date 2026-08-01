@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { getPropertyPublicationReadiness, type PropertyPublicationReadinessInput } from './property-publication-readiness'
+import {
+  getPropertyPublicationReadiness,
+  getPublishedPropertyQuality,
+  type PropertyPublicationReadinessInput,
+} from './property-publication-readiness'
 
 function listing(input: Partial<PropertyPublicationReadinessInput> = {}): PropertyPublicationReadinessInput {
   return {
@@ -107,5 +111,58 @@ describe('getPropertyPublicationReadiness', () => {
     expect(readiness.requiredItems).toContainEqual(expect.objectContaining({
       fieldId: 'property-step-virtual-tour',
     }))
+  })
+})
+
+describe('getPublishedPropertyQuality', () => {
+  it('scores a complete published property across Supabase-style fields', () => {
+    const quality = getPublishedPropertyQuality({
+      title: 'Apartament luminos cu 3 camere in Dorobanti',
+      description: 'Apartament luminos, renovat recent, cu compartimentare eficienta, bucatarie inchisa, doua bai, balcon generos si acces rapid la parcuri, scoli si mijloace de transport in comun. Este potrivit pentru o familie care vrea acces rapid la servicii, transport si zone verzi.',
+      type: 'APARTMENT',
+      transaction_type: 'VANZARE',
+      price: 250000,
+      area_sqm: 90,
+      rooms: 3,
+      address: 'Strada Dorobanti 45',
+      zone: 'Dorobanti',
+      sector: 'Sector 1',
+      lat: 44.458,
+      lng: 26.096,
+      cover_image_url: 'https://example.com/cover.jpg',
+      gallery_urls: [
+        'https://example.com/1.jpg',
+        'https://example.com/2.jpg',
+        'https://example.com/3.jpg',
+        'https://example.com/4.jpg',
+        'https://example.com/5.jpg',
+      ],
+      amenities: ['lift', 'parcare', 'balcon', 'centrala proprie'],
+      year_built: 2020,
+      virtual_tours: [{ status: 'PUBLISHED', provider: 'NATIVE' }],
+    })
+
+    expect(quality.score).toBe(100)
+    expect(quality.recommendations).toEqual([])
+    expect(quality.nextAction).toBeNull()
+  })
+
+  it('prioritizes clear next actions for incomplete managed listings', () => {
+    const quality = getPublishedPropertyQuality({
+      title: 'Garsoniera Titan',
+      description: 'Descriere scurta.',
+      type: 'Apartament',
+      price: 65000,
+      areaSqm: 33,
+      rooms: 1,
+      zone: 'Titan',
+      galleryUrls: '[]',
+    })
+
+    expect(quality.score).toBeLessThan(70)
+    expect(quality.recommendations.map((item) => item.id)).toEqual(
+      expect.arrayContaining(['title-depth', 'description-depth', 'map-pin', 'cover-photo', 'virtual-tour']),
+    )
+    expect(quality.nextAction).toBe('Fa titlul mai specific')
   })
 })

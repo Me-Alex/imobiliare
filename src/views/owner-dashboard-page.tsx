@@ -164,8 +164,33 @@ export function OwnerDashboardPage() {
 
         <div className="grid gap-6 lg:grid-cols-3">
           <Card>
-            <CardHeader className="pb-3"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" /> Calitatea anunțului</CardTitle><span className="text-2xl font-bold">{quality.score}<span className="text-sm text-muted-foreground">/100</span></span></div></CardHeader>
-            <CardContent><div className="mb-4 h-2.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${quality.score}%` }} /></div>{quality.issues.length ? <div className="space-y-2">{quality.issues.map((issue) => <div key={issue} className="flex gap-2 rounded-lg bg-muted/50 p-3 text-sm"><Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" /> {issue}</div>)}</div> : <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="h-4 w-4" /> Anunț complet și convingător.</div>}</CardContent>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" /> Calitatea anunțului</CardTitle>
+                <div className="text-right">
+                  <span className="text-2xl font-bold">{quality.score}<span className="text-sm text-muted-foreground">/100</span></span>
+                  <p className="text-xs text-muted-foreground">{quality.label}</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4 h-2.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${quality.score}%` }} /></div>
+              {quality.recommendations.length ? (
+                <div className="space-y-2">
+                  {quality.recommendations.slice(0, 3).map((item) => (
+                    <div key={item.id} className="flex gap-2 rounded-lg bg-muted/50 p-3 text-sm">
+                      <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                      <div>
+                        <p className="font-medium">{item.title}</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="h-4 w-4" /> Anunț complet și convingător.</div>
+              )}
+            </CardContent>
           </Card>
 
           <Card>
