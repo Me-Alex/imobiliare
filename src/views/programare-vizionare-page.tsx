@@ -1,9 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ElementType } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CalendarCheck, ChevronRight, ChevronLeft, LogIn } from 'lucide-react'
+import {
+  Building2,
+  CalendarCheck,
+  CheckCircle2,
+  ChevronRight,
+  ChevronLeft,
+  Clock3,
+  FileSignature,
+  LogIn,
+  ShieldCheck,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { loadFromLS, saveToLS, generateId } from '@/lib/storage'
@@ -18,6 +30,12 @@ import { PropertyPickerStep } from '@/components/vizionare/property-picker-step'
 import { StaffDatePickerStep } from '@/components/vizionare/staff-date-picker-step'
 import { ConfirmationStep } from '@/components/vizionare/confirmation-step'
 import { createViewing, getAgencyLegalProfile } from '@/lib/viewing-documents'
+import {
+  getViewingSchedulingJourney,
+  type ViewingSchedulingJourney,
+  type ViewingSchedulingStage,
+  type ViewingSchedulingStageState,
+} from '@/lib/viewing-scheduling-journey'
 
 // ─── Seed availability helper ────────────────────────────────────────────────
 
@@ -60,6 +78,121 @@ function seedAvailability() {
     }
   }
   saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
+}
+
+const SCHEDULING_STAGE_ICONS: Record<ViewingSchedulingStage['id'], ElementType> = {
+  property: Building2,
+  slot: CalendarCheck,
+  consent: ShieldCheck,
+  afterBooking: FileSignature,
+}
+
+const SCHEDULING_STAGE_STATE_META: Record<ViewingSchedulingStageState, {
+  label: string
+  className: string
+  markerClassName: string
+  badgeClassName: string
+}> = {
+  complete: {
+    label: 'Gata',
+    className: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
+    markerClassName: 'bg-emerald-600 text-white',
+    badgeClassName: 'bg-emerald-600 text-white hover:bg-emerald-600',
+  },
+  current: {
+    label: 'Acum',
+    className: 'border-primary/30 bg-primary/[0.06]',
+    markerClassName: 'bg-primary text-primary-foreground',
+    badgeClassName: 'bg-primary text-primary-foreground',
+  },
+  blocked: {
+    label: 'Blocat',
+    className: 'border-rose-300 bg-rose-50/80 dark:border-rose-900/70 dark:bg-rose-950/25',
+    markerClassName: 'bg-rose-600 text-white',
+    badgeClassName: 'bg-rose-600 text-white hover:bg-rose-600',
+  },
+  pending: {
+    label: 'Urmează',
+    className: 'border-border bg-background/80',
+    markerClassName: 'bg-muted text-muted-foreground',
+    badgeClassName: 'bg-background text-muted-foreground hover:bg-background',
+  },
+}
+
+function ViewingSchedulingJourneyPanel({
+  journey,
+  onSelectStep,
+}: {
+  journey: ViewingSchedulingJourney
+  onSelectStep: (step: number) => void
+}) {
+  const PrimaryIcon = SCHEDULING_STAGE_ICONS[journey.currentStage.id]
+
+  return (
+    <PageSurface tone="elevated" className="mb-6 overflow-hidden">
+      <div className="border-b bg-background/75 p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">
+              Hartă programare
+            </Badge>
+            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+              <PrimaryIcon className="h-5 w-5 text-primary" />
+              {journey.headline}
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+              {journey.description}
+            </p>
+          </div>
+          <div className="min-w-[190px] rounded-2xl border bg-card p-4 shadow-sm">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  progres
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{journey.progressPercent}%</p>
+              </div>
+              <Badge variant="secondary">{journey.completedCount}/{journey.totalCount} gata</Badge>
+            </div>
+            <Progress value={journey.progressPercent} className="mt-3 h-2" />
+          </div>
+        </div>
+      </div>
+      <div className="grid gap-3 p-4 md:grid-cols-2">
+        {journey.stages.map((stageItem) => {
+          const Icon = SCHEDULING_STAGE_ICONS[stageItem.id]
+          const meta = SCHEDULING_STAGE_STATE_META[stageItem.state]
+
+          return (
+            <button
+              key={stageItem.id}
+              type="button"
+              onClick={() => onSelectStep(stageItem.step)}
+              disabled={stageItem.state === 'pending'}
+              className={`group rounded-2xl border p-4 text-left transition-all enabled:hover:-translate-y-0.5 enabled:hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-75 ${meta.className}`}
+            >
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${meta.markerClassName}`}>
+                  {stageItem.state === 'complete'
+                    ? <CheckCircle2 className="h-5 w-5" />
+                    : stageItem.state === 'pending'
+                      ? <Clock3 className="h-5 w-5" />
+                      : <Icon className="h-5 w-5" />}
+                </span>
+                <Badge className={`text-[10px] ${meta.badgeClassName}`}>{meta.label}</Badge>
+              </div>
+              <p className="text-sm font-semibold">{stageItem.title}</p>
+              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{stageItem.description}</p>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                {stageItem.actionLabel}
+                <ChevronRight className="h-3.5 w-3.5 transition-transform group-enabled:group-hover:translate-x-1" />
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </PageSurface>
+  )
 }
 
 // ─── Main Page ──────────────────────────────────────────────────────────────
@@ -176,6 +309,16 @@ export function ProgramareVizionarePage() {
 
   const canProceedStep2 = !!selectedProperty
   const canProceedStep3 = !!selectedStaff && !!selectedDate && !!selectedSlot && !!selectedSlot.id
+  const schedulingJourney = getViewingSchedulingJourney({
+    hasProperty: Boolean(selectedProperty),
+    hasStaff: Boolean(selectedStaff),
+    hasDate: Boolean(selectedDate),
+    hasSlot: Boolean(selectedSlot?.id),
+    termsAccepted,
+    privacyAccepted,
+    privacyNoticeReady: Boolean(privacyNoticeUrl),
+    complianceLoading,
+  })
 
   const handleStepClick = (newStep: number) => {
     if (newStep === 1) {
@@ -239,6 +382,11 @@ export function ProgramareVizionarePage() {
           showBackButton
           onBack={() => navigateTo('proprietati')}
           backLabel="Înapoi la proprietăți"
+        />
+
+        <ViewingSchedulingJourneyPanel
+          journey={schedulingJourney}
+          onSelectStep={handleStepClick}
         />
 
         {/* Step Indicator */}
