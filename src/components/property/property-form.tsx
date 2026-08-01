@@ -20,7 +20,6 @@ import {
   Clock3,
   Euro,
   Eye,
-  ImageIcon,
   Loader2,
   MapPin,
   Navigation,
@@ -28,7 +27,6 @@ import {
   Rotate3D,
   Ruler,
   Save,
-  ShieldCheck,
   Tag,
   Trash2,
   Upload,
@@ -81,7 +79,6 @@ import {
 import { cn } from '@/lib/utils'
 import {
   isVirtualTourDraftValid,
-  virtualTourProviderLabel,
 } from '@/lib/virtual-tours'
 
 interface PropertyFormProps {
@@ -830,9 +827,8 @@ export function PropertyForm({
         </div>
 
         <aside className="hidden lg:block" aria-label="Rezumatul anunțului">
-          <div className="space-y-4">
-            <PageSurface className="overflow-hidden" tone="elevated">
-              <div className="relative aspect-[16/10] overflow-hidden bg-[radial-gradient(circle_at_top_right,var(--primary),transparent_48%),linear-gradient(135deg,var(--muted),var(--background))]">
+          <PageSurface className="sticky top-24 overflow-hidden rounded-xl">
+              <div className="relative aspect-[16/10] overflow-hidden bg-muted/50">
                 {form.galleryUrls[0] ? (
                   <img
                     src={form.galleryUrls[0]}
@@ -840,40 +836,31 @@ export function PropertyForm({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl border bg-background/70 shadow-sm backdrop-blur">
-                      <ImageIcon className="h-5 w-5 text-primary" />
-                    </span>
-                    <span className="text-xs font-medium">Coperta va apărea aici</span>
+                  <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-xs text-muted-foreground">
+                    Adaugă o fotografie pentru coperta anunțului
                   </div>
                 )}
-                <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-                  <Badge className="bg-background/90 text-foreground shadow-sm backdrop-blur hover:bg-background/90">
-                    {form.transaction === 'INCHIRIERE' ? 'Închiriere' : 'Vânzare'}
-                  </Badge>
-                  {form.type ? (
-                    <Badge variant="secondary" className="bg-background/80 shadow-sm backdrop-blur">
-                      {form.type}
-                    </Badge>
-                  ) : null}
-                </div>
               </div>
 
-              <div className="p-5">
-                <p className="line-clamp-2 text-base font-semibold leading-6">
+              <div className="p-4">
+                <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <span>{form.transaction === 'INCHIRIERE' ? 'Închiriere' : 'Vânzare'}</span>
+                  <span className="truncate">{form.type || 'Tip nespecificat'}</span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-base font-semibold leading-6">
                   {form.title.trim() || 'Titlul proprietății tale'}
                 </p>
                 <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <MapPin className="h-3.5 w-3.5" />
                   <span className="truncate">{form.zone || 'Zona'}{form.sector ? `, ${form.sector}` : ''}</span>
                 </p>
-                <p className="mt-4 text-xl font-bold text-primary">
+                <p className="mt-3 text-lg font-semibold">
                   {formatPrice(form.price, form.currency)}
                   {form.transaction === 'INCHIRIERE' && Number(form.price) > 0 ? (
                     <span className="text-xs font-medium text-muted-foreground"> / lună</span>
                   ) : null}
                 </p>
-                <div className="mt-4 grid grid-cols-3 gap-2 border-t pt-4 text-center">
+                <div className="mt-4 grid grid-cols-3 gap-2 border-t pt-3 text-center">
                   <div>
                     <p className="truncate text-sm font-semibold">{isLand ? (form.type || '—') : (form.rooms || '—')}</p>
                     <p className="text-[10px] text-muted-foreground">{isLand ? 'categorie' : 'camere'}</p>
@@ -887,84 +874,30 @@ export function PropertyForm({
                     <p className="text-[10px] text-muted-foreground">fotografii</p>
                   </div>
                 </div>
-              </div>
-            </PageSurface>
-
-            <PageSurface className="sticky top-24 p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Pregătire pentru publicare</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    {requiredItems.length === 0
-                      ? 'Toate câmpurile obligatorii sunt complete.'
-                      : `${requiredItems.length} ${requiredItems.length === 1 ? 'câmp obligatoriu rămas' : 'câmpuri obligatorii rămase'}.`}
-                  </p>
-                </div>
-                <span className={cn(
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
-                  requiredItems.length === 0
-                    ? 'bg-emerald-500/10 text-emerald-600'
-                    : 'bg-amber-500/10 text-amber-600',
-                )}>
-                  {requiredItems.length === 0
-                    ? <CheckCircle2 className="h-5 w-5" />
-                    : <Circle className="h-5 w-5" />}
-                </span>
-              </div>
-
-              {requiredItems.length > 0 ? (
-                <div className="mt-4 rounded-xl bg-muted/35 px-3 py-2.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mai lipsește</p>
-                  <p className="mt-1 text-xs leading-5">{requiredItems.slice(0, 4).map((item) => item.label).join(', ')}</p>
-                </div>
-              ) : null}
-
-              {requiredItems.length === 0 && recommendations.length > 0 ? (
-                <div className="mt-4 rounded-xl border border-primary/15 bg-primary/[0.04] px-3 py-2.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Optimizari recomandate</p>
-                  <div className="mt-2 space-y-2">
-                    {recommendations.slice(0, 3).map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => document.getElementById(item.sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                        className="block w-full rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:bg-background/80"
-                      >
-                        <span className="font-semibold">{item.title}</span>
-                        <span className="mt-0.5 block leading-4 text-muted-foreground">{item.description}</span>
-                      </button>
-                    ))}
+                <div className="mt-4 border-t pt-3">
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span className="text-muted-foreground">Stare publicare</span>
+                    <span className={requiredItems.length === 0 ? 'font-medium text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground'}>
+                      {requiredItems.length === 0
+                        ? 'Pregătit'
+                        : `${requiredItems.length} ${requiredItems.length === 1 ? 'câmp rămas' : 'câmpuri rămase'}`}
+                    </span>
                   </div>
+                  {requiredItems.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById(requiredItems[0].sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                      className="mt-2 w-full rounded-md bg-muted/50 px-3 py-2 text-left text-xs leading-5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      Completează: {requiredItems.slice(0, 3).map((item) => item.label).join(', ')}
+                    </button>
+                  ) : null}
                 </div>
-              ) : null}
 
-              <div className="mt-4 space-y-2.5 border-t pt-4 text-xs">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-3.5 w-3.5" /> Pin pe hartă</span>
-                  <span className={hasPin ? 'font-medium text-emerald-600' : 'text-muted-foreground'}>{hasPin ? 'Confirmat' : 'Recomandat'}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 text-muted-foreground"><ImageIcon className="h-3.5 w-3.5" /> Fotografii</span>
-                  <span>{form.galleryUrls.length > 0 ? `${form.galleryUrls.length} adăugate` : 'Recomandate'}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 text-muted-foreground"><Rotate3D className="h-3.5 w-3.5" /> Tur virtual</span>
-                  <span className="max-w-[150px] truncate text-right">
-                    {form.virtualTour.mode === 'NONE'
-                      ? 'Opțional'
-                      : form.virtualTour.mode === 'NATIVE'
-                        ? `${form.virtualTour.scenes.length} camere 360°`
-                        : form.virtualTour.provider
-                          ? virtualTourProviderLabel(form.virtualTour.provider)
-                          : 'Link incomplet'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border bg-muted/20 px-3 py-3">
+              <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3">
                 <div>
-                  <Label htmlFor="featured-listing" className="text-xs font-semibold">Evidențiază anunțul</Label>
-                  <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Apare prioritar în selecțiile platformei.</p>
+                  <Label htmlFor="featured-listing" className="text-xs font-medium">Evidențiază anunțul</Label>
+                  <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Afișare prioritară în selecții.</p>
                 </div>
                 <Switch
                   id="featured-listing"
@@ -974,37 +907,34 @@ export function PropertyForm({
                 />
               </div>
 
-              <div className="mt-4 grid gap-2">
+              <div className="mt-4 grid grid-cols-2 gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-11 gap-2"
+                  className="h-10 gap-2"
                   onClick={() => onPreview(form)}
                 >
                   <Eye className="h-4 w-4" />
                   Previzualizează
                 </Button>
-                <Button type="submit" className="h-12 gap-2 text-base" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
-                  {isSubmitting ? 'Se publică…' : 'Publică proprietatea'}
+                <Button type="submit" className="h-10 gap-2" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  {isSubmitting ? 'Se publică…' : 'Publică'}
                 </Button>
               </div>
-            </PageSurface>
 
-            <PageSurface tone="subtle" className="flex gap-3 p-4">
-              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-              <p className="text-[11px] leading-5 text-muted-foreground">
+              <p className="mt-4 border-t pt-3 text-[11px] leading-5 text-muted-foreground">
                 Prin publicare confirmi că informațiile sunt corecte și că ai dreptul să promovezi proprietatea.
               </p>
-            </PageSurface>
-          </div>
+              </div>
+          </PageSurface>
         </aside>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_30px_rgba(15,23,42,0.12)] backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-sm backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-lg items-center gap-2">
           <div className="min-w-[54px] text-center">
-            <p className="text-sm font-bold tabular-nums text-primary">{qualityPercent}%</p>
+            <p className="text-sm font-semibold tabular-nums">{qualityPercent}%</p>
             <p className="text-[9px] text-muted-foreground">calitate</p>
           </div>
           <Button
