@@ -1001,3 +1001,92 @@ textarea:focus-visible {
     linear-gradient(90deg, oklch(0.65 0.17 160 / 4%) 1px, transparent 1px);
   background-size: 60px 60px;
 }
+
+/* Calm visual system: keep hierarchy and feedback without decorative motion or depth. */
+.gradient-text,
+.gradient-text-warm {
+  background: none;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+}
+
+.card-hover,
+.hover-lift,
+.glass-card-interactive,
+.press-scale,
+.img-zoom {
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+
+.card-hover:hover,
+.hover-lift:hover,
+.glass-card-interactive:hover,
+.press-scale:active,
+.img-zoom:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.glass-card,
+.dark .glass-card {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.dark .glass-card-interactive:hover {
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+.card-shimmer::after,
+.cta-gradient-border::before,
+.card-glow::before,
+.noise-overlay::before,
+.badge-shine::after {
+  display: none;
+}
+
+.cta-gradient-border {
+  border: 1px solid var(--border);
+}
+
+.section-divider {
+  height: 1px;
+  background: var(--border);
+}
+
+.dots-pattern,
+.chart-card-pattern,
+.grid-lines,
+.dark .grid-lines {
+  background-image: none;
+}
+
+.floating-blob,
+.particle {
+  display: none;
+}
+
+.gradient-shift,
+.announcement-shimmer,
+.price-tag-animated,
+.dark .price-tag-animated {
+  animation: none;
+  background-size: auto;
+}
+
+.card-reveal {
+  animation: none;
+  opacity: 1;
+}
+
+.badge-glow {
+  box-shadow: none;
+}
+
+.animate-gentle-float {
+  animation: none;
+}

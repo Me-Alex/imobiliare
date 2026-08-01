@@ -17,12 +17,7 @@ interface PageShellProps {
 
 export function PageShell({ children, className }: PageShellProps) {
   return (
-    <div
-      className={cn(
-        'min-h-[calc(100vh-10rem)] bg-[linear-gradient(180deg,var(--background)_0%,color-mix(in_oklch,var(--muted)_22%,var(--background))_100%)]',
-        className,
-      )}
-    >
+    <div className={cn('min-h-[calc(100vh-10rem)] bg-background', className)}>
       {children}
     </div>
   )
@@ -69,17 +64,15 @@ export function SectionHeader({
     <div className={cn('mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between', className)}>
       <div className="min-w-0">
         {eyebrow ? (
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary">{eyebrow}</p>
+          <p className="mb-1 text-xs font-medium text-muted-foreground">{eyebrow}</p>
         ) : null}
         <div className="flex items-center gap-2.5">
           {Icon ? (
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Icon aria-hidden="true" className="h-4.5 w-4.5" />
-            </span>
+            <Icon aria-hidden="true" className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
           ) : null}
-          <h2 className="text-lg font-semibold tracking-tight sm:text-xl">{title}</h2>
+          <h2 className="text-base font-semibold tracking-tight sm:text-lg">{title}</h2>
         </div>
-        {description ? <p className={cn('text-sm text-muted-foreground', Icon && 'mt-1.5 sm:ml-11')}>{description}</p> : null}
+        {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
@@ -103,9 +96,9 @@ interface PageSurfaceProps {
 }
 
 const SURFACE_CLASSES: Record<NonNullable<PageSurfaceProps['tone']>, string> = {
-  default: 'border-border/70 bg-card/90 shadow-sm',
-  subtle: 'border-border/60 bg-muted/25 shadow-none',
-  elevated: 'border-primary/10 bg-card/95 shadow-md',
+  default: 'border-border bg-card',
+  subtle: 'border-border/70 bg-muted/20',
+  elevated: 'border-border bg-card',
 }
 
 export function PageSurface({
@@ -115,7 +108,7 @@ export function PageSurface({
   as: Component = 'div',
 }: PageSurfaceProps) {
   return (
-    <Component className={cn('rounded-2xl border', SURFACE_CLASSES[tone], className)}>
+    <Component className={cn('rounded-lg border', SURFACE_CLASSES[tone], className)}>
       {children}
     </Component>
   )

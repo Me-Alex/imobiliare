@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import { Home, ChevronRight, ArrowLeft } from 'lucide-react'
 import { useAppStore } from '@/store/use-app-store'
 import type { PageKey } from '@/store/slices/navigation'
@@ -23,7 +22,7 @@ export function PageBreadcrumb({ items, className }: {
 
   return (
     <nav
-      className={`scroll-horizontal flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 text-sm text-muted-foreground ${className ?? 'mb-6'}`}
+      className={`scroll-horizontal flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 text-xs text-muted-foreground ${className ?? 'mb-5'}`}
       aria-label="Breadcrumb"
     >
       <button
@@ -31,7 +30,7 @@ export function PageBreadcrumb({ items, className }: {
         onClick={() => navigateTo('acasa')}
         className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
       >
-        <Home className="h-4 w-4" />
+        <Home className="h-3.5 w-3.5" />
         <span>Acasă</span>
       </button>
       {visibleItems.map((item, i) => (
@@ -103,9 +102,9 @@ export function PageHero({
           </button>
         )}
         {breadcrumb && <PageBreadcrumb items={breadcrumb} className="mb-4" />}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
             {description && (
               <p className="mt-1.5 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
             )}
@@ -119,73 +118,44 @@ export function PageHero({
   // ── variant="full" ───────────────────────────────────────────────────────
   if (variant === 'full') {
     return (
-      <>
-        <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-transparent to-transparent py-12 sm:py-14 lg:py-16">
-          <div className="absolute inset-0 dots-pattern opacity-30" />
-          <div
-            className="floating-blob w-[400px] h-[400px] -top-32 -right-32"
-            style={{ background: 'radial-gradient(circle, oklch(0.527 0.14 160 / 10%) 0%, transparent 70%)' }}
-          />
+      <section className="border-b bg-background py-8 sm:py-9">
+        <PageContainer>
+          {breadcrumb && <PageBreadcrumb items={breadcrumb} />}
 
-          <PageContainer className="relative">
-            <motion.div
-              initial={false}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              {breadcrumb && <PageBreadcrumb items={breadcrumb} />}
+          <div className="mb-4 flex items-start gap-3">
+            {Icon && <Icon className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />}
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+              {description && (
+                <p className="mt-1.5 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
+              )}
+            </div>
+          </div>
 
-              <div className="mb-4 flex items-start gap-4">
-                {Icon && (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/10 bg-primary/10 text-primary shadow-sm">
-                    <Icon className="h-6 w-6" />
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
-                  {description && (
-                    <p className="mt-1.5 max-w-3xl leading-7 text-muted-foreground">{description}</p>
-                  )}
-                </div>
-              </div>
-
-              {children}
-            </motion.div>
-          </PageContainer>
-        </section>
-
-        <hr className="section-divider" />
-      </>
+          {children}
+        </PageContainer>
+      </section>
     )
   }
 
   // ── variant="border" ─────────────────────────────────────────────────────
   return (
-    <section className="border-b bg-muted/30">
-      <PageContainer className="py-6">
-        <motion.div
-          initial={false}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          {breadcrumb && <PageBreadcrumb items={breadcrumb} className="mb-4" />}
+    <section className="border-b bg-background">
+      <PageContainer className="py-5 sm:py-6">
+        {breadcrumb && <PageBreadcrumb items={breadcrumb} className="mb-4" />}
 
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              {Icon && (
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/10 bg-primary/10 text-primary shadow-sm">
-                  <Icon className="h-6 w-6" />
-                </div>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            {Icon && <Icon className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />}
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">{title}</h1>
+              {description && (
+                <p className="mt-1 text-sm text-muted-foreground">{description}</p>
               )}
-              <div>
-                <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">{title}</h1>
-                {description && (
-                  <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
-                )}
-              </div>
             </div>
-            {children}
           </div>
-        </motion.div>
+          {children}
+        </div>
       </PageContainer>
     </section>
   )
