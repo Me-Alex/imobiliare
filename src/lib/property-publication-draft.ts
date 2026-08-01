@@ -178,18 +178,21 @@ export function hasMeaningfulPropertyDraft(data: PropertyFormData): boolean {
     || data.virtualTour.mode !== 'NONE'
 }
 
+export function countTransientPropertyAssets(data: PropertyFormData): number {
+  const transientGalleryImages = data.galleryUrls.filter((url) => !isRemoteAsset(url)).length
+  const transientTourScenes = data.virtualTour.scenes.filter((scene) => !isRemoteAsset(scene.imageUrl)).length
+  return transientGalleryImages + transientTourScenes
+}
+
 export function createPropertyPublicationDraft(
   data: PropertyFormData,
   savedAt = new Date(),
 ): PropertyPublicationDraft {
   const safeData = sanitizeFormData(data) || createEmptyPropertyFormData()
-  const omittedGalleryImages = data.galleryUrls.filter((url) => !isRemoteAsset(url)).length
-  const omittedTourScenes = data.virtualTour.scenes.filter((scene) => !isRemoteAsset(scene.imageUrl)).length
-
   return {
     version: DRAFT_VERSION,
     savedAt: savedAt.toISOString(),
-    omittedLocalAssets: omittedGalleryImages + omittedTourScenes,
+    omittedLocalAssets: countTransientPropertyAssets(data),
     data: safeData,
   }
 }

@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  AlertTriangle,
   ArrowRight,
   Bath,
   BedDouble,
@@ -43,6 +44,15 @@ import { PropertyLocationPicker } from '@/components/property/property-location-
 import { VirtualTourEditor } from '@/components/property/virtual-tour-editor'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
@@ -62,6 +72,7 @@ import {
 } from '@/lib/property-form-data'
 import {
   clearPropertyPublicationDraft,
+  countTransientPropertyAssets,
   loadPropertyPublicationDraft,
   savePropertyPublicationDraft,
   type PropertyPublicationDraft,
@@ -217,7 +228,9 @@ export function PropertyForm({
   const [showValidation, setShowValidation] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(restoredDraft?.savedAt || null)
   const [draftSaveError, setDraftSaveError] = useState(false)
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
   const skipInitialDraftSave = useRef(true)
+  const transientAssetCount = countTransientPropertyAssets(form)
 
   useEffect(() => {
     if (!draftStorageKey) return
@@ -238,6 +251,18 @@ export function PropertyForm({
 
     return () => window.clearTimeout(timer)
   }, [draftStorageKey, form])
+
+  useEffect(() => {
+    if (transientAssetCount === 0) return
+
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', warnBeforeLeaving)
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving)
+  }, [transientAssetCount])
 
   const updateField = useCallback(<K extends keyof PropertyFormData>(
     key: K,
@@ -312,6 +337,7 @@ export function PropertyForm({
     setRestoredDraft(null)
     setLastSavedAt(null)
     setDraftSaveError(false)
+    setDiscardDialogOpen(false)
     toast.success('Ciorna a fost ștearsă.')
   }
 
@@ -339,12 +365,26 @@ export function PropertyForm({
                 </p>
               </div>
             </div>
-            <Button type="button" variant="outline" size="sm" className="shrink-0 gap-2" onClick={discardDraft}>
+            <Button type="button" variant="outline" size="sm" className="shrink-0 gap-2" onClick={() => setDiscardDialogOpen(true)}>
               <Trash2 className="h-4 w-4" />
               Începe de la zero
             </Button>
           </div>
         </PageSurface>
+      ) : null}
+
+      {transientAssetCount > 0 ? (
+        <div className="mb-6 flex gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div>
+            <p className="font-semibold text-amber-900 dark:text-amber-100">
+              {transientAssetCount} {transientAssetCount === 1 ? 'fișier rămâne' : 'fișiere rămân'} doar în această sesiune
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Detaliile text sunt salvate automat, dar fotografiile și panoramele alese de pe dispozitiv se încarcă în cloud doar la publicare. Nu închide pagina înainte să publici.
+            </p>
+          </div>
+        </div>
       ) : null}
 
       <PageSurface tone="elevated" className="mb-6 overflow-hidden">
@@ -412,6 +452,8 @@ export function PropertyForm({
                 <Save className="h-4 w-4" />
                 {draftSaveError
                   ? 'Ciorna nu a putut fi salvată'
+                  : transientAssetCount > 0
+                    ? `Detalii salvate · ${transientAssetCount} ${transientAssetCount === 1 ? 'fișier local' : 'fișiere locale'}`
                   : draftTimeLabel
                     ? `Salvat automat la ${draftTimeLabel}`
                     : 'Salvarea automată este activă'}
@@ -1077,6 +1119,26 @@ export function PropertyForm({
           </Button>
         </div>
       </div>
+
+      <Dialog open={discardDialogOpen} onOpenChange={setDiscardDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ștergi ciorna proprietății?</DialogTitle>
+            <DialogDescription>
+              Toate detaliile completate în acest formular vor fi eliminate. Acțiunea nu poate fi anulată.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Păstrează ciorna</Button>
+            </DialogClose>
+            <Button type="button" variant="destructive" onClick={discardDraft}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Șterge ciorna
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   )
 }

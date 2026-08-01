@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { createEmptyPropertyFormData } from '@/lib/property-form-data'
 import {
+  countTransientPropertyAssets,
   createPropertyPublicationDraft,
   hasMeaningfulPropertyDraft,
   parsePropertyPublicationDraft,
@@ -44,6 +45,7 @@ describe('property publication drafts', () => {
     expect(draft.data.virtualTour.mode).toBe('NATIVE')
     expect(draft.data.virtualTour.scenes).toEqual([])
     expect(draft.omittedLocalAssets).toBe(2)
+    expect(countTransientPropertyAssets(form)).toBe(2)
   })
 
   it('round-trips a valid draft and rejects malformed storage values', () => {
