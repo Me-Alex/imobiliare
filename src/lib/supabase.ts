@@ -23,13 +23,21 @@ let _supabase: SupabaseClient | null = null
 function getSupabase(): SupabaseClient {
   if (_supabase) return _supabase
 
+  const isBrowser = typeof window !== 'undefined'
+
   if (!isSupabaseConfigured) {
     // Return a no-op dummy client that won't crash but all calls return errors
     _supabase = createClient('https://placeholder.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDYzNjEwMTcsImV4cCI6MTk2MTkzNzAxN30.placeholder')
     return _supabase
   }
 
-  _supabase = createClient(supabaseUrl, supabaseAnonKey)
+  _supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: isBrowser,
+      autoRefreshToken: isBrowser,
+      detectSessionInUrl: isBrowser,
+    },
+  })
   return _supabase
 }
 

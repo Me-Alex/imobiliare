@@ -54,6 +54,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const PROFILE_FETCH_FALLBACK_MS = 8_000
 
 function fallbackProfile(user: User): AccountProfile {
   return {
@@ -150,6 +151,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profileRequestRef.current === requestId && activeUserIdRef.current === currentUser.id
 
     setProfileLoading(true)
+    const fallbackTimer = window.setTimeout(() => {
+      if (!isCurrentRequest()) return
+      setProfile((currentProfile) => currentProfile ?? fallbackProfile(currentUser))
+      setProfileLoading(false)
+    }, PROFILE_FETCH_FALLBACK_MS)
+
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -166,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       if (isCurrentRequest()) setProfile(fallbackProfile(currentUser))
     } finally {
+      window.clearTimeout(fallbackTimer)
       if (isCurrentRequest()) setProfileLoading(false)
     }
   }, [])
