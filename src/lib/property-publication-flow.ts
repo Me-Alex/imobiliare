@@ -10,6 +10,17 @@ export interface PropertyPublicationFlowStep {
   ownerLabel: string
 }
 
+export type PropertyPublicationPreflightTargetType = 'section' | 'page'
+
+export interface PropertyPublicationPreflightItem {
+  id: string
+  title: string
+  description: string
+  actionLabel: string
+  targetType: PropertyPublicationPreflightTargetType
+  target: string | PageKey
+}
+
 export interface PropertyPublicationFlowStat {
   label: string
   value: string
@@ -26,6 +37,7 @@ export interface PropertyPublicationFlow {
   primaryActionPage: PageKey
   secondaryActionLabel: string
   secondaryActionPage: PageKey
+  preflight: PropertyPublicationPreflightItem[]
   stats: PropertyPublicationFlowStat[]
   steps: PropertyPublicationFlowStep[]
 }
@@ -56,6 +68,40 @@ const ROLE_COPY: Record<PropertyPublisherRole, Omit<PropertyPublicationFlow, 'ro
     primaryActionPage: 'proprietatile-mele',
     secondaryActionLabel: 'Dashboard proprietar',
     secondaryActionPage: 'owner-dashboard',
+    preflight: [
+      {
+        id: 'owner-story',
+        title: 'Povestea anunțului',
+        description: 'Începe cu titlul, descrierea și tipul tranzacției ca anunțul să aibă direcție clară.',
+        actionLabel: 'Scrie descrierea',
+        targetType: 'section',
+        target: 'property-step-basic',
+      },
+      {
+        id: 'owner-commercial',
+        title: 'Preț și suprafață',
+        description: 'Completează prețul, suprafața și detaliile folosite în comparații și filtrare.',
+        actionLabel: 'Adaugă detalii',
+        targetType: 'section',
+        target: 'property-step-details',
+      },
+      {
+        id: 'owner-location',
+        title: 'Adresă + pin',
+        description: 'Confirmă zona și pinul pe hartă ca să reduci întrebările repetitive despre localizare.',
+        actionLabel: 'Setează pinul',
+        targetType: 'section',
+        target: 'property-step-location',
+      },
+      {
+        id: 'owner-media',
+        title: 'Galerie și tur',
+        description: 'Adaugă fotografii și, dacă ai, un tur virtual pentru clienți mai bine filtrați.',
+        actionLabel: 'Adaugă media',
+        targetType: 'section',
+        target: 'property-step-images',
+      },
+    ],
     steps: [
       {
         id: 'owner-listing',
@@ -91,6 +137,40 @@ const ROLE_COPY: Record<PropertyPublisherRole, Omit<PropertyPublicationFlow, 'ro
     primaryActionPage: 'crm',
     secondaryActionLabel: 'Agenda vizionărilor',
     secondaryActionPage: 'vizionarile-mele',
+    preflight: [
+      {
+        id: 'agent-mandate-check',
+        title: 'Context mandat',
+        description: 'Clarifică rapid cine este proprietarul, zona, prețul cerut și ce documente vor lipsi.',
+        actionLabel: 'Pornește anunțul',
+        targetType: 'section',
+        target: 'property-step-basic',
+      },
+      {
+        id: 'agent-commercial-check',
+        title: 'Date comerciale',
+        description: 'Prețul, suprafața și camerele trebuie să susțină filtrarea și evaluarea lead-urilor.',
+        actionLabel: 'Completează cifrele',
+        targetType: 'section',
+        target: 'property-step-details',
+      },
+      {
+        id: 'agent-media-check',
+        title: 'Pin + media',
+        description: 'Pinul, fotografiile și turul virtual scad vizionările nepotrivite.',
+        actionLabel: 'Pregătește vizualul',
+        targetType: 'section',
+        target: 'property-step-location',
+      },
+      {
+        id: 'agent-crm-handoff',
+        title: 'Handoff CRM',
+        description: 'După publicare, lead-urile și follow-up-urile continuă în pipeline-ul agentului.',
+        actionLabel: 'Vezi CRM',
+        targetType: 'page',
+        target: 'crm',
+      },
+    ],
     steps: [
       {
         id: 'agent-mandate',
@@ -126,6 +206,40 @@ const ROLE_COPY: Record<PropertyPublisherRole, Omit<PropertyPublicationFlow, 'ro
     primaryActionPage: 'admin',
     secondaryActionLabel: 'CRM echipă',
     secondaryActionPage: 'crm',
+    preflight: [
+      {
+        id: 'admin-intake-check',
+        title: 'Introducere rapidă',
+        description: 'Completează minimul publicabil, apoi marchează ce trebuie verificat de echipă.',
+        actionLabel: 'Începe formularul',
+        targetType: 'section',
+        target: 'property-step-basic',
+      },
+      {
+        id: 'admin-location-check',
+        title: 'Control localizare',
+        description: 'Adresa și pinul trebuie să fie consecvente înainte de moderare sau repartizare.',
+        actionLabel: 'Verifică pinul',
+        targetType: 'section',
+        target: 'property-step-location',
+      },
+      {
+        id: 'admin-media-check',
+        title: 'Moderare vizuală',
+        description: 'Fotografiile și turul virtual intră în standardul de calitate al platformei.',
+        actionLabel: 'Verifică media',
+        targetType: 'section',
+        target: 'property-step-images',
+      },
+      {
+        id: 'admin-audit-check',
+        title: 'Audit operațional',
+        description: 'După publicare, admin-ul urmărește statusul, agentul responsabil și blocajele.',
+        actionLabel: 'Panou admin',
+        targetType: 'page',
+        target: 'admin',
+      },
+    ],
     steps: [
       {
         id: 'admin-intake',

@@ -14,6 +14,11 @@ describe('getPropertyPublicationFlow', () => {
     expect(flow.primaryActionPage).toBe('proprietatile-mele')
     expect(flow.secondaryActionPage).toBe('owner-dashboard')
     expect(flow.stats[0]?.value).toBe('1 proprietate')
+    expect(flow.preflight[0]).toMatchObject({
+      id: 'owner-story',
+      targetType: 'section',
+      target: 'property-step-basic',
+    })
     expect(flow.steps.map((step) => step.id)).toContain('owner-documents')
   })
 
@@ -29,6 +34,11 @@ describe('getPropertyPublicationFlow', () => {
     expect(flow.stats[0]).toMatchObject({
       label: 'Portofoliu gestionat',
       value: '3 proprietăți',
+    })
+    expect(flow.preflight.at(-1)).toMatchObject({
+      id: 'agent-crm-handoff',
+      targetType: 'page',
+      target: 'crm',
     })
     expect(flow.steps.at(-1)).toMatchObject({
       id: 'agent-deal',
@@ -46,6 +56,9 @@ describe('getPropertyPublicationFlow', () => {
     expect(flow.title).toBe('Publici ca administrator')
     expect(flow.primaryActionPage).toBe('admin')
     expect(flow.stats[1]?.value).toBe('1 nouă')
+    expect(flow.preflight.map((item) => item.target)).toEqual(
+      expect.arrayContaining(['property-step-location', 'admin']),
+    )
     expect(flow.steps.map((step) => step.ownerLabel)).toContain('Admin + HQS')
   })
 })

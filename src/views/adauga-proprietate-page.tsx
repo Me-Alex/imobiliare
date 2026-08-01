@@ -67,14 +67,26 @@ function generateSlug(title: string): string {
 }
 
 const PUBLICATION_FLOW_ICONS = [Sparkles, ShieldCheck, ClipboardCheck, FileCheck2] as const
+const PUBLICATION_PREFLIGHT_ICONS = [ClipboardCheck, BarChart3, MapPin, ImageIcon] as const
 
 function PublicationFlowOverview({
   flow,
+  onFocusSection,
   onNavigate,
 }: {
   flow: PropertyPublicationFlow
+  onFocusSection: (sectionId: string) => void
   onNavigate: (page: PageKey) => void
 }) {
+  const handlePreflightAction = (item: PropertyPublicationFlow['preflight'][number]) => {
+    if (item.targetType === 'page') {
+      onNavigate(item.target as PageKey)
+      return
+    }
+
+    onFocusSection(item.target)
+  }
+
   return (
     <PageSurface tone="elevated" className="mb-6 overflow-hidden">
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -92,6 +104,31 @@ function PublicationFlowOverview({
           <div className="mt-4 max-w-3xl">
             <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{flow.title}</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{flow.description}</p>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {flow.preflight.map((item, index) => {
+              const Icon = PUBLICATION_PREFLIGHT_ICONS[index] ?? ClipboardCheck
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handlePreflightAction(item)}
+                  className="group rounded-2xl border bg-background/70 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.04] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <p className="mt-3 text-sm font-semibold">{item.title}</p>
+                  <p className="mt-1 min-h-14 text-xs leading-5 text-muted-foreground">{item.description}</p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                    {item.actionLabel}
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </button>
+              )
+            })}
           </div>
 
           <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -660,6 +697,7 @@ export function AdaugaProprietatePage() {
         {publicationFlow ? (
           <PublicationFlowOverview
             flow={publicationFlow}
+            onFocusSection={(sectionId) => document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             onNavigate={navigateTo}
           />
         ) : null}
