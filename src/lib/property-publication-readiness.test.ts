@@ -231,6 +231,6 @@ describe('getPublishedPropertyQuality', () => {
     expect(quality.recommendations.map((item) => item.id)).toEqual(
       expect.arrayContaining(['title-depth', 'description-depth', 'map-pin', 'cover-photo', 'virtual-tour']),
     )
-    expect(quality.nextAction).toBe('Fa titlul mai specific')
+    expect(quality.nextAction).toBe('Fă titlul mai specific')
   })
 })

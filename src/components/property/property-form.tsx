@@ -256,11 +256,27 @@ export function PropertyForm({
     setForm((previous) => ({ ...previous, ...fields }))
   }, [])
 
-  const isLand = /teren/i.test(form.type)
-  const hasPin = form.lat !== null && form.lng !== null
   const validVirtualTour = isVirtualTourDraftValid(form.virtualTour)
-  const hasConfiguredTour = form.virtualTour.mode !== 'NONE' && validVirtualTour
   const currentYear = new Date().getFullYear()
+  const publicationReadiness = getPropertyPublicationReadiness({
+    ...form,
+    virtualTourMode: form.virtualTour.mode,
+    virtualTourValid: validVirtualTour,
+    currentYear,
+  })
+  const {
+    isLand,
+    hasPin,
+    sectionCompletion,
+    steps,
+    requiredItems,
+    recommendations,
+    qualityPercent,
+    qualityLabel,
+    pricePerSqm,
+  } = publicationReadiness
+  const publicationMilestones = getPropertyPublicationMilestones(publicationReadiness)
+
   const isPositiveInteger = (value: string) => Number.isInteger(Number(value)) && Number(value) > 0
   const isOptionalNonNegativeInteger = (value: string) => (
     !value || (Number.isInteger(Number(value)) && Number(value) >= 0)
@@ -270,79 +286,6 @@ export function PropertyForm({
     && Number(form.yearBuilt) >= 1800
     && Number(form.yearBuilt) <= currentYear
   )
-
-  const sectionCompletion = {
-    basic: Boolean(form.title.trim() && form.description.trim() && form.type && form.transaction),
-    details: Number(form.price) > 0 && Number(form.areaSqm) > 0 && (isLand || isPositiveInteger(form.rooms)),
-    location: Boolean(form.sector && form.zone && form.address.trim()),
-    images: form.galleryUrls.length > 0,
-    tour: hasConfiguredTour,
-  }
-
-  const steps = [
-    { id: 'property-step-basic', label: 'Despre proprietate', complete: sectionCompletion.basic },
-    { id: 'property-step-details', label: 'Preț și detalii', complete: sectionCompletion.details },
-    { id: 'property-step-location', label: 'Localizare', complete: sectionCompletion.location },
-    { id: 'property-step-images', label: 'Fotografii', complete: sectionCompletion.images, optional: true },
-    { id: 'property-step-virtual-tour', label: 'Tur virtual', complete: sectionCompletion.tour, optional: true },
-  ]
-
-  const requiredItems = [
-    { missing: !form.title.trim(), label: 'titlul', fieldId: 'title', sectionId: 'property-step-basic' },
-    { missing: !form.description.trim(), label: 'descrierea', fieldId: 'description', sectionId: 'property-step-basic' },
-    { missing: !form.type, label: 'tipul proprietății', fieldId: 'property-type', sectionId: 'property-step-basic' },
-    { missing: !(Number(form.price) > 0), label: 'prețul', fieldId: 'price', sectionId: 'property-step-details' },
-    { missing: !(Number(form.areaSqm) > 0), label: 'suprafața', fieldId: 'area', sectionId: 'property-step-details' },
-    { missing: !isLand && !isPositiveInteger(form.rooms), label: 'un număr întreg de camere', fieldId: 'rooms', sectionId: 'property-step-details' },
-    { missing: !isLand && !isOptionalNonNegativeInteger(form.bathrooms), label: 'un număr valid de băi', fieldId: 'bathrooms', sectionId: 'property-step-details' },
-    { missing: !isLand && !isOptionalNonNegativeInteger(form.floor), label: 'un etaj valid', fieldId: 'floor', sectionId: 'property-step-details' },
-    { missing: !isLand && !isOptionalNonNegativeInteger(form.totalFloors), label: 'un număr valid de etaje', fieldId: 'totalFloors', sectionId: 'property-step-details' },
-    { missing: !isLand && Boolean(form.floor && form.totalFloors) && Number(form.floor) > Number(form.totalFloors), label: 'un etaj mai mic sau egal cu totalul', fieldId: 'floor', sectionId: 'property-step-details' },
-    { missing: !isLand && !hasValidYear, label: `un an între 1800 și ${currentYear}`, fieldId: 'yearBuilt', sectionId: 'property-step-details' },
-    { missing: !form.sector, label: 'sectorul', fieldId: 'property-sector', sectionId: 'property-step-location' },
-    { missing: !form.zone, label: 'zona', fieldId: 'property-zone', sectionId: 'property-step-location' },
-    { missing: !form.address.trim(), label: 'adresa', fieldId: 'address', sectionId: 'property-step-location' },
-    {
-      missing: form.virtualTour.mode !== 'NONE' && !validVirtualTour,
-      label: 'configurația turului virtual',
-      fieldId: 'property-step-virtual-tour',
-      sectionId: 'property-step-virtual-tour',
-    },
-  ].filter((item) => item.missing)
-
-  const qualitySignals = [
-    form.title.trim().length >= 20,
-    form.description.trim().length >= 160,
-    Boolean(form.type && form.transaction),
-    Number(form.price) > 0,
-    Number(form.areaSqm) > 0,
-    isLand || isPositiveInteger(form.rooms),
-    Boolean(form.sector && form.zone),
-    form.address.trim().length >= 8,
-    hasPin,
-    form.galleryUrls.length > 0,
-    form.galleryUrls.length >= 5,
-    isLand || Boolean(form.yearBuilt),
-    hasConfiguredTour,
-  ]
-  const qualityPercent = Math.round(
-    (qualitySignals.filter(Boolean).length / qualitySignals.length) * 100,
-  )
-  const qualityLabel = qualityPercent >= 90
-    ? 'Excelent'
-    : qualityPercent >= 70
-      ? 'Foarte bun'
-      : qualityPercent >= 45
-        ? 'Bun început'
-        : 'De completat'
-  const publicationReadiness = getPropertyPublicationReadiness({
-    ...form,
-    virtualTourMode: form.virtualTour.mode,
-    virtualTourValid: validVirtualTour,
-    currentYear,
-  })
-  const recommendations = publicationReadiness.recommendations
-  const publicationMilestones = getPropertyPublicationMilestones(publicationReadiness)
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -367,10 +310,6 @@ export function PropertyForm({
   const resetLocation = (fields: Partial<PropertyFormData>) => {
     updateFields({ ...fields, lat: null, lng: null })
   }
-
-  const pricePerSqm = Number(form.price) > 0 && Number(form.areaSqm) > 0
-    ? Math.round(Number(form.price) / Number(form.areaSqm))
-    : null
 
   return (
     <form onSubmit={handleSubmit} className="pb-28 lg:pb-0" noValidate>
