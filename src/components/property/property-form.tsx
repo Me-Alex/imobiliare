@@ -51,6 +51,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { CURRENCIES, PROPERTY_TYPES, SECTOARE, TRANSACTIONS, ZONES } from '@/lib/constants'
+import { getPropertyPublicationReadiness } from '@/lib/property-publication-readiness'
 import { cn } from '@/lib/utils'
 import {
   EMPTY_VIRTUAL_TOUR_DRAFT,
@@ -255,6 +256,7 @@ export function PropertyForm({
     form.galleryUrls.length > 0,
     form.galleryUrls.length >= 5,
     isLand || Boolean(form.yearBuilt),
+    hasConfiguredTour,
   ]
   const qualityPercent = Math.round(
     (qualitySignals.filter(Boolean).length / qualitySignals.length) * 100,
@@ -266,6 +268,13 @@ export function PropertyForm({
       : qualityPercent >= 45
         ? 'Bun început'
         : 'De completat'
+  const publicationReadiness = getPropertyPublicationReadiness({
+    ...form,
+    virtualTourMode: form.virtualTour.mode,
+    virtualTourValid: validVirtualTour,
+    currentYear,
+  })
+  const recommendations = publicationReadiness.recommendations
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -316,6 +325,28 @@ export function PropertyForm({
               </div>
             </div>
             <Progress value={qualityPercent} className="mt-4 h-2" />
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              {recommendations.length > 0 ? recommendations.slice(0, 3).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => document.getElementById(item.sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className={cn(
+                    'rounded-xl border px-3 py-2 text-left text-xs transition-colors hover:border-primary/30 hover:bg-primary/5',
+                    item.priority === 'required'
+                      ? 'border-amber-300/50 bg-amber-500/10'
+                      : 'border-border/70 bg-background/65',
+                  )}
+                >
+                  <span className="block font-semibold">{item.title}</span>
+                  <span className="mt-0.5 line-clamp-2 block leading-4 text-muted-foreground">{item.description}</span>
+                </button>
+              )) : (
+                <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300 sm:col-span-3">
+                  <span className="font-semibold">Anunt pregatit bine.</span> Poti previzualiza si publica sau poti adauga detalii optionale.
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 rounded-xl border bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
@@ -874,6 +905,25 @@ export function PropertyForm({
                 <div className="mt-4 rounded-xl bg-muted/35 px-3 py-2.5">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mai lipsește</p>
                   <p className="mt-1 text-xs leading-5">{requiredItems.slice(0, 4).map((item) => item.label).join(', ')}</p>
+                </div>
+              ) : null}
+
+              {requiredItems.length === 0 && recommendations.length > 0 ? (
+                <div className="mt-4 rounded-xl border border-primary/15 bg-primary/[0.04] px-3 py-2.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Optimizari recomandate</p>
+                  <div className="mt-2 space-y-2">
+                    {recommendations.slice(0, 3).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => document.getElementById(item.sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        className="block w-full rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:bg-background/80"
+                      >
+                        <span className="font-semibold">{item.title}</span>
+                        <span className="mt-0.5 block leading-4 text-muted-foreground">{item.description}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : null}
 
