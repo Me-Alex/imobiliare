@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import type { AccountRole } from '@/lib/account-roles'
 
 export const DEAL_STAGES = ['NEW', 'QUALIFIED', 'VIEWING', 'OFFER', 'CONTRACT', 'CLOSED_WON', 'CLOSED_LOST'] as const
 export const CRM_STAGES = ['NEW', 'QUALIFIED', 'VIEWING', 'OFFER', 'CONTRACT'] as const
@@ -320,6 +321,18 @@ export interface DealStageGate {
   reason?: string
 }
 
+export type DealRoomActionState = 'current' | 'waiting' | 'blocked' | 'complete'
+
+export interface DealRoomActionSummary {
+  title: string
+  description: string
+  state: DealRoomActionState
+  priority: 'normal' | 'high'
+  page: 'deal-room' | 'documente'
+  requirementId?: string
+  offerId?: string
+}
+
 export function getDealStageGate(
   stage: DealStage,
   offers: readonly DealOffer[],
@@ -352,6 +365,184 @@ export function getDealStageGate(
   }
 
   return { ok: true }
+}
+
+function hasPendingSignatureForUser(requirement: DealRequirement, userId: string) {
+  const document = relationOne(requirement.client_documents)
+  return Boolean(document?.document_signers?.some((signer) =>
+    signer.user_id === userId
+    && signer.status === 'PENDING',
+  ))
+}
+
+function isRequirementOwnedByRole(requirement: DealRequirement, role: AccountRole, userId: string) {
+  return requirement.assigned_to === userId || String(requirement.responsible_role || '').toUpperCase() === role
+}
+
+function isStaffRole(role: AccountRole) {
+  return role === 'AGENT' || role === 'ADMIN'
+}
+
+export function isDealRequirementActionableFor(
+  requirement: DealRequirement,
+  role: AccountRole,
+  userId: string,
+) {
+  const state = getDealRequirementState(requirement)
+  if (state.isComplete) return false
+  if (isStaffRole(role)) return true
+  return hasPendingSignatureForUser(requirement, userId) || isRequirementOwnedByRole(requirement, role, userId)
+}
+
+export function countDealRoomDocumentActions(input: {
+  role: AccountRole
+  userId: string
+  rooms: readonly DealRoom[]
+}) {
+  return input.rooms.reduce((total, room) => total + (room.deal_document_requirements || [])
+    .filter((requirement) => isDealRequirementActionableFor(requirement, input.role, input.userId))
+    .length, 0)
+}
+
+export function getDealRoomActionSummary(input: {
+  room: DealRoom
+  role: AccountRole
+  userId: string
+}): DealRoomActionSummary {
+  const requirements = input.room.deal_document_requirements || []
+  const offers = input.room.property_offers || []
+  const activeOffer = getActiveDealOffer(offers)
+  const allowedOfferActions = getAllowedDealOfferActions(activeOffer, input.role, input.userId, input.room)
+  const canSendOffer = canSubmitDealOffer(input.role, activeOffer)
+  const documentSummary = summarizeDealRequirements(requirements)
+  const stageGate = getDealStageGate(input.room.stage, offers, requirements)
+
+  const pendingSignatureRequirement = requirements.find((requirement) =>
+    hasPendingSignatureForUser(requirement, input.userId),
+  )
+  if (pendingSignatureRequirement) {
+    return {
+      title: `Semneaza: ${pendingSignatureRequirement.label}`,
+      description: 'Ai o semnatura obligatorie in asteptare. Verifica versiunea exacta si semneaza din dosarul digital.',
+      state: 'current',
+      priority: 'high',
+      page: 'documente',
+      requirementId: pendingSignatureRequirement.id,
+    }
+  }
+
+  const ownRequirement = requirements.find((requirement) =>
+    isRequirementOwnedByRole(requirement, input.role, input.userId)
+    && !getDealRequirementState(requirement).isComplete,
+  )
+  if (ownRequirement && !isStaffRole(input.role)) {
+    const state = getDealRequirementState(ownRequirement)
+    return {
+      title: `${state.bucket === 'blocked' ? 'Corecteaza' : 'Rezolva'}: ${ownRequirement.label}`,
+      description: state.helper,
+      state: state.bucket === 'blocked' ? 'blocked' : 'current',
+      priority: 'high',
+      page: 'documente',
+      requirementId: ownRequirement.id,
+    }
+  }
+
+  if (isStaffRole(input.role) && documentSummary.blocked > 0) {
+    return {
+      title: `${documentSummary.blocked} document ${documentSummary.blocked === 1 ? 'blocat' : 'blocate'}`,
+      description: 'Exista documente respinse, expirate sau care trebuie reincarcate inainte de contract.',
+      state: 'blocked',
+      priority: 'high',
+      page: 'documente',
+    }
+  }
+
+  if (allowedOfferActions.length > 0 && activeOffer) {
+    return {
+      title: activeOffer.offer_kind === 'COUNTER_OFFER' ? 'Raspunde la contraoferta' : 'Raspunde la oferta',
+      description: `Negocierea activa este la ${formatDealAmount(activeOffer.offer_price, activeOffer.currency)}. Accepta, respinge sau pregateste o contraoferta.`,
+      state: 'current',
+      priority: 'high',
+      page: 'deal-room',
+      offerId: activeOffer.id,
+    }
+  }
+
+  if (canSendOffer) {
+    return {
+      title: input.role === 'CLIENT' ? 'Trimite oferta' : 'Trimite contraoferta',
+      description: input.role === 'CLIENT'
+        ? 'Daca proprietatea este potrivita, poti porni negocierea direct din Deal Room.'
+        : 'Poti raspunde clientului cu o valoare revizuita si nota pentru jurnalul negocierii.',
+      state: 'current',
+      priority: 'normal',
+      page: 'deal-room',
+      offerId: activeOffer?.id,
+    }
+  }
+
+  if (isStaffRole(input.role) && !stageGate.ok) {
+    return {
+      title: 'Tranzactia are un blocaj de etapa',
+      description: stageGate.reason || 'Verifica oferta acceptata, documentele si semnaturile inainte de avansarea etapei.',
+      state: 'blocked',
+      priority: 'high',
+      page: stageGate.reason?.toLowerCase().includes('document') ? 'documente' : 'deal-room',
+    }
+  }
+
+  const staffRequirement = isStaffRole(input.role)
+    ? requirements.find((requirement) => !getDealRequirementState(requirement).isComplete)
+    : null
+  if (staffRequirement) {
+    const state = getDealRequirementState(staffRequirement)
+    return {
+      title: `Verifica documentul: ${staffRequirement.label}`,
+      description: state.helper,
+      state: state.needsSignature ? 'waiting' : 'current',
+      priority: 'normal',
+      page: 'documente',
+      requirementId: staffRequirement.id,
+    }
+  }
+
+  if (input.room.next_step) {
+    return {
+      title: input.room.next_step,
+      description: input.room.next_step_due_at
+        ? `Termenul este setat pentru ${new Date(input.room.next_step_due_at).toLocaleDateString('ro-RO')}.`
+        : 'Urmatorul pas este stabilit in Deal Room.',
+      state: 'current',
+      priority: 'normal',
+      page: 'deal-room',
+    }
+  }
+
+  if (input.room.stage === 'CLOSED_WON' || input.room.stage === 'CLOSED_LOST' || input.room.status !== 'ACTIVE') {
+    return {
+      title: 'Tranzactie inchisa',
+      description: 'Nu mai exista actiuni curente. Documentele si jurnalul raman disponibile pentru consultare.',
+      state: 'complete',
+      priority: 'normal',
+      page: 'deal-room',
+    }
+  }
+
+  return {
+    title: 'Asteapta actiunea urmatoare',
+    description: 'Nu exista o actiune directa pentru rolul tau in acest moment; urmareste jurnalul si responsabilul curent.',
+    state: 'waiting',
+    priority: 'normal',
+    page: 'deal-room',
+  }
+}
+
+function formatDealAmount(value: number | string, currency = 'EUR') {
+  return new Intl.NumberFormat('ro-RO', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(Number(value))
 }
 
 export function isTerminalDealOffer(offer: DealOffer): boolean {

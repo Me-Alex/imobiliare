@@ -43,6 +43,7 @@ import {
   fetchDealRooms,
   getActiveDealOffer,
   getAllowedDealOfferActions,
+  getDealRoomActionSummary,
   getDealRequirementState,
   getDealStageGate,
   summarizeDealRequirements,
@@ -193,6 +194,7 @@ export function DealRoomPage() {
     : 'Trimite oferta'
   const hasAcceptedOffer = offers.some((offer) => offer.status === 'ACCEPTED')
   const selectedStageGate = getDealStageGate(stage, offers, requirements)
+  const roleAction = getDealRoomActionSummary({ room, role: profile.role, userId: user.id })
   const requestedAppointmentId = readAppointmentContext()
   const appointmentId = requestedAppointmentId && appointments.some((item) => item.appointment_id === requestedAppointmentId)
     ? requestedAppointmentId
@@ -225,6 +227,16 @@ export function DealRoomPage() {
   const handleOpenDocuments = () => {
     if (appointmentId) openViewingDocuments(navigateTo, appointmentId, room.id)
     else navigateTo('documente')
+  }
+
+  const handleRoleAction = () => {
+    if (roleAction.page === 'documente') {
+      handleOpenDocuments()
+      return
+    }
+    document
+      .getElementById(roleAction.offerId ? 'deal-offers' : 'deal-next-step')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const handleOffer = async () => {
@@ -351,6 +363,34 @@ export function DealRoomPage() {
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-7 sm:px-6 lg:px-8">
         <StageProgress current={room.stage} />
 
+        <Card className={roleAction.priority === 'high' ? 'border-amber-300/60 bg-amber-500/[0.06]' : 'border-primary/20 bg-primary/[0.03]'}>
+          <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
+              <span className={roleAction.state === 'blocked'
+                ? 'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-500/10 text-red-700 dark:text-red-300'
+                : roleAction.priority === 'high'
+                  ? 'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                  : 'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary'}
+              >
+                {roleAction.page === 'documente' ? <FileSignature className="h-5 w-5" /> : <ArrowRight className="h-5 w-5" />}
+              </span>
+              <div className="min-w-0">
+                <Badge variant={roleAction.priority === 'high' ? 'destructive' : 'secondary'} className="mb-2">
+                  {roleAction.state === 'blocked' ? 'Blocaj' : roleAction.state === 'waiting' ? 'Asteapta' : roleAction.state === 'complete' ? 'Gata' : 'Prioritatea ta'}
+                </Badge>
+                <h2 className="text-lg font-semibold tracking-tight">{roleAction.title}</h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{roleAction.description}</p>
+              </div>
+            </div>
+            {roleAction.state !== 'complete' ? (
+              <Button className="shrink-0 gap-2" variant={roleAction.priority === 'high' ? 'default' : 'outline'} onClick={handleRoleAction}>
+                {roleAction.page === 'documente' ? 'Deschide dosarul' : 'Vezi in Deal Room'}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
+
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
@@ -389,7 +429,7 @@ export function DealRoomPage() {
               </Card>
             </div>
 
-            <Card>
+            <Card id="deal-documents" className="scroll-mt-24">
               <CardHeader className="pb-3">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div><CardTitle className="flex items-center gap-2 text-base"><FileCheck2 className="h-4 w-4 text-primary" /> Documente, contracte și semnături</CardTitle><p className="mt-1 text-sm text-muted-foreground">{documentSummary.received} din {requirements.length} documente primite · {completedDocs} finalizate</p></div>
@@ -436,7 +476,7 @@ export function DealRoomPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card id="deal-offers" className="scroll-mt-24">
               <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><HandCoins className="h-4 w-4 text-primary" /> Ofertă și contraofertă</CardTitle></CardHeader>
               <CardContent>
                 {activeOffer ? (
@@ -484,7 +524,7 @@ export function DealRoomPage() {
           </div>
 
           <aside className="space-y-6">
-            <Card className="border-primary/20 bg-primary/[0.03]">
+            <Card id="deal-next-step" className="scroll-mt-24 border-primary/20 bg-primary/[0.03]">
               <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><ArrowRight className="h-4 w-4 text-primary" /> Următorul pas</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="rounded-xl border bg-background/70 p-3">

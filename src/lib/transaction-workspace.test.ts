@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   canSubmitDealOffer,
+  countDealRoomDocumentActions,
   getActiveDealOffer,
   getAllowedDealOfferActions,
+  getDealRoomActionSummary,
   getDealStageGate,
   getDealRequirementState,
   summarizeDealRequirements,
@@ -140,6 +142,72 @@ describe('Deal Room stage gate', () => {
     ])
 
     expect(gate).toEqual({ ok: true })
+  })
+})
+
+describe('Deal Room role action summary', () => {
+  it('counts only documents actionable for the current participant role', () => {
+    const rooms = [{
+      ...room,
+      deal_document_requirements: [
+        requirement({ id: 'client-doc', responsible_role: 'CLIENT', status: 'REQUIRED' }),
+        requirement({ id: 'owner-doc', responsible_role: 'OWNER', status: 'REQUIRED' }),
+        requirement({ id: 'done-doc', responsible_role: 'CLIENT', status: 'APPROVED' }),
+      ],
+    }]
+
+    expect(countDealRoomDocumentActions({ role: 'CLIENT', userId: 'client-1', rooms })).toBe(1)
+    expect(countDealRoomDocumentActions({ role: 'OWNER', userId: 'owner-1', rooms })).toBe(1)
+    expect(countDealRoomDocumentActions({ role: 'AGENT', userId: 'agent-1', rooms })).toBe(2)
+  })
+
+  it('prioritizes the current user signature before generic deal actions', () => {
+    const summary = getDealRoomActionSummary({
+      room: {
+        ...room,
+        property_offers: [offer({ status: 'ACCEPTED' })],
+        deal_document_requirements: [
+          requirement({
+            id: 'signature',
+            status: 'UNDER_REVIEW',
+            client_documents: {
+              id: 'doc-1',
+              title: 'Fisa vizionare',
+              type: 'vizionare_sign',
+              status: 'READY_TO_SIGN',
+              version: 1,
+              document_signers: [{ id: 'signer-1', user_id: 'client-1', signer_role: 'CLIENT', status: 'PENDING' }],
+            },
+          }),
+        ],
+      },
+      role: 'CLIENT',
+      userId: 'client-1',
+    })
+
+    expect(summary).toMatchObject({
+      page: 'documente',
+      priority: 'high',
+      requirementId: 'signature',
+    })
+    expect(summary.title).toContain('Semneaza')
+  })
+
+  it('shows offer decisions as the owner priority when a buyer offer is active', () => {
+    const buyerOffer = offer({ id: 'offer-open', offer_kind: 'OFFER', created_by: 'client-1' })
+    const summary = getDealRoomActionSummary({
+      room: { ...room, property_offers: [buyerOffer], deal_document_requirements: [] },
+      role: 'OWNER',
+      userId: 'owner-1',
+    })
+
+    expect(summary).toMatchObject({
+      page: 'deal-room',
+      state: 'current',
+      priority: 'high',
+      offerId: 'offer-open',
+    })
+    expect(summary.title).toContain('oferta')
   })
 })
 

@@ -30,7 +30,13 @@ import {
   ACCOUNT_ROLE_DEFINITIONS,
   type AccountRole,
 } from '@/lib/account-roles'
-import { fetchCrmSnapshot, fetchDealRooms, fetchOwnerSnapshot, type DealRoom } from '@/lib/transaction-workspace'
+import {
+  countDealRoomDocumentActions,
+  fetchCrmSnapshot,
+  fetchDealRooms,
+  fetchOwnerSnapshot,
+  type DealRoom,
+} from '@/lib/transaction-workspace'
 import { listViewings } from '@/lib/viewing-documents'
 import { getAccountGuidance, getAccountJourney } from '@/lib/account-guidance'
 import { AccountGuidancePanel } from '@/components/account/account-guidance-panel'
@@ -130,18 +136,17 @@ export function DashboardPage() {
       try {
         const [viewings, deals] = await Promise.all([listViewings(), fetchDealRooms()])
         let propertyCount = new Set(deals.map((deal) => deal.property_id)).size
-        const dealRequirements = deals.flatMap((deal) => deal.deal_document_requirements || [])
-        let openRequirementCount = dealRequirements.filter((item) => !['APPROVED', 'WAIVED'].includes(item.status)).length
+        const openRequirementCount = countDealRoomDocumentActions({
+          role: profile.role,
+          userId: user.id,
+          rooms: deals,
+        })
         let totalViews = 0
         let leadCount = 0
 
         if (profile.role === 'OWNER') {
           const ownerSnapshot = await fetchOwnerSnapshot(user.id)
           propertyCount = ownerSnapshot.properties.length
-          openRequirementCount = ownerSnapshot.requirements.filter((item) => {
-            const status = typeof item.status === 'string' ? item.status : ''
-            return !['APPROVED', 'WAIVED'].includes(status)
-          }).length
           totalViews = ownerSnapshot.metrics.reduce((sum, metric) => sum + Number(metric.views || 0), 0)
         }
 
