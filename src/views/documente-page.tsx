@@ -70,11 +70,14 @@ import { getDocumentActionPlan } from '@/lib/document-action-plan'
 import { getDocumentDossierProgress, type DocumentDossierProgress, type DocumentDossierProgressStage } from '@/lib/document-dossier-progress'
 import { getDocumentQuickActions, type DocumentQuickAction, type DocumentQuickActionTarget } from '@/lib/document-quick-actions'
 import {
+  clearDocumentFocusContext,
   openDealRoomForViewing,
   readAppointmentContext,
   readDealContext,
+  readDocumentFocusContext,
   returnToWorkflow,
   selectDocumentAppointment,
+  type DocumentFocusTarget,
 } from '@/lib/document-navigation'
 import {
   createDocumentUrl,
@@ -129,6 +132,7 @@ export function DocumentePage() {
   const [signatureName, setSignatureName] = useState('')
   const [signatureAccepted, setSignatureAccepted] = useState(false)
   const [signingBusy, setSigningBusy] = useState(false)
+  const [focusedDocumentTarget, setFocusedDocumentTarget] = useState<DocumentFocusTarget | null>(null)
 
   // Document preview modal state
   const [previewDoc, setPreviewDoc] = useState<ViewingDocument | null>(null)
@@ -438,6 +442,37 @@ export function DocumentePage() {
       })
     : []
 
+  useEffect(() => {
+    if (!selectedViewing || !actionPlan || loading || documentsLoading) return
+
+    const focus = readDocumentFocusContext()
+    if (!focus) return
+
+    setFocusedDocumentTarget(focus)
+    if (focus === 'advanced' && !actionPlan.readOnly) {
+      setToolsOpen(true)
+    }
+
+    const targetId = focus === 'archive' || (focus === 'advanced' && actionPlan.readOnly)
+      ? 'document-archive'
+      : focus === 'advanced'
+        ? 'document-tools'
+        : 'document-simple-actions'
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    })
+    clearDocumentFocusContext()
+
+    const timer = window.setTimeout(() => {
+      setFocusedDocumentTarget((current) => current === focus ? null : current)
+    }, 4500)
+
+    return () => window.clearTimeout(timer)
+  }, [actionPlan, documentsLoading, loading, selectedViewing])
+
   const openTools = (uploadType?: DocType) => {
     flushSync(() => setToolsOpen(true))
     window.requestAnimationFrame(() => {
@@ -613,7 +648,11 @@ export function DocumentePage() {
             )}
 
             {quickActions.length > 0 && (
-              <DocumentQuickActionsPanel actions={quickActions} onAction={handleQuickAction} />
+              <DocumentQuickActionsPanel
+                actions={quickActions}
+                focusedTarget={focusedDocumentTarget}
+                onAction={handleQuickAction}
+              />
             )}
 
             {!selectedWorkspaceClosed && <Collapsible open={toolsOpen} onOpenChange={setToolsOpen} className="mb-6">
@@ -981,13 +1020,15 @@ function DocumentDossierProgressPanel({
 
 function DocumentQuickActionsPanel({
   actions,
+  focusedTarget,
   onAction,
 }: {
   actions: readonly DocumentQuickAction[]
+  focusedTarget: DocumentFocusTarget | null
   onAction: (target: DocumentQuickActionTarget) => void
 }) {
   return (
-    <Card className="mb-6 border-primary/10 bg-muted/10">
+    <Card id="document-simple-actions" className="mb-6 scroll-mt-24 border-primary/10 bg-muted/10">
       <CardHeader className="pb-3">
         <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">Mod simplu</Badge>
         <CardTitle className="text-base">Alege acțiunea, nu secțiunea</CardTitle>
@@ -1000,6 +1041,7 @@ function DocumentQuickActionsPanel({
           {actions.map((action) => {
             const Icon = QUICK_ACTION_ICONS[action.id]
             const isPrimary = action.tone === 'primary'
+            const focused = focusedTarget === action.target
             return (
               <button
                 key={action.id}
@@ -1015,6 +1057,7 @@ function DocumentQuickActionsPanel({
                     : action.tone === 'muted'
                       ? 'border-border bg-muted/35'
                       : 'border-border bg-background',
+                  focused && 'border-primary/60 ring-2 ring-primary/25',
                 )}
               >
                 <div className="mb-4 flex items-center justify-between gap-3">

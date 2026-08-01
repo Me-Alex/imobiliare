@@ -100,7 +100,7 @@ export function VizionareCard({
   }
 
   const handleDocuments = () => {
-    openViewingDocuments(navigateTo, vizionare.id)
+    openViewingDocuments(navigateTo, vizionare.id, null, { focus: 'primary' })
   }
 
   const handlePrimaryAction = (action: ViewingPrimaryAction) => {

@@ -65,6 +65,7 @@ import {
   readAppointmentContext,
   readDealContext,
   selectDealRoom,
+  type DocumentFocusTarget,
 } from '@/lib/document-navigation'
 
 const STAGE_LABELS: Record<DealStage, string> = {
@@ -304,7 +305,7 @@ export function DealRoomPage() {
         <Button
           className="mt-6"
           onClick={() => requestedAppointment
-            ? openViewingDocuments(navigateTo, requestedAppointment)
+            ? openViewingDocuments(navigateTo, requestedAppointment, null, { focus: 'primary' })
             : navigateTo(profile.role === 'CLIENT' ? 'programare-vizionare' : 'vizionarile-mele')}
         >
           {requestedAppointment ? 'Deschide dosarul vizionării' : 'Deschide vizionările'}
@@ -369,8 +370,8 @@ export function DealRoomPage() {
     selectedStage: stage,
   })
 
-  const handleOpenDocuments = () => {
-    if (appointmentId) openViewingDocuments(navigateTo, appointmentId, room.id)
+  const handleOpenDocuments = (focus: DocumentFocusTarget = 'primary') => {
+    if (appointmentId) openViewingDocuments(navigateTo, appointmentId, room.id, { focus })
     else navigateTo('documente')
   }
 
@@ -387,7 +388,7 @@ export function DealRoomPage() {
 
   const handleRoleAction = () => {
     if (roleAction.page === 'documente') {
-      handleOpenDocuments()
+      handleOpenDocuments('primary')
       return
     }
     document
@@ -602,7 +603,7 @@ export function DealRoomPage() {
                       <p className="font-semibold">{pendingSignatureRequirement ? `Semnează: ${nextRequirement.label}` : `Rezolvă: ${nextRequirement.label}`}</p>
                       <p className="mt-1 text-sm text-muted-foreground">Deschidem direct dosarul acestei vizionări, fără să pierzi contextul tranzacției.</p>
                     </div>
-                    <Button className="shrink-0" onClick={handleOpenDocuments}>
+                    <Button className="shrink-0" onClick={() => handleOpenDocuments('primary')}>
                       {pendingSignatureRequirement ? <FileSignature className="mr-2 h-4 w-4" /> : <ArrowRight className="mr-2 h-4 w-4" />}
                       Continuă documentul
                     </Button>
@@ -630,7 +631,7 @@ export function DealRoomPage() {
                     {showAllRequirements ? 'Arată doar documentele prioritare' : `Arată toate cele ${requirements.length} cerințe`}
                   </Button>
                 )}
-                <Button variant="outline" className="md:col-span-2" onClick={handleOpenDocuments}><FileSignature className="mr-2 h-4 w-4" /> Deschide dosarul complet și versiunile</Button>
+                <Button variant="outline" className="md:col-span-2" onClick={() => handleOpenDocuments('archive')}><FileSignature className="mr-2 h-4 w-4" /> Deschide dosarul complet și versiunile</Button>
               </CardContent>
             </Card>
 

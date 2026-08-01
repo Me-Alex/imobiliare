@@ -160,7 +160,7 @@ export function OwnerDashboardPage() {
   })
   const openSelectedDocuments = () => {
     if (selectedAppointmentId) {
-      openViewingDocuments(navigateTo, selectedAppointmentId, selectedDealId)
+      openViewingDocuments(navigateTo, selectedAppointmentId, selectedDealId, { focus: 'primary' })
       return
     }
     navigateTo('documente')

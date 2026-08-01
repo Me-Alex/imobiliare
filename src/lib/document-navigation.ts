@@ -4,15 +4,30 @@ import { saveToLS } from '@/lib/storage'
 
 const APPOINTMENT_PARAM = 'appointment'
 const DEAL_PARAM = 'deal'
+const DOCUMENT_FOCUS_PARAM = 'focus'
 
 type Navigate = (page: PageKey) => void
+export type DocumentFocusTarget = 'primary' | 'advanced' | 'archive'
+
+interface DocumentContextOptions {
+  focus?: DocumentFocusTarget | null
+}
 
 function getUrl(): URL | null {
   if (typeof window === 'undefined') return null
   return new URL(window.location.href)
 }
 
-function replaceContext(page: PageKey, appointmentId?: string | null, dealId?: string | null) {
+function isDocumentFocusTarget(value: string | null): value is DocumentFocusTarget {
+  return value === 'primary' || value === 'advanced' || value === 'archive'
+}
+
+function replaceContext(
+  page: PageKey,
+  appointmentId?: string | null,
+  dealId?: string | null,
+  options: DocumentContextOptions = {},
+) {
   const url = getUrl()
   if (!url) return
   url.searchParams.set('page', page)
@@ -20,6 +35,14 @@ function replaceContext(page: PageKey, appointmentId?: string | null, dealId?: s
   else url.searchParams.delete(APPOINTMENT_PARAM)
   if (dealId) url.searchParams.set(DEAL_PARAM, dealId)
   else url.searchParams.delete(DEAL_PARAM)
+  if (page === 'documente') {
+    if ('focus' in options) {
+      if (options.focus) url.searchParams.set(DOCUMENT_FOCUS_PARAM, options.focus)
+      else url.searchParams.delete(DOCUMENT_FOCUS_PARAM)
+    }
+  } else {
+    url.searchParams.delete(DOCUMENT_FOCUS_PARAM)
+  }
   window.history.replaceState({ hqsPage: page, appointmentId, dealId }, '', `${url.pathname}${url.search}`)
 }
 
@@ -31,15 +54,32 @@ export function readDealContext(): string | null {
   return getUrl()?.searchParams.get(DEAL_PARAM) || null
 }
 
+export function readDocumentFocusContext(): DocumentFocusTarget | null {
+  const value = getUrl()?.searchParams.get(DOCUMENT_FOCUS_PARAM) || null
+  return isDocumentFocusTarget(value) ? value : null
+}
+
+export function clearDocumentFocusContext() {
+  const url = getUrl()
+  if (!url) return
+  url.searchParams.delete(DOCUMENT_FOCUS_PARAM)
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`)
+}
+
 export function selectDocumentAppointment(appointmentId: string, dealId?: string | null) {
   saveToLS(LS_KEYS.SELECTED_VIZIONARE, appointmentId)
   replaceContext('documente', appointmentId, dealId)
 }
 
-export function openViewingDocuments(navigate: Navigate, appointmentId: string, dealId?: string | null) {
+export function openViewingDocuments(
+  navigate: Navigate,
+  appointmentId: string,
+  dealId?: string | null,
+  options: DocumentContextOptions = {},
+) {
   saveToLS(LS_KEYS.SELECTED_VIZIONARE, appointmentId)
   navigate('documente')
-  replaceContext('documente', appointmentId, dealId)
+  replaceContext('documente', appointmentId, dealId, options)
 }
 
 export function openDealRoomForViewing(navigate: Navigate, appointmentId: string, dealId?: string | null) {
