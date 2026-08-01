@@ -3,8 +3,16 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import {
-  CalendarDays, Clock, User,
-  CalendarCheck, CalendarX2, Inbox,
+  ArrowRight,
+  BriefcaseBusiness,
+  CalendarDays,
+  Clock,
+  FileSignature,
+  User,
+  CalendarCheck,
+  CalendarX2,
+  Inbox,
+  type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -29,6 +37,13 @@ import { toast } from 'sonner'
 import { PageContainer, PageHero, PageShell, PageSurface } from '@/components/layout'
 import { PageState } from '@/components/ui/page-state'
 import { VizionareCard } from '@/components/features/vizionare-card'
+import { openDealRoomForViewing, openViewingDocuments } from '@/lib/document-navigation'
+import {
+  getViewingAgendaGuide,
+  type ViewingAgendaAction,
+  type ViewingAgendaCard,
+  type ViewingAgendaGuide,
+} from '@/lib/viewing-agenda-guide'
 import {
   cancelViewing,
   cancelViewingByAgent,
@@ -39,6 +54,7 @@ import {
   markViewingNoShow,
   saveViewingFeedback,
 } from '@/lib/viewing-documents'
+import { cn } from '@/lib/utils'
 
 // ─── Timeline Dot ───────────────────────────────────────────────────────────
 
@@ -54,6 +70,121 @@ function TimelineDot({ status }: { status: Vizionare['status'] }) {
     no_show: 'bg-orange-500',
   }
   return <div className={`w-3 h-3 rounded-full ${colorMap[status] || 'bg-muted'} ring-4 ring-background flex-shrink-0`} />
+}
+
+const agendaToneStyles: Record<
+  ViewingAgendaCard['tone'],
+  {
+    surface: string
+    icon: string
+    badge: 'default' | 'secondary' | 'destructive' | 'outline'
+  }
+> = {
+  primary: {
+    surface: 'border-primary/25 bg-primary/5',
+    icon: 'bg-primary/10 text-primary',
+    badge: 'default',
+  },
+  warning: {
+    surface: 'border-amber-500/25 bg-amber-500/10',
+    icon: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    badge: 'secondary',
+  },
+  success: {
+    surface: 'border-emerald-500/25 bg-emerald-500/10',
+    icon: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+    badge: 'secondary',
+  },
+  neutral: {
+    surface: 'border-border bg-card/70',
+    icon: 'bg-muted text-muted-foreground',
+    badge: 'outline',
+  },
+}
+
+const agendaCardIcons: Record<ViewingAgendaCard['id'], LucideIcon> = {
+  now: CalendarCheck,
+  queue: BriefcaseBusiness,
+  documents: FileSignature,
+  history: CalendarX2,
+}
+
+function ViewingAgendaGuidePanel({
+  guide,
+  onAction,
+}: {
+  guide: ViewingAgendaGuide
+  onAction: (action: ViewingAgendaAction) => void
+}) {
+  const quickStats = [
+    { label: 'Active', value: guide.metrics.active },
+    { label: 'Pending', value: guide.metrics.pending },
+    { label: 'Feedback', value: guide.metrics.needsFeedback },
+    { label: 'Dosare', value: guide.metrics.readyForDocuments },
+  ]
+
+  return (
+    <PageSurface tone="elevated" className="mb-6 overflow-hidden border-primary/15">
+      <div className="grid gap-0 lg:grid-cols-[1.05fr_1.35fr]">
+        <div className="relative overflow-hidden border-b border-border/60 bg-gradient-to-br from-primary/12 via-primary/5 to-background p-5 sm:p-6 lg:border-b-0 lg:border-r">
+          <div className="absolute -right-12 -top-14 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
+          <Badge variant="secondary" className="mb-4 w-fit">
+            Agenda ghidată
+          </Badge>
+          <h2 className="relative text-2xl font-semibold tracking-tight">{guide.headline}</h2>
+          <p className="relative mt-2 text-sm leading-6 text-muted-foreground">{guide.description}</p>
+
+          <div className="relative mt-5 grid grid-cols-2 gap-2">
+            {quickStats.map((stat) => (
+              <div key={stat.label} className="rounded-2xl border border-border/70 bg-background/75 p-3">
+                <p className="text-2xl font-semibold">{stat.value}</p>
+                <p className="text-xs text-muted-foreground">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <Button className="relative mt-5 w-full justify-between sm:w-auto" onClick={() => onAction(guide.primaryAction)}>
+            {guide.primaryAction.label}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5">
+          {guide.cards.map((card) => {
+            const Icon = agendaCardIcons[card.id]
+            const style = agendaToneStyles[card.tone]
+
+            return (
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => onAction(card.action)}
+                className={cn(
+                  'group rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  style.surface,
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className={cn('flex h-10 w-10 items-center justify-center rounded-2xl', style.icon)}>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <Badge variant={style.badge} className="shrink-0">
+                    {card.badgeLabel}
+                  </Badge>
+                </div>
+                <h3 className="mt-4 font-semibold">{card.title}</h3>
+                <p className="mt-1 min-h-[42px] text-sm leading-6 text-muted-foreground">{card.description}</p>
+                <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+                  {card.action.label}
+                  <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </PageSurface>
+  )
 }
 
 // ─── Main Page ──────────────────────────────────────────────────────────────
@@ -222,6 +353,76 @@ export function VizionarileMelePage() {
   }, [refreshViewings])
 
   const canManage = profile?.role === 'AGENT' || profile?.role === 'ADMIN'
+  const agendaGuide = useMemo(
+    () => profile
+      ? getViewingAgendaGuide({
+          role: profile.role,
+          userId: user?.id ?? '',
+          viewings: vizionari,
+        })
+      : null,
+    [profile, user?.id, vizionari],
+  )
+
+  const handleAgendaGuideAction = useCallback((action: ViewingAgendaAction) => {
+    if (action.target === 'schedule') {
+      navigateTo('programare-vizionare')
+      return
+    }
+
+    if (action.target === 'active_tab') {
+      setActiveTab('active')
+      return
+    }
+
+    if (action.target === 'history_tab') {
+      setActiveTab('history')
+      return
+    }
+
+    const viewing = action.viewingId ? vizionari.find((item) => item.id === action.viewingId) : null
+    if (!viewing) {
+      toast.error('Vizionarea nu mai este disponibilă în agenda curentă.')
+      return
+    }
+
+    if (action.target === 'confirm') {
+      void runOperationalAction(viewing.id, () => confirmViewing(viewing.id), 'Programarea a fost confirmată.')
+      return
+    }
+
+    if (action.target === 'check_in') {
+      void runOperationalAction(viewing.id, () => checkInViewing(viewing.id), 'Prezența clientului a fost confirmată.')
+      return
+    }
+
+    if (action.target === 'complete') {
+      void runOperationalAction(viewing.id, () => completeViewing(viewing.id), 'Vizionarea a fost finalizată. Fișa poate fi generată.')
+      return
+    }
+
+    if (action.target === 'feedback') {
+      handleAddFeedback(viewing)
+      return
+    }
+
+    if (action.target === 'documents') {
+      openViewingDocuments(navigateTo, viewing.id, null, { focus: 'primary' })
+      return
+    }
+
+    if (action.target === 'deal_room') {
+      openDealRoomForViewing(navigateTo, viewing.id)
+      return
+    }
+
+    if (action.target === 'reschedule') {
+      void handleReschedule(viewing)
+      return
+    }
+
+    setActiveTab(['completed', 'cancelled', 'cancelled_by_client', 'cancelled_by_agent', 'no_show'].includes(viewing.status) ? 'history' : 'active')
+  }, [handleAddFeedback, handleReschedule, navigateTo, runOperationalAction, vizionari])
 
   if (authLoading || (user && dataLoading)) {
     return (
@@ -262,6 +463,10 @@ export function VizionarileMelePage() {
           onBack={() => navigateTo('acasa')}
           backLabel="Înapoi"
         />
+
+        {agendaGuide && (
+          <ViewingAgendaGuidePanel guide={agendaGuide} onAction={handleAgendaGuideAction} />
+        )}
 
         {/* Stats summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
