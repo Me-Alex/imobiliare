@@ -4,7 +4,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Plus, Loader2, MapPin, Ruler, BedDouble, Bath, Calendar,
-  ArrowLeft, User, Check, List, Rotate3D, ImageIcon, X,
+  ArrowLeft, ArrowRight, User, Check, List, Rotate3D, ImageIcon, X,
+  BarChart3, ClipboardCheck, FileCheck2, ShieldCheck, Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,7 +23,7 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { EditPropertyDialog } from '@/components/property/edit-property-dialog'
 import { PageHero } from '@/components/layout/page-hero'
-import { PageContainer, PageShell } from '@/components/layout/page-shell'
+import { PageContainer, PageShell, PageSurface } from '@/components/layout/page-shell'
 import { MyPropertiesList } from '@/components/property/my-properties-list'
 import { PropertyForm } from '@/components/property/property-form'
 import { VirtualTourViewer } from '@/components/property/virtual-tour-viewer'
@@ -33,11 +34,16 @@ import { getMapEmbedUrl } from '@/lib/property-details'
 import { uploadListingImages, submitVirtualTour } from '@/lib/virtual-tour-publishing'
 import { parseExternalTourUrl, type VirtualTour } from '@/lib/virtual-tours'
 import {
+  getPropertyPublicationFlow,
+  type PropertyPublicationFlow,
+} from '@/lib/property-publication-flow'
+import {
   archiveManagedProperty,
   fetchManagedProperties,
   toSupabasePropertyType,
   userPropertyCacheKey,
 } from '@/lib/managed-properties'
+import type { PageKey } from '@/store/slices/navigation'
 
 const MANAGED_ROLES = ['OWNER', 'AGENT', 'ADMIN'] as const
 
@@ -58,6 +64,115 @@ function generateSlug(title: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     + '-' + Date.now().toString(36)
+}
+
+const PUBLICATION_FLOW_ICONS = [Sparkles, ShieldCheck, ClipboardCheck, FileCheck2] as const
+
+function PublicationFlowOverview({
+  flow,
+  onNavigate,
+}: {
+  flow: PropertyPublicationFlow
+  onNavigate: (page: PageKey) => void
+}) {
+  return (
+    <PageSurface tone="elevated" className="mb-6 overflow-hidden">
+      <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="p-5 sm:p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
+              {flow.roleLabel}
+            </Badge>
+            <Badge variant="outline" className="gap-1.5 bg-background/70">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              Flux publicare
+            </Badge>
+          </div>
+
+          <div className="mt-4 max-w-3xl">
+            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{flow.title}</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{flow.description}</p>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {flow.stats.map((stat) => (
+              <div key={stat.label} className="rounded-2xl border bg-background/70 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  {stat.label}
+                </p>
+                <p className="mt-2 text-lg font-bold text-foreground">{stat.value}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{stat.description}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-primary/10 bg-primary/[0.04] p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <BarChart3 className="h-5 w-5" />
+              </span>
+              <p className="leading-6 text-muted-foreground">{flow.assurance}</p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="gap-1.5 bg-background/80"
+                onClick={() => onNavigate(flow.secondaryActionPage)}
+              >
+                {flow.secondaryActionLabel}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => onNavigate(flow.primaryActionPage)}
+              >
+                {flow.primaryActionLabel}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t bg-muted/25 p-5 sm:p-6 lg:border-l lg:border-t-0">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">După publicare</p>
+              <p className="text-xs text-muted-foreground">Traseul real al anunțului în platformă.</p>
+            </div>
+            <Badge variant="secondary">{flow.steps.length} pași</Badge>
+          </div>
+
+          <div className="space-y-3">
+            {flow.steps.map((step, index) => {
+              const Icon = PUBLICATION_FLOW_ICONS[index] ?? Check
+
+              return (
+                <div key={step.id} className="rounded-2xl border bg-background/70 p-3.5">
+                  <div className="flex gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold">{step.title}</p>
+                        <Badge variant="outline" className="bg-background px-1.5 py-0 text-[10px]">
+                          {step.ownerLabel}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.description}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </PageSurface>
+  )
 }
 
 function PropertyPreviewDialog({
@@ -251,6 +366,14 @@ export function AdaugaProprietatePage() {
   const [editProperty, setEditProperty] = useState<UserProperty | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [previewData, setPreviewData] = useState<PropertyFormData | null>(null)
+  const publisherRole = profile && isManagedRole(profile.role) ? profile.role : null
+  const publicationFlow = publisherRole
+    ? getPropertyPublicationFlow({
+        role: publisherRole,
+        propertyCount: myProperties.length,
+        sessionPublishedCount: submittedCount,
+      })
+    : null
 
   const loadMyProperties = useCallback(async () => {
     if (!user || !profile || !isManagedRole(profile.role)) {
@@ -534,6 +657,13 @@ export function AdaugaProprietatePage() {
       </PageHero>
 
       <PageContainer className="py-6 sm:py-8">
+        {publicationFlow ? (
+          <PublicationFlowOverview
+            flow={publicationFlow}
+            onNavigate={navigateTo}
+          />
+        ) : null}
+
         <PropertyForm
           key={submittedCount}
           onSubmit={handleFormSubmit}
