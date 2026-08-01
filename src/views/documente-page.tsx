@@ -6,15 +6,19 @@ import { flushSync } from 'react-dom'
 import { motion } from 'framer-motion'
 import {
   ArrowRight,
+  AlertTriangle,
   BriefcaseBusiness,
   Building2,
   CalendarDays,
   ChevronDown,
+  CheckCircle2,
+  CircleDot,
   FileCheck2,
   FileSignature,
   FolderOpen,
   FolderLock,
   Loader2,
+  PauseCircle,
   RefreshCw,
   Settings2,
   ShieldCheck,
@@ -63,6 +67,7 @@ import { LS_KEYS } from '@/lib/constants'
 import { loadFromLS, saveToLS } from '@/lib/storage'
 import { getDocumentFlowSummary } from '@/lib/document-flow'
 import { getDocumentActionPlan } from '@/lib/document-action-plan'
+import { getDocumentDossierProgress, type DocumentDossierProgress, type DocumentDossierProgressStage } from '@/lib/document-dossier-progress'
 import { getDocumentQuickActions, type DocumentQuickAction, type DocumentQuickActionTarget } from '@/lib/document-quick-actions'
 import {
   openDealRoomForViewing,
@@ -419,6 +424,12 @@ export function DocumentePage() {
       })
     : null
   const activeDocumentCount = documents.filter((document) => document.status !== 'SUPERSEDED').length
+  const dossierProgress = actionPlan
+    ? getDocumentDossierProgress({
+        plan: actionPlan,
+        documentsCount: activeDocumentCount,
+      })
+    : null
   const quickActions = actionPlan
     ? getDocumentQuickActions({
         plan: actionPlan,
@@ -591,6 +602,10 @@ export function DocumentePage() {
 
             {flowSummary && (
               <DocumentActionCenter summary={flowSummary} onPrimaryAction={handlePrimaryAction} />
+            )}
+
+            {dossierProgress && (
+              <DocumentDossierProgressPanel progress={dossierProgress} />
             )}
 
             {actionPlan && (
@@ -860,6 +875,108 @@ const QUICK_ACTION_ICONS: Record<DocumentQuickAction['id'], ElementType> = {
   'deal-room': BriefcaseBusiness,
   'advanced-tools': Settings2,
   archive: FolderOpen,
+}
+
+const DOSSIER_STAGE_STATUS_META: Record<DocumentDossierProgressStage['state'], {
+  label: string
+  icon: ElementType
+  className: string
+  markerClassName: string
+}> = {
+  complete: {
+    label: 'Gata',
+    icon: CheckCircle2,
+    className: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
+    markerClassName: 'bg-emerald-600 text-white',
+  },
+  current: {
+    label: 'Acum',
+    icon: CircleDot,
+    className: 'border-primary/35 bg-primary/[0.07] shadow-sm shadow-primary/10',
+    markerClassName: 'bg-primary text-primary-foreground',
+  },
+  waiting: {
+    label: 'Așteaptă',
+    icon: PauseCircle,
+    className: 'border-blue-200 bg-blue-50/70 dark:border-blue-900/70 dark:bg-blue-950/25',
+    markerClassName: 'bg-blue-600 text-white',
+  },
+  blocked: {
+    label: 'Blocat',
+    icon: AlertTriangle,
+    className: 'border-amber-300 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/25',
+    markerClassName: 'bg-amber-500 text-white',
+  },
+  pending: {
+    label: 'Urmează',
+    icon: FolderOpen,
+    className: 'border-border bg-background',
+    markerClassName: 'bg-muted text-muted-foreground',
+  },
+}
+
+function DocumentDossierProgressPanel({
+  progress,
+}: {
+  progress: DocumentDossierProgress
+}) {
+  return (
+    <Card className="mb-6 overflow-hidden border-primary/10">
+      <CardHeader className="border-b bg-muted/15 pb-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">Hartă dosar</Badge>
+            <CardTitle className="text-base">{progress.headline}</CardTitle>
+            <CardDescription className="mt-1 max-w-3xl">{progress.description}</CardDescription>
+          </div>
+          <div className="rounded-2xl border bg-background px-4 py-3 text-right shadow-sm">
+            <p className="text-2xl font-bold tabular-nums text-primary">{progress.progressPercent}%</p>
+            <p className="text-[11px] text-muted-foreground">
+              {progress.completedCount}/{progress.totalCount} etape
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${progress.progressPercent}%` }}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progress.progressPercent}
+            aria-label="Progres dosar digital"
+          />
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-3 p-4 md:grid-cols-4">
+        {progress.stages.map((stage, index) => {
+          const meta = DOSSIER_STAGE_STATUS_META[stage.state]
+          const Icon = meta.icon
+          const active = progress.currentStage.id === stage.id
+          return (
+            <div
+              key={stage.id}
+              aria-current={active ? 'step' : undefined}
+              className={cn(
+                'rounded-2xl border p-4',
+                meta.className,
+                active && 'ring-1 ring-primary/20',
+              )}
+            >
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className={cn('flex h-9 w-9 items-center justify-center rounded-full', meta.markerClassName)}>
+                  {stage.state === 'pending' ? index + 1 : <Icon className="h-4 w-4" aria-hidden="true" />}
+                </span>
+                <Badge variant="outline" className="bg-background/70">{meta.label}</Badge>
+              </div>
+              <p className="text-sm font-semibold">{stage.label}</p>
+              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{stage.description}</p>
+            </div>
+          )
+        })}
+      </CardContent>
+    </Card>
+  )
 }
 
 function DocumentQuickActionsPanel({
