@@ -43,6 +43,7 @@ import { DocumentTableRow, DocumentMobileCard } from '@/components/features/docu
 import { DocumentSearchBar, filterDocuments, type DocumentFilterState } from '@/components/features/documents/document-search-bar'
 import { DocumentPreviewModal } from '@/components/features/documents/document-preview-modal'
 import { DocumentActionCenter } from '@/components/features/documents/document-action-center'
+import { DocumentActionChecklist } from '@/components/features/documents/document-action-checklist'
 import { LegalDocumentBuilderDialog } from '@/components/features/documents/legal-document-builder-dialog'
 import { LegalDocumentRequestDialog } from '@/components/features/documents/legal-document-request-dialog'
 import { LegalDocumentRequestPanel } from '@/components/features/documents/legal-document-request-panel'
@@ -57,6 +58,7 @@ import {
 import { LS_KEYS } from '@/lib/constants'
 import { loadFromLS, saveToLS } from '@/lib/storage'
 import { getDocumentFlowSummary } from '@/lib/document-flow'
+import { getDocumentActionPlan } from '@/lib/document-action-plan'
 import { readAppointmentContext, readDealContext, returnToWorkflow, selectDocumentAppointment } from '@/lib/document-navigation'
 import {
   createDocumentUrl,
@@ -396,6 +398,15 @@ export function DocumentePage() {
         requests,
       })
     : null
+  const actionPlan = selectedViewing && user && profile
+    ? getDocumentActionPlan({
+        role: profile.role,
+        userId: user.id,
+        viewing: selectedViewing,
+        documents,
+        requests,
+      })
+    : null
 
   const openTools = (uploadType?: DocType) => {
     flushSync(() => setToolsOpen(true))
@@ -544,6 +555,10 @@ export function DocumentePage() {
 
             {flowSummary && (
               <DocumentActionCenter summary={flowSummary} onPrimaryAction={handlePrimaryAction} />
+            )}
+
+            {actionPlan && (
+              <DocumentActionChecklist plan={actionPlan} onPrimaryAction={handlePrimaryAction} />
             )}
 
             {!selectedWorkspaceClosed && <Collapsible open={toolsOpen} onOpenChange={setToolsOpen} className="mb-6">
