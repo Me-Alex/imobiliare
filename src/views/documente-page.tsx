@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 import {
   ArrowRight,
   AlertTriangle,
+  Archive,
   BriefcaseBusiness,
   Building2,
   CalendarDays,
@@ -68,6 +69,7 @@ import { loadFromLS, saveToLS } from '@/lib/storage'
 import { getDocumentFlowSummary } from '@/lib/document-flow'
 import { getDocumentActionPlan } from '@/lib/document-action-plan'
 import { getDocumentDossierProgress, type DocumentDossierProgress, type DocumentDossierProgressStage } from '@/lib/document-dossier-progress'
+import { getDocumentDossierGuide, type DocumentDossierGuide, type DocumentDossierGuideCard } from '@/lib/document-dossier-guide'
 import { getDocumentQuickActions, type DocumentQuickAction, type DocumentQuickActionTarget } from '@/lib/document-quick-actions'
 import {
   clearDocumentFocusContext,
@@ -128,6 +130,7 @@ export function DocumentePage() {
   const [editingRequest, setEditingRequest] = useState<LegalDocumentRequest | null>(null)
   const [requestBusyId, setRequestBusyId] = useState<string | null>(null)
   const [toolsOpen, setToolsOpen] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const [signing, setSigning] = useState<SigningState | null>(null)
   const [signatureName, setSignatureName] = useState('')
   const [signatureAccepted, setSignatureAccepted] = useState(false)
@@ -441,6 +444,14 @@ export function DocumentePage() {
         documentsCount: activeDocumentCount,
       })
     : []
+  const dossierGuide = actionPlan && profile
+    ? getDocumentDossierGuide({
+        role: profile.role,
+        plan: actionPlan,
+        documentsCount: activeDocumentCount,
+        requestsCount: requests.length,
+      })
+    : null
 
   useEffect(() => {
     if (!selectedViewing || !actionPlan || loading || documentsLoading) return
@@ -599,6 +610,7 @@ export function DocumentePage() {
                   value={selectedId || ''}
                   onChange={(event) => {
                     setToolsOpen(false)
+                    setDetailsOpen(false)
                     setSelectedId(event.target.value)
                   }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -635,16 +647,16 @@ export function DocumentePage() {
               </CardContent>
             </Card>
 
+            {dossierGuide && (
+              <DocumentDossierGuidePanel
+                guide={dossierGuide}
+                focusedTarget={focusedDocumentTarget}
+                onAction={handleQuickAction}
+              />
+            )}
+
             {flowSummary && (
               <DocumentActionCenter summary={flowSummary} onPrimaryAction={handlePrimaryAction} />
-            )}
-
-            {dossierProgress && (
-              <DocumentDossierProgressPanel progress={dossierProgress} />
-            )}
-
-            {actionPlan && (
-              <DocumentActionChecklist plan={actionPlan} onPrimaryAction={handlePrimaryAction} />
             )}
 
             {quickActions.length > 0 && (
@@ -653,6 +665,39 @@ export function DocumentePage() {
                 focusedTarget={focusedDocumentTarget}
                 onAction={handleQuickAction}
               />
+            )}
+
+            {(dossierProgress || actionPlan) && (
+              <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen} className="mb-6">
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="h-auto min-h-12 w-full justify-between gap-3 whitespace-normal px-4 py-3">
+                    <span className="flex items-center gap-2 text-left">
+                      <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
+                      <span>
+                        <span className="block font-medium">{dossierGuide?.detailToggleLabel ?? 'Vezi detaliile dosarului'}</span>
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          {dossierGuide?.detailToggleDescription ?? 'Harta, checklist-ul și responsabilii rămân disponibile pentru verificare.'}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      {actionPlan ? <Badge variant="secondary">{actionPlan.items.length} pași</Badge> : null}
+                      <ChevronDown className={`h-4 w-4 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} />
+                    </span>
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="pt-4">
+                    {dossierProgress && (
+                      <DocumentDossierProgressPanel progress={dossierProgress} />
+                    )}
+
+                    {actionPlan && (
+                      <DocumentActionChecklist plan={actionPlan} onPrimaryAction={handlePrimaryAction} />
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             )}
 
             {!selectedWorkspaceClosed && <Collapsible open={toolsOpen} onOpenChange={setToolsOpen} className="mb-6">
@@ -916,6 +961,50 @@ const QUICK_ACTION_ICONS: Record<DocumentQuickAction['id'], ElementType> = {
   archive: FolderOpen,
 }
 
+const GUIDE_CARD_ICONS: Record<DocumentDossierGuideCard['id'], ElementType> = {
+  'role-action': User,
+  handoff: PauseCircle,
+  archive: Archive,
+}
+
+const GUIDE_TONE_META: Record<DocumentDossierGuideCard['tone'], {
+  className: string
+  iconClassName: string
+  badgeClassName: string
+  actionClassName: string
+}> = {
+  primary: {
+    className: 'border-primary/35 bg-primary/[0.07] shadow-sm shadow-primary/10',
+    iconClassName: 'bg-primary text-primary-foreground',
+    badgeClassName: 'border-primary/30 bg-primary/10 text-primary',
+    actionClassName: 'text-primary',
+  },
+  waiting: {
+    className: 'border-blue-200 bg-blue-50/70 dark:border-blue-900/70 dark:bg-blue-950/25',
+    iconClassName: 'bg-blue-600 text-white',
+    badgeClassName: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300',
+    actionClassName: 'text-blue-700 dark:text-blue-300',
+  },
+  complete: {
+    className: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
+    iconClassName: 'bg-emerald-600 text-white',
+    badgeClassName: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300',
+    actionClassName: 'text-emerald-700 dark:text-emerald-300',
+  },
+  blocked: {
+    className: 'border-amber-300 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/25',
+    iconClassName: 'bg-amber-500 text-white',
+    badgeClassName: 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+    actionClassName: 'text-amber-700 dark:text-amber-300',
+  },
+  muted: {
+    className: 'border-border bg-muted/25',
+    iconClassName: 'bg-muted text-muted-foreground',
+    badgeClassName: 'border-border bg-background text-muted-foreground',
+    actionClassName: 'text-muted-foreground',
+  },
+}
+
 const DOSSIER_STAGE_STATUS_META: Record<DocumentDossierProgressStage['state'], {
   label: string
   icon: ElementType
@@ -952,6 +1041,68 @@ const DOSSIER_STAGE_STATUS_META: Record<DocumentDossierProgressStage['state'], {
     className: 'border-border bg-background',
     markerClassName: 'bg-muted text-muted-foreground',
   },
+}
+
+function DocumentDossierGuidePanel({
+  guide,
+  focusedTarget,
+  onAction,
+}: {
+  guide: DocumentDossierGuide
+  focusedTarget: DocumentFocusTarget | null
+  onAction: (target: DocumentQuickActionTarget) => void
+}) {
+  return (
+    <Card className="mb-6 overflow-hidden border-primary/10 bg-gradient-to-br from-background via-muted/15 to-background">
+      <CardHeader className="pb-3">
+        <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">Pe scurt</Badge>
+        <CardTitle className="text-base">{guide.headline}</CardTitle>
+        <CardDescription>{guide.description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 lg:grid-cols-3">
+          {guide.cards.map((card) => {
+            const Icon = GUIDE_CARD_ICONS[card.id]
+            const meta = GUIDE_TONE_META[card.tone]
+            const focused = focusedTarget === card.target
+            return (
+              <button
+                key={card.id}
+                type="button"
+                disabled={card.disabled}
+                onClick={() => onAction(card.target)}
+                className={cn(
+                  'group min-h-40 rounded-2xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  meta.className,
+                  card.disabled && 'cursor-not-allowed opacity-60',
+                  !card.disabled && 'hover:-translate-y-0.5 hover:shadow-sm',
+                  focused && 'border-primary/60 ring-2 ring-primary/25',
+                )}
+              >
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl', meta.iconClassName)}>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <Badge variant="outline" className={cn('text-[10px]', meta.badgeClassName)}>
+                    {card.badgeLabel}
+                  </Badge>
+                </div>
+                <p className="font-semibold leading-tight">{card.title}</p>
+                <p className="mt-2 min-h-10 text-sm leading-5 text-muted-foreground">{card.description}</p>
+                <span className={cn(
+                  'mt-4 inline-flex items-center gap-1 text-sm font-medium',
+                  card.disabled ? 'text-muted-foreground' : meta.actionClassName,
+                )}>
+                  {card.buttonLabel}
+                  {!card.disabled ? <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /> : null}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 function DocumentDossierProgressPanel({
