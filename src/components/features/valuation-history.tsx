@@ -157,6 +157,7 @@ export function ValuationHistory({ onSelect }: ValuationHistoryProps) {
                   e.stopPropagation()
                   deleteEntry(entry.id)
                 }}
+                aria-label="Șterge evaluarea"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
