@@ -1,0 +1,3 @@
+## 2026-07-24 - Document Search Bar Accessibility
+**Learning:** Icon-only buttons and search inputs in custom components often lack accessible names, making them difficult for screen reader users to understand. Decorative icons inside inputs or buttons are also read by screen readers unless hidden.
+**Action:** When creating or modifying custom UI components (like search bars), ensure icon-only `<Button size="icon">`, inputs, and action buttons have appropriate `aria-label` attributes localized in Romanian. Apply `aria-hidden="true"` to purely decorative icons (e.g., from `lucide-react`). Additionally, always add `type="button"` to action buttons to prevent accidental form submissions.
