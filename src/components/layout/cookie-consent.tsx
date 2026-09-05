@@ -45,7 +45,7 @@ export function CookieConsent() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3">
                   <Cookie className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                  <p className="text-xs text-muted-foreground leading-relaxed sm:text-sm">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     Folosim cookie-uri necesare și, cu acordul tău, cookie-uri pentru îmbunătățirea experienței.{' '}
                     <a href="/confidentialitate" className="font-medium text-foreground underline-offset-4 hover:underline">Detalii</a>
                   </p>
@@ -57,7 +57,7 @@ export function CookieConsent() {
                     className="w-full sm:w-auto"
                     onClick={() => handleAccept('all')}
                   >
-                    Accepta toate
+                    Acceptă toate
                   </Button>
                   <Button
                     variant="outline"

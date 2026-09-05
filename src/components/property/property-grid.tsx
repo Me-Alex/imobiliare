@@ -11,7 +11,7 @@ import { PropertyCard } from '@/components/property/property-card'
 export function PropertyGrid() {
   const {
     selectedType, selectedZone, searchQuery, priceRange, viewMode,
-    rooms, transaction, featuredOnly, sort, minArea, maxArea, virtualTourFilter,
+    rooms, transaction, featuredOnly, sort, minArea, maxArea, virtualTourFilter, resetFilters,
   } = useAppStore()
 
   const filters: PropertyFilters = {}
@@ -71,10 +71,10 @@ export function PropertyGrid() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <SearchX className="h-12 w-12 text-muted-foreground/40 mb-4" />
-        <h3 className="text-lg font-semibold mb-1">Eroare la incarcare</h3>
-        <p className="text-sm text-muted-foreground">Nu am putut incarca proprietatile. Va rugam reincercati.</p>
+        <h3 className="text-lg font-semibold mb-1">Proprietățile nu s-au încărcat</h3>
+        <p className="text-sm text-muted-foreground">Încearcă din nou. Filtrele tale sunt păstrate.</p>
         <Button variant="outline" className="mt-5" onClick={() => void refetch()}>
-          Reincearca
+          Reîncearcă
         </Button>
       </div>
     )
@@ -85,7 +85,8 @@ export function PropertyGrid() {
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <SearchX className="h-12 w-12 text-muted-foreground/40 mb-4" />
         <h3 className="text-lg font-semibold mb-1">Niciun rezultat</h3>
-        <p className="text-sm text-muted-foreground">Nu am gasit proprietati care sa corespunda filtrelor selectate.</p>
+<p className="mt-2 max-w-md text-base text-muted-foreground">Încearcă o altă zonă sau un buget mai larg. Poți șterge filtrele pentru a vedea toate ofertele.</p>
+        <Button className="mt-5" onClick={resetFilters}>Șterge filtrele și vezi proprietățile</Button>
       </div>
     )
   }
@@ -94,11 +95,10 @@ export function PropertyGrid() {
     <div>
       {/* Results count */}
       <div className="mb-4 flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
+        <div role="status" aria-live="polite" className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{properties.length}</span>{' '}
-          din <span className="font-medium text-foreground">{total}</span> proprietati
+          din <span className="font-medium text-foreground">{total}</span> proprietăți
         </div>
-        <span className="text-xs text-muted-foreground/70">Aratand {properties.length} din {total} proprietati</span>
       </div>
 
       <motion.div
@@ -135,11 +135,11 @@ export function PropertyGrid() {
               {isFetchingNextPage ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Se incarca...
+                  Se încarcă…
                 </>
               ) : (
                 <>
-                  Incarca mai multe
+                  Încarcă mai multe
                   <ChevronDown className="h-4 w-4" />
                 </>
               )}
@@ -152,17 +152,9 @@ export function PropertyGrid() {
       {!hasNextPage && hasResults && properties.length >= total && (
         <div className="mt-8 flex flex-col items-center gap-4">
           <div className="text-center text-sm text-muted-foreground">
-            Toate {total} proprietatile sunt incarcate
+            Toate {total} proprietățile sunt încărcate
           </div>
-          <div className="cta-gradient-border">
-            <Button
-              size="lg"
-              className="gap-2 bg-card text-foreground hover:bg-card/80 rounded-[var(--radius)]"
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            >
-              Vezi Toate Proprietatile
-            </Button>
-          </div>
+
         </div>
       )}
     </div>

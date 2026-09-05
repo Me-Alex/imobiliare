@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, MotionConfig } from 'framer-motion'
+import dynamic from 'next/dynamic'
+import { PageState } from '@/components/ui/page-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { AnnouncementBanner } from '@/components/layout/announcement-banner'
@@ -26,28 +28,6 @@ import { useAppStore, type PageKey } from '@/store/use-app-store'
 import { isPageKey } from '@/store/slices/navigation'
 import { Toaster } from 'sonner'
 import { AcasaPage } from '@/views/acasa-page'
-import { ProprietatiPage } from '@/views/proprietati-page'
-import { AnalizaPage } from '@/views/analiza-page'
-import { ZonePage } from '@/views/zone-page'
-import { DeCeNoiPage } from '@/views/de-ce-noi-page'
-import { CalculatorPage } from '@/views/calculator-page'
-import { LoginPage } from '@/views/login-page'
-import { AdminPage } from '@/views/admin-page'
-import { AdaugaProprietatePage } from '@/views/adauga-proprietate-page'
-import { DisponibilitateStaffPage } from '@/views/disponibilitate-staff-page'
-import { DocumentePage } from '@/views/documente-page'
-import { ProgramareVizionarePage } from '@/views/programare-vizionare-page'
-import { VizionarileMelePage } from '@/views/vizionarile-mele-page'
-import { DashboardPage } from '@/views/dashboard-page'
-import { ProfilPage } from '@/views/profil-page'
-import { EvaluarePage } from '@/views/evaluare-page'
-import { ServiciiPage } from '@/views/servicii-page'
-import { MonedePage } from '@/views/monede-page'
-import { PropertyPage } from '@/views/property-page'
-import { DealRoomPage } from '@/views/deal-room-page'
-import { CrmPage } from '@/views/crm-page'
-import { OwnerDashboardPage } from '@/views/owner-dashboard-page'
-import { ProprietatileMelePage } from '@/views/proprietatile-mele-page'
 import { NotificationsPanel } from '@/components/panels/notifications-panel'
 import { useCoinsHydration } from '@/hooks/use-coin-actions'
 import { useAuthReturnRedirect } from '@/hooks/use-auth-return-redirect'
@@ -63,6 +43,31 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+const viewLoading = () => <PageState compact tone="loading" title="Se încarcă pagina" description="Pregătim conținutul pentru tine." />
+
+const ProprietatiPage = dynamic(() => import('@/views/proprietati-page').then((module) => module.ProprietatiPage), { loading: viewLoading })
+const AnalizaPage = dynamic(() => import('@/views/analiza-page').then((module) => module.AnalizaPage), { loading: viewLoading })
+const ZonePage = dynamic(() => import('@/views/zone-page').then((module) => module.ZonePage), { loading: viewLoading })
+const DeCeNoiPage = dynamic(() => import('@/views/de-ce-noi-page').then((module) => module.DeCeNoiPage), { loading: viewLoading })
+const CalculatorPage = dynamic(() => import('@/views/calculator-page').then((module) => module.CalculatorPage), { loading: viewLoading })
+const LoginPage = dynamic(() => import('@/views/login-page').then((module) => module.LoginPage), { loading: viewLoading })
+const AdminPage = dynamic(() => import('@/views/admin-page').then((module) => module.AdminPage), { loading: viewLoading })
+const AdaugaProprietatePage = dynamic(() => import('@/views/adauga-proprietate-page').then((module) => module.AdaugaProprietatePage), { loading: viewLoading })
+const DisponibilitateStaffPage = dynamic(() => import('@/views/disponibilitate-staff-page').then((module) => module.DisponibilitateStaffPage), { loading: viewLoading })
+const DocumentePage = dynamic(() => import('@/views/documente-page').then((module) => module.DocumentePage), { loading: viewLoading })
+const ProgramareVizionarePage = dynamic(() => import('@/views/programare-vizionare-page').then((module) => module.ProgramareVizionarePage), { loading: viewLoading })
+const VizionarileMelePage = dynamic(() => import('@/views/vizionarile-mele-page').then((module) => module.VizionarileMelePage), { loading: viewLoading })
+const DashboardPage = dynamic(() => import('@/views/dashboard-page').then((module) => module.DashboardPage), { loading: viewLoading })
+const ProfilPage = dynamic(() => import('@/views/profil-page').then((module) => module.ProfilPage), { loading: viewLoading })
+const EvaluarePage = dynamic(() => import('@/views/evaluare-page').then((module) => module.EvaluarePage), { loading: viewLoading })
+const ServiciiPage = dynamic(() => import('@/views/servicii-page').then((module) => module.ServiciiPage), { loading: viewLoading })
+const MonedePage = dynamic(() => import('@/views/monede-page').then((module) => module.MonedePage), { loading: viewLoading })
+const PropertyPage = dynamic(() => import('@/views/property-page').then((module) => module.PropertyPage), { loading: viewLoading })
+const DealRoomPage = dynamic(() => import('@/views/deal-room-page').then((module) => module.DealRoomPage), { loading: viewLoading })
+const CrmPage = dynamic(() => import('@/views/crm-page').then((module) => module.CrmPage), { loading: viewLoading })
+const OwnerDashboardPage = dynamic(() => import('@/views/owner-dashboard-page').then((module) => module.OwnerDashboardPage), { loading: viewLoading })
+const ProprietatileMelePage = dynamic(() => import('@/views/proprietatile-mele-page').then((module) => module.ProprietatileMelePage), { loading: viewLoading })
 
 const pageComponents: Record<string, React.ComponentType<Record<string, unknown>>> = {
   acasa: AcasaPage,
@@ -83,7 +88,7 @@ const pageComponents: Record<string, React.ComponentType<Record<string, unknown>
   servicii: ServiciiPage,
   evaluare: EvaluarePage,
   monede: MonedePage,
-  proprietate: PropertyPage,
+  proprietate: () => <PropertyPage />,
   'deal-room': DealRoomPage,
   crm: CrmPage,
   'owner-dashboard': OwnerDashboardPage,
@@ -178,7 +183,7 @@ function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
       {!isFocusedPage && <AnnouncementBanner />}
       <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} onOpenSavedSearches={() => setSavedSearchesOpen(true)} />
       {isAccountWorkspacePage(currentPage) && <AccountWorkspaceNav />}
-      <main id="main-content" className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 min-w-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentPage}
@@ -224,6 +229,7 @@ function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
 export function PlatformApp({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
   return (
     <QueryClientProvider client={queryClient}>
+      <MotionConfig reducedMotion="user">
       <ThemeProvider
         attribute="class"
         defaultTheme="system"
@@ -234,6 +240,7 @@ export function PlatformApp({ initialPage = 'acasa' }: { initialPage?: PageKey }
           <AppContent initialPage={initialPage} />
         </AuthProvider>
       </ThemeProvider>
+          </MotionConfig>
     </QueryClientProvider>
   )
 }

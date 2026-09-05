@@ -33,10 +33,7 @@ export function AcasaPage(_props: AcasaPageProps) {
   return (
     <>
       <HeroSection />
-      <StatsSection />
-      <hr className="section-divider" />
-      <RecentlyViewed />
-      <PageContainer as="section" className="py-14 sm:py-16">
+      <PageContainer as="section" className="py-10 sm:py-12">
         <PageSection>
           <SectionHeader
             eyebrow="Selecția HQS"
@@ -108,6 +105,8 @@ export function AcasaPage(_props: AcasaPageProps) {
         </PageSection>
       </PageContainer>
       <hr className="section-divider" />
+      <RecentlyViewed />
+      <StatsSection />
       <PartnersSection />
       <CtaSection />
     </>

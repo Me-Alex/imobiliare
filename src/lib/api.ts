@@ -27,6 +27,23 @@ export async function getProperties(filters: PropertyFilters = {}): Promise<Prop
   return data.properties
 }
 
+/** The map needs the complete result set, not only the first catalog page. */
+export async function getAllProperties(filters: PropertyFilters = {}): Promise<Property[]> {
+  const params = buildPropertyParams(filters)
+  params.set('pageSize', '50')
+  const properties = new Map<string, Property>()
+  let page = 1
+  let hasMore = true
+  while (hasMore) {
+    params.set('page', String(page))
+    const data = await fetchApi<PaginatedPropertiesResponse>(`${BASE}/properties?${params}`)
+    for (const property of data.properties) properties.set(property.id, property)
+    hasMore = data.hasMore && data.properties.length > 0
+    page += 1
+  }
+  return [...properties.values()]
+}
+
 export async function getPropertiesPaginated(filters: PropertyFilters = {}, page: number = 1): Promise<PaginatedPropertiesResponse> {
   const params = buildPropertyParams(filters)
   params.set('page', String(page))

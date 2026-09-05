@@ -1,6 +1,7 @@
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import {
   getProperties,
+  getAllProperties,
   getPropertiesPaginated,
   getPropertyBySlug,
   getMarketData,
@@ -10,21 +11,27 @@ import {
 } from '@/lib/api'
 import type { PropertyFilters } from '@/lib/types'
 import type { Property } from '@/lib/types'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 export type { PropertyFilters } from '@/lib/types'
 
-export function useProperties(filters: PropertyFilters = {}) {
+export function useProperties(filters: PropertyFilters = {}, options: { enabled?: boolean; allPages?: boolean } = {}) {
+  const search = useDebouncedValue(filters.search)
+  const queryFilters = { ...filters, search }
   return useQuery({
-    queryKey: ['properties', filters],
-    queryFn: () => getProperties(filters),
+    queryKey: [options.allPages ? 'properties-all' : 'properties', queryFilters],
+    queryFn: () => options.allPages ? getAllProperties(queryFilters) : getProperties(queryFilters),
+    enabled: options.enabled ?? true,
     staleTime: 30_000,
   })
 }
 
 export function usePropertiesPaginated(filters: PropertyFilters = {}) {
+  const search = useDebouncedValue(filters.search)
+  const queryFilters = { ...filters, search }
   return useInfiniteQuery({
-    queryKey: ['properties-paginated', filters],
-    queryFn: ({ pageParam }) => getPropertiesPaginated(filters, pageParam),
+    queryKey: ['properties-paginated', queryFilters],
+    queryFn: ({ pageParam }) => getPropertiesPaginated(queryFilters, pageParam),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
     staleTime: 30_000,

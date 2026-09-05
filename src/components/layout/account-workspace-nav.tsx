@@ -62,7 +62,7 @@ export function AccountWorkspaceNavContent({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex h-10 w-full min-w-0 items-center gap-3 rounded-xl border bg-card px-3 text-left shadow-sm sm:hidden"
+              className="flex min-h-14 w-full min-w-0 items-center gap-3 rounded-xl border bg-card px-3 text-left shadow-sm sm:hidden"
               aria-label={`Secțiunea curentă: ${currentItem?.label ?? 'Spațiul meu'}`}
             >
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -70,20 +70,20 @@ export function AccountWorkspaceNavContent({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold">{currentItem?.label ?? 'Spațiul meu'}</span>
-                <span className="block truncate text-[10px] text-muted-foreground">
+                <span className="block truncate text-xs text-muted-foreground">
                   {currentItem?.description ?? ACCOUNT_ROLE_DEFINITIONS[role].description}
                 </span>
               </span>
-              <Badge variant="secondary" className="shrink-0 text-[9px]">
+              <Badge variant="secondary" className="shrink-0 text-xs">
                 {ACCOUNT_ROLE_DEFINITIONS[role].label}
               </Badge>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-sm">
+          <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-sm max-h-[70dvh] overflow-y-auto">
             <DropdownMenuLabel>
               <span className="block text-xs font-semibold">Spațiul contului</span>
-              <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
+              <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
                 Alege ce vrei să rezolvi acum.
               </span>
             </DropdownMenuLabel>
@@ -106,7 +106,7 @@ export function AccountWorkspaceNavContent({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium">{item.label}</span>
-                    <span className="block truncate text-[11px] text-muted-foreground">{item.description}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{item.description}</span>
                   </span>
                   {active ? <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" /> : null}
                 </DropdownMenuItem>
@@ -117,7 +117,7 @@ export function AccountWorkspaceNavContent({
 
         <div className="hidden shrink-0 items-center gap-2 border-r pr-4 xl:flex">
           <span className="text-xs font-semibold text-muted-foreground">Spațiul meu</span>
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="text-xs">
             {ACCOUNT_ROLE_DEFINITIONS[role].label}
           </Badge>
         </div>
@@ -164,7 +164,7 @@ export function AccountWorkspaceNavContent({
                   <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuContent align="end" className="w-72 max-h-[70dvh] overflow-y-auto">
                 <DropdownMenuLabel>Alte secțiuni ale contului</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {overflowItems.map((item) => {
@@ -180,7 +180,7 @@ export function AccountWorkspaceNavContent({
                       <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground')} aria-hidden="true" />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-medium">{item.label}</span>
-                        <span className="block truncate text-[11px] text-muted-foreground">{item.description}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{item.description}</span>
                       </span>
                       {active ? <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" /> : null}
                     </DropdownMenuItem>
