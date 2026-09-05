@@ -47,6 +47,13 @@ function normalizeProperty(property: Property): Property {
 function sameValue(value: string, expected: string): boolean {
   return comparableValue(value) === comparableValue(expected)
 }
+
+function positiveInteger(value: string | null, fallback: number, maximum = Number.MAX_SAFE_INTEGER): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback
+  return Math.min(maximum, Math.max(1, Math.floor(parsed)))
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const type = searchParams.get('type')
@@ -61,8 +68,8 @@ export async function GET(request: NextRequest) {
   const featured = searchParams.get('featured')
   const query = searchParams.get('q') || searchParams.get('search')
   const virtualTour = searchParams.get('virtualTour')
-  const page = Math.max(1, Number(searchParams.get('page')) || 1)
-  const pageSize = Math.min(50, Math.max(1, Number(searchParams.get('pageSize')) || 12))
+  const page = positiveInteger(searchParams.get('page'), 1)
+  const pageSize = positiveInteger(searchParams.get('pageSize'), 12, 50)
 
   let baseProperties: Property[] = MOCK_PROPERTIES as Property[]
   const db = await getSafeDb()
@@ -84,9 +91,9 @@ export async function GET(request: NextRequest) {
   let filtered = withDemoVirtualTours(Array.from(merged.values()))
     .filter((property) => property.status === 'PUBLISHED')
 
-  if (type) filtered = filtered.filter((property) => sameValue(property.type, type))
+  if (type) filtered = filtered.filter((property) => sameValue(property.type, PROPERTY_TYPE_ALIASES[comparableValue(type)] ?? type))
   if (zone) filtered = filtered.filter((property) => sameValue(property.zone, zone))
-  if (transaction) filtered = filtered.filter((property) => sameValue(property.transaction, transaction))
+  if (transaction) filtered = filtered.filter((property) => sameValue(property.transaction, TRANSACTION_ALIASES[comparableValue(transaction)] ?? transaction))
   if (featured === 'true') filtered = filtered.filter((property) => property.featured)
   if (minPrice) filtered = filtered.filter((property) => property.price >= Number(minPrice))
   if (maxPrice) filtered = filtered.filter((property) => property.price <= Number(maxPrice))
@@ -96,13 +103,13 @@ export async function GET(request: NextRequest) {
   if (virtualTour === 'with') filtered = filtered.filter((property) => Boolean(property.virtualTour))
   if (virtualTour === 'without') filtered = filtered.filter((property) => !property.virtualTour)
   if (query) {
-    const normalizedQuery = query.toLocaleLowerCase('ro-RO')
+    const normalizedQuery = comparableValue(query)
     filtered = filtered.filter((property) => [
       property.title,
       property.description,
       property.address,
       property.zone,
-    ].some((value) => value.toLocaleLowerCase('ro-RO').includes(normalizedQuery)))
+    ].some((value) => comparableValue(value).includes(normalizedQuery)))
   }
 
   switch (sort) {
