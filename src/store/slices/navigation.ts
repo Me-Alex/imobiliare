@@ -52,7 +52,7 @@ export const createNavigationSlice: StateCreator<NavigationSlice> = (set) => ({
     set({ currentPage: page })
     updateBrowserUrl(page)
     if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      window.scrollTo({ top: 0, behavior: 'auto' })
     }
   },
 })

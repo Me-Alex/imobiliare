@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
-import { Bell, BellRing, Bookmark, Building2, CircleDollarSign, Heart, LogIn, LogOut, Menu, Moon, Plus, Sun } from 'lucide-react'
+import { Bell, BellRing, Bookmark, Building2, CircleDollarSign, Heart, LogIn, LogOut, Menu, Moon, Plus, Sun, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -52,7 +52,7 @@ function NotificationsBadge() {
 
   if (count === 0) return null
   return (
-    <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-red-500 text-white border-0 animate-pulse">
+    <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-xs flex items-center justify-center bg-red-500 text-white border-0">
       {count > 9 ? '9+' : count}
     </Badge>
   )
@@ -117,17 +117,17 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/80 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-card/95 backdrop-blur-lg">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <button
           onClick={() => navigateTo('acasa')}
-          className="flex items-center gap-2 group"
+          className="flex shrink-0 items-center gap-2 group" aria-label="HQS Imobiliare — Acasă"
         >
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
             <Building2 className="h-5 w-5" />
           </div>
-          <span className="text-xl font-bold tracking-tight">
+          <span className="text-base font-bold tracking-tight sm:text-xl">
             HQS <span className="gradient-text">Imobiliare</span>
           </span>
         </button>
@@ -140,8 +140,9 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
               <button
                 key={item.page}
                 onClick={() => navigateTo(item.page)}
+                aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 relative',
+                  'px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 relative',
                   isActive
                     ? 'text-foreground bg-accent'
                     : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
@@ -158,64 +159,42 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
 
         {/* Right side */}
         <div className="flex items-center gap-2">
-          {/* Saved Searches */}
-          <Button variant="ghost" size="icon" className="relative hidden lg:inline-flex" aria-label="Căutări salvate" onClick={onOpenSavedSearches}>
-            <Bookmark className="h-5 w-5" />
-            {savedSearchCount > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-primary text-primary-foreground border-0">
-                {savedSearchCount > 9 ? '9+' : savedSearchCount}
-              </Badge>
-            )}
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative hidden lg:inline-flex"
-            aria-label="Alerte de preț"
-            onClick={onOpenPriceAlerts}
-          >
-            <BellRing className="h-5 w-5" />
-          </Button>
-
-          {/* Coins — navigates to full page */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative"
-            aria-label="HQS Monede"
-            onClick={() => navigateTo('monede')}
-          >
-            <CircleDollarSign className="h-5 w-5 text-amber-500" />
-            {user && coinBalance > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-amber-500 text-white border-0">
-                {coinBalance > 999 ? '999+' : coinBalance}
-              </Badge>
-            )}
-          </Button>
-
-          {/* Favorites */}
-          <Button variant="ghost" size="icon" className="relative hidden lg:inline-flex" aria-label="Favorite" onClick={onOpenFavorites}>
+          <Button variant="ghost" size="icon" className="relative h-10 w-10" aria-label={`Favorite (${favorites.length})`} onClick={onOpenFavorites}>
             <Heart className="h-5 w-5" />
-            {favorites.length > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-[10px] flex items-center justify-center bg-primary text-primary-foreground border-0">
-                {favorites.length}
-              </Badge>
-            )}
+            {favorites.length > 0 && <Badge className="absolute -right-1 -top-1 h-5 min-w-5 justify-center px-1 text-xs">{favorites.length}</Badge>}
           </Button>
-
-          {/* Notifications Bell */}
-          <Button variant="ghost" size="icon" className="relative hidden lg:inline-flex" aria-label="Notificări" onClick={onOpenNotifications}>
-            <Bell className="h-5 w-5" />
-            <NotificationsBadge />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="hidden gap-2 sm:inline-flex">
+                Activitate <ChevronDown className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuItem onClick={onOpenSavedSearches} className="gap-2 py-3">
+                <Bookmark className="h-4 w-4" /> Căutări salvate
+                {savedSearchCount > 0 && <Badge variant="secondary" className="ml-auto">{savedSearchCount}</Badge>}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onOpenPriceAlerts} className="gap-2 py-3"><BellRing className="h-4 w-4" /> Alerte de preț</DropdownMenuItem>
+              <DropdownMenuItem onClick={onOpenNotifications} className="gap-2 py-3">
+                <span className="relative"><Bell className="h-4 w-4" /><NotificationsBadge /></span> Notificări
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigateTo('monede')} className="gap-2 py-3">
+                <CircleDollarSign className="h-4 w-4" /> HQS Monede
+                {user && coinBalance > 0 && <Badge variant="secondary" className="ml-auto">{coinBalance}</Badge>}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')} className="gap-2 py-3">
+                <Sun className="h-4 w-4 dark:hidden" /><Moon className="hidden h-4 w-4 dark:block" /> Schimbă tema
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Add Property button (logged in) */}
           {user && ['OWNER', 'AGENT', 'ADMIN'].includes(accountRole) && (
             <Button
               variant="default"
               size="sm"
-              className="hidden xl:flex gap-1.5 h-9"
+              className="hidden 2xl:flex gap-1.5 h-10"
               onClick={() => navigateTo('adauga-proprietate')}
             >
               <Plus className="h-4 w-4" />
@@ -239,7 +218,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                 <div className="px-2 py-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium truncate">{profile?.fullName || user.user_metadata?.full_name || 'Utilizator'}</p>
-                    <Badge variant="secondary" className="shrink-0 text-[10px]">{roleDefinition.label}</Badge>
+                    <Badge variant="secondary" className="shrink-0 text-xs">{roleDefinition.label}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                 </div>
@@ -265,21 +244,10 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Autentificare" onClick={() => navigateTo('login')}>
-              <LogIn className="h-5 w-5" />
+            <Button variant="outline" className="hidden gap-2 sm:inline-flex" onClick={() => navigateTo('login')}>
+              <LogIn className="h-4 w-4" /> Intră în cont
             </Button>
           )}
-
-          {/* Theme toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            aria-label="Schimbă tema"
-          >
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          </Button>
 
           {/* Mobile Menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -288,7 +256,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-72">
+            <SheetContent side="right" className="w-[min(22rem,100vw)] overflow-y-auto p-4 pb-8">
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
                   <Building2 className="h-5 w-5 text-primary" />
@@ -302,6 +270,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                     <button
                       key={item.page}
                       onClick={() => handleMobileNav(item.page)}
+                      aria-current={isActive ? 'page' : undefined}
                       className={cn(
                         'flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
                         isActive
@@ -318,6 +287,9 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                 })}
               </nav>
               <Separator className="my-4" />
+              <Button variant="outline" className="mb-3 w-full gap-2" onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
+                <Sun className="h-4 w-4 dark:hidden" /><Moon className="hidden h-4 w-4 dark:block" /> Schimbă tema
+              </Button>
               <button
                 type="button"
                 className="flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -404,13 +376,13 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                   {user ? (
                     <>
                       <Avatar className="h-5 w-5">
-                        <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
                           {(user.user_metadata?.full_name || user.email || 'U').charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <span className="flex min-w-0 flex-col items-start">
                         <span className="max-w-32 truncate">{profile?.fullName || user.user_metadata?.full_name || 'Contul meu'}</span>
-                        <span className="text-[10px] text-muted-foreground">{roleDefinition.label}</span>
+                        <span className="text-xs text-muted-foreground">{roleDefinition.label}</span>
                       </span>
                     </>
                   ) : (

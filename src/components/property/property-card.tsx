@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Heart, Scale, Bath, BedDouble, MapPin, Star, CalendarCheck, Maximize2, Rotate3D } from 'lucide-react'
+import { Heart, Scale, Bath, BedDouble, MapPin, CalendarCheck, Maximize2, Rotate3D } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,18 +24,10 @@ interface PropertyCardProps {
 const typeLabels: Record<string, string> = {
   APARTMENT: 'Apartament',
   HOUSE: 'Casă',
-  VILLA: 'Vila',
+  VILLA: 'Vilă',
   LAND: 'Teren',
   COMMERCIAL: 'Comercial',
 }
-const typeColors: Record<string, string> = {
-  APARTMENT: 'bg-primary/15 text-primary border-primary/20',
-  HOUSE: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20',
-  VILLA: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/20',
-  LAND: 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/20',
-  COMMERCIAL: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/20',
-}
-
 const transactionLabels: Record<string, string> = {
   SALE: 'Vânzare',
   RENT: 'Închiriere',
@@ -56,7 +48,7 @@ function MetricPill({ icon: Icon, value, label }: { icon: React.ElementType; val
         <Icon className="h-3.5 w-3.5 text-muted-foreground" />
         <span>{value}</span>
       </div>
-      <span className="text-[10px] text-muted-foreground leading-none">{label}</span>
+      <span className="text-xs text-muted-foreground leading-5">{label}</span>
     </div>
   )
 }
@@ -98,239 +90,62 @@ export function PropertyCard({ property, viewMode = 'grid', eagerImage = false }
     }))
     navigateTo('programare-vizionare')
     toast.success('Proprietatea a fost selectată.', {
-      description: 'Alege agentul, data și ora vizionării.',
+      description: 'Alege data și ora vizionării. Agentul este alocat automat.',
     })
   }
 
-  if (viewMode === 'list') {
-    return (
-      <Card
-        className={`card-hover relative overflow-hidden cursor-pointer group py-0 gap-0 press-scale border-l-[3px] ${property.transaction === 'RENT' ? 'border-l-amber-400' : 'border-l-emerald-500'}`}
-      >
-        <a href={propertyHref} className="absolute inset-0 z-10 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" aria-label={`Vezi detaliile proprietății ${property.title}`}>
-          <span className="sr-only">Vezi detaliile proprietății {property.title}</span>
-        </a>
-        <div className="flex flex-col sm:flex-row">
-          {/* Image */}
-          <div className="relative sm:w-72 h-48 sm:h-auto overflow-hidden shrink-0 card-shimmer">
-            <Image
-              src={coverImage}
-              alt=""
-              fill
-              loading={eagerImage ? 'eager' : 'lazy'}
-              fetchPriority={eagerImage ? 'high' : 'auto'}
-              sizes="(min-width: 640px) 18rem, 100vw"
-              className="absolute inset-0 h-full w-full object-cover img-zoom"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-            <div className="pointer-events-none absolute top-3 left-3 z-10 flex flex-wrap gap-2">
-              <Badge className={typeColors[property.type] || 'bg-secondary'}>{typeLabels[property.type] || property.type}</Badge>
-              <Badge className="bg-white/90 dark:bg-black/70 text-foreground backdrop-blur-sm border-0">
-                {transactionLabels[property.transaction] || property.transaction}
-              </Badge>
-              {Boolean(property.featured) && (
-                <Badge className="bg-amber-500 text-white border-0 gap-1">
-                  <Star className="h-3 w-3" /> Popular
-                </Badge>
-              )}
-              {property.virtualTour && (
-                <Badge className="gap-1 border-0 bg-violet-600 text-white">
-                  <Rotate3D className="h-3 w-3" /> {property.virtualTour.isDemo ? 'Tur demo' : 'Tur 360°'}
-                </Badge>
-              )}
-            </div>
-          </div>
-          {/* Content */}
-          <div className="flex-1 p-4 sm:p-6 flex flex-col justify-between">
-            <div>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-semibold text-lg leading-tight mb-1 group-hover:text-primary transition-colors line-clamp-1">
-                    {property.title}
-                  </h3>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {formatBucharestLocation(property.zone, property.sector)}
-                  </div>
-                </div>
-                <div className="text-right shrink-0 pl-4 border-l-2 border-primary/30">
-                  <div className="text-xl font-bold text-primary">{formatPrice(property.price)}</div>
-                  {property.pricePerSqm && (
-                    <div className="text-xs text-muted-foreground">{formatPricePerSqm(property.pricePerSqm)}</div>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-4 mt-2">
-                <MetricPill icon={BedDouble} value={property.rooms} label="camere" />
-                <MetricPill icon={Maximize2} value={`${property.areaSqm} m²`} label="suprafață" />
-                <MetricPill icon={Bath} value={property.bathrooms} label="băi" />
-                {property.floor !== null && property.floor !== undefined && (
-                  <div className="flex flex-col items-center gap-0.5 min-w-[42px]">
-                    <span className="text-sm font-medium">Et.{property.floor}</span>
-                    <span className="text-[10px] text-muted-foreground leading-none">etaj</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="relative z-20 flex items-center gap-2 mt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={(e) => { e.stopPropagation(); handleToggleFavorite() }}
-              >
-                <FavoriteButton isFav={isFav} />
-                  <span className="ml-1">{isFav ? 'Salvat' : 'Salvează'}</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={(e) => { e.stopPropagation(); toggleCompare(property.id) }}
-              >
-                <Scale className={`h-4 w-4 mr-1 ${isCompare ? 'text-primary' : ''}`} />
-                {isCompare ? 'În comparație' : 'Compară'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleSchedule()
-                }}
-              >
-                <CalendarCheck className="h-4 w-4" />
-                Vizionare
-              </Button>
-            </div>
-          </div>
-        </div>
-        <AuthRequiredDialog
-          open={authOpen}
-          onOpenChange={setAuthOpen}
-          actionLabel="Programează o vizionare"
-          actionIcon={CalendarCheck}
-          returnPage="programare-vizionare"
-          returnContext={{
-            vizionarePropertyId: property.id,
-            vizionarePropertyTitle: property.title,
-            fromProperty: property.slug,
-          }}
-        />
-      </Card>
-    )
-  }
+  const isList = viewMode === 'list'
 
   return (
-    <Card
-      className={`card-hover overflow-hidden cursor-pointer group py-0 gap-0 relative press-scale border-l-[3px] ${property.transaction === 'RENT' ? 'border-l-amber-400' : 'border-l-emerald-500'}`}
-    >
-      <a href={propertyHref} className="absolute inset-0 z-10 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" aria-label={`Vezi detaliile proprietății ${property.title}`}>
+    <Card className={`group relative gap-0 overflow-hidden rounded-2xl border py-0 shadow-sm transition-shadow hover:shadow-md ${isList ? 'md:flex-row' : 'h-full'}`}>
+      <a href={propertyHref} className="absolute inset-0 z-10 rounded-2xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        aria-label={`Vezi detaliile proprietății ${property.title}`}>
         <span className="sr-only">Vezi detaliile proprietății {property.title}</span>
       </a>
-      {/* Image */}
-      <div className="relative h-52 overflow-hidden card-shimmer">
-        <Image
-          src={coverImage}
-          alt=""
-          fill
-          loading={eagerImage ? 'eager' : 'lazy'}
+      <div className={`relative shrink-0 overflow-hidden bg-muted ${isList ? 'h-56 md:h-auto md:min-h-72 md:w-64' : 'aspect-[4/3]'}`}>
+        <Image src={coverImage} alt="" fill loading={eagerImage ? 'eager' : 'lazy'}
           fetchPriority={eagerImage ? 'high' : 'auto'}
-          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-          className="absolute inset-0 h-full w-full object-cover img-zoom"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-
-        {/* Badges */}
-        <div className="pointer-events-none absolute top-3 left-3 z-10 flex flex-wrap gap-2">
-          <Badge className={typeColors[property.type] || 'bg-secondary'}>{typeLabels[property.type] || property.type}</Badge>
-          <Badge className="bg-white/90 dark:bg-black/70 text-foreground backdrop-blur-sm border-0">
-            {transactionLabels[property.transaction] || property.transaction}
-          </Badge>
-          {Boolean(property.featured) && (
-            <Badge className="bg-amber-500 text-white border-0 gap-1">
-              <Star className="h-3 w-3" /> Popular
-            </Badge>
-          )}
-          {property.virtualTour && (
-            <Badge className="gap-1 border-0 bg-violet-600 text-white">
-              <Rotate3D className="h-3 w-3" /> {property.virtualTour.isDemo ? 'Tur demo' : 'Tur 360°'}
-            </Badge>
-          )}
+          sizes={isList ? '(min-width: 768px) 16rem, 100vw' : '(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw'}
+          className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent" />
+        <div className="pointer-events-none absolute left-3 top-3 right-16 flex flex-wrap gap-2">
+          <Badge className="border-0 bg-white text-slate-900 shadow-sm">{transactionLabels[property.transaction] || property.transaction}</Badge>
+          {Boolean(property.featured) && <Badge className="border-0 bg-emerald-800 text-white">Popular</Badge>}
         </div>
-
-        {/* Action buttons */}
-        <div className="absolute top-3 right-3 flex gap-1.5 z-20">
-          <Button
-            variant="secondary"
-            size="icon"
-            className="h-8 w-8 bg-white/90 dark:bg-black/60 backdrop-blur-sm border-0 shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleSchedule()
-            }}
-            aria-label="Programează vizionarea"
-          >
-            <CalendarCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-          </Button>
-          <Button
-            variant="secondary"
-            size="icon"
-            className="h-8 w-8 bg-white/90 dark:bg-black/60 backdrop-blur-sm border-0 shadow-sm hover:bg-white dark:hover:bg-black/80"
-            onClick={(e) => { e.stopPropagation(); handleToggleFavorite() }}
-            aria-label={isFav ? 'Șterge de la favorite' : 'Adaugă la favorite'}
-          >
-            <FavoriteButton isFav={isFav} />
-          </Button>
-          <Button
-            variant="secondary"
-            size="icon"
-            className="h-8 w-8 bg-white/90 dark:bg-black/60 backdrop-blur-sm border-0 shadow-sm hover:bg-white dark:hover:bg-black/80"
-            onClick={(e) => { e.stopPropagation(); toggleCompare(property.id) }}
-            aria-label={isCompare ? 'Șterge din comparație' : 'Adaugă la comparație'}
-          >
-            <Scale className={`h-4 w-4 ${isCompare ? 'text-primary' : ''}`} />
-          </Button>
-        </div>
-
-        {/* Price */}
-        <div className="pointer-events-none absolute bottom-3 left-3 z-10">
-          <div className="price-tag-animated absolute inset-0 rounded-lg -z-10" />
-          <div className="text-xl font-bold text-white drop-shadow-lg">{formatPrice(property.price)}</div>
-          {property.pricePerSqm && (
-            <div className="text-xs text-white/80 drop-shadow">{formatPricePerSqm(property.pricePerSqm)}</div>
-          )}
+        <Button variant="secondary" size="icon" className="absolute right-3 top-3 z-20 h-10 w-10 rounded-full bg-white text-slate-900 shadow-sm hover:bg-white/90"
+          onClick={handleToggleFavorite} aria-pressed={isFav}
+          aria-label={isFav ? 'Șterge de la favorite' : 'Adaugă la favorite'}>
+          <FavoriteButton isFav={isFav} />
+        </Button>
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap items-center gap-2 text-sm font-medium text-white">
+          <span>{typeLabels[property.type] || property.type}</span>
+          {property.virtualTour && <Badge className="gap-1 border-white/30 bg-black/40 text-white"><Rotate3D className="h-3.5 w-3.5" />{property.virtualTour.isDemo ? 'Tur demo' : 'Tur 360°'}</Badge>}
         </div>
       </div>
-
-      {/* Content */}
-      <CardContent className="p-4">
-        <h3 className="font-semibold leading-tight mb-1 group-hover:text-primary transition-colors line-clamp-1">
-          {property.title}
-        </h3>
-        <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
-          <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="line-clamp-1">{formatBucharestLocation(property.zone, property.sector)}</span>
+      <CardContent className="flex min-w-0 flex-1 flex-col p-5">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <p className="text-2xl font-semibold tracking-tight">{formatPrice(property.price)}{property.transaction === 'RENT' && <span className="ml-1 text-sm font-normal text-muted-foreground">/ lună</span>}</p>
+          {Boolean(property.pricePerSqm) && <p className="text-xs text-muted-foreground">{formatPricePerSqm(property.pricePerSqm!)}</p>}
         </div>
-        <div className="flex items-center gap-4 pt-3 border-t border-border/50">
-          <MetricPill icon={BedDouble} value={property.rooms} label="camere" />
+        <h3 className="mt-3 line-clamp-2 text-base font-semibold leading-6 transition-colors group-hover:text-primary">{property.title}</h3>
+        <p className="mt-1 flex items-start gap-1.5 text-sm leading-6 text-muted-foreground">
+          <MapPin className="mt-1 h-4 w-4 shrink-0" aria-hidden="true" />{formatBucharestLocation(property.zone, property.sector)}
+        </p>
+        <div className="my-4 flex flex-wrap items-center gap-6 border-y py-3">
+          {property.type !== 'LAND' && <MetricPill icon={BedDouble} value={property.rooms} label="camere" />}
           <MetricPill icon={Maximize2} value={`${property.areaSqm} m²`} label="suprafață" />
-          <MetricPill icon={Bath} value={property.bathrooms} label="băi" />
+          {property.type !== 'LAND' && <MetricPill icon={Bath} value={property.bathrooms} label="băi" />}
+        </div>
+        <div className="relative z-20 mt-auto flex flex-wrap items-center gap-2">
+          <Button variant="outline" className="h-10 flex-1 gap-2" onClick={handleSchedule}><CalendarCheck className="h-4 w-4" />Vizionare</Button>
+          <Button variant={isCompare ? 'secondary' : 'ghost'} className="h-10 gap-2" onClick={() => toggleCompare(property.id)} aria-pressed={isCompare}>
+            <Scale className="h-4 w-4" />{isCompare ? 'Adăugată' : 'Compară'}
+          </Button>
         </div>
       </CardContent>
-      <AuthRequiredDialog
-        open={authOpen}
-        onOpenChange={setAuthOpen}
-        actionLabel="Programează o vizionare"
-        actionIcon={CalendarCheck}
-        returnPage="programare-vizionare"
-        returnContext={{
-          vizionarePropertyId: property.id,
-          vizionarePropertyTitle: property.title,
-          fromProperty: property.slug,
-        }}
-      />
+      <AuthRequiredDialog open={authOpen} onOpenChange={setAuthOpen} actionLabel="Programează o vizionare"
+        actionIcon={CalendarCheck} returnPage="programare-vizionare"
+        returnContext={{ vizionarePropertyId: property.id, vizionarePropertyTitle: property.title, fromProperty: property.slug }} />
     </Card>
   )
 }

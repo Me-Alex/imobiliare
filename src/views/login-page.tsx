@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Building2, Lock, Mail, Eye, EyeOff, ArrowRight, Loader2, Shield, User, AlertTriangle, ExternalLink, X, Info } from 'lucide-react'
+import { Building2, Lock, Mail, Eye, EyeOff, ArrowRight, Loader2, Shield, User, AlertTriangle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
@@ -24,18 +24,19 @@ export function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
   const [googleError, setGoogleError] = useState<GoogleAuthError | null>(null)
-  const [showSetupGuide, setShowSetupGuide] = useState(false)
   const { signIn, signUp, signInWithGoogle, user } = useAuth()
 
   useEffect(() => {
-    const callbackError = consumeAuthCallbackError()
-    if (!callbackError) return
-
-    setGoogleError({
-      code: 'oauth_callback_error',
-      isProviderNotEnabled: false,
-      message: 'Conectarea cu Google a fost anulată sau nu a putut fi finalizată. Încearcă din nou.',
+    // Read the OAuth return from browser storage after hydration.
+    const frame = requestAnimationFrame(() => {
+      const callbackError = consumeAuthCallbackError()
+      if (callbackError) setGoogleError({
+        code: 'oauth_callback_error',
+        isProviderNotEnabled: false,
+        message: 'Conectarea cu Google a fost anulată sau nu a putut fi finalizată. Încearcă din nou.',
+      })
     })
+    return () => cancelAnimationFrame(frame)
   }, [])
 
   if (user) {
@@ -89,9 +90,6 @@ export function LoginPage() {
       const result = await signInWithGoogle()
       if (result.error) {
         setGoogleError(result.error)
-        if (result.error.isProviderNotEnabled) {
-          setShowSetupGuide(true)
-        }
       }
     } catch {
       setGoogleError({
@@ -104,18 +102,8 @@ export function LoginPage() {
     }
   }
 
-  const supabaseDashboardUrl = 'https://supabase.com/dashboard/project/spmapzhlcwhzfrxuvgxd/auth/providers'
-  const googleConsoleUrl = 'https://console.cloud.google.com/apis/credentials'
-
   return (
     <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center py-12 px-4">
-      {/* Background decorations */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="floating-blob w-[500px] h-[500px] -top-48 -left-48" style={{ background: 'radial-gradient(circle, oklch(0.527 0.14 160 / 8%) 0%, transparent 70%)' }} />
-        <div className="floating-blob w-[400px] h-[400px] -bottom-32 -right-32" style={{ background: 'radial-gradient(circle, oklch(0.527 0.14 160 / 6%) 0%, transparent 70%)' }} />
-        <div className="absolute inset-0 dots-pattern opacity-20" />
-      </div>
-
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -127,7 +115,7 @@ export function LoginPage() {
           items={[{ label: 'Acasă', page: 'acasa' }, { label: isLogin ? 'Autentificare' : 'Înregistrare' }]}
         />
 
-        <div className="glass-card rounded-2xl p-8">
+        <div className="rounded-2xl border bg-card p-5 shadow-sm sm:p-8">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
@@ -147,7 +135,7 @@ export function LoginPage() {
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            disabled={googleLoading}
+            disabled={googleLoading || isLoading}
             className="relative flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium transition-all hover:bg-accent hover:border-accent-foreground/20 disabled:opacity-60 disabled:cursor-not-allowed group"
           >
             {googleLoading ? (
@@ -168,173 +156,15 @@ export function LoginPage() {
             </p>
           )}
 
-          {/* Google Auth Error - Provider not enabled */}
-          <AnimatePresence>
-            {googleError && googleError.isProviderNotEnabled && (
-              <motion.div
-                initial={{ opacity: 0, y: -4, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: 'auto' }}
-                exit={{ opacity: 0, y: -4, height: 0 }}
-                className="mt-4 overflow-hidden"
-              >
-                {!showSetupGuide ? (
-                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                          Autentificarea Google nu este încă activată
-                        </p>
-                        <p className="text-xs text-amber-600/80 dark:text-amber-400/70 mt-1">
-                          Autentificarea cu Google necesită configurare în Supabase Dashboard.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setShowSetupGuide(true)}
-                          className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline"
-                        >
-                          <Info className="h-3.5 w-3.5" />
-                          Vezi cum se configurează
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setGoogleError(null)}
-                        className="text-amber-500 hover:text-amber-600 transition-colors shrink-0"
-                        aria-label="Închide"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-amber-500" />
-                        <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-                          Configurare Google OAuth
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => { setShowSetupGuide(false); setGoogleError(null) }}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label="Închide ghidul"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-3 text-xs">
-                      {/* Step 1 */}
-                      <div className="flex gap-3">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-xs">
-                          1
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">
-                            Mergi la Google Cloud Console
-                          </p>
-                          <p className="text-muted-foreground mt-0.5">
-                            Creează un proiect (sau folosește unul existent) și activează API-ul Google Identity.
-                          </p>
-                          <a
-                            href={googleConsoleUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 mt-1 text-amber-600 dark:text-amber-400 hover:underline"
-                          >
-                            Console Cloud Google
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </div>
-                      </div>
-
-                      {/* Step 2 */}
-                      <div className="flex gap-3">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-xs">
-                          2
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">
-                            Creează un ID de client OAuth 2.0
-                          </p>
-                          <p className="text-muted-foreground mt-0.5">
-                            Credentials → Create Credentials → OAuth client ID → Web application.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Step 3 */}
-                      <div className="flex gap-3">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-xs">
-                          3
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">
-                            Adaugă URI-ul de redirecționare
-                          </p>
-                          <div className="mt-1.5 rounded-md bg-background/80 border border-border px-3 py-2 font-mono text-[10px] break-all text-muted-foreground">
-                            https://spmapzhlcwhzfrxuvgxd.supabase.co/auth/v1/callback
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Step 4 */}
-                      <div className="flex gap-3">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-xs">
-                          4
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">
-                            Activează Google în Supabase
-                          </p>
-                          <p className="text-muted-foreground mt-0.5">
-                            În Supabase, mergi la Authentication, Providers, Google, apoi adaugă ID-ul și secretul de client obținute.
-                          </p>
-                          <a
-                            href={supabaseDashboardUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 mt-1 text-amber-600 dark:text-amber-400 hover:underline"
-                          >
-                            Supabase Auth Providers
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </div>
-                      </div>
-
-                      {/* Step 5 */}
-                      <div className="flex gap-3">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 font-bold text-xs">
-                          5
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">
-                            Salvează și testează
-                          </p>
-                          <p className="text-muted-foreground mt-0.5">
-                            După activare, întoarce-te aici și încearcă din nou butonul „Continuă cu Google”.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-amber-500/20">
-                      <button
-                        type="button"
-                        onClick={() => { setShowSetupGuide(false); setGoogleError(null) }}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        Am înțeles, ascunde ghidul
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {googleError?.isProviderNotEnabled && (
+            <div role="alert" className="mt-4 rounded-xl border bg-muted/40 p-4 text-sm">
+              <p className="font-medium">La acest moment, conectarea cu Google nu este disponibilă.</p>
+              <p className="mt-1 text-muted-foreground">Poți continua cu adresa de e-mail și parola mai jos.</p>
+              <Button type="button" variant="outline" className="mt-3" onClick={() => document.getElementById('email')?.focus()}>
+                Continuă cu e-mail
+              </Button>
+            </div>
+          )}
 
           {/* Generic Google error (not provider-related) */}
           <AnimatePresence>
@@ -345,7 +175,8 @@ export function LoginPage() {
                 exit={{ opacity: 0, y: -4, height: 0 }}
                 className="mt-4 overflow-hidden"
               >
-                <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive flex items-start gap-3">
+                <div role="alert"
+                  className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive flex items-start gap-3">
                   <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                   <span className="flex-1">{googleError.message}</span>
                   <button
@@ -391,7 +222,7 @@ export function LoginPage() {
                         >
                           <Icon className={`mb-2 h-4 w-4 ${selected ? 'text-primary' : 'text-muted-foreground'}`} />
                           <span className="block text-sm font-medium">{option.label}</span>
-                          <span className="block text-[11px] text-muted-foreground">{option.description}</span>
+                          <span className="block text-xs text-muted-foreground">{option.description}</span>
                         </button>
                       )
                     })}
@@ -458,7 +289,6 @@ export function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  tabIndex={-1}
                   aria-label={showPassword ? 'Ascunde parola' : 'Arată parola'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -473,6 +303,7 @@ export function LoginPage() {
                   initial={{ opacity: 0, y: -4, height: 0 }}
                   animate={{ opacity: 1, y: 0, height: 'auto' }}
                   exit={{ opacity: 0, y: -4, height: 0 }}
+                  role="alert"
                   className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive overflow-hidden"
                 >
                   {error}
@@ -484,10 +315,10 @@ export function LoginPage() {
             <Button
               type="submit"
               className="w-full h-11 gap-2"
-              disabled={isLoading}
+              disabled={isLoading || googleLoading}
             >
               {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <><Loader2 className="h-4 w-4 animate-spin" /> Se verifică datele…</>
               ) : (
                 <>
                   {isLogin ? 'Autentifică-te' : 'Creează contul'}
@@ -503,7 +334,7 @@ export function LoginPage() {
             {' '}
             <button
               type="button"
-              onClick={() => { setIsLogin(!isLogin); setError(''); setGoogleError(null); setShowSetupGuide(false) }}
+              onClick={() => { setIsLogin(!isLogin); setError(''); setGoogleError(null) }}
               className="font-medium text-primary hover:underline"
             >
               {isLogin ? 'Înregistrează-te' : 'Autentifică-te'}

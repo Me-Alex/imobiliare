@@ -70,9 +70,9 @@ export function SectionHeader({
           {Icon ? (
             <Icon aria-hidden="true" className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
           ) : null}
-          <h2 className="text-base font-semibold tracking-tight sm:text-lg">{title}</h2>
+          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>
         </div>
-        {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+        {description ? <p className="mt-2 text-base leading-7 text-muted-foreground">{description}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
@@ -108,7 +108,7 @@ export function PageSurface({
   as: Component = 'div',
 }: PageSurfaceProps) {
   return (
-    <Component className={cn('rounded-lg border', SURFACE_CLASSES[tone], className)}>
+    <Component className={cn('rounded-xl border', SURFACE_CLASSES[tone], className)}>
       {children}
     </Component>
   )

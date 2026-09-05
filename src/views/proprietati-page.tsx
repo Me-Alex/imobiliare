@@ -30,7 +30,6 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
     minArea,
     maxArea,
     virtualTourFilter,
-    setSelectedType,
     setMapViewMode,
   } = useAppStore()
 
@@ -54,7 +53,7 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
     isLoading: mapLoading,
     isError: mapError,
     refetch: refetchMap,
-  } = useProperties(mapViewMode ? mapFilters : {})
+  } = useProperties(mapFilters, { enabled: mapViewMode, allPages: true })
   const mapData = mapViewMode ? (mapProperties ?? []) : []
 
   return (
@@ -64,36 +63,10 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
         title="Proprietăți"
         description="Descoperă proprietăți verificate și filtrează rapid ofertele potrivite pentru tine."
         breadcrumb={[{ label: 'Proprietăți' }]}
-      >
-        <div className="mt-6 flex flex-wrap items-center gap-2">
-          {[
-            { label: 'Apartamente', value: 'APARTMENT' },
-            { label: 'Case', value: 'HOUSE' },
-            { label: 'Vile', value: 'VILLA' },
-            { label: 'Terenuri', value: 'LAND' },
-            { label: 'Spații comerciale', value: 'COMMERCIAL' },
-          ].map((tag) => (
-            <button
-              key={tag.value}
-              type="button"
-              onClick={() => {
-                setSelectedType(selectedType === tag.value ? '' : tag.value)
-                setMapViewMode(false)
-              }}
-              aria-pressed={selectedType === tag.value}
-              className="rounded-full border border-border/70 bg-card/80 px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-foreground aria-pressed:border-primary/40 aria-pressed:bg-primary/10 aria-pressed:text-primary"
-            >
-              {tag.label}
-            </button>
-          ))}
-        </div>
-      </PageHero>
-
-      {/* Recently Viewed */}
-      <RecentlyViewed />
+      />
 
       {/* Properties Grid */}
-      <PageContainer as="section" className="py-10 sm:py-12">
+      <PageContainer as="section" className="py-6 sm:py-8">
           <PropertyFilters onSaveSearch={onSaveSearch} />
           <div className="mt-6">
             <AnimatePresence mode="wait">
@@ -121,9 +94,7 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
                       title="Harta nu este disponibilă momentan"
                       description="Lista de proprietăți rămâne disponibilă. Poți încerca din nou fără să pierzi filtrele selectate."
                       action={(
-                        <Button variant="outline" size="sm" onClick={() => void refetchMap()}>
-                          Reîncearcă
-                        </Button>
+                        <div className="flex flex-wrap justify-center gap-2"><Button variant="outline" onClick={() => void refetchMap()}>Reîncearcă</Button><Button onClick={() => setMapViewMode(false)}>Vezi lista</Button></div>
                       )}
                     />
                   ) : (
@@ -144,6 +115,7 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
             </AnimatePresence>
           </div>
       </PageContainer>
+      <RecentlyViewed />
     </>
   )
 }

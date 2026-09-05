@@ -22,8 +22,8 @@ export function PageBreadcrumb({ items, className }: {
 
   return (
     <nav
-      className={`scroll-horizontal flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 text-xs text-muted-foreground ${className ?? 'mb-5'}`}
-      aria-label="Breadcrumb"
+      className={`scroll-horizontal flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 text-sm text-muted-foreground ${className ?? 'mb-5'}`}
+      aria-label="Fir de navigare"
     >
       <button
         type="button"
@@ -45,7 +45,7 @@ export function PageBreadcrumb({ items, className }: {
               {item.label}
             </button>
           ) : (
-            <span className="text-foreground font-medium">{item.label}</span>
+            <span aria-current="page" className="text-foreground font-medium">{item.label}</span>
           )}
         </span>
       ))}
@@ -106,7 +106,7 @@ export function PageHero({
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
             {description && (
-              <p className="mt-1.5 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
+              <p className="mt-1.5 max-w-3xl text-base leading-7 text-muted-foreground">{description}</p>
             )}
           </div>
           {children && <div className="flex shrink-0 flex-wrap items-center gap-2">{children}</div>}
@@ -118,7 +118,7 @@ export function PageHero({
   // ── variant="full" ───────────────────────────────────────────────────────
   if (variant === 'full') {
     return (
-      <section className="border-b bg-background py-8 sm:py-9">
+      <section className="border-b bg-muted/20 py-6 sm:py-8">
         <PageContainer>
           {breadcrumb && <PageBreadcrumb items={breadcrumb} />}
 
@@ -127,7 +127,7 @@ export function PageHero({
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
               {description && (
-                <p className="mt-1.5 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
+                <p className="mt-1.5 max-w-3xl text-base leading-7 text-muted-foreground">{description}</p>
               )}
             </div>
           </div>
@@ -150,7 +150,7 @@ export function PageHero({
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">{title}</h1>
               {description && (
-                <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+                <p className="mt-1 text-base text-muted-foreground">{description}</p>
               )}
             </div>
           </div>

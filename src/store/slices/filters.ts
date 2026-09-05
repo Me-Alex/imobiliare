@@ -29,6 +29,7 @@ export interface FiltersSlice {
   setMaxArea: (v: string) => void
   virtualTourFilter: 'all' | 'with' | 'without'
   setVirtualTourFilter: (v: 'all' | 'with' | 'without') => void
+  resetFilters: () => void
 }
 
 export const createFiltersSlice: StateCreator<FiltersSlice> = (set) => ({
@@ -60,4 +61,9 @@ export const createFiltersSlice: StateCreator<FiltersSlice> = (set) => ({
   setMaxArea: (v) => set({ maxArea: v }),
   virtualTourFilter: 'all',
   setVirtualTourFilter: (v) => set({ virtualTourFilter: v }),
+  resetFilters: () => set({
+    searchQuery: '', selectedZone: '', selectedType: '', priceRange: [0, 1000000],
+    rooms: 0, transaction: '', featuredOnly: false, sort: '', minArea: '', maxArea: '',
+    virtualTourFilter: 'all',
+  }),
 })
