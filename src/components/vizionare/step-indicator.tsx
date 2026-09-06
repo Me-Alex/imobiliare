@@ -24,7 +24,9 @@ export function StepIndicator({ currentStep, onStepClick }: StepIndicatorProps) 
               type="button"
               onClick={() => isClickable && onStepClick(stepNum)}
               disabled={!isClickable}
-              className="flex items-center gap-2 group"
+              aria-current={isActive ? 'step' : undefined}
+              aria-label={`Pasul ${stepNum}: ${label}`}
+              className="flex min-h-11 flex-col items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row"
             >
               <div
                 className={`
@@ -41,7 +43,7 @@ export function StepIndicator({ currentStep, onStepClick }: StepIndicatorProps) 
                 {isCompleted ? <Check className="h-4 w-4" /> : stepNum}
               </div>
               <span
-                className={`hidden sm:inline text-sm font-medium transition-colors ${
+                className={`text-xs sm:text-sm font-medium transition-colors ${
                   isActive ? 'text-foreground' : 'text-muted-foreground'
                 }`}
               >

@@ -38,7 +38,7 @@ export const PUBLIC_NAVIGATION: readonly NavigationItem[] = [
 const ACCOUNT_ITEMS: Record<string, AccountNavigationItem> = {
   dashboard: { label: 'Prezentare', page: 'dashboard', icon: LayoutDashboard, description: 'Rezumatul și prioritățile contului' },
   admin: { label: 'Administrare', page: 'admin', icon: Shield, description: 'Controlul operațiunilor platformei' },
-  crm: { label: 'CRM', page: 'crm', icon: BriefcaseBusiness, description: 'Lead-uri, follow-up-uri și conversie' },
+  crm: { label: 'Clienți', page: 'crm', icon: BriefcaseBusiness, description: 'Solicitări, contacte și următoarea acțiune' },
   'owner-dashboard': { label: 'Performanță', page: 'owner-dashboard', icon: BarChart3, description: 'Interes, feedback și recomandări' },
   'proprietatile-mele': { label: 'Proprietățile mele', page: 'proprietatile-mele', icon: Building2, description: 'Anunțuri, stare și administrare' },
   'admin-property-portfolio': { label: 'Portofoliu', page: 'proprietatile-mele', icon: Building2, description: 'Audit proprietăți, status și calitate' },
@@ -47,7 +47,7 @@ const ACCOUNT_ITEMS: Record<string, AccountNavigationItem> = {
   'programare-vizionare': { label: 'Programează', page: 'programare-vizionare', icon: CalendarPlus, description: 'Alege proprietatea și intervalul' },
   'vizionarile-mele': { label: 'Vizionări', page: 'vizionarile-mele', icon: CalendarCheck, description: 'Programări, prezență și feedback' },
   'disponibilitate-staff': { label: 'Disponibilitate', page: 'disponibilitate-staff', icon: Users, description: 'Agenda echipei și intervalele libere' },
-  'deal-room': { label: 'Tranzacții', page: 'deal-room', icon: WalletCards, description: 'Deal Room, oferte și pașii următori' },
+  'deal-room': { label: 'Tranzacții', page: 'deal-room', icon: WalletCards, description: 'Oferte, documente și pașii următori' },
   documente: { label: 'Dosar digital', page: 'documente', icon: FileText, description: 'Documente, versiuni și semnături' },
   monede: { label: 'Monede', page: 'monede', icon: CircleDollarSign, description: 'Sold, activitate și recompense' },
   profil: { label: 'Profil', page: 'profil', icon: User, description: 'Datele și preferințele contului' },
@@ -89,6 +89,16 @@ function resolveItems(order: readonly string[]): AccountNavigationItem[] {
 
 export function getAccountMenuItems(role: AccountRole): AccountNavigationItem[] {
   return resolveItems(ACCOUNT_MENU_ORDER[role])
+}
+
+export function getAccountNavigationGroups(role: AccountRole) {
+  const items = getAccountMenuItems(role)
+  const groups: { label: string; pages: PageKey[] }[] = [
+    { label: 'Activitate', pages: ['admin', 'dashboard', 'crm', 'proprietatile-mele', 'owner-dashboard', 'adauga-proprietate'] },
+    { label: 'Vizionări și tranzacții', pages: ['programare-vizionare', 'vizionarile-mele', 'disponibilitate-staff', 'deal-room', 'documente'] },
+    { label: 'Cont', pages: ['monede', 'profil'] },
+  ]
+  return groups.map(group => ({ label: group.label, items: items.filter(item => group.pages.includes(item.page)) })).filter(group => group.items.length > 0)
 }
 
 export function getWorkspaceNavigation(role: AccountRole): AccountNavigationItem[] {

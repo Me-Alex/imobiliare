@@ -856,13 +856,13 @@ export function AdminPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={(value) => openTab(value as AdminTab)}>
-          <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1.5 md:grid-cols-3 xl:grid-cols-6">
-            <TabsTrigger value="home" className="gap-2"><LayoutDashboard className="h-4 w-4" /> Acasă</TabsTrigger>
-            <TabsTrigger value="tasks" className="gap-2"><ListTodo className="h-4 w-4" /> De rezolvat {pendingWorkCount > 0 ? <Badge variant="destructive">{pendingWorkCount}</Badge> : null}</TabsTrigger>
-            <TabsTrigger value="properties" className="gap-2"><Building2 className="h-4 w-4" /> Proprietăți</TabsTrigger>
-            <TabsTrigger value="people" className="gap-2"><Users className="h-4 w-4" /> Clienți și agenți</TabsTrigger>
-            <TabsTrigger value="transactions" className="gap-2"><Handshake className="h-4 w-4" /> Tranzacții</TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2"><Settings2 className="h-4 w-4" /> Setări</TabsTrigger>
+          <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1.5 md:grid-cols-3 2xl:grid-cols-6">
+            <TabsTrigger value="home" className="min-h-11 gap-2"><LayoutDashboard className="h-4 w-4" /> Acasă</TabsTrigger>
+            <TabsTrigger value="tasks" className="min-h-11 gap-2"><ListTodo className="h-4 w-4" /> De rezolvat {pendingWorkCount > 0 ? <Badge variant="destructive">{pendingWorkCount}</Badge> : null}</TabsTrigger>
+            <TabsTrigger value="properties" className="min-h-11 gap-2"><Building2 className="h-4 w-4" /> Proprietăți</TabsTrigger>
+            <TabsTrigger value="people" className="min-h-11 gap-2"><Users className="h-4 w-4" /> Clienți și agenți</TabsTrigger>
+            <TabsTrigger value="transactions" className="min-h-11 gap-2"><Handshake className="h-4 w-4" /> Tranzacții</TabsTrigger>
+            <TabsTrigger value="settings" className="min-h-11 gap-2"><Settings2 className="h-4 w-4" /> Setări</TabsTrigger>
           </TabsList>
 
           <TabsContent value="home" className="space-y-6">

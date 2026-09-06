@@ -241,15 +241,15 @@ export function DisponibilitateStaffPage() {
     <>
       <PageHero
         icon={CalendarDays}
-        title="Disponibilitate Staff"
+        title="Disponibilitatea echipei"
         description={profile?.role === 'AGENT'
-          ? 'Gestioneaza intervalele tale orare disponibile'
-          : 'Gestioneaza intervalele orare disponibile pentru fiecare membru al echipei'}
-        breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Disponibilitate Staff' }]}
+          ? 'Alege când ești disponibil pentru vizionări.'
+          : 'Alege un coleg și adaugă intervalele libere pentru vizionări.'}
+        breadcrumb={[{ label: 'Acasa', page: 'acasa' }, { label: 'Disponibilitatea echipei' }]}
       />
 
       {/* Main Content */}
-      <section className="py-12">
+      <section className="py-6">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           {/* Staff Selector */}
           <motion.div
@@ -260,7 +260,7 @@ export function DisponibilitateStaffPage() {
           >
             <Label className="text-sm font-medium text-muted-foreground mb-3 block">
               <Users className="h-4 w-4 inline mr-1.5" />
-              {profile?.role === 'AGENT' ? 'Profil agent' : 'Selecteaza membrul staff-ului'}
+              {profile?.role === 'AGENT' ? 'Profil agent' : 'Alege un coleg'}
             </Label>
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
               {staffMembers.filter((s) => s.isActive).map((staff) => (
@@ -302,13 +302,13 @@ export function DisponibilitateStaffPage() {
             transition={{ delay: 0.15 }}
             className="glass-card rounded-xl p-6 mb-8"
           >
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <CalendarPlus className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold">Adauga Disponibilitate</h2>
+                  <h2 className="text-lg font-semibold">Adaugă un interval liber</h2>
                   <p className="text-xs text-muted-foreground">
                     pentru {selectedStaff.name}
                   </p>
@@ -316,7 +316,7 @@ export function DisponibilitateStaffPage() {
               </div>
               <Button variant="outline" size="sm" onClick={handleBulkAddWeek} className="shrink-0">
                 <CalendarRange className="h-4 w-4 mr-1.5" />
-                Toata Saptamana
+                Adaugă pentru toată săptămâna
               </Button>
             </div>
 
@@ -333,7 +333,7 @@ export function DisponibilitateStaffPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="slot-start">Ora inceput</Label>
+                <Label htmlFor="slot-start">De la ora</Label>
                 <Input
                   id="slot-start"
                   type="time"
@@ -343,7 +343,7 @@ export function DisponibilitateStaffPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="slot-end">Ora sfarsit</Label>
+                <Label htmlFor="slot-end">Până la ora</Label>
                 <Input
                   id="slot-end"
                   type="time"
@@ -357,7 +357,7 @@ export function DisponibilitateStaffPage() {
             <div className="mt-4 flex justify-end">
               <Button onClick={handleAddSlot} disabled={!date}>
                 <Plus className="h-4 w-4 mr-1.5" />
-                Adauga Slot
+                Salvează intervalul
               </Button>
             </div>
           </motion.div>
@@ -370,7 +370,7 @@ export function DisponibilitateStaffPage() {
           >
             <div className="flex items-center gap-2 mb-4">
               <Clock className="h-5 w-5 text-muted-foreground" />
-              <h2 className="text-lg font-semibold">Sloturi Programate</h2>
+              <h2 className="text-lg font-semibold">Intervale disponibile</h2>
               <Badge variant="secondary" className="ml-1">
                 {staffSlots.length}
               </Badge>

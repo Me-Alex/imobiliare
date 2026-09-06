@@ -1,5 +1,7 @@
 'use client'
 
+import { AccountHelp } from '@/components/account/account-help'
+
 import { useCallback, useEffect, useMemo, useState, type ElementType } from 'react'
 import {
   ArrowRight,
@@ -500,7 +502,7 @@ export function DealRoomPage() {
               <label className="sr-only" htmlFor="deal-selector">Selectează tranzacția</label>
               <select
                 id="deal-selector"
-                className="h-10 min-w-64 rounded-md border bg-background px-3 text-sm"
+                className="h-10 min-w-0 w-full max-w-full sm:w-64 rounded-md border bg-background px-3 text-sm"
                 value={room.id}
                 onChange={(event) => {
                   const dealId = event.target.value
@@ -520,7 +522,7 @@ export function DealRoomPage() {
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-7 sm:px-6 lg:px-8">
         <StageProgress current={room.stage} />
 
-        <DealRoomJourneyPanel journey={dealJourney} onFocus={handleJourneyFocus} />
+        <AccountHelp title="Etapele tranzacției"><DealRoomJourneyPanel journey={dealJourney} onFocus={handleJourneyFocus} /></AccountHelp>
 
         <Card className={roleAction.priority === 'high' ? 'border-amber-300/60 bg-amber-500/[0.06]' : 'border-primary/20 bg-primary/[0.03]'}>
           <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">

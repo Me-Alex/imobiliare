@@ -1,5 +1,7 @@
 'use client'
 
+import { AccountHelp } from '@/components/account/account-help'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ElementType } from 'react'
 import {
@@ -241,10 +243,10 @@ export function ProprietatileMelePage() {
         ) : (
           <>
             {portfolioGuide && (
-              <PropertyPortfolioGuidePanel
+              <AccountHelp title="Ce poți îmbunătăți la anunțuri"><PropertyPortfolioGuidePanel
                 guide={portfolioGuide}
                 onAction={handlePortfolioGuideAction}
-              />
+              /></AccountHelp>
             )}
 
             <section aria-label="Rezumat portofoliu" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -1,5 +1,7 @@
 'use client'
 
+import { AccountHelp } from '@/components/account/account-help'
+
 import { useCallback, useEffect, useMemo, useState, type ElementType } from 'react'
 import {
   Activity,
@@ -206,9 +208,9 @@ export function OwnerDashboardPage() {
                   : 'Datele ultimelor 30 de zile și următorii pași recomandați.'}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex min-w-0 gap-2">
               <label className="sr-only" htmlFor="owner-property">Selectează proprietatea</label>
-              <select id="owner-property" className="h-10 min-w-64 rounded-md border bg-background px-3 text-sm" value={property.id} onChange={(event) => setSelectedId(event.target.value)}>{snapshot.properties.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select>
+              <select id="owner-property" className="h-10 min-w-0 w-full flex-1 sm:w-64 rounded-md border bg-background px-3 text-sm" value={property.id} onChange={(event) => setSelectedId(event.target.value)}>{snapshot.properties.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select>
               <Button variant="outline" size="icon" aria-label="Reîncarcă dashboardul" onClick={() => void load()}><RefreshCw className="h-4 w-4" /></Button>
             </div>
           </div>
@@ -228,7 +230,7 @@ export function OwnerDashboardPage() {
 
         <OwnerPriorityPanel priority={ownerPriority} onAction={handleOwnerPriority} />
 
-        <OwnerJourneyPanel journey={ownerJourney} onAction={handleOwnerPriority} />
+        <AccountHelp title="Etapele vânzării și recomandări"><OwnerJourneyPanel journey={ownerJourney} onAction={handleOwnerPriority} /></AccountHelp>
 
         <div id="owner-metrics" className="grid scroll-mt-24 grid-cols-2 gap-4 lg:grid-cols-4">
           <MetricCard icon={Eye} label="Vizualizări" value={totals.views} detail="vizitatori unici/zi" tone="violet" />
@@ -237,7 +239,7 @@ export function OwnerDashboardPage() {
           <MetricCard icon={CalendarCheck} label="Vizionări" value={Math.max(totals.viewings, appointments.length)} detail={`${appointments.filter((item) => ['COMPLETED', 'DONE'].includes(String(item.status))).length} finalizate`} tone="emerald" />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
           <Card>
             <CardHeader className="pb-3"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><BarChart3 className="h-4 w-4 text-primary" /> Interes în ultimele 14 zile</CardTitle><Badge variant="secondary">{totals.views} vizualizări</Badge></div></CardHeader>
             <CardContent><MetricChart metrics={metrics} /></CardContent>
@@ -254,7 +256,7 @@ export function OwnerDashboardPage() {
           </Card>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <Card id="owner-listing-quality" className="scroll-mt-24">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-3">
@@ -525,7 +527,7 @@ function ratio(part: number, total: number, suffix: string) {
 function MetricChart({ metrics }: { metrics: PropertyMetric[] }) {
   const days = Array.from({ length: 14 }, (_, index) => { const date = new Date(); date.setDate(date.getDate() - (13 - index)); const key = date.toISOString().slice(0, 10); const row = metrics.find((item) => item.metric_date === key); return { key, label: new Intl.DateTimeFormat('ro-RO', { day: '2-digit', month: 'short' }).format(date), views: row?.views || 0, interest: (row?.favorites || 0) + (row?.inquiries || 0) } })
   const max = Math.max(1, ...days.map((day) => Math.max(day.views, day.interest)))
-  return <div><div className="flex h-56 items-end gap-2">{days.map((day) => <div key={day.key} className="group flex h-full flex-1 items-end justify-center gap-0.5" title={`${day.label}: ${day.views} vizualizări, ${day.interest} acțiuni`}><div className="w-1/2 rounded-t bg-primary/35 transition-colors group-hover:bg-primary/55" style={{ height: `${Math.max(day.views ? 6 : 1, day.views / max * 100)}%` }} /><div className="w-1/2 rounded-t bg-primary" style={{ height: `${Math.max(day.interest ? 6 : 1, day.interest / max * 100)}%` }} /></div>)}</div><div className="mt-3 flex justify-between text-[10px] text-muted-foreground"><span>{days[0].label}</span><div className="flex gap-4"><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-sm bg-primary/35" /> Vizualizări</span><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-sm bg-primary" /> Acțiuni</span></div><span>{days[days.length - 1].label}</span></div></div>
+  return <div><div className="flex h-40 items-end gap-1 sm:h-56 sm:gap-2">{days.map((day) => <div key={day.key} className="group flex h-full flex-1 items-end justify-center gap-0.5" title={`${day.label}: ${day.views} vizualizări, ${day.interest} acțiuni`}><div className="w-1/2 rounded-t bg-primary/35 transition-colors group-hover:bg-primary/55" style={{ height: `${Math.max(day.views ? 6 : 1, day.views / max * 100)}%` }} /><div className="w-1/2 rounded-t bg-primary" style={{ height: `${Math.max(day.interest ? 6 : 1, day.interest / max * 100)}%` }} /></div>)}</div><div className="mt-3 flex flex-wrap justify-between gap-2 text-[10px] text-muted-foreground"><span>{days[0].label}</span><div className="flex gap-4"><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-sm bg-primary/35" /> Vizualizări</span><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-sm bg-primary" /> Acțiuni</span></div><span>{days[days.length - 1].label}</span></div></div>
 }
 
 function MetricCard({ icon: Icon, label, value, detail, tone }: { icon: React.ElementType; label: string; value: number; detail: string; tone: 'violet' | 'rose' | 'blue' | 'emerald' }) {

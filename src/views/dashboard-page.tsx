@@ -255,7 +255,7 @@ export function DashboardPage() {
         <PageHero
           variant="simple"
           title={`Bine ai revenit, ${profile.fullName}!`}
-          description={roleDefinition.description}
+          description="Vezi activitatea recentă și alege următorul pas."
         >
           <Badge className="bg-primary/10 text-primary hover:bg-primary/10">{roleDefinition.label}</Badge>
         </PageHero>
@@ -297,15 +297,15 @@ export function DashboardPage() {
             title="Spațiul contului tău"
             description={`Acțiunile sunt adaptate profilului ${roleDefinition.label.toLowerCase()}.`}
           />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-x-6 sm:grid-cols-2">
             {actions.map((action) => (
               <button
                 key={`${action.page}-${action.label}`}
                 type="button"
                 onClick={() => navigateTo(action.page)}
-                className="glass-card glass-card-interactive group rounded-2xl p-5 text-left"
+                className="group border-b py-4 text-left hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <div className="mb-2 text-primary">
                   <action.icon className="h-5 w-5" />
                 </div>
                 <div className="flex items-center gap-2 font-semibold">
@@ -318,9 +318,9 @@ export function DashboardPage() {
           </div>
         </PageSection>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <PageSurface tone="elevated" className="p-6">
-            <div className="mb-4 flex items-center justify-between">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <PageSurface tone="elevated" className="min-w-0 p-4 sm:p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-lg font-semibold">
                 <CalendarCheck className="h-5 w-5 text-primary" />
                 {role === 'AGENT' ? 'Agenda vizionărilor' : role === 'OWNER' ? 'Solicitări recente' : 'Vizionări viitoare'}
@@ -374,7 +374,7 @@ export function DashboardPage() {
             )}
           </PageSurface>
 
-          <PageSurface tone="elevated" className="p-6">
+          <PageSurface tone="elevated" className="min-w-0 p-4 sm:p-6">
             <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
               {role === 'CLIENT' ? <Heart className="h-5 w-5 text-primary" /> : <Building2 className="h-5 w-5 text-primary" />}
               {role === 'CLIENT' ? 'Experiența ta de căutare' : 'Portofoliu și responsabilități'}

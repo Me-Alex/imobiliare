@@ -1,5 +1,7 @@
 'use client'
 
+import { AccountHelp } from '@/components/account/account-help'
+
 import { useState, useEffect, type ElementType } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -384,10 +386,10 @@ export function ProgramareVizionarePage() {
           backLabel="Înapoi la proprietăți"
         />
 
-        <ViewingSchedulingJourneyPanel
+        <AccountHelp title="Cum funcționează programarea"><ViewingSchedulingJourneyPanel
           journey={schedulingJourney}
           onSelectStep={handleStepClick}
-        />
+        /></AccountHelp>
 
         {/* Step Indicator */}
         <StepIndicator currentStep={step} onStepClick={handleStepClick} />

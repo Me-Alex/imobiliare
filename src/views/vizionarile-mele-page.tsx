@@ -1,5 +1,7 @@
 'use client'
 
+import { AccountHelp } from '@/components/account/account-help'
+
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import {
@@ -457,7 +459,7 @@ export function VizionarileMelePage() {
           variant="simple"
           title={canManage ? 'Agenda vizionărilor' : 'Vizionările mele'}
           description={canManage
-            ? 'Confirmă programările, prezența, finalizarea sau neprezentarea, cu jurnal de audit.'
+            ? 'Confirmă programările și actualizează rezultatul fiecărei vizionări.'
             : 'Gestionează programările tale de vizionare.'}
           showBackButton
           onBack={() => navigateTo('acasa')}
@@ -465,7 +467,7 @@ export function VizionarileMelePage() {
         />
 
         {agendaGuide && (
-          <ViewingAgendaGuidePanel guide={agendaGuide} onAction={handleAgendaGuideAction} />
+          <AccountHelp title="Cum gestionezi o vizionare"><ViewingAgendaGuidePanel guide={agendaGuide} onAction={handleAgendaGuideAction} /></AccountHelp>
         )}
 
         {/* Stats summary */}

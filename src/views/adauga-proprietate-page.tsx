@@ -1,5 +1,7 @@
 'use client'
 
+import { AccountHelp } from '@/components/account/account-help'
+
 import { useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
@@ -633,11 +635,11 @@ export function AdaugaProprietatePage() {
 
       <PageContainer className="pb-8">
         {publicationFlow ? (
-          <PublicationFlowOverview
+          <AccountHelp title="Pașii publicării și verificarea anunțului"><PublicationFlowOverview
             flow={publicationFlow}
             onFocusSection={(sectionId) => document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             onNavigate={navigateTo}
-          />
+          /></AccountHelp>
         ) : null}
 
         <PropertyForm

@@ -1,5 +1,7 @@
 'use client'
 
+import { AccountHelp } from '@/components/account/account-help'
+
 import { useCallback, useEffect, useMemo, useState, type ElementType } from 'react'
 import {
   ArrowRight,
@@ -437,11 +439,11 @@ export function CrmPage() {
       <header className="border-b bg-background">
         <div className="mx-auto max-w-[1600px] px-4 py-7 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div><Badge className="mb-2 border-0 bg-primary/10 text-primary hover:bg-primary/10">CRM agenți</Badge><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Pipeline comercial</h1><p className="mt-2 text-sm text-muted-foreground">Lead-uri, follow-up-uri, vizionări și rezultate într-un singur flux.</p></div>
+            <div><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Clienți și solicitări</h1><p className="mt-2 text-sm text-muted-foreground">Vezi cine așteaptă un răspuns și planifică următorul contact.</p></div>
             <div className="flex flex-wrap gap-2">
               <div className="flex rounded-md border bg-background p-1">
                 <Button type="button" variant={leadScope === 'mine' ? 'default' : 'ghost'} size="sm" onClick={() => setLeadScope('mine')}>Ale mele</Button>
-                <Button type="button" variant={leadScope === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setLeadScope('all')}>Tot CRM-ul</Button>
+                <Button type="button" variant={leadScope === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setLeadScope('all')}>Toată echipa</Button>
               </div>
               {profile.role === 'ADMIN' ? <Button variant="outline" onClick={() => void handleAutoAssign()} disabled={workingId === 'auto-assign'}>{workingId === 'auto-assign' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />} Repartizează automat</Button> : null}
               <Button variant="outline" size="icon" aria-label="Reîncarcă CRM" onClick={() => void load()}><RefreshCw className="h-4 w-4" /></Button>
@@ -458,7 +460,7 @@ export function CrmPage() {
           <Metric icon={MessageCircleWarning} label="Fără răspuns" value={metrics.unanswered} detail={`${metrics.upcoming} vizionări viitoare`} tone={metrics.unanswered ? 'rose' : 'amber'} />
         </div>
 
-        <AgentCrmWorkbenchPanel workbench={workbench} onFocus={handleWorkbenchFocus} />
+        <AccountHelp title="Ghid pentru organizarea clienților"><AgentCrmWorkbenchPanel workbench={workbench} onFocus={handleWorkbenchFocus} /></AccountHelp>
 
         <Card id="crm-priorities" className="scroll-mt-24 overflow-hidden border-primary/20">
           <CardHeader className="border-b bg-background/70 pb-4">
@@ -479,7 +481,7 @@ export function CrmPage() {
           <section id="crm-pipeline" aria-labelledby="pipeline-heading" className="min-w-0 scroll-mt-24">
             <h2 id="pipeline-heading" className="sr-only">Etapele pipeline-ului</h2>
             <div className="overflow-x-auto pb-3">
-              <div className="grid min-w-[1180px] grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                 {CRM_STAGES.map((stage) => (
                   <div key={stage} className={`rounded-2xl border border-t-4 bg-background ${STAGE_META[stage].accent}`}>
                     <div className="flex items-center justify-between border-b px-4 py-3"><div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${STAGE_META[stage].dot}`} /><h3 className="text-sm font-semibold">{STAGE_META[stage].label}</h3></div><Badge variant="secondary">{grouped[stage].length}</Badge></div>
@@ -507,10 +509,10 @@ export function CrmPage() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><BarChart3 className="h-4 w-4 text-primary" /> Sănătatea pipeline-ului</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><BarChart3 className="h-4 w-4 text-primary" /> Rezultatele contactelor</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <HealthLine label="Răspuns în SLA" value={leads.length ? Math.round((leads.length - metrics.unanswered) / leads.length * 100) : 100} />
-                <HealthLine label="Lead-uri calificate" value={leads.length ? Math.round(leads.filter((lead) => CRM_STAGES.indexOf(normalizeCrmStage(lead.status)) >= 1).length / leads.length * 100) : 0} />
+                <HealthLine label="Răspuns la timp" value={leads.length ? Math.round((leads.length - metrics.unanswered) / leads.length * 100) : 100} />
+                <HealthLine label="Clienți calificați" value={leads.length ? Math.round(leads.filter((lead) => CRM_STAGES.indexOf(normalizeCrmStage(lead.status)) >= 1).length / leads.length * 100) : 0} />
                 <HealthLine label="Conversie la ofertă" value={metrics.conversion} />
               </CardContent>
             </Card>
@@ -532,7 +534,7 @@ function LeadCard({ lead, isWorking, onAdvance, onFollowUp }: { lead: CrmLead; i
       <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground"><span>Scor {lead.score}/100</span><span>{shortDate(lead.created_at)}</span></div>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(5, Math.min(100, lead.score))}%` }} /></div>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <Button variant="outline" size="sm" onClick={onFollowUp} disabled={isWorking}><PhoneCall className="mr-1.5 h-3.5 w-3.5" /> Follow-up</Button>
+        <Button variant="outline" size="sm" onClick={onFollowUp} disabled={isWorking}><PhoneCall className="mr-1.5 h-3.5 w-3.5" /> Contactează</Button>
         <Button size="sm" onClick={onAdvance} disabled={isWorking || isLast}>{isWorking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isLast ? <CheckCircle2 className="h-3.5 w-3.5" /> : <><span>Avansează</span><ArrowRight className="ml-1 h-3.5 w-3.5" /></>}</Button>
       </div>
     </article>

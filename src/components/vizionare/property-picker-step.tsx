@@ -94,7 +94,7 @@ export function PropertyPickerStep({ selectedId, onSelect }: PropertyPickerStepP
       <p className="text-sm text-muted-foreground text-center">
         Selectează proprietatea pe care vrei să o vizionezi
       </p>
-      <div className="grid gap-3 max-h-96 overflow-y-auto pr-1 custom-scrollbar">
+      <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto pr-1 custom-scrollbar">
         {allProperties.map((prop) => {
           const isSelected = selectedId === prop.id
           return (
@@ -105,14 +105,14 @@ export function PropertyPickerStep({ selectedId, onSelect }: PropertyPickerStepP
               whileTap={{ scale: 0.99 }}
               onClick={() => onSelect(prop)}
               className={`
-                w-full text-left rounded-xl border-2 p-4 transition-all duration-200
+                min-w-0 w-full text-left rounded-xl border-2 p-3 sm:p-4 transition-all duration-200
                 ${isSelected
                   ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
                   : 'border-border hover:border-primary/40 hover:bg-muted/50'
                 }
               `}
             >
-              <div className="flex gap-4">
+              <div className="flex gap-3 sm:gap-4">
                 {prop.coverUrl ? (
                   <div className="w-20 h-20 rounded-lg bg-muted flex-shrink-0 overflow-hidden">
                     <img
@@ -133,7 +133,7 @@ export function PropertyPickerStep({ selectedId, onSelect }: PropertyPickerStepP
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <h4 className="font-semibold text-sm leading-tight truncate">{prop.title}</h4>
+                    <h4 className="min-w-0 font-semibold text-sm leading-tight line-clamp-2">{prop.title}</h4>
                     {isSelected && (
                       <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
                         <Check className="h-3 w-3 text-primary-foreground" />
@@ -148,7 +148,7 @@ export function PropertyPickerStep({ selectedId, onSelect }: PropertyPickerStepP
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
                     {prop.price && <span className="font-medium text-foreground">{prop.price} {prop.currency}</span>}
                     {prop.areaSqm && <span>{prop.areaSqm} m²</span>}
                     {prop.rooms && <span>{prop.rooms} cam.</span>}

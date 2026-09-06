@@ -1,5 +1,7 @@
 'use client'
 
+import { AccountHelp } from '@/components/account/account-help'
+
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
@@ -291,9 +293,9 @@ function MonedeAuthenticatedPage() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-muted/15 pb-14">
       <section className="relative overflow-hidden border-b bg-card">
-        <div className="absolute inset-0 dots-pattern opacity-50" />
-        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-300/15 blur-3xl" />
-        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+
+
+        <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="grid items-end gap-8 lg:grid-cols-[1fr_auto]">
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
               <div className="mb-4 flex items-center gap-3">
@@ -308,7 +310,7 @@ function MonedeAuthenticatedPage() {
                 </div>
               </div>
               <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
-                Soldul și istoricul sunt legate de contul tău. Monedele se acordă o singură dată pentru acțiunile eligibile și nu pot fi modificate din browser.
+                Vezi soldul, alege o recompensă sau verifică istoricul monedelor.
               </p>
             </motion.div>
 
@@ -345,13 +347,13 @@ function MonedeAuthenticatedPage() {
           </div>
         )}
 
-        <RoleCoinsOverview guidance={guidance} onNavigate={navigateTo} />
+        <AccountHelp title="Cum câștigi și folosești monedele"><RoleCoinsOverview guidance={guidance} onNavigate={navigateTo} /></AccountHelp>
 
         <Tabs value={tab} onValueChange={setTab} className="space-y-7">
           <TabsList className="grid h-auto w-full grid-cols-3 p-1 sm:w-fit sm:min-w-[28rem]">
             <TabsTrigger value="panou" className="gap-2 py-2.5">
               <Coins className="h-4 w-4" />
-              <span>Panou</span>
+              <span>Sold</span>
             </TabsTrigger>
             <TabsTrigger value="recompense" className="gap-2 py-2.5">
               <Gift className="h-4 w-4" />

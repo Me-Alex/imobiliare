@@ -1,5 +1,7 @@
 'use client'
 
+import { AccountHelp } from '@/components/account/account-help'
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ElementType } from 'react'
 import { flushSync } from 'react-dom'
@@ -674,11 +676,11 @@ export function DocumentePage() {
             </Card>
 
             {dossierGuide && (
-              <DocumentDossierGuidePanel
+              <AccountHelp title="Ghidul documentelor necesare"><DocumentDossierGuidePanel
                 guide={dossierGuide}
                 focusedTarget={focusedDocumentTarget}
                 onAction={handleQuickAction}
-              />
+              /></AccountHelp>
             )}
 
             {flowSummary && (
