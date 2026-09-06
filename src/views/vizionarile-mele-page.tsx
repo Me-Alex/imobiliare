@@ -8,7 +8,6 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   CalendarDays,
-  Clock,
   FileSignature,
   User,
   CalendarCheck,
@@ -18,6 +17,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -197,6 +197,8 @@ export function VizionarileMelePage() {
   const [vizionari, setVizionari] = useState<Vizionare[]>([])
   const [dataLoading, setDataLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('active')
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   // Feedback dialog state
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -204,6 +206,8 @@ export function VizionarileMelePage() {
   const [cancelRequest, setCancelRequest] = useState<{ id: string; actor: 'client' | 'agency' } | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [cancelSubmitting, setCancelSubmitting] = useState(false)
+  const [rescheduleRequest, setRescheduleRequest] = useState<Vizionare | null>(null)
+  const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false)
 
   const refreshViewings = useCallback(async () => {
     if (!user) return
@@ -305,6 +309,7 @@ export function VizionarileMelePage() {
   }, [feedbackVizionare, refreshViewings])
 
   const handleReschedule = useCallback(async (v: Vizionare) => {
+    setRescheduleSubmitting(true)
     try {
       const activeAppointment = v.status === 'pending' || v.status === 'confirmed'
       if (activeAppointment) {
@@ -324,6 +329,7 @@ export function VizionarileMelePage() {
           saveToLS(LS_KEYS.STAFF_AVAILABILITY, slots)
         }
       }
+      setRescheduleRequest(null)
       setVizionareProperty(v.propertyId, v.propertyTitle)
       navigateTo('programare-vizionare')
       toast.info('Reprogramare', {
@@ -336,7 +342,13 @@ export function VizionarileMelePage() {
         description: error instanceof Error ? error.message : undefined,
       })
     }
+    finally { setRescheduleSubmitting(false) }
   }, [setVizionareProperty, navigateTo])
+
+  const requestReschedule = (viewing: Vizionare) => {
+    if (['pending', 'confirmed'].includes(viewing.status)) setRescheduleRequest(viewing)
+    else void handleReschedule(viewing)
+  }
 
   const runOperationalAction = useCallback(async (
     id: string,
@@ -354,6 +366,14 @@ export function VizionarileMelePage() {
     }
   }, [refreshViewings])
 
+  const matchesViewing = (viewing: Vizionare) => {
+    const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('ro')
+    return normalize(`${viewing.propertyTitle} ${viewing.staffName} ${viewing.date}`).includes(normalize(search.trim()))
+      && (statusFilter === 'all' || viewing.status === statusFilter)
+  }
+  const visibleActive = activeVizionari.filter(matchesViewing)
+  const visibleHistory = historyVizionari.filter(matchesViewing)
+
   const canManage = profile?.role === 'AGENT' || profile?.role === 'ADMIN'
   const agendaGuide = useMemo(
     () => profile
@@ -367,6 +387,8 @@ export function VizionarileMelePage() {
   )
 
   const handleAgendaGuideAction = useCallback((action: ViewingAgendaAction) => {
+    setStatusFilter('all')
+    setSearch('')
     if (action.target === 'schedule') {
       navigateTo('programare-vizionare')
       return
@@ -464,34 +486,31 @@ export function VizionarileMelePage() {
           showBackButton
           onBack={() => navigateTo('acasa')}
           backLabel="Înapoi"
-        />
+        >{profile?.role === 'CLIENT' && <Button className="min-h-11 gap-2" onClick={() => navigateTo('programare-vizionare')}><CalendarDays className="h-4 w-4" />Programează o vizionare</Button>}</PageHero>
 
         {agendaGuide && (
           <AccountHelp title="Cum gestionezi o vizionare"><ViewingAgendaGuidePanel guide={agendaGuide} onAction={handleAgendaGuideAction} /></AccountHelp>
         )}
 
-        {/* Stats summary */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <section aria-label="Cum decurge vizionarea" className="mb-6 grid grid-cols-1 gap-4 border-y py-5 sm:grid-cols-3">
           {[
-            { label: 'Active', count: activeVizionari.length, icon: CalendarCheck, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' },
-            { label: 'În așteptare', count: activeVizionari.filter(v => v.status === 'pending').length, icon: Clock, color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' },
-            { label: 'Confirmate / prezenți', count: activeVizionari.filter(v => v.status === 'confirmed' || v.status === 'checked_in').length, icon: CalendarDays, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' },
-            { label: 'Istoric', count: historyVizionari.length, icon: CalendarX2, color: 'text-muted-600 bg-muted/50' },
-          ].map(stat => (
-            <PageSurface key={stat.label} className="p-3 text-center sm:p-4">
-              <div className={`mx-auto w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${stat.color}`}>
-                <stat.icon className="h-4 w-4" />
-              </div>
-              <p className="text-xl font-bold">{stat.count}</p>
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
-            </PageSurface>
-          ))}
+            ['1', 'Programare', 'Alegi data; agentul confirmă intervalul.'],
+            ['2', 'Vizionare', 'Vă întâlniți și agentul confirmă prezența.'],
+            ['3', 'Decizia ta', 'Lași feedback și, dacă dorești, continui tranzacția.'],
+          ].map(([number, title, description]) => <div key={number} className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{number}</span><div><h2 className="text-sm font-semibold">{title}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p></div></div>)}
+        </section>
+        <div className="mb-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
+          <div><Label htmlFor="viewing-search">Caută o vizionare</Label><Input id="viewing-search" className="mt-2 min-h-11" value={search} onChange={event => setSearch(event.target.value)} placeholder="Proprietate, agent sau dată" /></div>
+          <div><Label htmlFor="viewing-status">Stare</Label><select id="viewing-status" value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm">
+            <option value="all">Toate stările</option>
+            {(activeTab === 'active' ? [['pending', 'În așteptare'], ['confirmed', 'Confirmată'], ['checked_in', 'Prezență confirmată']] : [['completed', 'Finalizată'], ['no_show', 'Neprezentare'], ['cancelled_by_client', 'Anulată de client'], ['cancelled_by_agent', 'Anulată de agenție'], ['cancelled', 'Anulată']]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select></div>
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full mb-6">
-            <TabsTrigger value="active" className="flex-1 gap-1.5">
+        <Tabs value={activeTab} onValueChange={value => { setActiveTab(value); setStatusFilter("all") }}>
+          <TabsList className="w-full h-auto mb-6">
+            <TabsTrigger value="active" className="min-h-11 flex-1 gap-1.5">
               <CalendarDays className="h-3.5 w-3.5 hidden sm:block" />
               Vizionări active
               {activeVizionari.length > 0 && (
@@ -500,7 +519,7 @@ export function VizionarileMelePage() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex-1 gap-1.5">
+            <TabsTrigger value="history" className="min-h-11 flex-1 gap-1.5">
               <CalendarX2 className="h-3.5 w-3.5 hidden sm:block" />
               Istoric
               {historyVizionari.length > 0 && (
@@ -514,9 +533,9 @@ export function VizionarileMelePage() {
           {/* Active Tab */}
           <TabsContent value="active">
             <AnimatePresence mode="popLayout">
-              {activeVizionari.length > 0 ? (
+              {visibleActive.length > 0 ? (
                 <div className="space-y-3">
-                  {activeVizionari.map((v) => (
+                  {visibleActive.map((v) => (
                     <VizionareCard
                       key={v.id}
                       vizionare={v}
@@ -524,7 +543,7 @@ export function VizionarileMelePage() {
                       currentUserId={user.id}
                       onCancel={(id) => requestCancellation(id, 'client')}
                       onAddFeedback={handleAddFeedback}
-                      onReschedule={handleReschedule}
+                      onReschedule={requestReschedule}
                       onConfirm={(id) => void runOperationalAction(id, () => confirmViewing(id), 'Programarea a fost confirmată.')}
                       onCheckIn={(id) => void runOperationalAction(id, () => checkInViewing(id), 'Prezența clientului a fost confirmată.')}
                       onComplete={(id) => void runOperationalAction(id, () => completeViewing(id), 'Vizionarea a fost finalizată. Fișa poate fi generată.')}
@@ -537,14 +556,14 @@ export function VizionarileMelePage() {
                 <PageState
                   compact
                   icon={CalendarCheck}
-                  title="Nu ai vizionări active"
-                  description="Programează o vizionare direct din catalogul de proprietăți."
-                  action={!canManage ? <Button variant="outline" size="sm" onClick={() => navigateTo('proprietati')}>Vezi proprietățile</Button> : undefined}
+                  title={activeVizionari.length ? "Nicio vizionare pentru aceste filtre" : "Nu ai vizionări active"}
+                  description={activeVizionari.length ? "Schimbă căutarea sau alege toate stările." : "Alege o proprietate și programează prima vizionare."}
+                  action={search || statusFilter !== 'all' ? <Button variant="outline" onClick={() => { setSearch(''); setStatusFilter('all') }}>Resetează filtrele</Button> : !canManage ? <Button variant="outline" size="sm" onClick={() => navigateTo('proprietati')}>Vezi proprietățile</Button> : undefined}
                 />
               )}
             </AnimatePresence>
 
-            {activeVizionari.length > 0 && !canManage && (
+            {activeVizionari.length > 0 && profile?.role === 'CLIENT' && (
               <div className="mt-6 text-center">
                 <Button
                   variant="outline"
@@ -561,13 +580,13 @@ export function VizionarileMelePage() {
           {/* History Tab */}
           <TabsContent value="history">
             <AnimatePresence mode="popLayout">
-              {historyVizionari.length > 0 ? (
+              {visibleHistory.length > 0 ? (
                 <div className="relative pl-6">
                   {/* Timeline line */}
                   <div className="absolute left-[5px] top-2 bottom-2 w-0.5 bg-border" />
 
                   <div className="space-y-4">
-                    {historyVizionari.map((v) => (
+                    {visibleHistory.map((v) => (
                       <div key={v.id} className="relative">
                         <TimelineDot status={v.status} />
                         <VizionareCard
@@ -576,7 +595,7 @@ export function VizionarileMelePage() {
                           currentUserId={user.id}
                           onCancel={(id) => requestCancellation(id, 'client')}
                           onAddFeedback={handleAddFeedback}
-                          onReschedule={handleReschedule}
+                          onReschedule={requestReschedule}
                           onConfirm={(id) => void runOperationalAction(id, () => confirmViewing(id), 'Programarea a fost confirmată.')}
                           onCheckIn={(id) => void runOperationalAction(id, () => checkInViewing(id), 'Prezența clientului a fost confirmată.')}
                           onComplete={(id) => void runOperationalAction(id, () => completeViewing(id), 'Vizionarea a fost finalizată. Fișa poate fi generată.')}
@@ -591,8 +610,9 @@ export function VizionarileMelePage() {
                 <PageState
                   compact
                   icon={Inbox}
-                  title="Istoricul este gol"
-                  description="Vizionările finalizate sau anulate vor apărea aici."
+                  title={historyVizionari.length ? "Nicio vizionare pentru aceste filtre" : "Istoricul este gol"}
+                  action={search || statusFilter !== 'all' ? <Button variant="outline" onClick={() => { setSearch(''); setStatusFilter('all') }}>Resetează filtrele</Button> : undefined}
+                  description={historyVizionari.length ? "Schimbă căutarea sau alege toate stările." : "Vizionările finalizate sau anulate vor apărea aici."}
                 />
               )}
             </AnimatePresence>
@@ -656,6 +676,14 @@ export function VizionarileMelePage() {
               {cancelSubmitting ? 'Se anulează…' : 'Confirmă anularea'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(rescheduleRequest)} onOpenChange={open => { if (!open && !rescheduleSubmitting) setRescheduleRequest(null) }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Schimbi programarea?</DialogTitle><DialogDescription>Programarea actuală va fi anulată și intervalul va fi eliberat. Vei alege apoi o altă dată; noul interval nu este rezervat până nu trimiți o nouă solicitare.</DialogDescription></DialogHeader>
+          <p className="text-sm font-medium">{rescheduleRequest?.propertyTitle} · {rescheduleRequest?.date}, {rescheduleRequest?.startTime}</p>
+          <DialogFooter><Button variant="outline" disabled={rescheduleSubmitting} onClick={() => setRescheduleRequest(null)}>Păstrează programarea</Button><Button disabled={rescheduleSubmitting} className="h-auto min-h-11 whitespace-normal" onClick={() => { if (rescheduleRequest) void handleReschedule(rescheduleRequest) }}>{rescheduleSubmitting ? 'Se pregătește…' : 'Anulează și alege o altă dată'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

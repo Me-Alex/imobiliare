@@ -81,8 +81,6 @@ export function VizionareCard({
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'AH'
-  const isCancelled = ['cancelled', 'cancelled_by_client', 'cancelled_by_agent'].includes(vizionare.status)
-  const isPast = vizionare.status === 'completed' || vizionare.status === 'no_show' || isCancelled
   const isActive = ['pending', 'confirmed', 'checked_in'].includes(vizionare.status)
   const isCompleted = vizionare.status === 'completed'
   const hasFeedback = typeof vizionare.rating === 'number' && vizionare.rating > 0
@@ -151,12 +149,10 @@ export function VizionareCard({
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.2 }}
     >
-      <Card className={`glass-card border-0 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md ${
-        isPast ? 'opacity-75' : ''
-      }`}>
+      <Card className="gap-0 overflow-hidden border bg-card py-0 shadow-none">
         <CardContent className="p-4 sm:p-5">
           {/* Header row */}
-          <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-3 min-w-0">
               <Avatar className="h-10 w-10 flex-shrink-0">
                 <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
@@ -164,11 +160,11 @@ export function VizionareCard({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <h4 className="font-semibold text-sm truncate">{vizionare.propertyTitle}</h4>
+                <h2 className="font-semibold text-base leading-snug">{vizionare.propertyTitle}</h2>
                 <p className="text-xs text-muted-foreground">{vizionare.staffName}</p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
               {isCompleted && hasFeedback && (
                 <Badge
                   variant="outline"
@@ -195,7 +191,7 @@ export function VizionareCard({
           </div>
 
           {/* Date & Time */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-muted/40 p-3 text-sm mb-4">
             <div className="flex items-center gap-1.5">
               <CalendarDays className="h-3.5 w-3.5" />
               <span>{formatDateRO(vizionare.date)}</span>
@@ -252,9 +248,7 @@ export function VizionareCard({
               guidance.tone === 'neutral' && 'border-border bg-muted/35',
             )}
           >
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-              Pasul următor
-            </p>
+
             <p className="text-sm font-semibold text-foreground">{guidance.title}</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{guidance.description}</p>
           </div>
@@ -263,7 +257,7 @@ export function VizionareCard({
             {guidance.action !== 'none' && (
               <Button
                 size="sm"
-                className="h-9 flex-1 gap-1.5 text-xs sm:flex-none"
+                className="min-h-11 h-auto flex-1 gap-2 whitespace-normal text-sm sm:flex-none"
                 onClick={() => handlePrimaryAction(guidance.action)}
               >
                 <GuidanceIcon className="h-3.5 w-3.5" />
@@ -272,11 +266,11 @@ export function VizionareCard({
               </Button>
             )}
 
-            {canClientManage && isActive && (
+            {canClientManage && ['pending', 'confirmed'].includes(vizionare.status) && (
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 gap-1.5 text-xs"
+                className="min-h-11 gap-2 text-sm"
                 onClick={() => onReschedule(vizionare)}
               >
                 <CalendarClock className="h-3.5 w-3.5" />
@@ -297,7 +291,7 @@ export function VizionareCard({
             )}
 
             {canManage && isCompleted && vizionare.wouldProceed === true && (
-              <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs" onClick={handleDealRoom}>
+              <Button variant="outline" size="sm" className="min-h-11 gap-2 text-sm" onClick={handleDealRoom}>
                 <WalletCards className="h-3.5 w-3.5" />
                 Continuă tranzacția
               </Button>
@@ -309,7 +303,7 @@ export function VizionareCard({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="ml-auto h-9 w-9"
+                    className="ml-auto h-11 w-11"
                     aria-label="Mai multe acțiuni"
                   >
                     <MoreHorizontal className="h-4 w-4" />

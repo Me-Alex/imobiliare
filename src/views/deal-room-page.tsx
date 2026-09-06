@@ -9,7 +9,6 @@ import {
   CalendarCheck,
   Check,
   CheckCircle2,
-  Circle,
   Clock3,
   FileCheck2,
   FileSignature,
@@ -33,6 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
@@ -226,6 +226,13 @@ function DealRoomJourneyPanel({
 export function DealRoomPage() {
   const { user, profile, loading: authLoading } = useAuth()
   const navigateTo = useAppStore((state) => state.navigateTo)
+  const [section, setSection] = useState('overview')
+  const [focusRequest, setFocusRequest] = useState<{ id: string } | null>(null)
+  useEffect(() => {
+    if (!focusRequest) return
+    const frame = requestAnimationFrame(() => document.getElementById(focusRequest.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    return () => cancelAnimationFrame(frame)
+  }, [section, focusRequest])
   const [rooms, setRooms] = useState<DealRoom[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -385,7 +392,8 @@ export function DealRoomPage() {
       documents: 'deal-documents',
       'next-step': 'deal-next-step',
     }
-    document.getElementById(targetId[target])?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setSection(target === 'offers' ? 'offers' : target === 'documents' ? 'documents' : target === 'next-step' ? 'next' : 'overview')
+    setFocusRequest({ id: targetId[target] })
   }
 
   const handleRoleAction = () => {
@@ -393,9 +401,7 @@ export function DealRoomPage() {
       handleOpenDocuments('primary')
       return
     }
-    document
-      .getElementById(roleAction.offerId ? 'deal-offers' : 'deal-next-step')
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    handleJourneyFocus(roleAction.offerId ? 'offers' : 'next-step')
   }
 
   const handleOffer = async () => {
@@ -488,11 +494,10 @@ export function DealRoomPage() {
   return (
     <div className="min-h-screen bg-muted/20">
       <div className="border-b bg-background">
-        <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                <Badge className="border-0 bg-primary/10 text-primary hover:bg-primary/10">Deal Room</Badge>
                 <StatusBadge status={room.status} />
               </div>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{room.title}</h1>
@@ -507,6 +512,7 @@ export function DealRoomPage() {
                 onChange={(event) => {
                   const dealId = event.target.value
                   const selectedRoom = rooms.find((item) => item.id === dealId)
+                  setSection('overview')
                   setSelectedId(dealId)
                   selectDealRoom(dealId, selectedRoom?.deal_appointments?.[0]?.appointment_id)
                 }}
@@ -519,42 +525,37 @@ export function DealRoomPage() {
         </div>
       </div>
 
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-7 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
         <StageProgress current={room.stage} />
 
-        <AccountHelp title="Etapele tranzacției"><DealRoomJourneyPanel journey={dealJourney} onFocus={handleJourneyFocus} /></AccountHelp>
-
-        <Card className={roleAction.priority === 'high' ? 'border-amber-300/60 bg-amber-500/[0.06]' : 'border-primary/20 bg-primary/[0.03]'}>
+        <Card className={roleAction.priority === 'high' ? 'py-0 border-amber-300/60 bg-amber-500/[0.06]' : 'py-0 border-primary/20 bg-primary/[0.03]'}>
           <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-start gap-4">
-              <span className={roleAction.state === 'blocked'
-                ? 'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-500/10 text-red-700 dark:text-red-300'
-                : roleAction.priority === 'high'
-                  ? 'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                  : 'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary'}
-              >
-                {roleAction.page === 'documente' ? <FileSignature className="h-5 w-5" /> : <ArrowRight className="h-5 w-5" />}
-              </span>
               <div className="min-w-0">
-                <Badge variant={roleAction.priority === 'high' ? 'destructive' : 'secondary'} className="mb-2">
-                  {roleAction.state === 'blocked' ? 'Blocaj' : roleAction.state === 'waiting' ? 'Asteapta' : roleAction.state === 'complete' ? 'Gata' : 'Prioritatea ta'}
-                </Badge>
                 <h2 className="text-lg font-semibold tracking-tight">{roleAction.title}</h2>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{roleAction.description}</p>
               </div>
             </div>
             {roleAction.state !== 'complete' ? (
               <Button className="shrink-0 gap-2" variant={roleAction.priority === 'high' ? 'default' : 'outline'} onClick={handleRoleAction}>
-                {roleAction.page === 'documente' ? 'Deschide dosarul' : 'Vezi in Deal Room'}
+                {roleAction.page === 'documente' ? 'Deschide dosarul' : roleAction.offerId ? 'Vezi oferta' : 'Vezi următorul pas'}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             ) : null}
           </CardContent>
         </Card>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
+        <Tabs value={section} onValueChange={setSection} className="gap-5">
+          <TabsList aria-label="Secțiunile tranzacției" className="grid h-auto w-full grid-cols-3 gap-1 p-1 sm:grid-cols-5">
+            <TabsTrigger value="overview" className="min-h-12 gap-2 whitespace-normal px-2"><CalendarCheck className="hidden h-4 w-4 sm:block" />Vizionare</TabsTrigger>
+            <TabsTrigger value="documents" className="min-h-12 gap-2 whitespace-normal px-2"><FileText className="hidden h-4 w-4 sm:block" />Documente</TabsTrigger>
+            <TabsTrigger value="offers" className="min-h-12 gap-2 whitespace-normal px-2"><HandCoins className="hidden h-4 w-4 sm:block" />Oferte</TabsTrigger>
+            <TabsTrigger value="next" className="min-h-12 gap-2 whitespace-normal px-2"><ArrowRight className="hidden h-4 w-4 sm:block" />Pașii următori</TabsTrigger>
+            <TabsTrigger value="activity" className="min-h-12 gap-2 whitespace-normal px-2"><History className="hidden h-4 w-4 sm:block" />Activitate</TabsTrigger>
+          </TabsList>
+          <TabsContent value="overview" forceMount className="space-y-4 data-[state=inactive]:hidden">
+            <div><h2 className="text-xl font-semibold">Vizionarea și participanții</h2><p className="mt-1 text-sm text-muted-foreground">Verifică programarea și persoanele implicate în această tranzacție.</p></div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Card id="deal-viewing" className="scroll-mt-24">
                 <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><CalendarCheck className="h-4 w-4 text-primary" /> Vizionare și prezență</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
@@ -589,7 +590,9 @@ export function DealRoomPage() {
                 </CardContent>
               </Card>
             </div>
-
+          </TabsContent>
+          <TabsContent value="documents" forceMount className="space-y-4 data-[state=inactive]:hidden">
+            <div><h2 className="text-xl font-semibold">Documentele tranzacției</h2><p className="mt-1 text-sm text-muted-foreground">Vezi ce lipsește și continuă completarea sau semnarea în dosarul digital.</p></div>
             <Card id="deal-documents" className="scroll-mt-24">
               <CardHeader className="pb-3">
                 <div className="flex flex-wrap items-end justify-between gap-3">
@@ -636,7 +639,9 @@ export function DealRoomPage() {
                 <Button variant="outline" className="md:col-span-2" onClick={() => handleOpenDocuments('archive')}><FileSignature className="mr-2 h-4 w-4" /> Deschide dosarul complet și versiunile</Button>
               </CardContent>
             </Card>
-
+          </TabsContent>
+          <TabsContent value="offers" forceMount className="space-y-4 data-[state=inactive]:hidden">
+            <div><h2 className="text-xl font-semibold">Negocierea ofertei</h2><p className="mt-1 text-sm text-muted-foreground">Consultă oferta curentă, răspunde sau propune o nouă valoare.</p></div>
             <Card id="deal-offers" className="scroll-mt-24">
               <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><HandCoins className="h-4 w-4 text-primary" /> Ofertă și contraofertă</CardTitle></CardHeader>
               <CardContent>
@@ -652,9 +657,9 @@ export function DealRoomPage() {
                     </div>
                     {decisionActions.length > 0 ? (
                       <div className="mt-4 space-y-3">
-                        <Textarea value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} placeholder="Nota optionala pentru jurnalul negocierii" rows={2} />
+                        <Textarea value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} aria-label="Notă pentru răspuns (opțional)" placeholder="Notă pentru răspuns (opțional)" rows={2} />
                         <div className="flex flex-wrap gap-2">
-                          {decisionActions.includes('ACCEPTED') ? <Button className="gap-2" onClick={() => void handleOfferDecision('ACCEPTED')} disabled={saving}><CheckCircle2 className="h-4 w-4" /> Accepta</Button> : null}
+                          {decisionActions.includes('ACCEPTED') ? <Button className="gap-2" onClick={() => void handleOfferDecision('ACCEPTED')} disabled={saving}><CheckCircle2 className="h-4 w-4" /> Acceptă oferta</Button> : null}
                           {decisionActions.includes('REJECTED') ? <Button variant="outline" className="gap-2" onClick={() => void handleOfferDecision('REJECTED')} disabled={saving}><XCircle className="h-4 w-4" /> Respinge</Button> : null}
                           {decisionActions.includes('WITHDRAWN') ? <Button variant="outline" className="gap-2" onClick={() => void handleOfferDecision('WITHDRAWN')} disabled={saving}><Undo2 className="h-4 w-4" /> Retrage</Button> : null}
                         </div>
@@ -662,7 +667,7 @@ export function DealRoomPage() {
                     ) : null}
                   </div>
                 ) : null}
-                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1fr)_320px]">
                   <div className="space-y-3">
                     {offers.length === 0 ? <EmptyLine text="Nu a fost depusă nicio ofertă." /> : offers.map((offer) => (
                       <div key={offer.id} className="flex items-center gap-4 rounded-xl border p-4">
@@ -675,16 +680,16 @@ export function DealRoomPage() {
                   <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
                     <Label htmlFor="deal-offer">{offerKind === 'COUNTER_OFFER' ? 'Valoare contraofertă' : activeOffer ? 'Valoare ofertă revizuită' : 'Valoare ofertă'}</Label>
                     <Input id="deal-offer" type="number" min="1" value={offerAmount} onChange={(event) => setOfferAmount(event.target.value)} placeholder="Ex. 145000" disabled={!canSendOffer || saving} />
-                    <Textarea value={offerNotes} onChange={(event) => setOfferNotes(event.target.value)} placeholder="Condiții, termen de valabilitate, avans…" rows={3} disabled={!canSendOffer || saving} />
+                    <Textarea aria-label="Condițiile ofertei (opțional)" value={offerNotes} onChange={(event) => setOfferNotes(event.target.value)} placeholder="Condiții, termen de valabilitate, avans…" rows={3} disabled={!canSendOffer || saving} />
                     {!canSendOffer ? <p className="text-xs text-muted-foreground">Asteapta actiunea celeilalte parti sau foloseste butoanele pentru oferta activa.</p> : null}
                     <Button className="w-full" onClick={() => void handleOffer()} disabled={saving || !canSendOffer}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}{offerButtonLabel}</Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          </div>
-
-          <aside className="space-y-6">
+          </TabsContent>
+          <TabsContent value="next" forceMount className="space-y-4 data-[state=inactive]:hidden">
+            <div><h2 className="text-xl font-semibold">Cine face următorul pas</h2><p className="mt-1 text-sm text-muted-foreground">Urmărește acțiunea, responsabilul și termenul stabilit.</p></div>
             <Card id="deal-next-step" className="scroll-mt-24 border-primary/20 bg-primary/[0.03]">
               <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><ArrowRight className="h-4 w-4 text-primary" /> Următorul pas</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -711,9 +716,11 @@ export function DealRoomPage() {
                 )}
               </CardContent>
             </Card>
-
+          </TabsContent>
+          <TabsContent value="activity" forceMount className="space-y-4 data-[state=inactive]:hidden">
+            <div><h2 className="text-xl font-semibold">Istoricul tranzacției</h2><p className="mt-1 text-sm text-muted-foreground">Modificările recente, în ordine de la cea mai nouă.</p></div>
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><History className="h-4 w-4 text-primary" /> Jurnal complet</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><History className="h-4 w-4 text-primary" /> Activitate recentă</CardTitle></CardHeader>
               <CardContent className="space-y-0">
                 {events.length === 0 ? <EmptyLine text="Jurnalul va apărea aici." /> : events.slice(0, 12).map((event, index) => (
                   <div key={event.id} className="relative flex gap-3 pb-5">
@@ -724,18 +731,33 @@ export function DealRoomPage() {
                 ))}
               </CardContent>
             </Card>
-          </aside>
-        </div>
+          </TabsContent>
+        </Tabs>
+
+        <AccountHelp title="Etapele tranzacției"><DealRoomJourneyPanel journey={dealJourney} onFocus={handleJourneyFocus} /></AccountHelp>
       </main>
     </div>
   )
 }
 
 function StageProgress({ current }: { current: DealStage }) {
-  const currentIndex = DEAL_STAGES.indexOf(current)
-  return (
-    <Card><CardContent className="overflow-x-auto p-4 sm:p-5"><div className="flex min-w-[700px] items-center">{DEAL_STAGES.map((stage, index) => { const complete = index < currentIndex; const active = index === currentIndex; return <div key={stage} className="flex flex-1 items-center last:flex-none"><div className="flex flex-col items-center gap-2"><div className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${complete ? 'border-primary bg-primary text-primary-foreground' : active ? 'border-primary bg-background text-primary' : 'border-border bg-muted text-muted-foreground'}`}>{complete ? <Check className="h-4 w-4" /> : active ? <Circle className="h-3 w-3 fill-current" /> : index + 1}</div><span className={`text-xs font-medium ${active ? 'text-primary' : 'text-muted-foreground'}`}>{STAGE_LABELS[stage]}</span></div>{index < DEAL_STAGES.length - 1 ? <div className={`mx-2 h-0.5 flex-1 ${index < currentIndex ? 'bg-primary' : 'bg-border'}`} /> : null}</div> })}</div></CardContent></Card>
-  )
+  const path = DEAL_STAGES.filter(stage => stage !== 'CLOSED_LOST')
+  const closedWithoutSale = current === 'CLOSED_LOST'
+  const currentIndex = path.findIndex(stage => stage === current)
+  return <section aria-label="Progresul tranzacției" className="rounded-xl border bg-card p-4 sm:p-5">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <h2 className="font-semibold">{closedWithoutSale ? 'Tranzacție închisă fără finalizare' : `Etapa curentă: ${STAGE_LABELS[current]}`}</h2>
+      {!closedWithoutSale && <span className="text-sm text-muted-foreground">{currentIndex + 1} din {path.length} etape</span>}
+    </div>
+    <ol className="grid grid-cols-3 gap-2 lg:grid-cols-6">
+      {path.map((stage, index) => <li key={stage} aria-current={stage === current ? 'step' : undefined} className={`flex items-center gap-2 rounded-lg px-1 py-2 text-xs sm:text-sm ${stage === current ? 'bg-primary/10 font-semibold text-primary' : 'text-muted-foreground'}`}>
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs ${!closedWithoutSale && index < currentIndex ? 'border-primary bg-primary text-primary-foreground' : ''}`}>
+          {!closedWithoutSale && index < currentIndex ? <Check className="h-4 w-4" aria-hidden="true" /> : index + 1}
+        </span>{STAGE_LABELS[stage]}
+      </li>)}
+    </ol>
+    {closedWithoutSale && <p className="mt-3 text-sm text-muted-foreground">Consultă documentele și activitatea pentru detaliile închiderii.</p>}
+  </section>
 }
 
 function StatusBadge({ status }: { status: string }) {
