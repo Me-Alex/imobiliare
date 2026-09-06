@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Cookie } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LS_KEYS } from '@/lib/constants'
+import { readBrowserPreference, writeBrowserPreference } from '@/lib/storage'
 
 const STORAGE_KEY = LS_KEYS.COOKIES_ACCEPTED
 
@@ -14,7 +15,7 @@ function subscribe(callback: () => void) {
 }
 
 function getSnapshot() {
-  return localStorage.getItem(STORAGE_KEY)
+  return readBrowserPreference(STORAGE_KEY)
 }
 
 function getServerSnapshot() {
@@ -26,8 +27,7 @@ export function CookieConsent() {
   const visible = !accepted
 
   const handleAccept = useCallback((value: 'all' | 'necessary') => {
-    localStorage.setItem(STORAGE_KEY, value)
-    window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY }))
+    writeBrowserPreference(STORAGE_KEY, value)
   }, [])
 
   return (

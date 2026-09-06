@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LS_KEYS } from '@/lib/constants'
+import { readBrowserPreference, writeBrowserPreference } from '@/lib/storage'
 
 const STORAGE_KEY = LS_KEYS.ANNOUNCEMENT_DISMISSED
 
@@ -14,7 +15,7 @@ function subscribe(callback: () => void) {
 }
 
 function getSnapshot() {
-  return localStorage.getItem(STORAGE_KEY)
+  return readBrowserPreference(STORAGE_KEY)
 }
 
 function getServerSnapshot() {
@@ -26,8 +27,7 @@ export function AnnouncementBanner() {
   const visible = !dismissed
 
   const handleDismiss = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, 'true')
-    window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY }))
+    writeBrowserPreference(STORAGE_KEY, 'true')
   }, [])
 
   const handleScrollToContact = (e: React.MouseEvent<HTMLAnchorElement>) => {

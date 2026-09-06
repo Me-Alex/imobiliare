@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import {
   clearAuthCallbackUrl,
@@ -15,21 +15,16 @@ export function useAuthReturnRedirect() {
   const currentPage = useAppStore((state) => state.currentPage)
   const navigateTo = useAppStore((state) => state.navigateTo)
   const setVizionareProperty = useAppStore((state) => state.setVizionareProperty)
-  const handledUserRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!user) {
-      handledUserRef.current = null
-      return
-    }
+    if (!user) return
     if (loading || !profile) return
 
     const isCallback = isAuthCallbackUrl()
     const hasReturnTarget = hasAuthReturnTarget()
     const shouldResolveReturn = isCallback || hasReturnTarget || currentPage === 'login'
-    if (!shouldResolveReturn || handledUserRef.current === user.id) return
+    if (!shouldResolveReturn) return
 
-    handledUserRef.current = user.id
     const target = consumeAuthReturnTarget() ?? { page: 'dashboard' as const }
     const context = target.context
     const propertyId = context?.vizionarePropertyId || context?.propertyId

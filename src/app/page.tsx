@@ -128,21 +128,25 @@ function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
       return
     }
 
-    const routeContext = sessionStorage.getItem('pm-route-viewing-context')
-      || sessionStorage.getItem('pm-auth-return-context')
-    if (routeContext) {
-      try {
-        const context = JSON.parse(routeContext) as { propertyId?: string; propertyTitle?: string; vizionarePropertyId?: string; vizionarePropertyTitle?: string }
-        const propertyId = context.propertyId || context.vizionarePropertyId
-        const propertyTitle = context.propertyTitle || context.vizionarePropertyTitle
-        if (propertyId && propertyTitle) {
-          useAppStore.getState().setVizionareProperty(propertyId, propertyTitle)
+    try {
+      const routeContext = sessionStorage.getItem('pm-route-viewing-context')
+        || sessionStorage.getItem('pm-auth-return-context')
+      if (routeContext) {
+        try {
+          const context = JSON.parse(routeContext) as { propertyId?: string; propertyTitle?: string; vizionarePropertyId?: string; vizionarePropertyTitle?: string }
+          const propertyId = context.propertyId || context.vizionarePropertyId
+          const propertyTitle = context.propertyTitle || context.vizionarePropertyTitle
+          if (propertyId && propertyTitle) {
+            useAppStore.getState().setVizionareProperty(propertyId, propertyTitle)
+          }
+        } catch {
+          // Ignore stale route context and continue with the requested page.
         }
-      } catch {
-        // Ignore stale route context and continue with the requested page.
+        sessionStorage.removeItem('pm-route-viewing-context')
+        sessionStorage.removeItem('pm-auth-return-context')
       }
-      sessionStorage.removeItem('pm-route-viewing-context')
-      sessionStorage.removeItem('pm-auth-return-context')
+    } catch {
+      // Direct links must still work when browser storage is unavailable.
     }
 
     const syncPageFromUrl = () => {

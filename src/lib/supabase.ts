@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { supabaseFetch } from './supabase-fetch'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -9,7 +10,7 @@ export function createAuthenticatedSupabaseClient(accessToken: string): Supabase
   if (!isSupabaseConfigured) throw new Error('Supabase is not configured')
 
   return createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    global: { fetch: supabaseFetch, headers: { Authorization: `Bearer ${accessToken}` } },
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -32,6 +33,7 @@ function getSupabase(): SupabaseClient {
   }
 
   _supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { fetch: supabaseFetch },
     auth: {
       persistSession: isBrowser,
       autoRefreshToken: isBrowser,

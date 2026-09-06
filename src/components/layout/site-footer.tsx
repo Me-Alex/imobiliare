@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
+import { writeBrowserPreference } from '@/lib/storage'
 import { Building2, Mail, Phone, MapPin, Facebook, Instagram, Linkedin, Send, ArrowUp, Loader2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -111,8 +112,7 @@ export function SiteFooter() {
   }
 
   const handleCookiePreferences = () => {
-    localStorage.removeItem(LS_KEYS.COOKIES_ACCEPTED)
-    window.dispatchEvent(new StorageEvent('storage', { key: LS_KEYS.COOKIES_ACCEPTED }))
+    writeBrowserPreference(LS_KEYS.COOKIES_ACCEPTED, null)
   }
 
   return (

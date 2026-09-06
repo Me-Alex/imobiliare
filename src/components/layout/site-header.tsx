@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
 import { useTheme } from 'next-themes'
 import { Bell, BellRing, Bookmark, Building2, CircleDollarSign, Heart, LogIn, LogOut, Menu, Moon, Plus, Sun, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -107,7 +108,11 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
   }
 
   const handleSignOut = async () => {
-    await signOut()
+    const result = await signOut()
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
     navigateTo('acasa')
   }
 

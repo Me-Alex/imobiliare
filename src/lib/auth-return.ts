@@ -10,6 +10,14 @@ const MAX_CONTEXT_VALUE_LENGTH = 1_000
 
 export const AUTH_CALLBACK_QUERY_PARAM = 'auth_callback'
 
+export function getAuthCallbackUrl(kind: 'google' | 'email', origin: string): string {
+  const url = new URL('/', origin)
+  if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Invalid callback origin')
+  url.searchParams.set('page', 'login')
+  url.searchParams.set(AUTH_CALLBACK_QUERY_PARAM, kind)
+  return url.toString()
+}
+
 export type AuthReturnContext = Record<string, string | null>
 
 export interface AuthReturnTarget {
@@ -59,7 +67,7 @@ function parseStoredTarget(value: string | null): StoredAuthReturnTarget | null 
     const page = typeof parsed.page === 'string' ? parsed.page : null
     if (
       parsed.version !== 1
-      || !isPageKey(page)
+      || !isPageKey(page) || page === 'login'
       || typeof parsed.createdAt !== 'number'
       || parsed.createdAt > now + 60_000
       || now - parsed.createdAt > AUTH_RETURN_TTL_MS
@@ -107,7 +115,7 @@ function readLegacyTarget(storage: Storage): AuthReturnTarget | null {
   }
 
   return {
-    page: isPageKey(legacyPage) ? legacyPage : 'dashboard',
+    page: isPageKey(legacyPage) && legacyPage !== 'login' ? legacyPage : 'dashboard',
     context,
   }
 }
@@ -119,7 +127,7 @@ export function saveAuthReturnTarget(page: PageKey, context?: AuthReturnContext)
   const target: StoredAuthReturnTarget = {
     version: 1,
     createdAt: Date.now(),
-    page,
+    page: page === 'login' ? 'dashboard' : page,
     context: sanitizeContext(context),
   }
 
@@ -136,13 +144,17 @@ export function peekAuthReturnTarget(): AuthReturnTarget | null {
   const storage = getSessionStorage()
   if (!storage) return null
 
-  const target = parseStoredTarget(storage.getItem(AUTH_RETURN_STORAGE_KEY))
-  if (target) return { page: target.page, context: target.context }
+  try {
+    const target = parseStoredTarget(storage.getItem(AUTH_RETURN_STORAGE_KEY))
+    if (target) return { page: target.page, context: target.context }
 
-  storage.removeItem(AUTH_RETURN_STORAGE_KEY)
-  const legacyTarget = readLegacyTarget(storage)
-  if (legacyTarget) saveAuthReturnTarget(legacyTarget.page, legacyTarget.context)
-  return legacyTarget
+    storage.removeItem(AUTH_RETURN_STORAGE_KEY)
+    const legacyTarget = readLegacyTarget(storage)
+    if (legacyTarget) saveAuthReturnTarget(legacyTarget.page, legacyTarget.context)
+    return legacyTarget
+  } catch {
+    return null
+  }
 }
 
 export function ensureAuthReturnTarget(page: PageKey = 'dashboard'): AuthReturnTarget {
@@ -157,16 +169,20 @@ export function consumeAuthReturnTarget(): AuthReturnTarget | null {
   const storage = getSessionStorage()
   if (!storage) return null
 
-  const storedValue = storage.getItem(AUTH_RETURN_STORAGE_KEY)
-  storage.removeItem(AUTH_RETURN_STORAGE_KEY)
+  try {
+    const storedValue = storage.getItem(AUTH_RETURN_STORAGE_KEY)
+    storage.removeItem(AUTH_RETURN_STORAGE_KEY)
 
-  const target = parseStoredTarget(storedValue)
-  if (target) {
-    clearLegacyReturnKeys(storage)
-    return { page: target.page, context: target.context }
+    const target = parseStoredTarget(storedValue)
+    if (target) {
+      clearLegacyReturnKeys(storage)
+      return { page: target.page, context: target.context }
+    }
+
+    return readLegacyTarget(storage)
+  } catch {
+    return null
   }
-
-  return readLegacyTarget(storage)
 }
 
 export function hasAuthReturnTarget(): boolean {

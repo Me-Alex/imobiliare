@@ -767,7 +767,11 @@ export function AdminPage() {
   }
 
   const handleSignOut = async () => {
-    await signOut()
+    const result = await signOut()
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
     navigateTo('acasa')
   }
 

@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef, ty
 import { type User, type Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from '@/lib/supabase'
 import { normalizeAccountRole, type AccountRole } from '@/lib/account-roles'
-import { AUTH_CALLBACK_QUERY_PARAM, ensureAuthReturnTarget } from '@/lib/auth-return'
+import { getAuthCallbackUrl, ensureAuthReturnTarget } from '@/lib/auth-return'
+import { authErrorMessage, observeAuthSession } from '@/lib/auth-session'
 
 export interface GoogleAuthError {
   code: string
@@ -44,10 +45,11 @@ interface AuthContextType {
   session: Session | null
   profile: AccountProfile | null
   loading: boolean
+  profileError: string | null
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
-  signUp: (email: string, password: string, fullName?: string, role?: 'CLIENT' | 'OWNER') => Promise<{ error: string | null }>
+  signUp: (email: string, password: string, fullName?: string, role?: 'CLIENT' | 'OWNER') => Promise<{ error: string | null; needsEmailConfirmation?: boolean }>
   signInWithGoogle: () => Promise<{ error: GoogleAuthError | null }>
-  signOut: () => Promise<void>
+  signOut: () => Promise<{ error: string | null }>
   refreshProfile: () => Promise<void>
   updateProfile: (updates: AccountProfileUpdate) => Promise<{ error: string | null }>
   hasRole: (...roles: AccountRole[]) => boolean
@@ -98,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true)
   const [profile, setProfile] = useState<AccountProfile | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
+  const [profileError, setProfileError] = useState<string | null>(null)
   const profileRequestRef = useRef(0)
   const activeUserIdRef = useRef<string | null>(null)
 
@@ -112,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         activeUserIdRef.current = nextUser?.id ?? null
         profileRequestRef.current += 1
         setProfile(null)
+        setProfileError(null)
         setProfileLoading(Boolean(nextUser))
       } else if (!nextUser) {
         setProfile(null)
@@ -123,25 +127,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthLoading(false)
     }
 
-    void supabase.auth.getSession()
-      .then(({ data: { session: currentSession } }) => applySession(currentSession))
-      .catch(() => {
-        if (mounted) setAuthLoading(false)
-      })
-
-    let subscription: { unsubscribe: () => void } | null = null
-    try {
-      const { data } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-        applySession(currentSession)
-      })
-      subscription = data.subscription
-    } catch {
-      // getSession above remains the source of truth if subscriptions are unavailable.
-    }
+    const unsubscribe = observeAuthSession(supabase.auth, applySession, () => {
+      if (mounted) setAuthLoading(false)
+    })
 
     return () => {
       mounted = false
-      subscription?.unsubscribe()
+      profileRequestRef.current += 1
+      unsubscribe()
     }
   }, [])
 
@@ -151,10 +144,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profileRequestRef.current === requestId && activeUserIdRef.current === currentUser.id
 
     setProfileLoading(true)
-    const fallbackTimer = window.setTimeout(() => {
+    setProfileError(null)
+    const reportProfileFailure = () => {
       if (!isCurrentRequest()) return
-      setProfile((currentProfile) => currentProfile ?? fallbackProfile(currentUser))
+      setProfile(null)
+      setProfileError('Profilul nu a putut fi verificat. Încearcă din nou pentru a accesa contul.')
       setProfileLoading(false)
+    }
+    const fallbackTimer = window.setTimeout(() => {
+      reportProfileFailure()
     }, PROFILE_FETCH_FALLBACK_MS)
 
     try {
@@ -165,13 +163,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle()
 
       if (error || !data) {
-        if (isCurrentRequest()) setProfile(fallbackProfile(currentUser))
+        reportProfileFailure()
         return
       }
 
-      if (isCurrentRequest()) setProfile(mapProfile(currentUser, data as Record<string, unknown>))
+      if (isCurrentRequest()) {
+        setProfile(mapProfile(currentUser, data as Record<string, unknown>))
+        setProfileError(null)
+      }
     } catch {
-      if (isCurrentRequest()) setProfile(fallbackProfile(currentUser))
+      reportProfileFailure()
     } finally {
       window.clearTimeout(fallbackTimer)
       if (isCurrentRequest()) setProfileLoading(false)
@@ -214,6 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single()
 
       if (error) return { error: error.message }
+      if (activeUserIdRef.current !== user.id) return { error: 'Sesiunea s-a schimbat. Încearcă din nou.' }
       profileRequestRef.current += 1
       setProfile(mapProfile(user, data as Record<string, unknown>))
       return { error: null }
@@ -223,9 +225,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user])
 
   const signIn = useCallback(async (email: string, password: string) => {
+    if (!isSupabaseConfigured) return { error: 'Autentificarea nu este disponibilă momentan.' }
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      return { error: error?.message ?? null }
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      return { error: error ? authErrorMessage(error) : null }
     } catch {
       return { error: 'Nu s-a putut conecta la serviciul de autentificare.' }
     }
@@ -237,18 +240,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fullName?: string,
     role: 'CLIENT' | 'OWNER' = 'CLIENT',
   ) => {
+    if (!isSupabaseConfigured) return { error: 'Autentificarea nu este disponibilă momentan.' }
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
+      ensureAuthReturnTarget('dashboard')
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
         password,
         options: {
+          emailRedirectTo: getAuthCallbackUrl('email', window.location.origin),
           data: {
             full_name: fullName || email.split('@')[0],
             account_type: role,
           },
         },
       })
-      return { error: error?.message ?? null }
+      return { error: error ? authErrorMessage(error) : null, needsEmailConfirmation: !error && !data.session }
     } catch {
       return { error: 'Nu s-a putut conecta la serviciul de autentificare.' }
     }
@@ -267,14 +273,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       ensureAuthReturnTarget('dashboard')
-      const callbackUrl = new URL('/', window.location.origin)
-      callbackUrl.searchParams.set('page', 'login')
-      callbackUrl.searchParams.set(AUTH_CALLBACK_QUERY_PARAM, 'google')
+      const callbackUrl = getAuthCallbackUrl('google', window.location.origin)
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: callbackUrl.toString(),
+          redirectTo: callbackUrl,
           skipBrowserRedirect: true,
         },
       })
@@ -318,17 +322,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      await supabase.auth.signOut()
+      const { error } = await supabase.auth.signOut({ scope: 'local' })
+      return { error: error ? 'Deconectarea nu a reușit. Verifică conexiunea și încearcă din nou.' : null }
     } catch {
-      // The local state is cleared by Supabase when possible.
+      return { error: 'Deconectarea nu a reușit. Verifică conexiunea și încearcă din nou.' }
     }
   }, [])
 
   const hasRole = useCallback((...roles: AccountRole[]) => {
-    return Boolean(profile && profile.isActive && roles.includes(profile.role))
-  }, [profile])
+    return Boolean(!profileError && profile && profile.isActive && roles.includes(profile.role))
+  }, [profile, profileError])
 
-  const loading = authLoading || Boolean(user && (profileLoading || !profile))
+  const loading = authLoading || Boolean(user && (profileLoading || (!profile && !profileError)))
 
   return (
     <AuthContext.Provider value={{
@@ -336,6 +341,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       profile,
       loading,
+      profileError,
       signIn,
       signUp,
       signInWithGoogle,

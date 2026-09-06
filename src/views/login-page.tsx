@@ -24,7 +24,8 @@ export function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
   const [googleError, setGoogleError] = useState<GoogleAuthError | null>(null)
-  const { signIn, signUp, signInWithGoogle, user } = useAuth()
+  const [confirmationEmail, setConfirmationEmail] = useState('')
+  const { signIn, signUp, signInWithGoogle, user, loading, profileError, refreshProfile, signOut } = useAuth()
 
   useEffect(() => {
     // Read the OAuth return from browser storage after hydration.
@@ -39,7 +40,20 @@ export function LoginPage() {
     return () => cancelAnimationFrame(frame)
   }, [])
 
-  if (user) {
+  if (user && profileError) {
+    return <PageShell><PageContainer width="narrow" className="py-10">
+      <PageState tone="error" title="Nu putem verifica profilul" description={profileError}
+        action={<>
+          <Button disabled={loading} onClick={() => void refreshProfile()}>Încearcă din nou</Button>
+          <Button variant="outline" onClick={async () => {
+            const result = await signOut()
+            if (result.error) toast.error(result.error)
+          }}>Ieși din cont</Button>
+        </>} />
+    </PageContainer></PageShell>
+  }
+
+  if (user || loading) {
     return (
       <PageShell>
         <PageContainer width="narrow" className="py-10">
@@ -53,8 +67,10 @@ export function LoginPage() {
     )
   }
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (isLoading || googleLoading) return
+    if (!e.currentTarget.reportValidity()) return
     setError('')
     setGoogleError(null)
     setIsLoading(true)
@@ -70,11 +86,13 @@ export function LoginPage() {
         toast.success('Autentificare reușită!', {
           description: 'Bine ai venit pe HQS Imobiliare.',
         })
-      } else {
+      } else if ('needsEmailConfirmation' in result && result.needsEmailConfirmation) {
+        setConfirmationEmail(email.trim())
+        setPassword('')
         toast.success('Cont creat cu succes!', {
           description: 'Verifică e-mailul pentru confirmare.',
         })
-      }
+      } else toast.success('Cont creat. Bine ai venit!')
     } catch {
       setError('A apărut o eroare. Te rugăm să încerci din nou.')
     } finally {
@@ -83,6 +101,7 @@ export function LoginPage() {
   }
 
   const handleGoogleSignIn = async () => {
+    if (isLoading || googleLoading) return
     setGoogleLoading(true)
     setError('')
     setGoogleError(null)
@@ -200,6 +219,11 @@ export function LoginPage() {
           </div>
 
           {/* Form */}
+          {confirmationEmail && (
+            <div role="status" className="mb-4 rounded-lg border bg-muted/40 p-4 text-sm break-words">
+              Verifică mesajul trimis la <strong>{confirmationEmail}</strong> pentru a confirma contul. Dacă nu îl găsești, verifică și folderul Spam.
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {!isLogin && (
               <>
@@ -242,6 +266,7 @@ export function LoginPage() {
                       onChange={(e) => { setFullName(e.target.value); if (error) setError('') }}
                       className="pl-10 h-11"
                       required={!isLogin}
+                      disabled={isLoading || googleLoading}
                       autoComplete="name"
                     />
                   </div>
@@ -263,6 +288,7 @@ export function LoginPage() {
                   onChange={(e) => { setEmail(e.target.value); if (error) setError('') }}
                   className="pl-10 h-11"
                   required
+                  disabled={isLoading || googleLoading}
                   autoComplete="email"
                 />
               </div>
@@ -283,7 +309,8 @@ export function LoginPage() {
                   className="pl-10 pr-10 h-11"
                   required
                   autoComplete={isLogin ? 'current-password' : 'new-password'}
-                  minLength={6}
+                  minLength={isLogin ? undefined : 6}
+                  disabled={isLoading || googleLoading}
                 />
                 <button
                   type="button"
@@ -334,7 +361,8 @@ export function LoginPage() {
             {' '}
             <button
               type="button"
-              onClick={() => { setIsLogin(!isLogin); setError(''); setGoogleError(null) }}
+              disabled={isLoading || googleLoading}
+              onClick={() => { setIsLogin(!isLogin); setError(''); setGoogleError(null); setConfirmationEmail('') }}
               className="font-medium text-primary hover:underline"
             >
               {isLogin ? 'Înregistrează-te' : 'Autentifică-te'}
