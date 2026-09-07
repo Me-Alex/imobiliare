@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { AlertTriangle, Loader2, Send, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, Loader2, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import type { AccountProfile } from '@/contexts/auth-context'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -162,9 +162,9 @@ export function LegalDocumentRequestDialog({
     <Dialog open={open} onOpenChange={(next) => !submitting && onOpenChange(next)}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{role === 'CLIENT' ? 'Solicită' : 'Confirmă date pentru'}: {definition.shortTitle}</DialogTitle>
+          <DialogTitle>Date pentru {definition.shortTitle.toLocaleLowerCase('ro')}</DialogTitle>
           <DialogDescription>
-            Datele sunt transmise agentului alocat. Ele nu devin contract până când agentul nu le verifică și nu generează documentul controlat.
+            Completează câmpurile obligatorii. Agentul verifică datele și pregătește documentul, apoi îl vei putea citi și semna separat.
           </DialogDescription>
         </DialogHeader>
 
@@ -176,16 +176,8 @@ export function LegalDocumentRequestDialog({
           </Alert>
         )}
 
-        <Alert>
-          <ShieldCheck className="h-4 w-4" />
-          <AlertTitle>Declarația ta rămâne în audit</AlertTitle>
-          <AlertDescription>
-            Agentul poate folosi datele în generator, dar nu poate modifica această declarație. Orice contract va fi afișat separat pentru verificare și semnare.
-          </AlertDescription>
-        </Alert>
-
         <div className="grid gap-4 sm:grid-cols-2">
-          {fields.map((field) => (
+          {fields.filter(field => field.required).map((field) => (
             <div key={field.key} className={field.type === 'textarea' ? 'sm:col-span-2' : ''}>
               <label htmlFor={`request-field-${field.key}`} className="mb-1.5 block text-xs font-medium">
                 {field.label}{field.required && <span className="text-destructive"> *</span>}
@@ -197,6 +189,13 @@ export function LegalDocumentRequestDialog({
               />
             </div>
           ))}
+          <details className="sm:col-span-2">
+            <summary className="cursor-pointer py-2 text-sm font-medium">Informații suplimentare (opțional)</summary>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              {fields.filter(field => !field.required).map(field => <div key={field.key} className={field.type === 'textarea' ? 'sm:col-span-2' : ''}>
+                <label htmlFor={`request-field-${field.key}`} className="mb-1.5 block text-sm font-medium">{field.label}</label>
+                <RequestField field={field} value={values[field.key] || ''} onChange={value => setValues(current => ({ ...current, [field.key]: value }))} />
+              </div>)}
           <div className="sm:col-span-2">
             <label htmlFor="request-notes" className="mb-1.5 block text-xs font-medium">Observații pentru agent</label>
             <Textarea
@@ -208,8 +207,11 @@ export function LegalDocumentRequestDialog({
               onChange={(event) => setNotes(event.target.value)}
             />
           </div>
+            </div>
+          </details>
         </div>
 
+        <p className="text-sm text-muted-foreground" role="status">{missingRequired ? `Mai ai ${fields.filter(field => field.required && !values[field.key]?.trim()).length} câmpuri obligatorii de completat.` : 'Datele sunt complete. Le poți trimite agentului pentru verificare.'}</p>
         <DialogFooter>
           <Button variant="outline" disabled={submitting} onClick={() => onOpenChange(false)}>Renunță</Button>
           <Button disabled={submitting || missingRequired || !canEdit} onClick={() => void handleSubmit()} className="gap-2">

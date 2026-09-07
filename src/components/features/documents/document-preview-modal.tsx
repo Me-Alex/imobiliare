@@ -23,6 +23,7 @@ interface DocumentPreviewModalProps {
   loading: boolean
   error: string | null
   onClose: () => void
+  onContinueSigning?: () => void
   onDownload: () => void
 }
 
@@ -33,6 +34,7 @@ export function DocumentPreviewModal({
   error,
   onClose,
   onDownload,
+  onContinueSigning,
 }: DocumentPreviewModalProps) {
   return (
     <Dialog open={Boolean(document)} onOpenChange={(open) => !open && onClose()}>
@@ -60,6 +62,10 @@ export function DocumentPreviewModal({
           onClose={onClose}
           onDownload={onDownload}
         />
+        {onContinueSigning && <div className="shrink-0 border-t p-4">
+          <p className="mb-3 text-sm text-muted-foreground">Citește documentul și verifică datele. În pasul următor îți confirmi semnătura.</p>
+          <Button className="w-full sm:w-auto" disabled={loading || Boolean(error) || !signedUrl} onClick={onContinueSigning}>Continuă la semnare</Button>
+        </div>}
       </DialogContent>
     </Dialog>
   )

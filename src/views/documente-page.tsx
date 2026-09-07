@@ -1,24 +1,13 @@
 'use client'
 
-import { AccountHelp } from '@/components/account/account-help'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ElementType } from 'react'
 import { flushSync } from 'react-dom'
 import {
-  ArrowRight,
-  AlertTriangle,
-  Archive,
-  ChevronDown,
-  CheckCircle2,
-  CircleDot,
   FileCheck2,
   FileSignature,
-  FolderOpen,
   FolderLock,
   Loader2,
-  PauseCircle,
-  Settings2,
   ShieldCheck,
   User,
 } from 'lucide-react'
@@ -26,11 +15,9 @@ import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Dialog,
   DialogContent,
@@ -49,7 +36,6 @@ import { DocumentTableRow, DocumentMobileCard } from '@/components/features/docu
 import { DocumentSearchBar, filterDocuments, type DocumentFilterState } from '@/components/features/documents/document-search-bar'
 import { DocumentPreviewModal } from '@/components/features/documents/document-preview-modal'
 import { DocumentActionCenter } from '@/components/features/documents/document-action-center'
-import { DocumentActionChecklist } from '@/components/features/documents/document-action-checklist'
 import { LegalDocumentBuilderDialog } from '@/components/features/documents/legal-document-builder-dialog'
 import { LegalDocumentRequestDialog } from '@/components/features/documents/legal-document-request-dialog'
 import { LegalDocumentRequestPanel } from '@/components/features/documents/legal-document-request-panel'
@@ -62,11 +48,9 @@ import {
   type LegalDocumentKind,
 } from '@/lib/legal-documents'
 import { LS_KEYS } from '@/lib/constants'
-import { loadFromLS, saveToLS } from '@/lib/storage'
+import { saveToLS } from '@/lib/storage'
 import { getDocumentFlowSummary } from '@/lib/document-flow'
 import { getDocumentActionPlan } from '@/lib/document-action-plan'
-import { getDocumentDossierProgress, type DocumentDossierProgress, type DocumentDossierProgressStage } from '@/lib/document-dossier-progress'
-import { getDocumentDossierGuide, type DocumentDossierGuide, type DocumentDossierGuideCard } from '@/lib/document-dossier-guide'
 import { type DocumentQuickActionTarget } from '@/lib/document-quick-actions'
 import {
   clearDocumentFocusContext,
@@ -92,11 +76,10 @@ import {
   listLegalDocumentRequests,
   setLegalDocumentRequestStatus,
 } from '@/lib/legal-document-requests'
-import { cn, formatDateRO } from '@/lib/utils'
+import { formatDateRO } from '@/lib/utils'
 import {
   getViewingWorkspaceLabel,
   isDocumentWorkspaceClosed,
-  pickDocumentViewingId,
 } from '@/lib/document-workspace'
 import { getDocumentWorkspaceEmptyState } from '@/lib/document-workspace-empty-state'
 
@@ -106,7 +89,8 @@ interface SigningState {
 }
 
 export function DocumentePage() {
-  const [enteredWithContext] = useState(() => Boolean(readAppointmentContext()))
+  const [requestedAppointment] = useState(() => readAppointmentContext())
+  const [choosingDossier, setChoosingDossier] = useState(() => !readAppointmentContext())
   const { user, profile, loading: authLoading } = useAuth()
   const navigateTo = useAppStore((state) => state.navigateTo)
   const uploadAreaRef = useRef<DocumentUploadAreaRef>(null)
@@ -116,20 +100,26 @@ export function DocumentePage() {
   const [requests, setRequests] = useState<LegalDocumentRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [documentsLoading, setDocumentsLoading] = useState(false)
+  const [requestsLoading, setRequestsLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const documentsSequence = useRef(0)
+  const requestsSequence = useRef(0)
   const [builderKind, setBuilderKind] = useState<LegalDocumentKind | null>(null)
   const [builderRequests, setBuilderRequests] = useState<LegalDocumentRequest[]>([])
   const [requestKind, setRequestKind] = useState<Exclude<LegalDocumentKind, 'viewing_report'> | null>(null)
   const [editingRequest, setEditingRequest] = useState<LegalDocumentRequest | null>(null)
   const [requestBusyId, setRequestBusyId] = useState<string | null>(null)
-  const [toolsOpen, setToolsOpen] = useState(false)
-  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [tool, setTool] = useState<'requests' | 'generate' | 'upload' | null>(null)
+  const setToolsOpen = (open: boolean) => setTool(open ? 'requests' : null)
+  const [reviewingSignature, setReviewingSignature] = useState<SigningState | null>(null)
   const [signing, setSigning] = useState<SigningState | null>(null)
   const [signatureName, setSignatureName] = useState('')
   const [signatureAccepted, setSignatureAccepted] = useState(false)
   const [signingBusy, setSigningBusy] = useState(false)
-  const [focusedDocumentTarget, setFocusedDocumentTarget] = useState<DocumentFocusTarget | null>(null)
+  const [, setFocusedDocumentTarget] = useState<DocumentFocusTarget | null>(null)
 
   // Document preview modal state
+  const previewSequence = useRef(0)
   const [previewDoc, setPreviewDoc] = useState<ViewingDocument | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -168,25 +158,36 @@ export function DocumentePage() {
   )
 
   const refreshDocuments = useCallback(async (appointmentId: string) => {
+    const sequence = ++documentsSequence.current
     setDocumentsLoading(true)
     try {
-      setDocuments(await listViewingDocuments(appointmentId))
+      const result = await listViewingDocuments(appointmentId)
+      if (sequence === documentsSequence.current) setDocuments(result)
     } catch (error) {
+      if (sequence !== documentsSequence.current) return
+      setLoadError('Documentele nu au putut fi încărcate. Reîncearcă înainte de a continua.')
       toast.error('Documentele nu au putut fi incarcate.', {
         description: error instanceof Error ? error.message : undefined,
       })
     } finally {
-      setDocumentsLoading(false)
+      if (sequence === documentsSequence.current) setDocumentsLoading(false)
     }
   }, [])
 
   const refreshRequests = useCallback(async (appointmentId: string) => {
+    const sequence = ++requestsSequence.current
+    setRequestsLoading(true)
     try {
-      setRequests(await listLegalDocumentRequests(appointmentId))
+      const result = await listLegalDocumentRequests(appointmentId)
+      if (sequence === requestsSequence.current) setRequests(result)
     } catch (error) {
+      if (sequence !== requestsSequence.current) return
+      setLoadError('Datele trimise agentului nu au putut fi încărcate. Reîncearcă înainte de a continua.')
       toast.error('Solicitările de documente nu au putut fi încărcate.', {
         description: error instanceof Error ? error.message : undefined,
       })
+    } finally {
+      if (sequence === requestsSequence.current) setRequestsLoading(false)
     }
   }, [])
 
@@ -197,8 +198,7 @@ export function DocumentePage() {
       const rows = await listViewings()
       setViewings(rows)
       const requestedId = readAppointmentContext()
-      const storedId = loadFromLS<string | null>(LS_KEYS.SELECTED_VIZIONARE, null)
-      setSelectedId(pickDocumentViewingId(rows, requestedId, storedId))
+      setSelectedId(requestedId && rows.some(row => row.id === requestedId) ? requestedId : null)
     } catch (error) {
       toast.error('Vizionarile nu au putut fi incarcate.', {
         description: error instanceof Error ? error.message : undefined,
@@ -213,6 +213,8 @@ export function DocumentePage() {
   }, [user, refreshViewings])
 
   useEffect(() => {
+    documentsSequence.current++
+    requestsSequence.current++
     if (!selectedId) {
       queueMicrotask(() => setDocuments([]))
       queueMicrotask(() => setRequests([]))
@@ -224,6 +226,7 @@ export function DocumentePage() {
     } else {
       selectDocumentAppointment(selectedId, readDealContext())
     }
+    queueMicrotask(() => { setDocuments([]); setRequests([]); setLoadError('') })
     queueMicrotask(() => void Promise.all([
       refreshDocuments(selectedId),
       refreshRequests(selectedId),
@@ -253,21 +256,24 @@ export function DocumentePage() {
   }, [profile?.role, refreshDocuments, selectedViewing, user])
 
   const handleView = useCallback(async (document: ViewingDocument) => {
+    const sequence = ++previewSequence.current
     setPreviewDoc(document)
     setPreviewLoading(true)
     setPreviewError(null)
     setPreviewUrl(null)
     try {
       const url = await createDocumentUrl(document)
-      setPreviewUrl(url)
+      if (sequence === previewSequence.current) setPreviewUrl(url)
     } catch (error) {
-      setPreviewError(error instanceof Error ? error.message : 'Documentul nu poate fi deschis.')
+      if (sequence === previewSequence.current) setPreviewError(error instanceof Error ? error.message : 'Documentul nu poate fi deschis.')
     } finally {
-      setPreviewLoading(false)
+      if (sequence === previewSequence.current) setPreviewLoading(false)
     }
   }, [])
 
   const handlePreviewClose = useCallback(() => {
+    previewSequence.current++
+    setReviewingSignature(null)
     setPreviewDoc(null)
     setPreviewUrl(null)
     setPreviewError(null)
@@ -381,7 +387,8 @@ export function DocumentePage() {
   }
 
   const openSigningDialog = (document: ViewingDocument, signer: DocumentSigner) => {
-    setSigning({ document, signer })
+    setReviewingSignature({ document, signer })
+    void handleView(document)
     setSignatureName(profile?.fullName || user?.email?.split('@')[0] || '')
     setSignatureAccepted(false)
   }
@@ -404,7 +411,7 @@ export function DocumentePage() {
     }
   }
 
-  const flowSummary = selectedViewing && user && profile
+  const flowSummary = !choosingDossier && !documentsLoading && !requestsLoading && !loadError && selectedViewing && user && profile
     ? getDocumentFlowSummary({
         role: profile.role,
         userId: user.id,
@@ -422,22 +429,6 @@ export function DocumentePage() {
         requests,
       })
     : null
-  const activeDocumentCount = documents.filter((document) => document.status !== 'SUPERSEDED').length
-  const dossierProgress = actionPlan
-    ? getDocumentDossierProgress({
-        plan: actionPlan,
-        documentsCount: activeDocumentCount,
-      })
-    : null
-  const dossierGuide = actionPlan && profile
-    ? getDocumentDossierGuide({
-        role: profile.role,
-        plan: actionPlan,
-        documentsCount: activeDocumentCount,
-        requestsCount: requests.length,
-      })
-    : null
-
   useEffect(() => {
     if (!selectedViewing || !actionPlan || loading || documentsLoading) return
 
@@ -470,7 +461,7 @@ export function DocumentePage() {
   }, [actionPlan, documentsLoading, loading, selectedViewing])
 
   const openTools = (uploadType?: DocType) => {
-    flushSync(() => setToolsOpen(true))
+    flushSync(() => setTool(uploadType ? 'upload' : 'requests'))
     window.requestAnimationFrame(() => {
       document.getElementById('document-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
@@ -511,7 +502,8 @@ export function DocumentePage() {
       return
     }
     if (action.type === 'OPEN_TOOLS') {
-      openTools()
+      if (canGenerateDocuments && requests.length === 0) setTool('generate')
+      else openTools()
       return
     }
     document.getElementById('document-archive')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -601,102 +593,55 @@ export function DocumentePage() {
           />
         ) : (
           <>
-            {enteredWithContext && selectedViewing ? <p className="mb-5 font-medium">{selectedViewing.propertyTitle}</p> : <div className="mb-6">
-              <label className="mb-2 block text-sm font-medium" htmlFor="document-viewing">Proprietatea și vizionarea</label>
-                <select
-                  id="document-viewing"
-                  value={selectedId || ''}
-                  onChange={(event) => {
-                    setToolsOpen(false)
-                    setDetailsOpen(false)
-                    setSelectedId(event.target.value)
-                  }}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                  aria-label="Vizionare selectata"
-                >
-                  {actionableViewings.length > 0 && (
-                    <optgroup label="În lucru">
-                      {actionableViewings.map((viewing) => (
-                        <option key={viewing.id} value={viewing.id}>
-                          {viewing.propertyTitle} — {formatDateRO(viewing.date)}, {viewing.startTime} · {getViewingWorkspaceLabel(viewing.status)}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {closedViewings.length > 0 && (
-                    <optgroup label="Închise — doar consultare">
-                      {closedViewings.map((viewing) => (
-                        <option key={viewing.id} value={viewing.id}>
-                          {viewing.propertyTitle} — {formatDateRO(viewing.date)}, {viewing.startTime} · {getViewingWorkspaceLabel(viewing.status)}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
-
-              <Button variant="ghost" size="sm" className="mt-2" onClick={() => void refreshViewings()}>Actualizează</Button>
-            </div>}
-
-            {flowSummary && <DocumentActionCenter summary={flowSummary} onPrimaryAction={handlePrimaryAction} />}
+            {choosingDossier || !selectedViewing ? <section aria-label="Alege dosarul" className="space-y-5">
+              <div><h2 className="text-lg font-semibold">Pentru ce proprietate?</h2><p className="mt-1 text-sm text-muted-foreground">Alege dosarul în care vrei să completezi date sau să consulți documente.</p></div>
+              {requestedAppointment && !selectedViewing && <p role="alert" className="text-sm text-destructive">Dosarul din link nu este disponibil pentru acest cont. Alege un dosar din listă.</p>}
+              {[{ title: 'În lucru', items: actionableViewings }, { title: 'Închise · doar consultare', items: closedViewings }].filter(group => group.items.length).map(group => <section key={group.title}>
+                <h3 className="mb-2 text-sm font-medium text-muted-foreground">{group.title}</h3>
+                <div className="divide-y rounded-xl border">{group.items.map(viewing => <button type="button" key={viewing.id} className="block min-h-20 w-full p-4 text-left hover:bg-muted focus-visible:outline-ring" onClick={() => {
+                  setDocuments([]); setRequests([]); setLoadError(''); setDocumentsLoading(true); setRequestsLoading(true)
+                  setSelectedId(viewing.id); setChoosingDossier(false); setTool(null)
+                  if (selectedId === viewing.id) void Promise.all([refreshDocuments(viewing.id), refreshRequests(viewing.id)])
+                }}>
+                  <span className="block font-medium">{viewing.propertyTitle}</span>
+                  <span className="mt-1 block text-sm text-muted-foreground">{formatDateRO(viewing.date)}, {viewing.startTime} · {getViewingWorkspaceLabel(viewing.status)}{canGenerateDocuments ? ` · ${viewing.userName || viewing.userEmail}` : ''}</span>
+                </button>)}</div>
+              </section>)}
+            </section> : <>
+              <div className="mb-5 flex items-start justify-between gap-3 border-b pb-4">
+                <div className="min-w-0"><h2 className="break-words font-semibold">{selectedViewing.propertyTitle}</h2><p className="mt-1 text-sm text-muted-foreground">{formatDateRO(selectedViewing.date)}, {selectedViewing.startTime}</p></div>
+                <Button variant="link" className="shrink-0" onClick={() => { setChoosingDossier(true); setTool(null) }}>Schimbă dosarul</Button>
+              </div>
+              {(documentsLoading || requestsLoading) && <p role="status" className="mb-5 text-sm text-muted-foreground">Verificăm documentele și datele trimise agentului…</p>}
+              {loadError && <div role="alert" className="mb-5"><p>{loadError}</p><Button variant="outline" className="mt-2" onClick={() => { setLoadError(''); void Promise.all([refreshDocuments(selectedViewing.id), refreshRequests(selectedViewing.id)]) }}>Reîncearcă</Button></div>}
+            {flowSummary && <DocumentActionCenter summary={flowSummary} onPrimaryAction={handlePrimaryAction} primaryLabel={flowSummary.action.type === 'OPEN_TOOLS' && canGenerateDocuments && requests.length === 0 ? 'Alege documentul de pregătit' : undefined} />}
             {readDealContext() && <Button variant="link" className="mb-5 h-auto p-0" onClick={() => handleQuickAction('deal-room')}>Înapoi la tranzacție</Button>}
 
-            {(dossierProgress || actionPlan) && (
-              <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen} className="mb-6">
-                <CollapsibleTrigger asChild>
-                  <Button variant="outline" className="h-auto min-h-12 w-full justify-between gap-3 whitespace-normal px-4 py-3">
-                    <span className="flex items-center gap-2 text-left">
-                      <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
-                      <span>
-                        <span className="block font-medium">Documente necesare și responsabili</span>
+            {!selectedWorkspaceClosed && !documentsLoading && !requestsLoading && !loadError && <div className="mb-6 flex flex-wrap gap-2" aria-label="Alte acțiuni pentru documente">
+              <Button variant="outline" onClick={() => setTool('upload')}>Încarcă un fișier</Button>
+              <Button variant="outline" onClick={() => setTool('requests')}>Date trimise agentului</Button>
+              {canGenerateDocuments && <Button variant="outline" onClick={() => setTool('generate')}>Pregătește un document</Button>}
+            </div>}
 
-                      </span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2">
-
-                      <ChevronDown className={`h-4 w-4 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} />
-                    </span>
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="pt-4">
-                    {dossierGuide && <AccountHelp title="Explicații despre documente"><DocumentDossierGuidePanel guide={dossierGuide} focusedTarget={focusedDocumentTarget} onAction={handleQuickAction} /></AccountHelp>}
-                    {dossierProgress && (
-                      <DocumentDossierProgressPanel progress={dossierProgress} />
-                    )}
-
-                    {actionPlan && (
-                      <DocumentActionChecklist plan={actionPlan} onPrimaryAction={handlePrimaryAction} />
-                    )}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-
-            {!selectedWorkspaceClosed && <Collapsible open={toolsOpen} onOpenChange={setToolsOpen} className="mb-6">
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" className="h-auto min-h-12 w-full justify-between gap-3 whitespace-normal px-4 py-3">
-                  <span className="flex items-center gap-2 text-left">
-                    <Settings2 className="h-4 w-4 shrink-0 text-primary" />
-                    <span>
-                      <span className="block font-medium">Toate acțiunile dosarului</span>
-                      <span className="block text-xs font-normal text-muted-foreground">Solicitări, generare și încărcări manuale</span>
-                    </span>
-                  </span>
-                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${toolsOpen ? 'rotate-180' : ''}`} />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div id="document-tools" className="scroll-mt-24 pt-4">
-            {selectedViewing && (
+            <Dialog open={tool !== null} onOpenChange={open => { if (!open) setTool(null) }}>
+              <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-3xl">
+                <DialogHeader>
+                  <DialogTitle>{tool === 'upload' ? 'Încarcă un fișier' : tool === 'generate' ? 'Pregătește un document' : 'Date trimise agentului'}</DialogTitle>
+                  <DialogDescription>{selectedViewing?.propertyTitle} · {tool === 'upload' ? 'Alege tipul actului, apoi fișierul de pe dispozitiv.' : tool === 'generate' ? 'Alege documentul necesar. Vei verifica datele înainte de generare.' : 'Vezi ce informații au fost trimise și ce mai trebuie completat.'}</DialogDescription>
+                </DialogHeader>
+                <div id="document-tools">
+            {selectedViewing && tool === 'requests' && (
               <LegalDocumentRequestPanel
                 role={profile.role}
                 requests={requests}
                 busyId={requestBusyId}
                 onCreate={(kind) => {
+                  setTool(null)
                   setEditingRequest(null)
                   setRequestKind(kind)
                 }}
                 onEdit={(request) => {
+                  setTool(null)
                   setEditingRequest(request)
                   setRequestKind(request.documentKind)
                 }}
@@ -705,7 +650,7 @@ export function DocumentePage() {
               />
             )}
 
-            {selectedViewing && canGenerateDocuments && (
+            {selectedViewing && canGenerateDocuments && tool === 'generate' && (
               <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 mb-6">
                 <Card>
                   <CardHeader>
@@ -726,7 +671,7 @@ export function DocumentePage() {
                           key={kind}
                           variant="outline"
                           className="h-auto min-h-20 py-4 justify-start gap-3 whitespace-normal"
-                          onClick={() => void handleOpenBuilder(kind)}
+                          onClick={() => { setTool(null); void handleOpenBuilder(kind) }}
                           disabled={blocked}
                         >
                           {kind === 'viewing_report'
@@ -760,7 +705,7 @@ export function DocumentePage() {
               </div>
             )}
 
-            {selectedViewing && canUploadDocuments && (
+            {selectedViewing && canUploadDocuments && tool === 'upload' && (
               <Card className="mb-6">
                 <CardContent className="pt-6">
                   <DocumentUploadArea
@@ -777,19 +722,19 @@ export function DocumentePage() {
               </Card>
             )}
                 </div>
-              </CollapsibleContent>
-            </Collapsible>}
+              </DialogContent>
+            </Dialog>
 
             <Card id="document-archive" className="scroll-mt-24">
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2"><FolderLock className="h-4 w-4 text-primary" /> Arhiva dosarului</CardTitle>
-                <CardDescription>Fișiere private, versiuni și jurnal, disponibile numai participanților autorizați.</CardDescription>
+                <h2 className="text-base font-semibold">Documentele dosarului</h2>
+                <CardDescription>Deschide un document pentru a-l citi. Dacă trebuie să semnezi, acțiunea apare lângă el.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {documentsLoading ? (
                   <div className="py-14 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
                 ) : documents.length === 0 ? (
-                  <div className="py-14 px-4 text-center text-sm text-muted-foreground">
+                  <div className="py-8 px-4 text-center text-sm text-muted-foreground">
                     {selectedWorkspaceClosed
                       ? 'Programarea s-a închis fără documente asociate. Nu mai este necesară nicio acțiune.'
                       : 'Nu există încă documente în acest dosar.'}
@@ -842,6 +787,7 @@ export function DocumentePage() {
                 )}
               </CardContent>
             </Card>
+            </>}
           </>
         )}
       </PageContainer>
@@ -891,246 +837,42 @@ export function DocumentePage() {
         loading={previewLoading}
         error={previewError}
         onClose={handlePreviewClose}
+        onContinueSigning={reviewingSignature && previewDoc?.id === reviewingSignature.document.id ? () => {
+          const reviewed = reviewingSignature
+          handlePreviewClose()
+          setSigning(reviewed)
+        } : undefined}
         onDownload={() => previewDoc && void handleDownload(previewDoc)}
       />
 
       <Dialog open={Boolean(signing)} onOpenChange={(open) => !open && !signingBusy && setSigning(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Semneaza documentul</DialogTitle>
+            <DialogTitle>Confirmă semnătura</DialogTitle>
             <DialogDescription>{signing?.document.title}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+            <details className="text-xs text-muted-foreground"><summary className="cursor-pointer py-2">Identificatorul versiunii verificate</summary>
               Hash document: <span className="font-mono break-all text-foreground">{signing?.document.checksum || 'indisponibil'}</span>
-            </div>
+            </details>
             <div className="space-y-2">
               <label htmlFor="signature-name" className="text-sm font-medium">Numele complet</label>
               <Input id="signature-name" value={signatureName} onChange={(event) => setSignatureName(event.target.value)} autoComplete="name" />
             </div>
             <label className="flex items-start gap-3 text-sm cursor-pointer">
               <input type="checkbox" checked={signatureAccepted} onChange={(event) => setSignatureAccepted(event.target.checked)} className="mt-1 h-4 w-4 accent-primary" />
-              <span>Confirm ca am citit documentul, ca datele sunt corecte si ca doresc sa il semnez electronic.</span>
+              <span>Confirm că am citit documentul, că datele sunt corecte și că doresc să îl semnez electronic.</span>
             </label>
           </div>
           <DialogFooter>
-            <Button variant="outline" disabled={signingBusy} onClick={() => setSigning(null)}>Renunta</Button>
+            <Button variant="outline" disabled={signingBusy} onClick={() => setSigning(null)}>Renunță</Button>
             <Button disabled={signingBusy || !signatureAccepted || signatureName.trim().length < 3} onClick={() => void handleSign()} className="gap-2">
               {signingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSignature className="h-4 w-4" />}
-              Semneaza
+              Confirmă și semnează
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </PageShell>
-  )
-}
-
-
-const GUIDE_CARD_ICONS: Record<DocumentDossierGuideCard['id'], ElementType> = {
-  'role-action': User,
-  handoff: PauseCircle,
-  archive: Archive,
-}
-
-const GUIDE_TONE_META: Record<DocumentDossierGuideCard['tone'], {
-  className: string
-  iconClassName: string
-  badgeClassName: string
-  actionClassName: string
-}> = {
-  primary: {
-    className: 'border-primary/35 bg-primary/[0.07] shadow-sm shadow-primary/10',
-    iconClassName: 'bg-primary text-primary-foreground',
-    badgeClassName: 'border-primary/30 bg-primary/10 text-primary',
-    actionClassName: 'text-primary',
-  },
-  waiting: {
-    className: 'border-blue-200 bg-blue-50/70 dark:border-blue-900/70 dark:bg-blue-950/25',
-    iconClassName: 'bg-blue-600 text-white',
-    badgeClassName: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300',
-    actionClassName: 'text-blue-700 dark:text-blue-300',
-  },
-  complete: {
-    className: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
-    iconClassName: 'bg-emerald-600 text-white',
-    badgeClassName: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300',
-    actionClassName: 'text-emerald-700 dark:text-emerald-300',
-  },
-  blocked: {
-    className: 'border-amber-300 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/25',
-    iconClassName: 'bg-amber-500 text-white',
-    badgeClassName: 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    actionClassName: 'text-amber-700 dark:text-amber-300',
-  },
-  muted: {
-    className: 'border-border bg-muted/25',
-    iconClassName: 'bg-muted text-muted-foreground',
-    badgeClassName: 'border-border bg-background text-muted-foreground',
-    actionClassName: 'text-muted-foreground',
-  },
-}
-
-const DOSSIER_STAGE_STATUS_META: Record<DocumentDossierProgressStage['state'], {
-  label: string
-  icon: ElementType
-  className: string
-  markerClassName: string
-}> = {
-  complete: {
-    label: 'Gata',
-    icon: CheckCircle2,
-    className: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
-    markerClassName: 'bg-emerald-600 text-white',
-  },
-  current: {
-    label: 'Acum',
-    icon: CircleDot,
-    className: 'border-primary/35 bg-primary/[0.07] shadow-sm shadow-primary/10',
-    markerClassName: 'bg-primary text-primary-foreground',
-  },
-  waiting: {
-    label: 'Așteaptă',
-    icon: PauseCircle,
-    className: 'border-blue-200 bg-blue-50/70 dark:border-blue-900/70 dark:bg-blue-950/25',
-    markerClassName: 'bg-blue-600 text-white',
-  },
-  blocked: {
-    label: 'Blocat',
-    icon: AlertTriangle,
-    className: 'border-amber-300 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/25',
-    markerClassName: 'bg-amber-500 text-white',
-  },
-  pending: {
-    label: 'Urmează',
-    icon: FolderOpen,
-    className: 'border-border bg-background',
-    markerClassName: 'bg-muted text-muted-foreground',
-  },
-}
-
-function DocumentDossierGuidePanel({
-  guide,
-  focusedTarget,
-  onAction,
-}: {
-  guide: DocumentDossierGuide
-  focusedTarget: DocumentFocusTarget | null
-  onAction: (target: DocumentQuickActionTarget) => void
-}) {
-  return (
-    <Card className="mb-6 overflow-hidden border-primary/10 bg-gradient-to-br from-background via-muted/15 to-background">
-      <CardHeader className="pb-3">
-        <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">Pe scurt</Badge>
-        <CardTitle className="text-base">{guide.headline}</CardTitle>
-        <CardDescription>{guide.description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-3 lg:grid-cols-3">
-          {guide.cards.map((card) => {
-            const Icon = GUIDE_CARD_ICONS[card.id]
-            const meta = GUIDE_TONE_META[card.tone]
-            const focused = focusedTarget === card.target
-            return (
-              <button
-                key={card.id}
-                type="button"
-                disabled={card.disabled}
-                onClick={() => onAction(card.target)}
-                className={cn(
-                  'group min-h-40 rounded-2xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  meta.className,
-                  card.disabled && 'cursor-not-allowed opacity-60',
-                  !card.disabled && 'hover:-translate-y-0.5 hover:shadow-sm',
-                  focused && 'border-primary/60 ring-2 ring-primary/25',
-                )}
-              >
-                <div className="mb-4 flex items-start justify-between gap-3">
-                  <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl', meta.iconClassName)}>
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <Badge variant="outline" className={cn('text-[10px]', meta.badgeClassName)}>
-                    {card.badgeLabel}
-                  </Badge>
-                </div>
-                <p className="font-semibold leading-tight">{card.title}</p>
-                <p className="mt-2 min-h-10 text-sm leading-5 text-muted-foreground">{card.description}</p>
-                <span className={cn(
-                  'mt-4 inline-flex items-center gap-1 text-sm font-medium',
-                  card.disabled ? 'text-muted-foreground' : meta.actionClassName,
-                )}>
-                  {card.buttonLabel}
-                  {!card.disabled ? <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /> : null}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function DocumentDossierProgressPanel({
-  progress,
-}: {
-  progress: DocumentDossierProgress
-}) {
-  return (
-    <Card className="mb-6 overflow-hidden border-primary/10">
-      <CardHeader className="border-b bg-muted/15 pb-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">Hartă dosar</Badge>
-            <CardTitle className="text-base">{progress.headline}</CardTitle>
-            <CardDescription className="mt-1 max-w-3xl">{progress.description}</CardDescription>
-          </div>
-          <div className="rounded-2xl border bg-background px-4 py-3 text-right shadow-sm">
-            <p className="text-2xl font-bold tabular-nums text-primary">{progress.progressPercent}%</p>
-            <p className="text-[11px] text-muted-foreground">
-              {progress.completedCount}/{progress.totalCount} etape
-            </p>
-          </div>
-        </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary transition-all"
-            style={{ width: `${progress.progressPercent}%` }}
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress.progressPercent}
-            aria-label="Progres dosar digital"
-          />
-        </div>
-      </CardHeader>
-      <CardContent className="grid gap-3 p-4 md:grid-cols-4">
-        {progress.stages.map((stage, index) => {
-          const meta = DOSSIER_STAGE_STATUS_META[stage.state]
-          const Icon = meta.icon
-          const active = progress.currentStage.id === stage.id
-          return (
-            <div
-              key={stage.id}
-              aria-current={active ? 'step' : undefined}
-              className={cn(
-                'rounded-2xl border p-4',
-                meta.className,
-                active && 'ring-1 ring-primary/20',
-              )}
-            >
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <span className={cn('flex h-9 w-9 items-center justify-center rounded-full', meta.markerClassName)}>
-                  {stage.state === 'pending' ? index + 1 : <Icon className="h-4 w-4" aria-hidden="true" />}
-                </span>
-                <Badge variant="outline" className="bg-background/70">{meta.label}</Badge>
-              </div>
-              <p className="text-sm font-semibold">{stage.label}</p>
-              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{stage.description}</p>
-            </div>
-          )
-        })}
-      </CardContent>
-    </Card>
   )
 }
