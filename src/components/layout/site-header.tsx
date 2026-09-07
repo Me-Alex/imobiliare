@@ -91,6 +91,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
   const { favorites, currentPage, navigateTo, balance: coinBalance } = useAppStore()
   const { user, profile, signOut } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const inWorkspace = Boolean(user && isAccountWorkspacePage(currentPage))
   const accountRole = profile?.role ?? 'CLIENT'
   const roleDefinition = ACCOUNT_ROLE_DEFINITIONS[accountRole]
   const accountMenuItems = getAccountMenuItems(accountRole)
@@ -139,7 +140,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
 
         {/* Desktop Nav */}
         <nav className="hidden xl:flex items-center gap-1" aria-label="Navigare principală">
-          {PUBLIC_NAVIGATION.map((item) => {
+          {(inWorkspace ? PUBLIC_NAVIGATION.filter(item => item.page === 'proprietati') : PUBLIC_NAVIGATION).map((item) => {
             const isActive = currentPage === item.page || (currentPage === 'proprietate' && item.page === 'proprietati')
             return (
               <button
@@ -171,7 +172,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="hidden gap-2 sm:inline-flex">
-                Activitate <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                Căutare și alerte <ChevronDown className="h-4 w-4" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
@@ -195,7 +196,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           </DropdownMenu>
 
           {/* Add Property button (logged in) */}
-          {user && ['OWNER', 'AGENT', 'ADMIN'].includes(accountRole) && (
+          {user && !inWorkspace && ['OWNER', 'AGENT', 'ADMIN'].includes(accountRole) && (
             <Button
               variant="default"
               size="sm"

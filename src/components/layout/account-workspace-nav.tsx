@@ -31,23 +31,24 @@ export function AccountWorkspaceNavContent({ role, currentPage, onNavigate }: Ac
   const sections = (mobile: boolean) => (
     <nav aria-label={mobile ? 'Secțiunile contului' : 'Spațiul contului'} className="space-y-5">
       {groups.map(group => (
-        <div key={group.label}>
-          <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">{group.label}</p>
+        <details key={group.label} open={group.label === 'Activitate' || group.items.some(item => item.page === currentPage)} className="group">
+          <summary className={cn('mb-2 cursor-pointer px-3 py-2 text-sm text-muted-foreground', group.label === 'Activitate' && 'hidden')}>{group.label}</summary>
           <div className="space-y-1">
             {group.items.map(item => {
               const active = currentPage === item.page
               const Icon = item.icon
-              return <button key={item.page} type="button" onClick={() => navigate(item.page)}
+              return <button key={item.page} data-page={item.page} type="button" onClick={() => navigate(item.page)}
                 aria-current={active ? 'page' : undefined}
                 className={cn('flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary/10 font-semibold text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="min-w-0 flex-1">{item.label}{mobile && <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{item.description}</span>}</span>
+                <span className="min-w-0 flex-1">{item.label}</span>
                 {active && <Check className="h-4 w-4 shrink-0" aria-hidden="true" />}
               </button>
             })}
           </div>
-        </div>
+        </details>
       ))}
+      <button type="button" className="min-h-11 px-3 text-sm text-muted-foreground hover:text-foreground" onClick={() => { setOpen(false); useAppStore.getState().setChatOpen(true) }}>Ajutor</button>
     </nav>
   )
   return <>

@@ -27,7 +27,7 @@ describe('coherent account process', () => {
   })
   it('keeps undecided and positive visits out of the archive', () => {
     expect(getViewingProcessGroup({ status: 'completed', wouldProceed: undefined })).toBe('followup')
-    expect(getViewingProcessGroup({ status: 'completed', wouldProceed: false })).toBe('followup')
+    expect(getViewingProcessGroup({ status: 'completed', wouldProceed: false })).toBe('history')
     expect(getViewingProcessGroup({ status: 'completed', wouldProceed: true, rating: 5 })).toBe('followup')
     expect(getViewingProcessGroup({ status: 'completed', wouldProceed: false, rating: 5 })).toBe('history')
     expect(getViewingProcessGroup({ status: 'confirmed' })).toBe('active')

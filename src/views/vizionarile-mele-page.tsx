@@ -1,5 +1,7 @@
 'use client'
 
+import { fetchDealRooms, type DealRoom } from '@/lib/transaction-workspace'
+import { getTransactionProcess } from '@/lib/transaction-process'
 import { getViewingProcessGroup } from '@/lib/viewing-guidance'
 
 
@@ -69,6 +71,7 @@ export function VizionarileMelePage() {
   const { user, profile, loading: authLoading } = useAuth()
   const { navigateTo, setVizionareProperty } = useAppStore()
   const [vizionari, setVizionari] = useState<Vizionare[]>([])
+  const [rooms, setRooms] = useState<DealRoom[]>([])
   const [dataLoading, setDataLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('active')
   const [search, setSearch] = useState('')
@@ -87,7 +90,9 @@ export function VizionarileMelePage() {
     if (!user) return
     setDataLoading(true)
     try {
-      setVizionari(await listViewings())
+      const [visits, deals] = await Promise.all([listViewings(), fetchDealRooms()])
+      setVizionari(visits)
+      setRooms(deals)
     } catch (error) {
       toast.error('Vizionările nu au putut fi încărcate.', {
         description: error instanceof Error ? error.message : undefined,
@@ -101,31 +106,43 @@ export function VizionarileMelePage() {
     if (user) queueMicrotask(() => void refreshViewings())
   }, [user, refreshViewings])
 
+  const transactions = useMemo(() => new Map(rooms.flatMap(room => {
+    if (!profile || !user) return []
+    const process = getTransactionProcess(room, profile.role, user.id)
+    return ['negotiation', 'contract', 'closed'].includes(process.phase)
+      ? (room.deal_appointments || []).map(link => [link.appointment_id, { id: room.id, process }] as const) : []
+  })), [rooms, profile, user])
+  const viewingGroup = useCallback((viewing: Vizionare) => {
+    const transaction = transactions.get(viewing.id)
+    if (viewing.status === 'completed' && transaction) return transaction.process.phase === 'closed' ? 'history' : 'followup'
+    return getViewingProcessGroup(viewing)
+  }, [transactions])
+
   useEffect(() => {
     const id = readAppointmentContext()
     const viewing = vizionari.find(item => item.id === id)
     if (!viewing) return
     const timer = window.setTimeout(() => {
-      setActiveTab(getViewingProcessGroup(viewing))
+      setActiveTab(viewingGroup(viewing))
       setSearch('')
       setStatusFilter('all')
       window.setTimeout(() => document.getElementById(`viewing-${id}`)?.scrollIntoView({ block: 'center' }), 100)
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [vizionari])
+  }, [vizionari, viewingGroup])
 
   const activeVizionari = useMemo(
-    () => vizionari.filter(v => getViewingProcessGroup(v) === 'active')
+    () => vizionari.filter(v => viewingGroup(v) === 'active')
       .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime)),
-    [vizionari]
+    [vizionari, viewingGroup]
   )
 
-  const followupVizionari = vizionari.filter(v => getViewingProcessGroup(v) === 'followup')
+  const followupVizionari = vizionari.filter(v => viewingGroup(v) === 'followup')
 
   const historyVizionari = useMemo(
-    () => vizionari.filter(v => getViewingProcessGroup(v) === 'history')
+    () => vizionari.filter(v => viewingGroup(v) === 'history')
       .sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime)),
-    [vizionari]
+    [vizionari, viewingGroup]
   )
 
   const releaseLocalSlot = useCallback((id: string) => {
@@ -187,7 +204,7 @@ export function VizionarileMelePage() {
   }, [])
 
   const handleFeedbackSaved = useCallback(async (input: {
-    rating: number
+    rating: number | null
     feedback: string
     wouldProceed: boolean
     notes: string
@@ -304,13 +321,6 @@ export function VizionarileMelePage() {
           backLabel="Înapoi"
         >{profile?.role === 'CLIENT' && <Button className="min-h-11 gap-2" onClick={() => navigateTo('programare-vizionare')}><CalendarDays className="h-4 w-4" />Programează o vizionare</Button>}</PageHero>
 
-        <section aria-label="Cum decurge vizionarea" className="mb-6 grid grid-cols-1 gap-4 border-y py-5 sm:grid-cols-3">
-          {[
-            ['1', 'Programare', 'Alegi data; agentul confirmă intervalul.'],
-            ['2', 'Vizionare', 'Vă întâlniți și agentul confirmă prezența.'],
-            ['3', 'Decizia ta', 'Lași feedback și, dacă dorești, continui tranzacția.'],
-          ].map(([number, title, description]) => <div key={number} className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{number}</span><div><h2 className="text-sm font-semibold">{title}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p></div></div>)}
-        </section>
         <div className="mb-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
           <div><Label htmlFor="viewing-search">Caută o vizionare</Label><Input id="viewing-search" className="mt-2 min-h-11" value={search} onChange={event => setSearch(event.target.value)} placeholder="Proprietate, agent sau dată" /></div>
           <div><Label htmlFor="viewing-status">Stare</Label><select id="viewing-status" value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm">
@@ -351,6 +361,7 @@ export function VizionarileMelePage() {
                   {visibleActive.map((v) => (
                     <VizionareCard
                       key={v.id}
+                      transaction={transactions.get(v.id)}
                       vizionare={v}
                       canManage={canManage}
                       currentUserId={user.id}
@@ -391,10 +402,10 @@ export function VizionarileMelePage() {
           </TabsContent>
 
           <TabsContent value="followup">
-            <p className="mb-4 text-sm text-muted-foreground">Aici decizi dacă proprietatea ți se potrivește și continui cu oferta. Actele contractului urmează după acceptarea ofertei.</p>
+            <p className="mb-4 text-sm text-muted-foreground">Decizia clientului și tranzacțiile care continuă după vizită.</p>
             <div className="space-y-3">
               {followupVizionari.filter(matchesViewing).map(v => (
-                <VizionareCard key={v.id} vizionare={v} canManage={canManage} currentUserId={user.id}
+                <VizionareCard key={v.id} transaction={transactions.get(v.id)} vizionare={v} canManage={canManage} currentUserId={user.id}
                   onCancel={id => requestCancellation(id, 'client')} onAddFeedback={handleAddFeedback}
                   onReschedule={requestReschedule}
                       onConfirm={(id) => void runOperationalAction(id, () => confirmViewing(id), 'Programarea a fost confirmată.')}
@@ -420,7 +431,8 @@ export function VizionarileMelePage() {
                       <div key={v.id} className="relative">
                         <TimelineDot status={v.status} />
                         <VizionareCard
-                          vizionare={v}
+                          transaction={transactions.get(v.id)}
+                      vizionare={v}
                           canManage={canManage}
                           currentUserId={user.id}
                           onCancel={(id) => requestCancellation(id, 'client')}

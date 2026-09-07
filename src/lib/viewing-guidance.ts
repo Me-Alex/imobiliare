@@ -34,7 +34,6 @@ export function getViewingGuidance(
   viewing: Pick<Vizionare, 'status' | 'rating' | 'wouldProceed'>,
   audience: ViewingAudience,
 ): ViewingGuidance {
-  const hasFeedback = typeof viewing.rating === 'number' && viewing.rating > 0
 
   if (viewing.status === 'pending') {
     if (audience === 'staff') {
@@ -95,7 +94,7 @@ export function getViewingGuidance(
       title: 'Continuă cu oferta', description: 'Decizia este înregistrată. Oferta, răspunsurile și contractul se urmăresc în dosarul tranzacției.',
       action: 'deal_room', actionLabel: 'Deschide tranzacția', tone: 'success',
     }
-    if (!hasFeedback || viewing.wouldProceed == null) return {
+    if (viewing.wouldProceed == null) return {
       title: audience === 'client' ? 'Alege dacă vrei să continui' : 'Se așteaptă decizia clientului',
       description: 'După vizită, clientul decide dacă dorește să discute o ofertă pentru această proprietate.',
       action: audience === 'client' ? 'feedback' : 'documents',
@@ -152,6 +151,6 @@ export function getViewingGuidance(
 
 export function getViewingProcessGroup(viewing: Pick<Vizionare, 'status' | 'rating' | 'wouldProceed'>): 'active' | 'followup' | 'history' {
   if (['pending', 'confirmed', 'checked_in'].includes(viewing.status)) return 'active'
-  if (viewing.status === 'completed' && !(viewing.wouldProceed === false && (viewing.rating || 0) > 0)) return 'followup'
+  if (viewing.status === 'completed' && viewing.wouldProceed !== false) return 'followup'
   return 'history'
 }

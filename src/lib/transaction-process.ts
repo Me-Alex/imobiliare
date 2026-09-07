@@ -72,7 +72,7 @@ export function getTransactionProcess(room: DealRoom, role: AccountRole, userId:
       canRespond ? 'Tu' : actor, canRespond, 'offers', canRespond ? offer ? 'Răspunde la ofertă' : 'Pregătește oferta' : 'Consultă negocierea')
   }
   if (completed) {
-    const declined = completed.would_proceed === false && (completed.rating || 0) > 0
+    const declined = completed.would_proceed === false
     return result('decision', declined ? 'Clientul nu dorește să continue' : 'Vizionarea s-a încheiat. Urmează decizia.',
       declined ? 'Vizita rămâne în istoric. O ofertă nu este cerută; clientul își poate actualiza decizia după discuția cu agentul.' : 'Clientul spune dacă proprietatea i se potrivește. Documentele contractului vin după negociere.',
       'Clientul', role === 'CLIENT', 'viewings', role === 'CLIENT' ? 'Spune dacă vrei să continui' : 'Vezi rezultatul vizitei')

@@ -3,22 +3,19 @@
 import { useSyncExternalStore } from 'react'
 import { motion } from 'framer-motion'
 import {
-  CalendarDays, Clock, Star, CalendarClock, MessageSquarePlus,
+  CalendarDays, Clock, CalendarClock, MessageSquarePlus,
   XCircle, CheckCircle2, UserCheck, UserX, WalletCards, FileSignature,
   MoreHorizontal, ArrowRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAppStore } from '@/store/use-app-store'
-import { DEFAULT_STAFF } from '@/lib/constants'
 import type { Vizionare } from '@/lib/types'
-import { StarRating } from '@/components/dialogs/vizionare-feedback-dialog'
-import { cn, formatDateRO } from '@/lib/utils'
+import { formatDateRO } from '@/lib/utils'
 import { openDealRoomForViewing, openViewingDocuments } from '@/lib/document-navigation'
-import { getViewingGuidance, type ViewingPrimaryAction } from '@/lib/viewing-guidance'
+import type { TransactionProcess } from '@/lib/transaction-process'
+import { getViewingGuidance, type ViewingPrimaryAction, type ViewingGuidance } from '@/lib/viewing-guidance'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,10 +25,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function getStaffById(id: string) {
-  return DEFAULT_STAFF.find(s => s.id === id)
-}
 
 function subscribeToClock(callback: () => void) {
   const timer = window.setInterval(callback, 30_000)
@@ -50,6 +43,7 @@ function getServerClockSnapshot() {
 
 export function VizionareCard({
   vizionare,
+  transaction,
   onCancel,
   onAddFeedback,
   onReschedule,
@@ -62,6 +56,7 @@ export function VizionareCard({
   currentUserId,
 }: {
   vizionare: Vizionare
+  transaction?: { id: string; process: TransactionProcess }
   onCancel: (id: string) => void
   onAddFeedback: (v: Vizionare) => void
   onReschedule: (v: Vizionare) => void
@@ -74,19 +69,14 @@ export function VizionareCard({
   currentUserId: string
 }) {
   const { navigateTo } = useAppStore()
-  const staff = getStaffById(vizionare.staffId)
-  const staffInitials = staff?.avatarInitials || vizionare.staffName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || 'AH'
   const isActive = ['pending', 'confirmed', 'checked_in'].includes(vizionare.status)
   const isCompleted = vizionare.status === 'completed'
   const hasFeedback = typeof vizionare.rating === 'number' && vizionare.rating > 0
   const canClientManage = !canManage && vizionare.clientId === currentUserId
   const audience = canManage ? 'staff' : canClientManage ? 'client' : 'observer'
-  const guidance = getViewingGuidance(vizionare, audience)
+  const guidance: ViewingGuidance = isCompleted && transaction
+    ? { title: transaction.process.title, description: transaction.process.description, action: 'deal_room', actionLabel: transaction.process.phase === 'closed' ? 'Consultă tranzacția' : 'Continuă în tranzacție', tone: 'neutral' }
+    : getViewingGuidance(vizionare, audience)
   const clockSnapshot = useSyncExternalStore(subscribeToClock, getClockSnapshot, getServerClockSnapshot)
   const currentTime = clockSnapshot * 30_000
   const noShowEligible = Boolean(
@@ -94,7 +84,7 @@ export function VizionareCard({
   )
 
   const handleDealRoom = () => {
-    openDealRoomForViewing(navigateTo, vizionare.id)
+    openDealRoomForViewing(navigateTo, vizionare.id, transaction?.id)
   }
 
   const handleDocuments = () => {
@@ -155,38 +145,12 @@ export function VizionareCard({
           {/* Header row */}
           <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-3 min-w-0">
-              <Avatar className="h-10 w-10 flex-shrink-0">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                  {staffInitials}
-                </AvatarFallback>
-              </Avatar>
               <div className="min-w-0">
                 <h2 className="font-semibold text-base leading-snug">{vizionare.propertyTitle}</h2>
                 <p className="text-xs text-muted-foreground">{vizionare.staffName}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {isCompleted && hasFeedback && (
-                <Badge
-                  variant="outline"
-                  className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
-                >
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400 mr-1" />
-                  {vizionare.rating}
-                </Badge>
-              )}
-              {isCompleted && typeof vizionare.wouldProceed === 'boolean' && (
-                <Badge
-                  variant="outline"
-                  className={
-                    vizionare.wouldProceed
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
-                      : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-700'
-                  }
-                >
-                  {vizionare.wouldProceed ? 'Dorește să continue' : 'Nu este interesat'}
-                </Badge>
-              )}
               <StatusBadge status={vizionare.status} />
             </div>
           </div>
@@ -203,26 +167,7 @@ export function VizionareCard({
             </div>
           </div>
 
-          {/* Completed vizionare with feedback — show read-only stars + feedback text */}
-          {isCompleted && hasFeedback && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="mb-3 space-y-2"
-            >
-              <div className="flex items-center gap-2">
-                <StarRating value={vizionare.rating!} readonly />
-                <span className="text-xs text-muted-foreground">
-                  {vizionare.rating}/5
-                </span>
-              </div>
-              {vizionare.feedback && (
-                <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2.5 line-clamp-3">
-                  {vizionare.feedback}
-                </p>
-              )}
-            </motion.div>
-          )}
+          {isCompleted && hasFeedback && <details className="mb-3 text-sm"><summary className="cursor-pointer py-2 text-muted-foreground">Feedbackul vizitei · {vizionare.rating}/5</summary><p className="py-2">{vizionare.feedback || 'Fără comentarii.'}</p></details>}
 
           {/* Notes */}
           {vizionare.notes && !isCompleted && (
@@ -240,18 +185,9 @@ export function VizionareCard({
           )}
 
           {/* One clear next step, followed by optional secondary actions. */}
-          <div
-            className={cn(
-              'mt-3 rounded-xl border p-3.5',
-              guidance.tone === 'warning' && 'border-amber-200 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20',
-              guidance.tone === 'info' && 'border-blue-200 bg-blue-50/70 dark:border-blue-900 dark:bg-blue-950/20',
-              guidance.tone === 'success' && 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/20',
-              guidance.tone === 'neutral' && 'border-border bg-muted/35',
-            )}
-          >
-
+          <div className="mt-3">
             <p className="text-sm font-semibold text-foreground">{guidance.title}</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{guidance.description}</p>
+
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
@@ -279,7 +215,7 @@ export function VizionareCard({
               </Button>
             )}
 
-            {canClientManage && isCompleted && hasFeedback && (
+            {canClientManage && isCompleted && guidance.action !== 'feedback' && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -288,13 +224,6 @@ export function VizionareCard({
               >
                 <MessageSquarePlus className="h-3.5 w-3.5" />
                 Editează feedbackul
-              </Button>
-            )}
-
-            {canManage && isCompleted && vizionare.wouldProceed === true && (
-              <Button variant="outline" size="sm" className="min-h-11 gap-2 text-sm" onClick={handleDealRoom}>
-                <WalletCards className="h-3.5 w-3.5" />
-                Continuă tranzacția
               </Button>
             )}
 

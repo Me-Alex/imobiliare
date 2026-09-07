@@ -36,7 +36,7 @@ export const PUBLIC_NAVIGATION: readonly NavigationItem[] = [
 ]
 
 const ACCOUNT_ITEMS: Record<string, AccountNavigationItem> = {
-  dashboard: { label: 'Prezentare', page: 'dashboard', icon: LayoutDashboard, description: 'Rezumatul și prioritățile contului' },
+  dashboard: { label: 'Activitatea mea', page: 'dashboard', icon: LayoutDashboard, description: 'Rezumatul și prioritățile contului' },
   admin: { label: 'Administrare', page: 'admin', icon: Shield, description: 'Controlul operațiunilor platformei' },
   crm: { label: 'Clienți', page: 'crm', icon: BriefcaseBusiness, description: 'Solicitări, contacte și următoarea acțiune' },
   'owner-dashboard': { label: 'Performanță', page: 'owner-dashboard', icon: BarChart3, description: 'Interes, feedback și recomandări' },
@@ -48,7 +48,7 @@ const ACCOUNT_ITEMS: Record<string, AccountNavigationItem> = {
   'vizionarile-mele': { label: 'Vizionări', page: 'vizionarile-mele', icon: CalendarCheck, description: 'Programări, prezență și feedback' },
   'disponibilitate-staff': { label: 'Disponibilitate', page: 'disponibilitate-staff', icon: Users, description: 'Agenda echipei și intervalele libere' },
   'deal-room': { label: 'Tranzacții', page: 'deal-room', icon: WalletCards, description: 'Oferte, documente și pașii următori' },
-  documente: { label: 'Dosar digital', page: 'documente', icon: FileText, description: 'Documente, versiuni și semnături' },
+  documente: { label: 'Documente', page: 'documente', icon: FileText, description: 'Documente, versiuni și semnături' },
   monede: { label: 'Monede', page: 'monede', icon: CircleDollarSign, description: 'Sold, activitate și recompense' },
   profil: { label: 'Profil', page: 'profil', icon: User, description: 'Datele și preferințele contului' },
 }
@@ -93,12 +93,16 @@ export function getAccountMenuItems(role: AccountRole): AccountNavigationItem[] 
 
 export function getAccountNavigationGroups(role: AccountRole) {
   const items = getAccountMenuItems(role)
-  const groups: { label: string; pages: PageKey[] }[] = [
-    { label: 'Activitate', pages: ['admin', 'dashboard', 'crm', 'proprietatile-mele', 'owner-dashboard', 'adauga-proprietate'] },
-    { label: 'Vizionări și tranzacții', pages: ['programare-vizionare', 'vizionarile-mele', 'disponibilitate-staff', 'deal-room', 'documente'] },
-    { label: 'Cont', pages: ['monede', 'profil'] },
+  const primary: Record<AccountRole, PageKey[]> = {
+    CLIENT: ['dashboard', 'vizionarile-mele', 'deal-room', 'documente'],
+    OWNER: ['dashboard', 'proprietatile-mele', 'vizionarile-mele', 'deal-room', 'documente'],
+    AGENT: ['dashboard', 'crm', 'vizionarile-mele', 'deal-room', 'documente'],
+    ADMIN: ['dashboard', 'crm', 'vizionarile-mele', 'deal-room', 'documente'],
+  }
+  return [
+    { label: 'Activitate', items: primary[role].map(page => items.find(item => item.page === page)!).filter(Boolean) },
+    { label: 'Instrumente și cont', items: items.filter(item => !primary[role].includes(item.page)) },
   ]
-  return groups.map(group => ({ label: group.label, items: items.filter(item => group.pages.includes(item.page)) })).filter(group => group.items.length > 0)
 }
 
 export function getWorkspaceNavigation(role: AccountRole): AccountNavigationItem[] {

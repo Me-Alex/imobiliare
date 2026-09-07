@@ -363,7 +363,7 @@ export async function markViewingNoShow(id: string): Promise<void> {
 
 export async function saveViewingFeedback(
   id: string,
-  input: { rating: number; feedback: string; wouldProceed: boolean; notes?: string },
+  input: { rating: number | null; feedback: string; wouldProceed: boolean; notes?: string },
 ): Promise<void> {
   const { error } = await supabase
     .from('appointments')

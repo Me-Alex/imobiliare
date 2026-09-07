@@ -5,14 +5,10 @@ import { AccountHelp } from '@/components/account/account-help'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ElementType } from 'react'
 import { flushSync } from 'react-dom'
-import { motion } from 'framer-motion'
 import {
   ArrowRight,
   AlertTriangle,
   Archive,
-  BriefcaseBusiness,
-  Building2,
-  CalendarDays,
   ChevronDown,
   CheckCircle2,
   CircleDot,
@@ -22,7 +18,6 @@ import {
   FolderLock,
   Loader2,
   PauseCircle,
-  RefreshCw,
   Settings2,
   ShieldCheck,
   User,
@@ -32,7 +27,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { StatusBadge } from '@/components/ui/status-badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
@@ -73,7 +67,7 @@ import { getDocumentFlowSummary } from '@/lib/document-flow'
 import { getDocumentActionPlan } from '@/lib/document-action-plan'
 import { getDocumentDossierProgress, type DocumentDossierProgress, type DocumentDossierProgressStage } from '@/lib/document-dossier-progress'
 import { getDocumentDossierGuide, type DocumentDossierGuide, type DocumentDossierGuideCard } from '@/lib/document-dossier-guide'
-import { getDocumentQuickActions, type DocumentQuickAction, type DocumentQuickActionTarget } from '@/lib/document-quick-actions'
+import { type DocumentQuickActionTarget } from '@/lib/document-quick-actions'
 import {
   clearDocumentFocusContext,
   openDealRoomForViewing,
@@ -105,13 +99,6 @@ import {
   pickDocumentViewingId,
 } from '@/lib/document-workspace'
 import { getDocumentWorkspaceEmptyState } from '@/lib/document-workspace-empty-state'
-
-const ROLE_COPY = {
-  CLIENT: 'Completează datele, solicită documentele și semnează numai versiunea verificată de agent.',
-  OWNER: 'Confirmă datele proprietății și semnează documentele partajate care te privesc.',
-  AGENT: 'Pregătește dosarele vizionărilor alocate și urmărește semnăturile participanților.',
-  ADMIN: 'Administrează documentele, contractele și jurnalul de audit al tuturor vizionărilor.',
-} as const
 
 interface SigningState {
   document: ViewingDocument
@@ -441,14 +428,6 @@ export function DocumentePage() {
         documentsCount: activeDocumentCount,
       })
     : null
-  const quickActions = actionPlan && profile
-    ? getDocumentQuickActions({
-        role: profile.role,
-        plan: actionPlan,
-        hasDealRoomContext: Boolean(readDealContext()),
-        documentsCount: activeDocumentCount,
-      })
-    : []
   const dossierGuide = actionPlan && profile
     ? getDocumentDossierGuide({
         role: profile.role,
@@ -591,8 +570,8 @@ export function DocumentePage() {
       <PageContainer width="default" className="py-8">
         <PageHero
           variant="simple"
-          title="Dosar digital"
-          description={ROLE_COPY[profile.role]}
+          title="Documente"
+          description="Consultă, completează și semnează documentele proprietății."
           showBackButton
           onBack={() => returnToWorkflow(navigateTo, profile.role === 'CLIENT' ? 'vizionarile-mele' : 'dashboard')}
           backLabel="Înapoi"
@@ -621,20 +600,10 @@ export function DocumentePage() {
           />
         ) : (
           <>
-            <Card className="mb-6">
-              <CardHeader className="pb-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-base">Dosarul vizionării</CardTitle>
-                    <CardDescription>Alege vizionarea pentru care vrei să vezi următorul pas sau documentele păstrate.</CardDescription>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => void refreshViewings()} className="gap-2">
-                    <RefreshCw className="h-3.5 w-3.5" /> Actualizează
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
+            <div className="mb-6">
+              <label className="mb-2 block text-sm font-medium" htmlFor="document-viewing">Proprietatea și vizionarea</label>
                 <select
+                  id="document-viewing"
                   value={selectedId || ''}
                   onChange={(event) => {
                     setToolsOpen(false)
@@ -664,36 +633,11 @@ export function DocumentePage() {
                   )}
                 </select>
 
-                {selectedViewing && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><Building2 className="h-4 w-4" /> {selectedViewing.propertyTitle}</span>
-                    <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> {formatDateRO(selectedViewing.date)}, {selectedViewing.startTime}-{selectedViewing.endTime}</span>
-                    <StatusBadge status={selectedViewing.status} />
-                    <Badge variant="outline">{selectedViewing.staffName}</Badge>
-                  </motion.div>
-                )}
-              </CardContent>
-            </Card>
+              <Button variant="ghost" size="sm" className="mt-2" onClick={() => void refreshViewings()}>Actualizează</Button>
+            </div>
 
-            {dossierGuide && (
-              <AccountHelp title="Ghidul documentelor necesare"><DocumentDossierGuidePanel
-                guide={dossierGuide}
-                focusedTarget={focusedDocumentTarget}
-                onAction={handleQuickAction}
-              /></AccountHelp>
-            )}
-
-            {flowSummary && (
-              <DocumentActionCenter summary={flowSummary} onPrimaryAction={handlePrimaryAction} />
-            )}
-
-            {quickActions.length > 0 && (
-              <DocumentQuickActionsPanel
-                actions={quickActions}
-                focusedTarget={focusedDocumentTarget}
-                onAction={handleQuickAction}
-              />
-            )}
+            {flowSummary && <DocumentActionCenter summary={flowSummary} onPrimaryAction={handlePrimaryAction} />}
+            {readDealContext() && <Button variant="link" className="mb-5 h-auto p-0" onClick={() => handleQuickAction('deal-room')}>Înapoi la tranzacție</Button>}
 
             {(dossierProgress || actionPlan) && (
               <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen} className="mb-6">
@@ -702,20 +646,19 @@ export function DocumentePage() {
                     <span className="flex items-center gap-2 text-left">
                       <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
                       <span>
-                        <span className="block font-medium">{dossierGuide?.detailToggleLabel ?? 'Vezi detaliile dosarului'}</span>
-                        <span className="block text-xs font-normal text-muted-foreground">
-                          {dossierGuide?.detailToggleDescription ?? 'Harta, checklist-ul și responsabilii rămân disponibile pentru verificare.'}
-                        </span>
+                        <span className="block font-medium">Documente necesare și responsabili</span>
+
                       </span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
-                      {actionPlan ? <Badge variant="secondary">{actionPlan.items.length} pași</Badge> : null}
+
                       <ChevronDown className={`h-4 w-4 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} />
                     </span>
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="pt-4">
+                    {dossierGuide && <AccountHelp title="Explicații despre documente"><DocumentDossierGuidePanel guide={dossierGuide} focusedTarget={focusedDocumentTarget} onAction={handleQuickAction} /></AccountHelp>}
                     {dossierProgress && (
                       <DocumentDossierProgressPanel progress={dossierProgress} />
                     )}
@@ -982,12 +925,6 @@ export function DocumentePage() {
   )
 }
 
-const QUICK_ACTION_ICONS: Record<DocumentQuickAction['id'], ElementType> = {
-  'current-step': FileSignature,
-  'deal-room': BriefcaseBusiness,
-  'advanced-tools': Settings2,
-  archive: FolderOpen,
-}
 
 const GUIDE_CARD_ICONS: Record<DocumentDossierGuideCard['id'], ElementType> = {
   'role-action': User,
@@ -1192,78 +1129,6 @@ function DocumentDossierProgressPanel({
             </div>
           )
         })}
-      </CardContent>
-    </Card>
-  )
-}
-
-function DocumentQuickActionsPanel({
-  actions,
-  focusedTarget,
-  onAction,
-}: {
-  actions: readonly DocumentQuickAction[]
-  focusedTarget: DocumentFocusTarget | null
-  onAction: (target: DocumentQuickActionTarget) => void
-}) {
-  return (
-    <Card id="document-simple-actions" className="mb-6 scroll-mt-24 border-primary/10 bg-muted/10">
-      <CardHeader className="pb-3">
-        <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">Mod simplu</Badge>
-        <CardTitle className="text-base">Alege acțiunea, nu secțiunea</CardTitle>
-        <CardDescription>
-          Cele mai utile căi sunt scoase în față; panourile detaliate rămân dedesubt pentru verificare și audit.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className={cn(
-          'grid gap-3',
-          actions.length >= 4 ? 'md:grid-cols-4' : actions.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2',
-        )}>
-          {actions.map((action) => {
-            const Icon = QUICK_ACTION_ICONS[action.id]
-            const isPrimary = action.tone === 'primary'
-            const focused = focusedTarget === action.target
-            return (
-              <button
-                key={action.id}
-                type="button"
-                disabled={action.disabled}
-                onClick={() => onAction(action.target)}
-                className={cn(
-                  'group flex min-h-44 flex-col rounded-2xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  action.disabled && 'cursor-not-allowed opacity-60',
-                  !action.disabled && 'hover:-translate-y-0.5 hover:shadow-sm',
-                  isPrimary
-                    ? 'border-primary/35 bg-primary/[0.07]'
-                    : action.tone === 'muted'
-                      ? 'border-border bg-muted/35'
-                      : 'border-border bg-background',
-                  focused && 'border-primary/60 ring-2 ring-primary/25',
-                )}
-              >
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <span className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-2xl',
-                    isPrimary ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary',
-                  )}>
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  {isPrimary ? <Badge className="bg-primary text-primary-foreground">Acum</Badge> : null}
-                </div>
-                <p className="font-semibold">{action.title}</p>
-                <p className="mt-2 flex-1 text-sm leading-5 text-muted-foreground">{action.description}</p>
-                <span className={cn(
-                  'mt-4 inline-flex items-center gap-1 text-sm font-medium',
-                  action.disabled ? 'text-muted-foreground' : 'text-primary',
-                )}>
-                  {action.buttonLabel}
-                  {!action.disabled ? <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /> : null}
-                </span>
-              </button>
-            )
-          })}
-        </div>
       </CardContent>
     </Card>
   )

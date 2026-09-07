@@ -227,7 +227,7 @@ function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
         onClose={clearLightbox}
       />
       <Toaster richColors position="bottom-right" />
-      <AIChatWidget open={chatOpen} onOpenChange={setChatOpen} />
+      <AIChatWidget hideLauncher={Boolean(user && isAccountWorkspacePage(currentPage))} open={chatOpen} onOpenChange={setChatOpen} />
       <BackToTop />
     </div>
   )

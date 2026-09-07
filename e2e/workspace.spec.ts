@@ -34,11 +34,13 @@ for (const [role, destinations] of Object.entries(routes)) {
         await expect(page.getByRole('dialog')).toBeHidden()
         await expect(trigger).toBeFocused()
       }
-      for (const [index, destination] of destinations.entries()) {
+      for (const destination of destinations) {
         if (width === 390) await page.getByRole('button', { name: 'Deschide meniul contului', exact: true }).click()
         const navigation = page.getByRole('navigation', { name: width === 390 ? 'Secțiunile contului' : 'Spațiul contului', exact: true })
-        await expect(navigation.getByRole('button')).toHaveCount(destinations.length)
-        await navigation.getByRole('button').nth(index).click()
+        await expect(navigation.locator('button[data-page]')).toHaveCount(destinations.length)
+        const target = navigation.locator(`button[data-page="${destination}"]`)
+        if (!(await target.isVisible())) await navigation.getByText('Instrumente și cont', { exact: true }).click()
+        await target.click()
         await expect(page).toHaveURL(new RegExp(`page=${destination}(?:&|$)`))
         if (width === 390) await expect(page.getByRole('dialog')).toBeHidden()
         await expect(page.locator(`#main-content [data-page="${destination}"] h1`).first()).toBeVisible()

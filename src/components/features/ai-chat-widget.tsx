@@ -21,6 +21,7 @@ const WELCOME_MESSAGE: ChatMessage = {
 
 interface AIChatWidgetProps {
   open: boolean
+  hideLauncher?: boolean
   onOpenChange: (open: boolean) => void
 }
 
@@ -34,7 +35,7 @@ function TypingIndicator() {
   )
 }
 
-export function AIChatWidget({ open, onOpenChange }: AIChatWidgetProps) {
+export function AIChatWidget({ open, onOpenChange, hideLauncher = false }: AIChatWidgetProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -216,7 +217,7 @@ export function AIChatWidget({ open, onOpenChange }: AIChatWidgetProps) {
 
       {/* Floating button */}
       <AnimatePresence>
-        {!open && (
+        {!open && !hideLauncher && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
