@@ -1,367 +1,76 @@
 'use client'
 
-import { AccountHelp } from '@/components/account/account-help'
-
-import { useCallback, useEffect, useMemo, useState, type ElementType } from 'react'
-import {
-  ArrowRight,
-  BarChart3,
-  CalendarClock,
-  CalendarDays,
-  CheckCircle2,
-  Clock3,
-  Gauge,
-  Inbox,
-  Loader2,
-  MapPin,
-  MessageCircleWarning,
-  PhoneCall,
-  RefreshCw,
-  Sparkles,
-  Target,
-  UserRoundPlus,
-  Users,
-} from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Loader2, RefreshCw, Users, Target, MessageCircleWarning } from 'lucide-react'
 import { toast } from 'sonner'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { PageContainer, PageShell } from '@/components/layout/page-shell'
+import { PageHero } from '@/components/layout/page-hero'
 import { useAuth } from '@/contexts/auth-context'
 import {
-  getAgentCrmWorkbench,
-  type AgentCrmWorkbench,
-  type AgentCrmWorkbenchFocus,
-  type AgentCrmWorkbenchStage,
-  type AgentCrmWorkbenchStageState,
-} from '@/lib/agent-crm-workbench'
-import {
-  CRM_STAGES,
-  type CrmLead,
-  type CrmStage,
-  autoAssignLeads,
-  completeFollowUp,
-  createFollowUp,
-  fetchCrmSnapshot,
-  normalizeCrmStage,
-  relationOne,
-  updateLeadStage,
+  CRM_STAGES, type CrmLead, type CrmStage, autoAssignLeads,
+  completeFollowUp, createFollowUp, fetchCrmSnapshot,
+  normalizeCrmStage, relationOne, updateLeadStage,
 } from '@/lib/transaction-workspace'
 
-const STAGE_META: Record<CrmStage, { label: string; dot: string; accent: string }> = {
-  NEW: { label: 'Nou', dot: 'bg-violet-500', accent: 'border-t-violet-500' },
-  QUALIFIED: { label: 'Calificat', dot: 'bg-blue-500', accent: 'border-t-blue-500' },
-  VIEWING: { label: 'Vizionare', dot: 'bg-amber-500', accent: 'border-t-amber-500' },
-  OFFER: { label: 'Ofertă', dot: 'bg-orange-500', accent: 'border-t-orange-500' },
-  CONTRACT: { label: 'Contract', dot: 'bg-emerald-500', accent: 'border-t-emerald-500' },
+const STAGE_META: Record<CrmStage, { label: string }> = {
+  NEW: { label: 'Nou' }, QUALIFIED: { label: 'Calificat' },
+  VIEWING: { label: 'Vizionare' }, OFFER: { label: 'Ofertă' }, CONTRACT: { label: 'Contract' },
 }
-
-type CrmPriorityTone = 'rose' | 'amber' | 'blue' | 'emerald' | 'violet'
-
-interface CrmPriorityItem {
-  id: string
-  title: string
-  description: string
-  count: number
-  icon: ElementType
-  tone: CrmPriorityTone
-}
-
+const TERMINAL_LEAD_STATUSES = new Set(['WON', 'CLOSED', 'LOST'])
+function isLeadTerminal(lead: CrmLead) { return TERMINAL_LEAD_STATUSES.has(lead.status) }
 function shortDate(value?: string | null) {
-  if (!value) return '—'
+  if (!value || !Number.isFinite(Date.parse(value))) return 'Dată nespecificată'
   return new Intl.DateTimeFormat('ro-RO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
 }
-
-function sourceLabel(source?: string | null) {
-  const normalized = (source || 'website').toLowerCase()
-  if (normalized.includes('google')) return 'Google'
-  if (normalized.includes('facebook') || normalized.includes('meta')) return 'Meta'
-  if (normalized.includes('ref')) return 'Recomandare'
-  if (normalized.includes('portal')) return 'Portal'
-  return 'Website'
-}
-
-const TERMINAL_LEAD_STATUSES = new Set(['WON', 'CLOSED', 'LOST'])
-
-function isLeadTerminal(lead: CrmLead) {
-  return TERMINAL_LEAD_STATUSES.has(lead.status)
-}
-
-function isLeadResponseOverdue(lead: CrmLead, now = Date.now()) {
-  if (lead.status !== 'NEW') return false
-  const dueAt = Date.parse(lead.response_due_at || lead.created_at)
-  return Number.isFinite(dueAt) && dueAt < now
-}
-
-function endOfToday() {
-  const date = new Date()
-  date.setHours(23, 59, 59, 999)
-  return date.getTime()
-}
-
-const WORKBENCH_STAGE_ICONS: Record<AgentCrmWorkbenchStage['id'], ElementType> = {
-  response: PhoneCall,
-  qualification: Target,
-  viewing: CalendarDays,
-  offerContract: CheckCircle2,
-}
-
-const WORKBENCH_STATE_META: Record<AgentCrmWorkbenchStageState, {
-  label: string
-  className: string
-  markerClassName: string
-  badgeClassName: string
-}> = {
-  urgent: {
-    label: 'Urgent',
-    className: 'border-amber-300 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/25',
-    markerClassName: 'bg-amber-500 text-white',
-    badgeClassName: 'bg-amber-500 text-white hover:bg-amber-500',
-  },
-  active: {
-    label: 'În lucru',
-    className: 'border-primary/25 bg-primary/[0.05]',
-    markerClassName: 'bg-primary text-primary-foreground',
-    badgeClassName: 'bg-primary text-primary-foreground',
-  },
-  healthy: {
-    label: 'La zi',
-    className: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
-    markerClassName: 'bg-emerald-600 text-white',
-    badgeClassName: 'bg-emerald-600 text-white hover:bg-emerald-600',
-  },
-}
-
-function AgentCrmWorkbenchPanel({
-  workbench,
-  onFocus,
-}: {
-  workbench: AgentCrmWorkbench
-  onFocus: (focus: AgentCrmWorkbenchFocus) => void
-}) {
-  const PrimaryIcon = WORKBENCH_STAGE_ICONS[workbench.primaryStage.id]
-
-  return (
-    <Card className="overflow-hidden border-primary/15">
-      <CardHeader className="border-b bg-background/75 pb-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">
-              Workbench agent
-            </Badge>
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <PrimaryIcon className="h-5 w-5 text-primary" />
-              {workbench.headline}
-            </CardTitle>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-              {workbench.description}
-            </p>
-          </div>
-          <div className="min-w-[220px] rounded-2xl border bg-card p-4 shadow-sm">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  sănătate CRM
-                </p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{workbench.healthPercent}%</p>
-              </div>
-              <Badge variant={workbench.activeCount > 0 ? 'secondary' : 'default'}>
-                {workbench.activeCount > 0 ? `${workbench.activeCount} acțiuni` : 'la zi'}
-              </Badge>
-            </div>
-            <Progress value={workbench.healthPercent} className="mt-3 h-2" />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
-        {workbench.stages.map((stage) => {
-          const Icon = WORKBENCH_STAGE_ICONS[stage.id]
-          const meta = WORKBENCH_STATE_META[stage.state]
-
-          return (
-            <button
-              key={stage.id}
-              type="button"
-              onClick={() => onFocus(stage.focus)}
-              className={`group rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${meta.className}`}
-            >
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${meta.markerClassName}`}>
-                  <Icon className="h-5 w-5" />
-                </span>
-                <Badge className={`text-[10px] ${meta.badgeClassName}`}>{meta.label}</Badge>
-              </div>
-              <p className="text-sm font-semibold">{stage.title}</p>
-              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{stage.description}</p>
-              <div className="mt-3 space-y-1.5 border-t border-border/50 pt-3">
-                {stage.signals.slice(0, 3).map((signal) => (
-                  <p key={signal} className="flex items-start gap-1.5 text-[11px] leading-4 text-muted-foreground">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-60" />
-                    {signal}
-                  </p>
-                ))}
-              </div>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
-                {stage.actionLabel}
-                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-              </span>
-            </button>
-          )
-        })}
-      </CardContent>
-    </Card>
-  )
+function isLeadResponseOverdue(lead: CrmLead) {
+  return lead.status === 'NEW' && Date.parse(lead.response_due_at || lead.created_at) < Date.now()
 }
 
 export function CrmPage() {
   const { user, profile, loading: authLoading } = useAuth()
   const [leads, setLeads] = useState<CrmLead[]>([])
   const [followUps, setFollowUps] = useState<Awaited<ReturnType<typeof fetchCrmSnapshot>>['followUps']>([])
-  const [appointments, setAppointments] = useState<Array<Record<string, unknown>>>([])
   const [loading, setLoading] = useState(true)
   const [workingId, setWorkingId] = useState('')
   const [error, setError] = useState('')
   const [leadScope, setLeadScope] = useState<'mine' | 'all'>('all')
-
+  const [query, setQuery] = useState('')
+  const [stageFilter, setStageFilter] = useState('active')
   const load = useCallback(async () => {
-    if (!user) { setLoading(false); return }
+    if (!user || !profile || !['AGENT', 'ADMIN'].includes(profile.role)) { setLoading(false); return }
     setLoading(true)
     setError('')
     try {
       const snapshot = await fetchCrmSnapshot()
       setLeads(snapshot.leads)
       setFollowUps(snapshot.followUps)
-      setAppointments(snapshot.appointments)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'CRM-ul nu a putut fi încărcat.')
-    } finally {
-      setLoading(false)
-    }
-  }, [user])
-
+      setError(cause instanceof Error ? cause.message : 'Clienții nu au putut fi încărcați.')
+    } finally { setLoading(false) }
+  }, [user, profile])
   useEffect(() => { void load() }, [load])
+  useEffect(() => { setLeadScope(profile?.role === 'AGENT' ? 'mine' : 'all') }, [profile?.role])
+  const scopedLeads = useMemo(() => leads.filter(lead => leadScope === 'all' || lead.agent_id === user?.id), [leads, leadScope, user?.id])
+  const scopedFollowUps = useMemo(() => followUps
+    .filter(item => item.status === 'OPEN' && (leadScope === 'all' || item.assigned_to === user?.id))
+    .sort((a, b) => Date.parse(a.due_at) - Date.parse(b.due_at)), [followUps, leadScope, user?.id])
+  const visibleLeads = useMemo(() => scopedLeads.filter(lead => {
+    const terminal = isLeadTerminal(lead)
+    const matchesStage = stageFilter === 'closed' ? terminal : !terminal && (stageFilter === 'active' || (stageFilter === 'overdue' ? isLeadResponseOverdue(lead) : normalizeCrmStage(lead.status) === stageFilter))
+    const property = relationOne(lead.properties)
+    const haystack = [lead.name, lead.email, lead.phone, property?.title].filter(Boolean).join(' ').toLocaleLowerCase('ro')
+    return matchesStage && haystack.includes(query.trim().toLocaleLowerCase('ro'))
+  }).sort((a, b) => Number(isLeadResponseOverdue(b)) - Number(isLeadResponseOverdue(a)) || Date.parse(b.created_at) - Date.parse(a.created_at)), [scopedLeads, stageFilter, query])
+  const unassignedCount = leads.filter(lead => !isLeadTerminal(lead) && !lead.agent_id).length
 
-  useEffect(() => {
-    if (profile?.role === 'AGENT') setLeadScope('mine')
-    if (profile?.role === 'ADMIN') setLeadScope('all')
-  }, [profile?.role])
-
-  const scopedLeads = useMemo(() => {
-    if (leadScope !== 'mine' || !user) return leads
-    return leads.filter((lead) => lead.agent_id === user.id)
-  }, [leadScope, leads, user])
-
-  const activeLeads = useMemo(() => scopedLeads.filter((lead) => !isLeadTerminal(lead)), [scopedLeads])
-  const openFollowUps = useMemo(() => followUps.filter((item) => item.status === 'OPEN'), [followUps])
-  const scopedFollowUps = useMemo(() => {
-    if (leadScope !== 'mine' || !user) return openFollowUps
-    return openFollowUps.filter((item) => item.assigned_to === user.id)
-  }, [leadScope, openFollowUps, user])
-  const scopedAppointments = useMemo(() => {
-    if (leadScope !== 'mine' || !user) return appointments
-    return appointments.filter((item) => item.agent_id === user.id)
-  }, [appointments, leadScope, user])
-
-  const metrics = useMemo(() => {
-    const responded = activeLeads.filter((lead) => lead.first_response_at)
-    const responseMinutes = responded.map((lead) => Math.max(0, (+new Date(lead.first_response_at as string) - +new Date(lead.created_at)) / 60000))
-    const averageResponse = responseMinutes.length ? Math.round(responseMinutes.reduce((sum, value) => sum + value, 0) / responseMinutes.length) : 0
-    const converted = activeLeads.filter((lead) => ['OFFER', 'CONTRACT'].includes(lead.status)).length
-    const unanswered = activeLeads.filter((lead) => isLeadResponseOverdue(lead)).length
-    return {
-      averageResponse,
-      conversion: activeLeads.length ? Math.round(converted / activeLeads.length * 100) : 0,
-      unanswered,
-      upcoming: scopedAppointments.length,
-    }
-  }, [activeLeads, scopedAppointments.length])
-
-  const grouped = useMemo(() => Object.fromEntries(CRM_STAGES.map((stage) => [stage, activeLeads.filter((lead) => normalizeCrmStage(lead.status) === stage)])) as Record<CrmStage, CrmLead[]>, [activeLeads])
-  const overdueFollowUps = useMemo(() => scopedFollowUps.filter((item) => Date.parse(item.due_at) < Date.now()), [scopedFollowUps])
-  const todayFollowUps = useMemo(() => scopedFollowUps.filter((item) => Date.parse(item.due_at) <= endOfToday()), [scopedFollowUps])
-  const overdueLeads = useMemo(() => activeLeads.filter((lead) => isLeadResponseOverdue(lead)), [activeLeads])
-  const unassignedLeads = useMemo(() => leads.filter((lead) => !isLeadTerminal(lead) && !lead.agent_id), [leads])
-  const nextAppointment = useMemo(() => scopedAppointments[0] || null, [scopedAppointments])
-  const workbench = useMemo(() => getAgentCrmWorkbench({
-    leads: scopedLeads,
-    followUps: scopedFollowUps,
-    appointments: scopedAppointments.map((appointment) => ({
-      status: typeof appointment.status === 'string' ? appointment.status : null,
-      start_at: typeof appointment.start_at === 'string' ? appointment.start_at : null,
-      requested_at: typeof appointment.requested_at === 'string' ? appointment.requested_at : null,
-    })),
-  }), [scopedAppointments, scopedFollowUps, scopedLeads])
-  const dailyPriorities = useMemo(() => {
-    const items: CrmPriorityItem[] = []
-
-    if (overdueFollowUps.length > 0) {
-      items.push({
-        id: 'overdue-followups',
-        title: 'Follow-up-uri întârziate',
-        description: 'Închide sau reprogramează contactările care au depășit termenul.',
-        count: overdueFollowUps.length,
-        icon: CalendarClock,
-        tone: 'rose',
-      })
-    }
-    if (overdueLeads.length > 0) {
-      items.push({
-        id: 'unanswered-leads',
-        title: 'Lead-uri fără răspuns',
-        description: 'Contactează lead-urile noi înainte să se răcească interesul.',
-        count: overdueLeads.length,
-        icon: MessageCircleWarning,
-        tone: 'amber',
-      })
-    }
-    if (todayFollowUps.length > 0) {
-      items.push({
-        id: 'today-followups',
-        title: 'Contactări de azi',
-        description: 'Agenda zilei este grupată aici ca să nu cauți în fiecare coloană.',
-        count: todayFollowUps.length,
-        icon: PhoneCall,
-        tone: 'blue',
-      })
-    }
-    if (nextAppointment) {
-      items.push({
-        id: 'next-viewing',
-        title: 'Următoarea vizionare',
-        description: `${String(nextAppointment.property_title || 'Proprietate')} · ${shortDate(String(nextAppointment.start_at || nextAppointment.requested_at || ''))}`,
-        count: 1,
-        icon: CalendarDays,
-        tone: 'violet',
-      })
-    }
-    if (profile?.role === 'ADMIN' && unassignedLeads.length > 0) {
-      items.push({
-        id: 'unassigned-leads',
-        title: 'Lead-uri nerepartizate',
-        description: 'Folosește repartizarea automată sau alocă manual în funcție de zonă și încărcare.',
-        count: unassignedLeads.length,
-        icon: UserRoundPlus,
-        tone: 'amber',
-      })
-    }
-    if (items.length === 0) {
-      items.push({
-        id: 'healthy',
-        title: 'Agenda CRM este la zi',
-        description: 'Nu există întârzieri critice. Următorul pas bun este calificarea lead-urilor din pipeline.',
-        count: activeLeads.length,
-        icon: CheckCircle2,
-        tone: 'emerald',
-      })
-    }
-
-    return items
-  }, [activeLeads.length, nextAppointment, overdueFollowUps, overdueLeads, profile?.role, todayFollowUps, unassignedLeads])
-
-  if (authLoading || loading) return <div className="flex min-h-[65vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-  if (!user || !profile) return <SimpleState icon={Users} title="Autentificare necesară" description="CRM-ul este disponibil agenților și administratorilor autentificați." />
-  if (!['AGENT', 'ADMIN'].includes(profile.role)) return <SimpleState icon={Target} title="Acces restricționat" description="Acest spațiu conține date comerciale și este disponibil doar echipei agenției." />
-  if (error) return <SimpleState icon={MessageCircleWarning} title="CRM indisponibil" description={error} action={<Button onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" /> Reîncearcă</Button>} />
+  if (authLoading || loading) return <div role="status" className="flex min-h-[50vh] items-center justify-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /> Se încarcă clienții…</div>
+  if (!user || !profile) return <SimpleState icon={Users} title="Autentificare necesară" description="Autentifică-te pentru a vedea clienții." />
+  if (!['AGENT', 'ADMIN'].includes(profile.role)) return <SimpleState icon={Target} title="Acces restricționat" description="Această pagină este disponibilă echipei agenției." />
+  if (error) return <SimpleState icon={MessageCircleWarning} title="Clienți indisponibili" description={error} action={<Button onClick={() => void load()}>Reîncearcă</Button>} />
 
   const handleAdvance = async (lead: CrmLead) => {
     const current = CRM_STAGES.indexOf(normalizeCrmStage(lead.status))
@@ -421,157 +130,83 @@ export function CrmPage() {
     }
   }
 
-  const handleWorkbenchFocus = (focus: AgentCrmWorkbenchFocus) => {
-    const targetId = focus === 'followups'
-      ? 'crm-followups'
-      : focus === 'viewings'
-        ? 'crm-priorities'
-        : 'crm-pipeline'
-
-    document.getElementById(targetId)?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    })
-  }
-
   return (
-    <div className="min-h-screen bg-muted/20">
-      <header className="border-b bg-background">
-        <div className="mx-auto max-w-[1600px] px-4 py-7 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Clienți și solicitări</h1><p className="mt-2 text-sm text-muted-foreground">Vezi cine așteaptă un răspuns și planifică următorul contact.</p></div>
-            <div className="flex flex-wrap gap-2">
-              <div className="flex rounded-md border bg-background p-1">
-                <Button type="button" variant={leadScope === 'mine' ? 'default' : 'ghost'} size="sm" onClick={() => setLeadScope('mine')}>Ale mele</Button>
-                <Button type="button" variant={leadScope === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setLeadScope('all')}>Toată echipa</Button>
-              </div>
-              {profile.role === 'ADMIN' ? <Button variant="outline" onClick={() => void handleAutoAssign()} disabled={workingId === 'auto-assign'}>{workingId === 'auto-assign' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />} Repartizează automat</Button> : null}
-              <Button variant="outline" size="icon" aria-label="Reîncarcă CRM" onClick={() => void load()}><RefreshCw className="h-4 w-4" /></Button>
-            </div>
+    <PageShell>
+      <PageContainer width="default" className="py-6 sm:py-8">
+        <PageHero variant="simple" title="Clienți și solicitări" description="Găsește un client, verifică etapa și stabilește următorul contact.">
+          <Button variant="outline" size="icon" aria-label="Reîncarcă CRM" onClick={() => void load()}><RefreshCw className="h-4 w-4" /></Button>
+        </PageHero>
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <label className="grid gap-1.5 text-sm font-medium">Responsabil
+            <select className="h-11 rounded-md border bg-background px-3 font-normal" value={leadScope} onChange={e => setLeadScope(e.target.value as 'mine' | 'all')}>
+              <option value="mine">Clienții mei</option><option value="all">Toată echipa</option>
+            </select>
+          </label>
+          {profile.role === 'ADMIN' && unassignedCount > 0 && <Button variant="outline" onClick={() => void handleAutoAssign()} disabled={Boolean(workingId)}>Repartizează {unassignedCount} clienți fără agent</Button>}
+        </div>
+        <Tabs defaultValue="clients">
+          <TabsList aria-label="Activitate clienți" className="mb-4 h-auto w-full justify-start gap-2 bg-transparent p-0">
+            <TabsTrigger value="clients" className="min-h-11 flex-none">Clienți</TabsTrigger>
+            <TabsTrigger value="contacts" className="min-h-11 flex-none">Contactări planificate ({scopedFollowUps.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="clients">
+          <div className="mb-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_14rem]">
+            <label className="grid gap-1.5 text-sm font-medium">Caută un client
+              <Input className="h-11" placeholder="Nume, telefon, e-mail sau proprietate" value={query} onChange={e => setQuery(e.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium">Etapă
+              <select className="h-11 rounded-md border bg-background px-3 font-normal" value={stageFilter} onChange={e => setStageFilter(e.target.value)}>
+                <option value="active">Toți clienții activi</option><option value="overdue">Așteaptă răspuns</option>
+                {CRM_STAGES.map(stage => <option key={stage} value={stage}>{STAGE_META[stage].label}</option>)}
+                <option value="closed">Încheiați</option>
+              </select>
+            </label>
           </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1600px] space-y-6 px-4 py-7 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Metric icon={Inbox} label="Lead-uri active" value={activeLeads.length} detail={`${activeLeads.filter((lead) => lead.status === 'NEW').length} noi ${leadScope === 'mine' ? 'ale mele' : 'în CRM'}`} tone="violet" />
-          <Metric icon={Clock3} label="Timp mediu răspuns" value={`${metrics.averageResponse} min`} detail="de la cerere" tone="blue" />
-          <Metric icon={Target} label="Rată conversie" value={`${metrics.conversion}%`} detail="până la ofertă" tone="emerald" />
-          <Metric icon={MessageCircleWarning} label="Fără răspuns" value={metrics.unanswered} detail={`${metrics.upcoming} vizionări viitoare`} tone={metrics.unanswered ? 'rose' : 'amber'} />
-        </div>
-
-        <AccountHelp title="Ghid pentru organizarea clienților"><AgentCrmWorkbenchPanel workbench={workbench} onFocus={handleWorkbenchFocus} /></AccountHelp>
-
-        <Card id="crm-priorities" className="scroll-mt-24 overflow-hidden border-primary/20">
-          <CardHeader className="border-b bg-background/70 pb-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-base"><Gauge className="h-5 w-5 text-primary" /> Prioritățile zilei</CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">Un singur loc pentru ce trebuie contactat, confirmat sau repartizat.</p>
-              </div>
-              <Badge variant="secondary">{leadScope === 'mine' ? 'Munca mea' : 'Toată echipa'}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
-            {dailyPriorities.slice(0, 4).map((item) => <PriorityCard key={item.id} item={item} />)}
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
-          <section id="crm-pipeline" aria-labelledby="pipeline-heading" className="min-w-0 scroll-mt-24">
-            <h2 id="pipeline-heading" className="sr-only">Etapele pipeline-ului</h2>
-            <div className="overflow-x-auto pb-3">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-                {CRM_STAGES.map((stage) => (
-                  <div key={stage} className={`rounded-2xl border border-t-4 bg-background ${STAGE_META[stage].accent}`}>
-                    <div className="flex items-center justify-between border-b px-4 py-3"><div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${STAGE_META[stage].dot}`} /><h3 className="text-sm font-semibold">{STAGE_META[stage].label}</h3></div><Badge variant="secondary">{grouped[stage].length}</Badge></div>
-                    <div className="min-h-80 space-y-3 p-3">
-                      {grouped[stage].map((lead) => <LeadCard key={lead.id} lead={lead} isWorking={workingId === lead.id} onAdvance={() => void handleAdvance(lead)} onFollowUp={() => void handleFollowUp(lead)} />)}
-                      {grouped[stage].length === 0 ? <div className="rounded-xl border border-dashed p-5 text-center text-xs text-muted-foreground">Niciun lead în această etapă</div> : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <aside className="space-y-6">
-            <Card id="crm-followups" className="scroll-mt-24">
-              <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><CalendarClock className="h-4 w-4 text-primary" /> Follow-up-uri <Badge variant="secondary">{scopedFollowUps.length}</Badge></CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                {scopedFollowUps.length === 0 ? <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground"><CheckCircle2 className="mx-auto mb-2 h-6 w-6 text-emerald-500" /> Agenda este la zi.</div> : scopedFollowUps.slice(0, 8).map((item) => (
-                  <div key={item.id} className="rounded-xl border p-3">
-                    <div className="flex items-start gap-3"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{item.title}</p><p className={`mt-1 text-xs ${+new Date(item.due_at) < Date.now() ? 'font-medium text-rose-600' : 'text-muted-foreground'}`}>{shortDate(item.due_at)}</p></div></div>
-                    <Button variant="ghost" size="sm" className="mt-2 w-full" disabled={workingId === item.id} onClick={() => void handleComplete(item.id)}><CheckCircle2 className="mr-2 h-4 w-4" /> Marchează finalizat</Button>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><BarChart3 className="h-4 w-4 text-primary" /> Rezultatele contactelor</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <HealthLine label="Răspuns la timp" value={leads.length ? Math.round((leads.length - metrics.unanswered) / leads.length * 100) : 100} />
-                <HealthLine label="Clienți calificați" value={leads.length ? Math.round(leads.filter((lead) => CRM_STAGES.indexOf(normalizeCrmStage(lead.status)) >= 1).length / leads.length * 100) : 0} />
-                <HealthLine label="Conversie la ofertă" value={metrics.conversion} />
-              </CardContent>
-            </Card>
-          </aside>
-        </div>
-      </main>
-    </div>
+          <p role="status" className="mb-3 text-sm text-muted-foreground">{visibleLeads.length} clienți · Solicitările care așteaptă răspuns apar primele.</p>
+          <div className="divide-y rounded-xl border">
+            {visibleLeads.map(lead => <LeadRow key={lead.id} lead={lead} isWorking={Boolean(workingId)} onAdvance={() => void handleAdvance(lead)} onFollowUp={() => void handleFollowUp(lead)} hasFollowUp={followUps.some(item => item.status === 'OPEN' && item.lead_id === lead.id)} />)}
+            {visibleLeads.length === 0 && <div className="p-8 text-center"><p>Nu există clienți pentru această selecție.</p>{(query || stageFilter !== 'active') && <Button variant="link" onClick={() => { setQuery(''); setStageFilter('active') }}>Resetează filtrele</Button>}</div>}
+          </div>
+        </TabsContent><TabsContent value="contacts">
+          <p className="mb-4 text-sm text-muted-foreground">Contactările sunt ordonate după termen. Marchează-le finalizate după ce ai discutat cu clientul.</p>
+          <div className="divide-y rounded-xl border">
+            {scopedFollowUps.map(item => <article key={item.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0"><h2 className="break-words font-medium">{item.title}</h2><p className="mt-1 text-sm text-muted-foreground">{shortDate(item.due_at)}{Date.parse(item.due_at) < Date.now() ? ' · Termen depășit' : ''}</p></div>
+              <Button variant="outline" className="shrink-0" disabled={Boolean(workingId)} onClick={() => void handleComplete(item.id)}>Marchează finalizat</Button>
+            </article>)}
+            {scopedFollowUps.length === 0 && <p className="p-8 text-center text-muted-foreground">Nu ai contactări planificate. Le poți adăuga din lista de clienți.</p>}
+          </div>
+        </TabsContent></Tabs>
+      </PageContainer>
+    </PageShell>
   )
 }
 
-function LeadCard({ lead, isWorking, onAdvance, onFollowUp }: { lead: CrmLead; isWorking: boolean; onAdvance: () => void; onFollowUp: () => void }) {
+function LeadRow({ lead, isWorking, hasFollowUp, onAdvance, onFollowUp }: { lead: CrmLead; isWorking: boolean; hasFollowUp: boolean; onAdvance: () => void; onFollowUp: () => void }) {
   const property = relationOne(lead.properties)
   const stage = normalizeCrmStage(lead.status)
-  const isLast = stage === 'CONTRACT'
-  return (
-    <article className="rounded-xl border bg-card p-3 shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h4 className="truncate text-sm font-semibold">{lead.name}</h4><p className="mt-0.5 truncate text-xs text-muted-foreground">{lead.email || lead.phone || 'Date de contact indisponibile'}</p></div><Badge variant="outline" className="shrink-0 text-[10px]">{sourceLabel(lead.source)}</Badge></div>
-      {property ? <div className="mt-3 rounded-lg bg-muted/50 p-2.5"><p className="truncate text-xs font-medium">{property.title}</p><p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"><MapPin className="h-3 w-3" /> {property.zone || property.city || 'Zonă nespecificată'}</p></div> : null}
-      <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground"><span>Scor {lead.score}/100</span><span>{shortDate(lead.created_at)}</span></div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(5, Math.min(100, lead.score))}%` }} /></div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Button variant="outline" size="sm" onClick={onFollowUp} disabled={isWorking}><PhoneCall className="mr-1.5 h-3.5 w-3.5" /> Contactează</Button>
-        <Button size="sm" onClick={onAdvance} disabled={isWorking || isLast}>{isWorking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isLast ? <CheckCircle2 className="h-3.5 w-3.5" /> : <><span>Avansează</span><ArrowRight className="ml-1 h-3.5 w-3.5" /></>}</Button>
+  const closed = isLeadTerminal(lead)
+  const next = CRM_STAGES[CRM_STAGES.indexOf(stage) + 1]
+  return <article className="p-4 sm:p-5">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <h2 className="break-words font-semibold">{lead.name}</h2>
+        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          {lead.phone && <a className="break-all text-primary underline-offset-4 hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a>}
+          {lead.email && <a className="break-all text-primary underline-offset-4 hover:underline" href={`mailto:${lead.email}`}>{lead.email}</a>}
+          {!lead.phone && !lead.email && <span className="text-muted-foreground">Date de contact indisponibile</span>}
+        </div>
+        {property && <p className="mt-2 break-words text-sm text-muted-foreground">{property.title} · {property.zone || property.city || 'Zonă nespecificată'}</p>}
       </div>
-    </article>
-  )
-}
-
-function PriorityCard({ item }: { item: CrmPriorityItem }) {
-  const tones: Record<CrmPriorityTone, string> = {
-    rose: 'border-rose-200 bg-rose-50/70 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/20 dark:text-rose-300',
-    amber: 'border-amber-200 bg-amber-50/70 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-300',
-    blue: 'border-blue-200 bg-blue-50/70 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-300',
-    emerald: 'border-emerald-200 bg-emerald-50/70 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-300',
-    violet: 'border-violet-200 bg-violet-50/70 text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/20 dark:text-violet-300',
-  }
-  const Icon = item.icon
-
-  return (
-    <div className={`rounded-2xl border p-4 ${tones[item.tone]}`}>
-      <div className="flex items-start justify-between gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background/80">
-          <Icon className="h-5 w-5" />
-        </span>
-        <span className="rounded-full bg-background/80 px-2 py-1 text-xs font-bold">{item.count}</span>
-      </div>
-      <p className="mt-4 text-sm font-semibold text-foreground">{item.title}</p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.description}</p>
+      <Badge variant="secondary" className="shrink-0">{closed ? lead.status === 'WON' ? 'Câștigat' : lead.status === 'LOST' ? 'Pierdut' : 'Încheiat' : STAGE_META[stage].label}</Badge>
     </div>
-  )
-}
-
-function Metric({ icon: Icon, label, value, detail, tone }: { icon: React.ElementType; label: string; value: string | number; detail: string; tone: 'violet' | 'blue' | 'emerald' | 'rose' | 'amber' }) {
-  const tones = { violet: 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300', blue: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300', emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300', rose: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300', amber: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' }
-  return <Card><CardContent className="p-4 sm:p-5"><div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ${tones[tone]}`}><Icon className="h-4 w-4" /></div><p className="text-2xl font-bold sm:text-3xl">{value}</p><p className="text-sm font-medium">{label}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></CardContent></Card>
-}
-
-function HealthLine({ label, value }: { label: string; value: number }) {
-  return <div><div className="mb-1.5 flex items-center justify-between text-xs"><span>{label}</span><span className="font-semibold">{value}%</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></div></div>
+    {isLeadResponseOverdue(lead) && <p className="mt-3 text-sm font-medium text-amber-700 dark:text-amber-400">Așteaptă primul răspuns</p>}
+    {!closed && <div className="mt-4 flex flex-wrap items-center gap-2">
+      {next && <Button variant="outline" onClick={onAdvance} disabled={isWorking}>Mută în etapa „{STAGE_META[next].label}”</Button>}
+      <Button variant="ghost" onClick={onFollowUp} disabled={isWorking || hasFollowUp}>{hasFollowUp ? 'Contactare deja planificată' : 'Amintește-mi mâine la 10:00'}</Button>
+    </div>}
+    <details className="mt-3 text-sm text-muted-foreground"><summary className="w-fit cursor-pointer py-1">Detalii solicitare</summary><p className="pt-2">Primită: {shortDate(lead.created_at)} · Sursă: {lead.source || 'Website'} · Scor: {lead.score}/100</p></details>
+  </article>
 }
 
 function SimpleState({ icon: Icon, title, description, action }: { icon: React.ElementType; title: string; description: string; action?: React.ReactNode }) {

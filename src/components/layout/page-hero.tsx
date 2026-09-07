@@ -3,6 +3,7 @@
 import { Home, ChevronRight, ArrowLeft } from 'lucide-react'
 import { useAppStore } from '@/store/use-app-store'
 import type { PageKey } from '@/store/slices/navigation'
+import { isAccountWorkspacePage } from '@/lib/navigation-config'
 import { PageContainer } from './page-shell'
 
 // ─── PageBreadcrumb ──────────────────────────────────────────────────────────
@@ -18,7 +19,12 @@ export function PageBreadcrumb({ items, className }: {
   className?: string
 }) {
   const navigateTo = useAppStore((s) => s.navigateTo)
-  const visibleItems = items[0]?.page === 'acasa' ? items.slice(1) : items
+  const currentPage = useAppStore((s) => s.currentPage)
+  const inWorkspace = isAccountWorkspacePage(currentPage)
+  const rootPage = inWorkspace ? 'dashboard' : 'acasa'
+  const visibleItems = items.filter((item, index) => !(index === 0 && item.page === 'acasa') && !(inWorkspace && item.page === 'dashboard'))
+
+  if (inWorkspace && visibleItems.length <= 1) return null
 
   return (
     <nav
@@ -27,11 +33,11 @@ export function PageBreadcrumb({ items, className }: {
     >
       <button
         type="button"
-        onClick={() => navigateTo('acasa')}
+        onClick={() => navigateTo(rootPage)}
         className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
       >
         <Home className="h-3.5 w-3.5" />
-        <span>Acasă</span>
+        <span>{inWorkspace ? 'Dosarele mele' : 'Acasă'}</span>
       </button>
       {visibleItems.map((item, i) => (
         <span key={i} className="flex items-center gap-2">

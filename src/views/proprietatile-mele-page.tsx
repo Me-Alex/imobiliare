@@ -1,17 +1,11 @@
 'use client'
 
-import { AccountHelp } from '@/components/account/account-help'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ElementType } from 'react'
 import {
   Archive,
-  ArrowRight,
   BarChart3,
   Building2,
-  Camera,
-  CheckCircle2,
-  FileText,
   ImageOff,
   Loader2,
   MapPin,
@@ -19,7 +13,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -41,15 +34,8 @@ import { Input } from '@/components/ui/input'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { useAuth } from '@/contexts/auth-context'
 import { archiveManagedProperty, fetchManagedProperties } from '@/lib/managed-properties'
-import {
-  getPropertyPortfolioGuide,
-  type PropertyPortfolioGuide,
-  type PropertyPortfolioGuideAction,
-  type PropertyPortfolioGuideCard,
-} from '@/lib/property-portfolio-guide'
 import { getPublishedPropertyQuality } from '@/lib/property-publication-readiness'
 import type { UserProperty } from '@/lib/types'
-import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/use-app-store'
 
 function valuePresent(value: unknown): boolean {
@@ -110,50 +96,6 @@ export function ProprietatileMelePage() {
     return properties.filter((property) => [property.title, property.address, property.zone, property.sector]
       .some((value) => String(value || '').toLocaleLowerCase('ro-RO').includes(normalized)))
   }, [properties, query])
-
-  const averageQuality = properties.length
-    ? Math.round(properties.reduce((total, property) => total + getPublishedPropertyQuality(property).score, 0) / properties.length)
-    : 0
-  const withoutCover = properties.filter((property) => !coverUrl(property)).length
-  const published = properties.filter((property) => String(property.status).toUpperCase() === 'PUBLISHED').length
-  const portfolioGuide = useMemo(
-    () => canManagePortfolio
-      ? getPropertyPortfolioGuide({
-          role: isAdminPortfolio ? 'ADMIN' : 'OWNER',
-          properties,
-        })
-      : null,
-    [canManagePortfolio, isAdminPortfolio, properties],
-  )
-
-  const handlePortfolioGuideAction = useCallback((action: PropertyPortfolioGuideAction) => {
-    if (action.target === 'publish') {
-      navigateTo('adauga-proprietate')
-      return
-    }
-    if (action.target === 'optimize') {
-      const property = properties.find((item) => String(item.id) === action.propertyId)
-      if (property) {
-        setEditProperty(property)
-        return
-      }
-      navigateTo('adauga-proprietate')
-      return
-    }
-    if (action.target === 'services') {
-      navigateTo('servicii')
-      return
-    }
-    if (action.target === 'performance') {
-      navigateTo('owner-dashboard')
-      return
-    }
-    if (action.target === 'documents') {
-      navigateTo('documente')
-      return
-    }
-    navigateTo('admin')
-  }, [navigateTo, properties])
 
   const confirmArchive = async () => {
     if (!archiveProperty) return
@@ -242,20 +184,6 @@ export function ProprietatileMelePage() {
           </PageSurface>
         ) : (
           <>
-            {portfolioGuide && (
-              <AccountHelp title="Ce poți îmbunătăți la anunțuri"><PropertyPortfolioGuidePanel
-                guide={portfolioGuide}
-                onAction={handlePortfolioGuideAction}
-              /></AccountHelp>
-            )}
-
-            <section aria-label="Rezumat portofoliu" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <PortfolioStat icon={Building2} label={isAdminPortfolio ? 'Proprietăți gestionate' : 'Proprietăți active'} value={properties.length} />
-              <PortfolioStat icon={CheckCircle2} label="Publicate" value={published} />
-              <PortfolioStat icon={Sparkles} label="Calitate medie" value={`${averageQuality}%`} />
-              <PortfolioStat icon={ImageOff} label="Fără fotografie" value={withoutCover} attention={withoutCover > 0} />
-            </section>
-
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative w-full sm:max-w-sm">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -279,7 +207,7 @@ export function ProprietatileMelePage() {
                 <p className="mt-1 text-sm text-muted-foreground">Schimbă termenul de căutare.</p>
               </PageSurface>
             ) : (
-              <section aria-label="Lista proprietăților" className="grid gap-4 lg:grid-cols-2">
+              <section aria-label="Lista proprietăților" className="space-y-4">
                 {visibleProperties.map((property) => {
                   const quality = getPublishedPropertyQuality(property)
                   const nextRecommendation = quality.recommendations[0]
@@ -287,7 +215,7 @@ export function ProprietatileMelePage() {
                   return (
                     <PageSurface key={property.id} as="article" className="overflow-hidden">
                       <div className="flex min-h-44 flex-col sm:flex-row">
-                        <div className="relative min-h-44 bg-muted sm:w-52 sm:shrink-0">
+                        <div className="relative min-h-44 bg-muted sm:w-40 sm:shrink-0">
                           {image ? (
                             <img src={image} alt={`Coperta proprietății ${String(property.title)}`} className="absolute inset-0 h-full w-full object-cover" />
                           ) : (
@@ -300,37 +228,15 @@ export function ProprietatileMelePage() {
                         <div className="flex min-w-0 flex-1 flex-col p-4 sm:p-5">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <StatusBadge status={property.status || 'DRAFT'} />
-                            <span className={cn('text-xs font-semibold', quality.score >= 80 ? 'text-emerald-600' : 'text-amber-600')}>
-                              Calitate {quality.score}% · {quality.label}
-                            </span>
                           </div>
                           <h2 className="mt-3 line-clamp-2 text-lg font-semibold">{String(property.title)}</h2>
                           <p className="mt-1 flex items-start gap-1.5 text-xs leading-5 text-muted-foreground">
                             <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {propertyLocation(property)}
                           </p>
                           <p className="mt-3 text-lg font-bold text-primary">{formatPrice(property)}</p>
-                          <div className="mt-3 rounded-xl border bg-muted/20 p-3">
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="flex items-center gap-1.5 text-xs font-medium">
-                                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                                Recomandare anunt
-                              </span>
-                              <span className="text-xs text-muted-foreground">{quality.score}/100</span>
-                            </div>
-                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
-                              <div
-                                className={cn('h-full rounded-full', quality.score >= 80 ? 'bg-emerald-500' : 'bg-amber-500')}
-                                style={{ width: `${quality.score}%` }}
-                              />
-                            </div>
-                            <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                              {nextRecommendation
-                                ? `${nextRecommendation.title}: ${nextRecommendation.description}`
-                                : 'Anuntul este complet si pregatit pentru promovare.'}
-                            </p>
-                          </div>
+                          {nextRecommendation && <p className="mt-3 text-sm text-muted-foreground"><span className="font-medium text-foreground">{nextRecommendation.title}.</span> {nextRecommendation.description}</p>}
                           <div className="mt-auto flex flex-wrap gap-2 pt-4">
-                            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditProperty(property)}>
+                            <Button size="sm" className="gap-1.5" onClick={() => setEditProperty(property)}>
                               <Pencil className="h-3.5 w-3.5" /> Editează
                             </Button>
                             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigateTo('owner-dashboard')}>
@@ -376,144 +282,5 @@ export function ProprietatileMelePage() {
         </DialogContent>
       </Dialog>
     </PageShell>
-  )
-}
-
-const PORTFOLIO_GUIDE_ICONS: Record<PropertyPortfolioGuideCard['id'], ElementType> = {
-  publication: Plus,
-  quality: Sparkles,
-  media: Camera,
-  operations: FileText,
-}
-
-const PORTFOLIO_GUIDE_TONES: Record<PropertyPortfolioGuideCard['tone'], {
-  card: string
-  icon: string
-  badge: string
-  action: string
-}> = {
-  primary: {
-    card: 'border-primary/30 bg-primary/[0.06]',
-    icon: 'bg-primary text-primary-foreground',
-    badge: 'border-primary/30 bg-primary/10 text-primary',
-    action: 'text-primary',
-  },
-  warning: {
-    card: 'border-amber-300 bg-amber-50/70 dark:border-amber-900/70 dark:bg-amber-950/25',
-    icon: 'bg-amber-500 text-white',
-    badge: 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    action: 'text-amber-700 dark:text-amber-300',
-  },
-  success: {
-    card: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
-    icon: 'bg-emerald-600 text-white',
-    badge: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300',
-    action: 'text-emerald-700 dark:text-emerald-300',
-  },
-  neutral: {
-    card: 'border-border bg-muted/25',
-    icon: 'bg-muted text-muted-foreground',
-    badge: 'border-border bg-background text-muted-foreground',
-    action: 'text-primary',
-  },
-}
-
-function PropertyPortfolioGuidePanel({
-  guide,
-  onAction,
-}: {
-  guide: PropertyPortfolioGuide
-  onAction: (action: PropertyPortfolioGuideAction) => void
-}) {
-  return (
-    <PageSurface className="overflow-hidden p-0">
-      <div className="border-b bg-gradient-to-br from-primary/[0.08] via-background to-background p-5 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-3xl">
-            <span className="mb-3 inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              Următorul pas din portofoliu
-            </span>
-            <h2 className="text-2xl font-bold tracking-tight">{guide.headline}</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{guide.description}</p>
-          </div>
-          <Button className="gap-2 lg:mt-1" onClick={() => onAction(guide.primaryAction)}>
-            {guide.primaryAction.label}
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MiniMetric label="Active" value={guide.metrics.active} />
-          <MiniMetric label="Publicate" value={guide.metrics.published} />
-          <MiniMetric label="Calitate medie" value={`${guide.metrics.averageQuality}%`} />
-          <MiniMetric label="Fără tur virtual" value={guide.metrics.missingTour} />
-        </div>
-      </div>
-
-      <div className="grid gap-3 p-4 sm:p-5 lg:grid-cols-4">
-        {guide.cards.map((card) => {
-          const Icon = PORTFOLIO_GUIDE_ICONS[card.id]
-          const tone = PORTFOLIO_GUIDE_TONES[card.tone]
-          return (
-            <button
-              key={card.id}
-              type="button"
-              onClick={() => onAction(card.action)}
-              className={cn(
-                'group rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                tone.card,
-              )}
-            >
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl', tone.icon)}>
-                  <Icon className="h-5 w-5" />
-                </span>
-                <span className={cn('rounded-full border px-2.5 py-1 text-[10px] font-semibold', tone.badge)}>
-                  {card.badgeLabel}
-                </span>
-              </div>
-              <p className="font-semibold leading-tight">{card.title}</p>
-              <p className="mt-2 min-h-16 text-sm leading-5 text-muted-foreground">{card.description}</p>
-              <span className={cn('mt-4 inline-flex items-center gap-1 text-sm font-medium', tone.action)}>
-                {card.action.label}
-                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-              </span>
-            </button>
-          )
-        })}
-      </div>
-    </PageSurface>
-  )
-}
-
-function MiniMetric({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-2xl border bg-background/80 px-4 py-3 shadow-sm">
-      <p className="text-lg font-bold tabular-nums">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
-    </div>
-  )
-}
-
-function PortfolioStat({
-  icon: Icon,
-  label,
-  value,
-  attention = false,
-}: {
-  icon: typeof Building2
-  label: string
-  value: string | number
-  attention?: boolean
-}) {
-  return (
-    <PageSurface className="flex items-center gap-3 p-4">
-      <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', attention ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40' : 'bg-primary/10 text-primary')}>
-        <Icon className="h-5 w-5" />
-      </span>
-      <div>
-        <p className="text-xl font-bold">{value}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
-      </div>
-    </PageSurface>
   )
 }

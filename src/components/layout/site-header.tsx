@@ -27,7 +27,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { LS_KEYS } from '@/lib/constants'
 import { ACCOUNT_ROLE_DEFINITIONS } from '@/lib/account-roles'
-import { getAccountMenuItems, getWorkspaceNavigation, isAccountWorkspacePage, PUBLIC_NAVIGATION } from '@/lib/navigation-config'
+import { getAccountMenuItems, isAccountWorkspacePage, PUBLIC_NAVIGATION } from '@/lib/navigation-config'
 
 function NotificationsBadge() {
   const [count, setCount] = useState(0)
@@ -95,9 +95,8 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
   const accountRole = profile?.role ?? 'CLIENT'
   const roleDefinition = ACCOUNT_ROLE_DEFINITIONS[accountRole]
   const accountMenuItems = getAccountMenuItems(accountRole)
-  const workspacePages = new Set(getWorkspaceNavigation(accountRole).map((item) => item.page))
   const visibleAccountMenuItems = isAccountWorkspacePage(currentPage)
-    ? accountMenuItems.filter((item) => !workspacePages.has(item.page))
+    ? accountMenuItems.filter((item) => item.page === 'profil')
     : accountMenuItems
 
   const handleAuthClick = () => {
@@ -171,7 +170,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="hidden gap-2 sm:inline-flex">
+              <Button variant="ghost" className={cn("hidden gap-2 sm:inline-flex", inWorkspace && "sm:hidden")}>
                 Căutare și alerte <ChevronDown className="h-4 w-4" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
@@ -212,7 +211,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative hidden sm:inline-flex" aria-label="Meniu utilizator">
+                <Button variant="ghost" size="icon" className={cn("relative", !inWorkspace && "hidden sm:inline-flex")} aria-label="Meniu utilizator">
                   <Avatar className="h-7 w-7">
                     <AvatarFallback className="text-xs bg-primary/10 text-primary">
                       {(user.user_metadata?.full_name || user.email || 'U').charAt(0).toUpperCase()}
@@ -242,6 +241,14 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
                     </DropdownMenuItem>
                   )
                 })}
+                {inWorkspace && <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigateTo('proprietati')}>Caută proprietăți</DropdownMenuItem>
+                  <DropdownMenuItem onClick={onOpenSavedSearches}>Căutări salvate</DropdownMenuItem>
+                  <DropdownMenuItem onClick={onOpenPriceAlerts}>Alerte de preț</DropdownMenuItem>
+                  <DropdownMenuItem onClick={onOpenNotifications}>Notificări</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>Schimbă tema</DropdownMenuItem>
+                </>}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="gap-2 text-destructive focus:text-destructive">
                   <LogOut className="h-4 w-4" />
@@ -258,7 +265,7 @@ export function SiteHeader({ onOpenFavorites, onOpenPriceAlerts, onOpenNotificat
           {/* Mobile Menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="xl:hidden" aria-label="Meniu">
+              <Button variant="ghost" size="icon" className={cn("xl:hidden", inWorkspace && "hidden")} aria-label="Meniu">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
