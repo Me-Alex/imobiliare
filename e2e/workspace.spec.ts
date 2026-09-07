@@ -21,6 +21,7 @@ for (const [role, destinations] of Object.entries(routes)) {
     await page.getByLabel('Parola', { exact: true }).fill(process.env.AUTH_SMOKE_PASSWORD!)
     await page.getByRole('button', { name: 'Autentifică-te', exact: true }).click()
     await expect(page).toHaveURL(/page=dashboard/)
+    await expect(page.getByRole('navigation', { name: 'Acces rapid în cont', exact: true }).getByRole('button')).toHaveCount(3)
     const cookies = page.getByRole('button', { name: 'Doar necesare', exact: true })
     if (await cookies.isVisible()) await cookies.click()
     for (const width of [1280, 390]) {

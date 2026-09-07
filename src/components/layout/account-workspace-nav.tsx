@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useState } from 'react'
-import { Menu, ChevronRight } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { useAuth } from '@/contexts/auth-context'
 import { ACCOUNT_ROLE_DEFINITIONS, type AccountRole } from '@/lib/account-roles'
@@ -24,15 +24,23 @@ interface AccountWorkspaceNavContentProps {
 }
 
 export function AccountWorkspaceNavContent({ role, currentPage, onNavigate }: AccountWorkspaceNavContentProps) {
-  const current = getAccountMenuItems(role).find(item => item.page === currentPage)
+  const items = getAccountMenuItems(role)
+  const current = items.find(item => item.page === currentPage)
+  const quickPages: PageKey[] = ['dashboard', role === 'OWNER' ? 'proprietatile-mele' : role === 'CLIENT' ? 'vizionarile-mele' : 'crm', 'documente']
+  const quickItems = quickPages.map(page => items.find(item => item.page === page)!).filter(Boolean)
   const [open, setOpen] = useState(false)
   const navigate = (page: PageKey) => { setOpen(false); onNavigate(page) }
 
   return <div className="sticky top-16 z-30 border-b bg-background">
     <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-      <div className="flex min-w-0 items-center gap-2"><button type="button" className="min-h-11 shrink-0 text-sm font-medium hover:text-primary" onClick={() => navigate('dashboard')} aria-current={currentPage === 'dashboard' ? 'page' : undefined}>Dosarele mele</button>{currentPage !== 'dashboard' && <><ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="truncate text-sm text-muted-foreground" aria-current="page">{current?.label}</span></>}</div>
+      <nav aria-label="Acces rapid în cont" className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
+        {quickItems.map(item => <button key={item.page} type="button" onClick={() => navigate(item.page)} aria-current={currentPage === item.page ? 'page' : undefined} className={cn('flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm', currentPage === item.page ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
+          <item.icon className="hidden h-4 w-4 shrink-0 sm:block" />
+          <span className="truncate">{item.page === 'dashboard' ? 'Dosare' : item.page === 'proprietatile-mele' ? 'Proprietăți' : item.label}</span>
+        </button>)}
+      </nav>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger asChild><button type="button" className="flex min-h-11 items-center gap-2 shrink-0 text-sm text-muted-foreground" aria-label="Deschide meniul contului"><Menu className="h-4 w-4" /><span className="hidden sm:inline">Meniul contului</span><span className="sm:hidden">Meniu</span></button></SheetTrigger>
+        <SheetTrigger asChild><button type="button" className="flex min-h-11 min-w-11 justify-center items-center gap-2 shrink-0 text-sm text-muted-foreground" aria-label="Deschide meniul contului"><Menu className="h-4 w-4" /><span className="hidden sm:inline">{current && !quickPages.includes(currentPage) ? current.label : 'Mai multe'}</span></button></SheetTrigger>
         <SheetContent side="right" className="w-[min(24rem,100vw-1rem)] gap-0">
           <SheetHeader className="border-b p-5"><SheetTitle>Meniul contului</SheetTitle><SheetDescription>{ACCOUNT_ROLE_DEFINITIONS[role].label}</SheetDescription></SheetHeader>
           <nav aria-label="Secțiunile contului" className="min-h-0 flex-1 overflow-y-auto p-3">

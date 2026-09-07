@@ -3,6 +3,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { documentSectionUrl, readDocumentSection, type DocumentSection } from '@/lib/document-section-navigation'
 import {
   FileCheck2,
   FileSignature,
@@ -89,13 +91,15 @@ interface SigningState {
 }
 
 export function DocumentePage() {
-  const [requestedAppointment] = useState(() => readAppointmentContext())
+  const [requestedAppointment, setRequestedAppointment] = useState(() => readAppointmentContext())
   const [choosingDossier, setChoosingDossier] = useState(() => !readAppointmentContext())
   const { user, profile, loading: authLoading } = useAuth()
   const navigateTo = useAppStore((state) => state.navigateTo)
   const uploadAreaRef = useRef<DocumentUploadAreaRef>(null)
   const [viewings, setViewings] = useState<Vizionare[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const activeAppointment = useRef<string | null>(null)
+  useEffect(() => { activeAppointment.current = selectedId }, [selectedId])
   const [documents, setDocuments] = useState<ViewingDocument[]>([])
   const [requests, setRequests] = useState<LegalDocumentRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -109,8 +113,27 @@ export function DocumentePage() {
   const [requestKind, setRequestKind] = useState<Exclude<LegalDocumentKind, 'viewing_report'> | null>(null)
   const [editingRequest, setEditingRequest] = useState<LegalDocumentRequest | null>(null)
   const [requestBusyId, setRequestBusyId] = useState<string | null>(null)
-  const [tool, setTool] = useState<'requests' | 'generate' | 'upload' | null>(null)
-  const setToolsOpen = (open: boolean) => setTool(open ? 'requests' : null)
+  const [section, setSection] = useState<DocumentSection>(() => typeof window === 'undefined' ? 'overview' : readDocumentSection(new URL(window.location.href)))
+  const [dossierQuery, setDossierQuery] = useState('')
+  const tool = ['requests', 'generate', 'upload'].includes(section) ? section : null
+  const navigateSection = (next: DocumentSection) => {
+    const url = documentSectionUrl(new URL(window.location.href), selectedId, next)
+    if (url.href !== window.location.href) window.history.pushState({ ...window.history.state, hqsPage: 'documente' }, '', url)
+    setSection(next)
+  }
+  const setTool = (next: 'requests' | 'generate' | 'upload' | null) => navigateSection(next || 'overview')
+  const chooseDossier = (appointmentId: string | null) => {
+    const url = documentSectionUrl(new URL(window.location.href), appointmentId)
+    if (appointmentId !== selectedId) url.searchParams.delete('deal')
+    window.history.pushState({ ...window.history.state, hqsPage: 'documente' }, '', url)
+    setRequestedAppointment(appointmentId)
+    setSelectedId(appointmentId)
+    setChoosingDossier(!appointmentId)
+    setSection('overview')
+    setDocuments([]); setRequests([]); setLoadError('')
+    setDocumentsLoading(Boolean(appointmentId)); setRequestsLoading(Boolean(appointmentId))
+    setFilter({ search: '', types: new Set(), statuses: new Set() })
+  }
   const [reviewingSignature, setReviewingSignature] = useState<SigningState | null>(null)
   const [signing, setSigning] = useState<SigningState | null>(null)
   const [signatureName, setSignatureName] = useState('')
@@ -127,6 +150,28 @@ export function DocumentePage() {
 
   // Search & filter state
   const [filter, setFilter] = useState<DocumentFilterState>({ search: '', types: new Set(), statuses: new Set() })
+
+  useEffect(() => {
+    const restore = () => {
+      const url = new URL(window.location.href)
+      if (url.searchParams.get('page') !== 'documente') return
+      const appointmentId = url.searchParams.get('appointment')
+      setRequestedAppointment(appointmentId)
+      setChoosingDossier(!appointmentId)
+      if (selectedId !== appointmentId) {
+        documentsSequence.current++; requestsSequence.current++
+        setDocuments([]); setRequests([]); setLoadError('')
+        setDocumentsLoading(Boolean(appointmentId)); setRequestsLoading(Boolean(appointmentId))
+      }
+      setSelectedId(appointmentId)
+      setSection(readDocumentSection(url))
+      setRequestKind(null); setBuilderKind(null); setSigning(null); setReviewingSignature(null)
+      setPreviewDoc(null); setPreviewUrl(null)
+      previewSequence.current++
+    }
+    window.addEventListener('popstate', restore)
+    return () => window.removeEventListener('popstate', restore)
+  }, [selectedId])
 
   const selectedViewing = useMemo(
     () => viewings.find((viewing) => viewing.id === selectedId) ?? null,
@@ -158,11 +203,12 @@ export function DocumentePage() {
   )
 
   const refreshDocuments = useCallback(async (appointmentId: string) => {
+    if (activeAppointment.current !== appointmentId) return
     const sequence = ++documentsSequence.current
     setDocumentsLoading(true)
     try {
       const result = await listViewingDocuments(appointmentId)
-      if (sequence === documentsSequence.current) setDocuments(result)
+      if (sequence === documentsSequence.current && activeAppointment.current === appointmentId) setDocuments(result)
     } catch (error) {
       if (sequence !== documentsSequence.current) return
       setLoadError('Documentele nu au putut fi încărcate. Reîncearcă înainte de a continua.')
@@ -175,11 +221,12 @@ export function DocumentePage() {
   }, [])
 
   const refreshRequests = useCallback(async (appointmentId: string) => {
+    if (activeAppointment.current !== appointmentId) return
     const sequence = ++requestsSequence.current
     setRequestsLoading(true)
     try {
       const result = await listLegalDocumentRequests(appointmentId)
-      if (sequence === requestsSequence.current) setRequests(result)
+      if (sequence === requestsSequence.current && activeAppointment.current === appointmentId) setRequests(result)
     } catch (error) {
       if (sequence !== requestsSequence.current) return
       setLoadError('Datele trimise agentului nu au putut fi încărcate. Reîncearcă înainte de a continua.')
@@ -437,8 +484,13 @@ export function DocumentePage() {
 
     setFocusedDocumentTarget(focus)
     if (focus === 'advanced' && !actionPlan.readOnly) {
-      setToolsOpen(true)
+      setSection('requests')
     }
+
+    const focusedSection = focus === 'archive' || (focus === 'advanced' && actionPlan.readOnly) ? 'files' : focus === 'advanced' ? 'requests' : 'overview'
+    setSection(focusedSection)
+    const focusedUrl = documentSectionUrl(new URL(window.location.href), selectedViewing.id, focusedSection)
+    window.history.replaceState(window.history.state, '', focusedUrl)
 
     const targetId = focus === 'archive' || (focus === 'advanced' && actionPlan.readOnly)
       ? 'document-archive'
@@ -506,7 +558,7 @@ export function DocumentePage() {
       else openTools()
       return
     }
-    document.getElementById('document-archive')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    navigateSection('files')
   }
 
   const handleQuickAction = (target: DocumentQuickActionTarget) => {
@@ -523,7 +575,7 @@ export function DocumentePage() {
       openTools()
       return
     }
-    document.getElementById('document-archive')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    navigateSection('files')
   }
 
   if (authLoading) {
@@ -564,10 +616,10 @@ export function DocumentePage() {
         <PageHero
           variant="simple"
           title="Documente"
-          description="Consultă, completează și semnează documentele proprietății."
+          description={choosingDossier || !selectedViewing ? 'Alege dosarul în care vrei să lucrezi.' : undefined}
           showBackButton
-          onBack={() => returnToWorkflow(navigateTo, 'dashboard')}
-          backLabel="Înapoi"
+          onBack={() => choosingDossier || !selectedViewing ? returnToWorkflow(navigateTo, 'dashboard') : chooseDossier(null)}
+          backLabel={choosingDossier || !selectedViewing ? 'Înapoi la cont' : 'Toate dosarele'}
         />
 
         {loading ? (
@@ -596,52 +648,55 @@ export function DocumentePage() {
             {choosingDossier || !selectedViewing ? <section aria-label="Alege dosarul" className="space-y-5">
               <div><h2 className="text-lg font-semibold">Pentru ce proprietate?</h2><p className="mt-1 text-sm text-muted-foreground">Alege dosarul în care vrei să completezi date sau să consulți documente.</p></div>
               {requestedAppointment && !selectedViewing && <p role="alert" className="text-sm text-destructive">Dosarul din link nu este disponibil pentru acest cont. Alege un dosar din listă.</p>}
-              {[{ title: 'În lucru', items: actionableViewings }, { title: 'Închise · doar consultare', items: closedViewings }].filter(group => group.items.length).map(group => <section key={group.title}>
+              {viewings.length > 3 && <Input aria-label="Caută un dosar" placeholder="Proprietate sau client" value={dossierQuery} onChange={event => setDossierQuery(event.target.value)} />}
+              {[{ title: 'În lucru', items: actionableViewings }, { title: 'Închise · doar consultare', items: closedViewings }].map(group => ({ ...group, items: group.items.filter(viewing => [viewing.propertyTitle, viewing.userName, viewing.userEmail].join(' ').toLocaleLowerCase('ro').includes(dossierQuery.trim().toLocaleLowerCase('ro'))) })).filter(group => group.items.length).map(group => <section key={group.title}>
                 <h3 className="mb-2 text-sm font-medium text-muted-foreground">{group.title}</h3>
                 <div className="divide-y rounded-xl border">{group.items.map(viewing => <button type="button" key={viewing.id} className="block min-h-20 w-full p-4 text-left hover:bg-muted focus-visible:outline-ring" onClick={() => {
-                  setDocuments([]); setRequests([]); setLoadError(''); setDocumentsLoading(true); setRequestsLoading(true)
-                  setSelectedId(viewing.id); setChoosingDossier(false); setTool(null)
-                  if (selectedId === viewing.id) void Promise.all([refreshDocuments(viewing.id), refreshRequests(viewing.id)])
+                  chooseDossier(viewing.id)
                 }}>
                   <span className="block font-medium">{viewing.propertyTitle}</span>
                   <span className="mt-1 block text-sm text-muted-foreground">{formatDateRO(viewing.date)}, {viewing.startTime} · {getViewingWorkspaceLabel(viewing.status)}{canGenerateDocuments ? ` · ${viewing.userName || viewing.userEmail}` : ''}</span>
                 </button>)}</div>
               </section>)}
+              {dossierQuery && !viewings.some(viewing => [viewing.propertyTitle, viewing.userName, viewing.userEmail].join(' ').toLocaleLowerCase('ro').includes(dossierQuery.trim().toLocaleLowerCase('ro'))) && <p role="status" className="py-6 text-sm text-muted-foreground">Niciun dosar găsit. Încearcă alt nume sau altă proprietate.</p>}
             </section> : <>
               <div className="mb-5 flex items-start justify-between gap-3 border-b pb-4">
                 <div className="min-w-0"><h2 className="break-words font-semibold">{selectedViewing.propertyTitle}</h2><p className="mt-1 text-sm text-muted-foreground">{formatDateRO(selectedViewing.date)}, {selectedViewing.startTime}</p></div>
-                <Button variant="link" className="shrink-0" onClick={() => { setChoosingDossier(true); setTool(null) }}>Schimbă dosarul</Button>
+
               </div>
               {(documentsLoading || requestsLoading) && <p role="status" className="mb-5 text-sm text-muted-foreground">Verificăm documentele și datele trimise agentului…</p>}
               {loadError && <div role="alert" className="mb-5"><p>{loadError}</p><Button variant="outline" className="mt-2" onClick={() => { setLoadError(''); void Promise.all([refreshDocuments(selectedViewing.id), refreshRequests(selectedViewing.id)]) }}>Reîncearcă</Button></div>}
-            {flowSummary && <DocumentActionCenter summary={flowSummary} onPrimaryAction={handlePrimaryAction} primaryLabel={flowSummary.action.type === 'OPEN_TOOLS' && canGenerateDocuments && requests.length === 0 ? 'Alege documentul de pregătit' : undefined} />}
-            {readDealContext() && <Button variant="link" className="mb-5 h-auto p-0" onClick={() => handleQuickAction('deal-room')}>Înapoi la tranzacție</Button>}
+              <Tabs value={section === 'upload' ? 'files' : section === 'generate' ? 'overview' : section} onValueChange={value => navigateSection(value as DocumentSection)} className="mb-6">
+                <TabsList aria-label="Navigare documente" className="grid h-auto w-full grid-cols-3">
+                  <TabsTrigger id="document-overview-tab" aria-controls={section === 'generate' ? 'document-tools' : 'document-overview'} value="overview" onClick={() => navigateSection('overview')} className="min-h-11 whitespace-normal text-xs sm:text-sm">De făcut</TabsTrigger>
+                  <TabsTrigger id="document-files-tab" aria-controls={section === 'upload' ? 'document-tools' : 'document-archive'} value="files" onClick={() => navigateSection('files')} className="min-h-11 whitespace-normal text-xs sm:text-sm">Fișiere ({documents.length})</TabsTrigger>
+                  <TabsTrigger id="document-requests-tab" aria-controls="document-tools" value="requests" onClick={() => navigateSection('requests')} className="min-h-11 whitespace-normal text-xs sm:text-sm">Date pentru agent</TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-            {!selectedWorkspaceClosed && !documentsLoading && !requestsLoading && !loadError && <div className="mb-6 flex flex-wrap gap-2" aria-label="Alte acțiuni pentru documente">
-              <Button variant="outline" onClick={() => setTool('upload')}>Încarcă un fișier</Button>
-              <Button variant="outline" onClick={() => setTool('requests')}>Date trimise agentului</Button>
-              {canGenerateDocuments && <Button variant="outline" onClick={() => setTool('generate')}>Pregătește un document</Button>}
-            </div>}
+              {section === 'overview' && <section id="document-overview" role="tabpanel" aria-labelledby="document-overview-tab">
+                {flowSummary && <DocumentActionCenter summary={flowSummary} onPrimaryAction={handlePrimaryAction} primaryLabel={flowSummary.action.type === 'OPEN_TOOLS' && canGenerateDocuments && requests.length === 0 ? 'Alege documentul de pregătit' : undefined} />}
+                {readDealContext() && <Button variant="link" className="mb-5 h-auto p-0" onClick={() => handleQuickAction('deal-room')}>Înapoi la tranzacție</Button>}
+                {canGenerateDocuments && !(flowSummary?.action.type === 'OPEN_TOOLS' && requests.length === 0) && !selectedWorkspaceClosed && !documentsLoading && !requestsLoading && !loadError && <Button variant="outline" onClick={() => setTool('generate')}>Pregătește un document</Button>}
+              </section>}
 
-            <Dialog open={tool !== null} onOpenChange={open => { if (!open) setTool(null) }}>
-              <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-3xl">
-                <DialogHeader>
-                  <DialogTitle>{tool === 'upload' ? 'Încarcă un fișier' : tool === 'generate' ? 'Pregătește un document' : 'Date trimise agentului'}</DialogTitle>
-                  <DialogDescription>{selectedViewing?.propertyTitle} · {tool === 'upload' ? 'Alege tipul actului, apoi fișierul de pe dispozitiv.' : tool === 'generate' ? 'Alege documentul necesar. Vei verifica datele înainte de generare.' : 'Vezi ce informații au fost trimise și ce mai trebuie completat.'}</DialogDescription>
-                </DialogHeader>
-                <div id="document-tools">
+              {tool && !selectedWorkspaceClosed && !documentsLoading && !requestsLoading && !loadError && <section aria-label={tool === 'upload' ? 'Încarcă un fișier' : tool === 'generate' ? 'Pregătește un document' : 'Date pentru agent'}>
+                {tool !== 'requests' && <Button variant="link" className="mb-4 h-auto p-0" onClick={() => navigateSection(tool === 'upload' ? 'files' : 'overview')}>{tool === 'upload' ? 'Înapoi la fișiere' : 'Înapoi la ce ai de făcut'}</Button>}
+                <div className="mb-5">
+                  <h2 className="text-lg font-semibold">{tool === 'upload' ? 'Încarcă un fișier' : tool === 'generate' ? 'Pregătește un document' : 'Date pentru agent'}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{tool === 'upload' ? 'Alege tipul actului, apoi fișierul de pe dispozitiv.' : tool === 'generate' ? 'Alege documentul necesar. Vei verifica datele înainte de generare.' : 'Completează datele cerute sau urmărește verificarea lor de către agent.'}</p>
+                </div>
+                <div id="document-tools" role="tabpanel" aria-labelledby={tool === 'upload' ? 'document-files-tab' : tool === 'generate' ? 'document-overview-tab' : 'document-requests-tab'}>
             {selectedViewing && tool === 'requests' && (
               <LegalDocumentRequestPanel
                 role={profile.role}
                 requests={requests}
                 busyId={requestBusyId}
                 onCreate={(kind) => {
-                  setTool(null)
                   setEditingRequest(null)
                   setRequestKind(kind)
                 }}
                 onEdit={(request) => {
-                  setTool(null)
                   setEditingRequest(request)
                   setRequestKind(request.documentKind)
                 }}
@@ -649,6 +704,8 @@ export function DocumentePage() {
                 onStaffStatus={handleStaffRequestStatus}
               />
             )}
+
+            {tool === 'generate' && !canGenerateDocuments && <p className="text-sm text-muted-foreground">Agentul pregătește documentele. Tu poți completa informațiile din secțiunea „Date pentru agent”.</p>}
 
             {selectedViewing && canGenerateDocuments && tool === 'generate' && (
               <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 mb-6">
@@ -671,7 +728,7 @@ export function DocumentePage() {
                           key={kind}
                           variant="outline"
                           className="h-auto min-h-20 py-4 justify-start gap-3 whitespace-normal"
-                          onClick={() => { setTool(null); void handleOpenBuilder(kind) }}
+                          onClick={() => void handleOpenBuilder(kind)}
                           disabled={blocked}
                         >
                           {kind === 'viewing_report'
@@ -722,10 +779,12 @@ export function DocumentePage() {
               </Card>
             )}
                 </div>
-              </DialogContent>
-            </Dialog>
+              </section>}
+              {tool && selectedWorkspaceClosed && <p id="document-tools" role="tabpanel" aria-labelledby="document-requests-tab" className="text-sm text-muted-foreground">Dosar închis. Poți consulta documentele din secțiunea Fișiere.</p>}
 
-            <Card id="document-archive" className="scroll-mt-24">
+            {section === 'files' && <section id="document-archive" role="tabpanel" aria-labelledby="document-files-tab">
+              {!selectedWorkspaceClosed && !documentsLoading && !requestsLoading && !loadError && <Button className="mb-5" onClick={() => setTool('upload')}>Încarcă un fișier</Button>}
+            <Card className="scroll-mt-24">
               <CardHeader>
                 <h2 className="text-base font-semibold">Documentele dosarului</h2>
                 <CardDescription>Deschide un document pentru a-l citi. Dacă trebuie să semnezi, acțiunea apare lângă el.</CardDescription>
@@ -787,6 +846,7 @@ export function DocumentePage() {
                 )}
               </CardContent>
             </Card>
+            </section>}
             </>}
           </>
         )}
