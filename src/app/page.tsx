@@ -186,7 +186,7 @@ function AppContent({ initialPage = 'acasa' }: { initialPage?: PageKey }) {
       </a>
       {!isFocusedPage && <AnnouncementBanner />}
       <SiteHeader onOpenFavorites={() => setFavoritesOpen(true)} onOpenPriceAlerts={() => setPriceAlertsOpen(true)} onOpenNotifications={() => setNotificationsOpen(true)} onOpenSavedSearches={() => setSavedSearchesOpen(true)} />
-      <div className={isAccountWorkspacePage(currentPage) && user && profile ? 'mx-auto w-full max-w-[1600px] flex-1 xl:flex' : 'flex-1'}>
+      <div className={isAccountWorkspacePage(currentPage) && user && profile ? 'mx-auto w-full flex-1' : 'flex-1'}>
       {isAccountWorkspacePage(currentPage) && <AccountWorkspaceNav />}
       <main id="main-content" tabIndex={-1} className="flex-1 min-w-0">
         <AnimatePresence mode="wait">

@@ -307,9 +307,25 @@ export function VizionarileMelePage() {
     )
   }
 
+  const appointmentContext = readAppointmentContext()
+  const focusedViewing = vizionari.find(viewing => viewing.id === appointmentContext)
+
   return (
     <PageShell>
       <PageContainer width="narrow" className="py-8 sm:py-10">
+        {appointmentContext ? <>
+          <Button variant="link" className="mb-5 h-auto p-0" onClick={() => navigateTo('dashboard')}>Înapoi la dosarele mele</Button>
+          <h1 className="mb-5 text-2xl font-semibold">Vizionare</h1>
+          {focusedViewing ? <VizionareCard vizionare={focusedViewing} transaction={transactions.get(focusedViewing.id)}
+            canManage={canManage} currentUserId={user.id} onCancel={id => requestCancellation(id, 'client')}
+            onAddFeedback={handleAddFeedback} onReschedule={requestReschedule}
+            onConfirm={id => void runOperationalAction(id, () => confirmViewing(id), 'Programarea a fost confirmată.')}
+            onCheckIn={id => void runOperationalAction(id, () => checkInViewing(id), 'Prezența a fost confirmată.')}
+            onComplete={id => void runOperationalAction(id, () => completeViewing(id), 'Vizionarea a fost finalizată.')}
+            onNoShow={id => void runOperationalAction(id, () => markViewingNoShow(id), 'Neprezentarea a fost consemnată.')}
+            onCancelByAgent={id => requestCancellation(id, 'agency')} />
+            : <p role="alert">Această vizionare nu este disponibilă în contul tău.</p>}
+        </> : <>
         <PageHero
           variant="simple"
           title={canManage ? 'Agenda vizionărilor' : 'Vizionările mele'}
@@ -460,6 +476,7 @@ export function VizionarileMelePage() {
             </AnimatePresence>
           </TabsContent>
         </Tabs>
+        </>}
       </PageContainer>
 
       <Dialog

@@ -312,7 +312,7 @@ export function DealRoomPage() {
 
   return <div className="mx-auto max-w-3xl space-y-7 px-4 py-7 sm:px-6">
     <header>
-      <Button variant="link" className="mb-4 h-auto p-0" onClick={() => { setSelectedId(null); selectDealRoom('', null) }}>Înapoi la tranzacții</Button>
+      <Button variant="link" className="mb-4 h-auto p-0" onClick={() => navigateTo('dashboard')}>Înapoi la dosarele mele</Button>
       <h1 className="text-2xl font-semibold leading-snug">{property?.title || room.title}</h1>
       {property?.address && <p className="mt-2 text-sm text-muted-foreground">{property.address}</p>}
     </header>

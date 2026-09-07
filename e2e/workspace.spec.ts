@@ -35,17 +35,15 @@ for (const [role, destinations] of Object.entries(routes)) {
         await expect(trigger).toBeFocused()
       }
       for (const destination of destinations) {
-        if (width === 390) await page.getByRole('button', { name: 'Deschide meniul contului', exact: true }).click()
-        const navigation = page.getByRole('navigation', { name: width === 390 ? 'Secțiunile contului' : 'Spațiul contului', exact: true })
+        await page.getByRole('button', { name: 'Deschide meniul contului', exact: true }).click()
+        const navigation = page.getByRole('navigation', { name: 'Secțiunile contului', exact: true })
         await expect(navigation.locator('button[data-page]')).toHaveCount(destinations.length)
         const target = navigation.locator(`button[data-page="${destination}"]`)
-        if (!(await target.isVisible())) await navigation.getByText('Instrumente și cont', { exact: true }).click()
         await target.click()
         await expect(page).toHaveURL(new RegExp(`page=${destination}(?:&|$)`))
         if (width === 390) await expect(page.getByRole('dialog')).toBeHidden()
         await expect(page.locator(`#main-content [data-page="${destination}"] h1`).first()).toBeVisible()
         await expect.soft.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), { timeout: 10_000, message: `${role} ${destination} at ${width}px should fit the screen` }).toBe(true)
-        if (width === 1280) await expect(navigation.locator('[aria-current="page"]')).toHaveCount(1)
         const help = page.locator('#main-content details').first()
         if (await help.count()) {
           await expect(help).not.toHaveAttribute('open', '')

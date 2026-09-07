@@ -106,6 +106,7 @@ interface SigningState {
 }
 
 export function DocumentePage() {
+  const [enteredWithContext] = useState(() => Boolean(readAppointmentContext()))
   const { user, profile, loading: authLoading } = useAuth()
   const navigateTo = useAppStore((state) => state.navigateTo)
   const uploadAreaRef = useRef<DocumentUploadAreaRef>(null)
@@ -573,7 +574,7 @@ export function DocumentePage() {
           title="Documente"
           description="Consultă, completează și semnează documentele proprietății."
           showBackButton
-          onBack={() => returnToWorkflow(navigateTo, profile.role === 'CLIENT' ? 'vizionarile-mele' : 'dashboard')}
+          onBack={() => returnToWorkflow(navigateTo, 'dashboard')}
           backLabel="Înapoi"
         />
 
@@ -600,7 +601,7 @@ export function DocumentePage() {
           />
         ) : (
           <>
-            <div className="mb-6">
+            {enteredWithContext && selectedViewing ? <p className="mb-5 font-medium">{selectedViewing.propertyTitle}</p> : <div className="mb-6">
               <label className="mb-2 block text-sm font-medium" htmlFor="document-viewing">Proprietatea și vizionarea</label>
                 <select
                   id="document-viewing"
@@ -634,7 +635,7 @@ export function DocumentePage() {
                 </select>
 
               <Button variant="ghost" size="sm" className="mt-2" onClick={() => void refreshViewings()}>Actualizează</Button>
-            </div>
+            </div>}
 
             {flowSummary && <DocumentActionCenter summary={flowSummary} onPrimaryAction={handlePrimaryAction} />}
             {readDealContext() && <Button variant="link" className="mb-5 h-auto p-0" onClick={() => handleQuickAction('deal-room')}>Înapoi la tranzacție</Button>}

@@ -36,7 +36,7 @@ export const PUBLIC_NAVIGATION: readonly NavigationItem[] = [
 ]
 
 const ACCOUNT_ITEMS: Record<string, AccountNavigationItem> = {
-  dashboard: { label: 'Activitatea mea', page: 'dashboard', icon: LayoutDashboard, description: 'Rezumatul și prioritățile contului' },
+  dashboard: { label: 'Dosarele mele', page: 'dashboard', icon: LayoutDashboard, description: 'Rezumatul și prioritățile contului' },
   admin: { label: 'Administrare', page: 'admin', icon: Shield, description: 'Controlul operațiunilor platformei' },
   crm: { label: 'Clienți', page: 'crm', icon: BriefcaseBusiness, description: 'Solicitări, contacte și următoarea acțiune' },
   'owner-dashboard': { label: 'Performanță', page: 'owner-dashboard', icon: BarChart3, description: 'Interes, feedback și recomandări' },
