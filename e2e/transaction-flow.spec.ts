@@ -26,7 +26,7 @@ for (const role of ['CLIENT', 'OWNER', 'AGENT', 'ADMIN']) {
       await page.getByLabel('Stare', { exact: true }).selectOption('pending')
       await page.getByRole('tab', { name: /Istoric/ }).click()
       await expect(page.getByLabel('Stare', { exact: true })).toHaveValue('all')
-      await page.getByRole('tab', { name: /Vizionări active/ }).click()
+      await page.getByRole('tab', { name: /Programări/ }).click()
       if (role === 'CLIENT') {
         await page.getByRole('button', { name: 'Reprogramează', exact: true }).first().click()
         await expect(page.getByRole('dialog', { name: 'Schimbi programarea?' })).toBeVisible()
@@ -36,10 +36,25 @@ for (const role of ['CLIENT', 'OWNER', 'AGENT', 'ADMIN']) {
       }
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       if (process.env.FLOW_CAPTURE && role === 'CLIENT') await page.screenshot({ path: `tool-results/viewings-flow-${width}.png`, fullPage: true, animations: 'disabled' })
+      await page.getByRole('tab', { name: /După vizită/ }).click()
+      if (role === 'CLIENT') {
+        const decision = page.getByRole('button', { name: /Înregistrează decizia|Editează feedbackul/ }).first()
+        if (await decision.isVisible()) {
+          await decision.click()
+          const dialog = page.getByRole('dialog', { name: 'Decizia după vizionare' })
+          await expect(dialog).toBeVisible()
+          await expect(dialog.getByRole('radio')).toHaveCount(2)
+          await dialog.getByRole('radio', { name: 'Da, vreau să discut oferta' }).check()
+          await expect(dialog.getByRole('radio', { name: 'Nu, proprietatea nu mi se potrivește' })).not.toBeChecked()
+          await dialog.getByRole('button', { name: 'Anuleaza', exact: true }).click()
+        }
+      }
       await page.goto('/?page=deal-room')
+      await page.getByRole('button', { name: /Deschide dosarul/ }).first().click()
+      await page.getByText('Consultă alte informații din dosar', { exact: true }).click()
       const tabs = page.getByRole('tablist', { name: 'Secțiunile tranzacției' })
       await expect(tabs).toBeVisible()
-      await expect(page.getByRole('region', { name: 'Progresul tranzacției' })).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Parcursul dosarului' })).toBeVisible()
       for (const label of ['Vizionare', 'Documente', 'Oferte', 'Pașii următori', 'Activitate']) {
         await tabs.getByRole('tab', { name: label, exact: true }).click()
         await expect(page.getByRole('tabpanel')).toHaveCount(1)
@@ -72,6 +87,11 @@ for (const role of ['CLIENT', 'OWNER', 'AGENT', 'ADMIN']) {
         await expect(tabs.getByRole('tab', { name: 'Oferte', exact: true })).toHaveAttribute('aria-selected', 'true')
       }
     }
+    await page.goto('/?page=deal-room&deal=00000000-0000-0000-0000-000000000000')
+    await expect(page.getByRole('region', { name: 'Ce urmează în acest dosar' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Deschide dosarul/ }).first()).toBeVisible()
+    await page.getByRole('button', { name: /Deschide dosarul/ }).first().click()
+    await expect(page.getByRole('region', { name: 'Ce urmează în acest dosar' })).toBeVisible()
     if (role === 'CLIENT') {
       await page.route('**/rest/v1/deal_rooms?**', async route => {
         const response = await route.fetch()
@@ -79,8 +99,8 @@ for (const role of ['CLIENT', 'OWNER', 'AGENT', 'ADMIN']) {
         await route.fulfill({ response, json: rooms.map((room: Record<string, unknown>) => ({ ...room, stage: 'CLOSED_LOST', status: 'CLOSED_LOST' })) })
       })
       await page.reload()
-      await expect(page.getByRole('heading', { name: 'Tranzacție închisă fără finalizare', exact: true })).toBeVisible()
-      await expect(page.getByRole('region', { name: 'Progresul tranzacției' }).locator('[aria-current="step"]')).toHaveCount(0)
+      await expect(page.getByRole('heading', { name: 'Dosar închis', exact: true })).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Parcursul dosarului' }).locator('[aria-current="step"]')).toHaveCount(1)
     }
     expect(errors).toEqual([])
     await page.setViewportSize({ width: 1280, height: 900 })

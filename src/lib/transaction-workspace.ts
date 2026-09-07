@@ -397,7 +397,7 @@ function hasPendingSignatureForUser(requirement: DealRequirement, userId: string
 }
 
 function isRequirementOwnedByRole(requirement: DealRequirement, role: AccountRole, userId: string) {
-  return requirement.assigned_to === userId || String(requirement.responsible_role || '').toUpperCase() === role
+  return requirement.assigned_to ? requirement.assigned_to === userId : String(requirement.responsible_role || '').toUpperCase() === role
 }
 
 function isStaffRole(role: AccountRole) {
@@ -412,7 +412,7 @@ export function isDealRequirementActionableFor(
   const state = getDealRequirementState(requirement)
   if (state.isComplete) return false
   if (isStaffRole(role)) return true
-  return hasPendingSignatureForUser(requirement, userId) || isRequirementOwnedByRole(requirement, role, userId)
+  return hasPendingSignatureForUser(requirement, userId) || (['missing', 'blocked'].includes(state.bucket) && isRequirementOwnedByRole(requirement, role, userId))
 }
 
 export function countDealRoomDocumentActions(input: {
@@ -430,6 +430,16 @@ export function getDealRoomActionSummary(input: {
   role: AccountRole
   userId: string
 }): DealRoomActionSummary {
+  if (input.room.stage === 'CLOSED_WON' || input.room.stage === 'CLOSED_LOST' || ['CLOSED_WON', 'CLOSED_LOST', 'CANCELLED', 'CLOSED'].includes(input.room.status)) {
+    return {
+      title: 'Tranzactie inchisa',
+      description: 'Nu mai exista actiuni curente. Documentele si jurnalul raman disponibile pentru consultare.',
+      state: 'complete',
+      priority: 'normal',
+      page: 'deal-room',
+    }
+  }
+
   const requirements = input.room.deal_document_requirements || []
   const offers = input.room.property_offers || []
   const activeOffer = getActiveDealOffer(offers)
@@ -454,7 +464,7 @@ export function getDealRoomActionSummary(input: {
 
   const ownRequirement = requirements.find((requirement) =>
     isRequirementOwnedByRole(requirement, input.role, input.userId)
-    && !getDealRequirementState(requirement).isComplete,
+    && ['missing', 'blocked'].includes(getDealRequirementState(requirement).bucket),
   )
   if (ownRequirement && !isStaffRole(input.role)) {
     const state = getDealRequirementState(ownRequirement)
@@ -539,15 +549,6 @@ export function getDealRoomActionSummary(input: {
     }
   }
 
-  if (input.room.stage === 'CLOSED_WON' || input.room.stage === 'CLOSED_LOST' || input.room.status !== 'ACTIVE') {
-    return {
-      title: 'Tranzactie inchisa',
-      description: 'Nu mai exista actiuni curente. Documentele si jurnalul raman disponibile pentru consultare.',
-      state: 'complete',
-      priority: 'normal',
-      page: 'deal-room',
-    }
-  }
 
   return {
     title: 'Asteapta actiunea urmatoare',

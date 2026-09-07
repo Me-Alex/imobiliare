@@ -1,19 +1,16 @@
 'use client'
 
-import { AccountHelp } from '@/components/account/account-help'
+import { getViewingProcessGroup } from '@/lib/viewing-guidance'
+
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import {
-  ArrowRight,
-  BriefcaseBusiness,
   CalendarDays,
-  FileSignature,
   User,
   CalendarCheck,
   CalendarX2,
   Inbox,
-  type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -36,16 +33,11 @@ import { LS_KEYS } from '@/lib/constants'
 import type { Vizionare, AvailabilitySlot } from '@/lib/types'
 import { VizionareFeedbackDialog } from '@/components/dialogs/vizionare-feedback-dialog'
 import { toast } from 'sonner'
-import { PageContainer, PageHero, PageShell, PageSurface } from '@/components/layout'
+import { PageContainer, PageHero, PageShell } from '@/components/layout'
 import { PageState } from '@/components/ui/page-state'
 import { VizionareCard } from '@/components/features/vizionare-card'
-import { openDealRoomForViewing, openViewingDocuments } from '@/lib/document-navigation'
-import {
-  getViewingAgendaGuide,
-  type ViewingAgendaAction,
-  type ViewingAgendaCard,
-  type ViewingAgendaGuide,
-} from '@/lib/viewing-agenda-guide'
+import { readAppointmentContext } from '@/lib/document-navigation'
+
 import {
   cancelViewing,
   cancelViewingByAgent,
@@ -56,7 +48,6 @@ import {
   markViewingNoShow,
   saveViewingFeedback,
 } from '@/lib/viewing-documents'
-import { cn } from '@/lib/utils'
 
 // ─── Timeline Dot ───────────────────────────────────────────────────────────
 
@@ -73,123 +64,6 @@ function TimelineDot({ status }: { status: Vizionare['status'] }) {
   }
   return <div className={`w-3 h-3 rounded-full ${colorMap[status] || 'bg-muted'} ring-4 ring-background flex-shrink-0`} />
 }
-
-const agendaToneStyles: Record<
-  ViewingAgendaCard['tone'],
-  {
-    surface: string
-    icon: string
-    badge: 'default' | 'secondary' | 'destructive' | 'outline'
-  }
-> = {
-  primary: {
-    surface: 'border-primary/25 bg-primary/5',
-    icon: 'bg-primary/10 text-primary',
-    badge: 'default',
-  },
-  warning: {
-    surface: 'border-amber-500/25 bg-amber-500/10',
-    icon: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-    badge: 'secondary',
-  },
-  success: {
-    surface: 'border-emerald-500/25 bg-emerald-500/10',
-    icon: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-    badge: 'secondary',
-  },
-  neutral: {
-    surface: 'border-border bg-card/70',
-    icon: 'bg-muted text-muted-foreground',
-    badge: 'outline',
-  },
-}
-
-const agendaCardIcons: Record<ViewingAgendaCard['id'], LucideIcon> = {
-  now: CalendarCheck,
-  queue: BriefcaseBusiness,
-  documents: FileSignature,
-  history: CalendarX2,
-}
-
-function ViewingAgendaGuidePanel({
-  guide,
-  onAction,
-}: {
-  guide: ViewingAgendaGuide
-  onAction: (action: ViewingAgendaAction) => void
-}) {
-  const quickStats = [
-    { label: 'Active', value: guide.metrics.active },
-    { label: 'Pending', value: guide.metrics.pending },
-    { label: 'Feedback', value: guide.metrics.needsFeedback },
-    { label: 'Dosare', value: guide.metrics.readyForDocuments },
-  ]
-
-  return (
-    <PageSurface tone="elevated" className="mb-6 overflow-hidden border-primary/15">
-      <div className="grid gap-0 lg:grid-cols-[1.05fr_1.35fr]">
-        <div className="relative overflow-hidden border-b border-border/60 bg-gradient-to-br from-primary/12 via-primary/5 to-background p-5 sm:p-6 lg:border-b-0 lg:border-r">
-          <div className="absolute -right-12 -top-14 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
-          <Badge variant="secondary" className="mb-4 w-fit">
-            Agenda ghidată
-          </Badge>
-          <h2 className="relative text-2xl font-semibold tracking-tight">{guide.headline}</h2>
-          <p className="relative mt-2 text-sm leading-6 text-muted-foreground">{guide.description}</p>
-
-          <div className="relative mt-5 grid grid-cols-2 gap-2">
-            {quickStats.map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-border/70 bg-background/75 p-3">
-                <p className="text-2xl font-semibold">{stat.value}</p>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-
-          <Button className="relative mt-5 w-full justify-between sm:w-auto" onClick={() => onAction(guide.primaryAction)}>
-            {guide.primaryAction.label}
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5">
-          {guide.cards.map((card) => {
-            const Icon = agendaCardIcons[card.id]
-            const style = agendaToneStyles[card.tone]
-
-            return (
-              <button
-                key={card.id}
-                type="button"
-                onClick={() => onAction(card.action)}
-                className={cn(
-                  'group rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-                  style.surface,
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className={cn('flex h-10 w-10 items-center justify-center rounded-2xl', style.icon)}>
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <Badge variant={style.badge} className="shrink-0">
-                    {card.badgeLabel}
-                  </Badge>
-                </div>
-                <h3 className="mt-4 font-semibold">{card.title}</h3>
-                <p className="mt-1 min-h-[42px] text-sm leading-6 text-muted-foreground">{card.description}</p>
-                <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
-                  {card.action.label}
-                  <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-    </PageSurface>
-  )
-}
-
-// ─── Main Page ──────────────────────────────────────────────────────────────
 
 export function VizionarileMelePage() {
   const { user, profile, loading: authLoading } = useAuth()
@@ -227,14 +101,29 @@ export function VizionarileMelePage() {
     if (user) queueMicrotask(() => void refreshViewings())
   }, [user, refreshViewings])
 
+  useEffect(() => {
+    const id = readAppointmentContext()
+    const viewing = vizionari.find(item => item.id === id)
+    if (!viewing) return
+    const timer = window.setTimeout(() => {
+      setActiveTab(getViewingProcessGroup(viewing))
+      setSearch('')
+      setStatusFilter('all')
+      window.setTimeout(() => document.getElementById(`viewing-${id}`)?.scrollIntoView({ block: 'center' }), 100)
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [vizionari])
+
   const activeVizionari = useMemo(
-    () => vizionari.filter(v => ['pending', 'confirmed', 'checked_in'].includes(v.status))
+    () => vizionari.filter(v => getViewingProcessGroup(v) === 'active')
       .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime)),
     [vizionari]
   )
 
+  const followupVizionari = vizionari.filter(v => getViewingProcessGroup(v) === 'followup')
+
   const historyVizionari = useMemo(
-    () => vizionari.filter(v => ['completed', 'cancelled', 'cancelled_by_client', 'cancelled_by_agent', 'no_show'].includes(v.status))
+    () => vizionari.filter(v => getViewingProcessGroup(v) === 'history')
       .sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime)),
     [vizionari]
   )
@@ -375,79 +264,6 @@ export function VizionarileMelePage() {
   const visibleHistory = historyVizionari.filter(matchesViewing)
 
   const canManage = profile?.role === 'AGENT' || profile?.role === 'ADMIN'
-  const agendaGuide = useMemo(
-    () => profile
-      ? getViewingAgendaGuide({
-          role: profile.role,
-          userId: user?.id ?? '',
-          viewings: vizionari,
-        })
-      : null,
-    [profile, user?.id, vizionari],
-  )
-
-  const handleAgendaGuideAction = useCallback((action: ViewingAgendaAction) => {
-    setStatusFilter('all')
-    setSearch('')
-    if (action.target === 'schedule') {
-      navigateTo('programare-vizionare')
-      return
-    }
-
-    if (action.target === 'active_tab') {
-      setActiveTab('active')
-      return
-    }
-
-    if (action.target === 'history_tab') {
-      setActiveTab('history')
-      return
-    }
-
-    const viewing = action.viewingId ? vizionari.find((item) => item.id === action.viewingId) : null
-    if (!viewing) {
-      toast.error('Vizionarea nu mai este disponibilă în agenda curentă.')
-      return
-    }
-
-    if (action.target === 'confirm') {
-      void runOperationalAction(viewing.id, () => confirmViewing(viewing.id), 'Programarea a fost confirmată.')
-      return
-    }
-
-    if (action.target === 'check_in') {
-      void runOperationalAction(viewing.id, () => checkInViewing(viewing.id), 'Prezența clientului a fost confirmată.')
-      return
-    }
-
-    if (action.target === 'complete') {
-      void runOperationalAction(viewing.id, () => completeViewing(viewing.id), 'Vizionarea a fost finalizată. Fișa poate fi generată.')
-      return
-    }
-
-    if (action.target === 'feedback') {
-      handleAddFeedback(viewing)
-      return
-    }
-
-    if (action.target === 'documents') {
-      openViewingDocuments(navigateTo, viewing.id, null, { focus: 'primary' })
-      return
-    }
-
-    if (action.target === 'deal_room') {
-      openDealRoomForViewing(navigateTo, viewing.id)
-      return
-    }
-
-    if (action.target === 'reschedule') {
-      void handleReschedule(viewing)
-      return
-    }
-
-    setActiveTab(['completed', 'cancelled', 'cancelled_by_client', 'cancelled_by_agent', 'no_show'].includes(viewing.status) ? 'history' : 'active')
-  }, [handleAddFeedback, handleReschedule, navigateTo, runOperationalAction, vizionari])
-
   if (authLoading || (user && dataLoading)) {
     return (
       <PageShell>
@@ -488,10 +304,6 @@ export function VizionarileMelePage() {
           backLabel="Înapoi"
         >{profile?.role === 'CLIENT' && <Button className="min-h-11 gap-2" onClick={() => navigateTo('programare-vizionare')}><CalendarDays className="h-4 w-4" />Programează o vizionare</Button>}</PageHero>
 
-        {agendaGuide && (
-          <AccountHelp title="Cum gestionezi o vizionare"><ViewingAgendaGuidePanel guide={agendaGuide} onAction={handleAgendaGuideAction} /></AccountHelp>
-        )}
-
         <section aria-label="Cum decurge vizionarea" className="mb-6 grid grid-cols-1 gap-4 border-y py-5 sm:grid-cols-3">
           {[
             ['1', 'Programare', 'Alegi data; agentul confirmă intervalul.'],
@@ -503,7 +315,7 @@ export function VizionarileMelePage() {
           <div><Label htmlFor="viewing-search">Caută o vizionare</Label><Input id="viewing-search" className="mt-2 min-h-11" value={search} onChange={event => setSearch(event.target.value)} placeholder="Proprietate, agent sau dată" /></div>
           <div><Label htmlFor="viewing-status">Stare</Label><select id="viewing-status" value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm">
             <option value="all">Toate stările</option>
-            {(activeTab === 'active' ? [['pending', 'În așteptare'], ['confirmed', 'Confirmată'], ['checked_in', 'Prezență confirmată']] : [['completed', 'Finalizată'], ['no_show', 'Neprezentare'], ['cancelled_by_client', 'Anulată de client'], ['cancelled_by_agent', 'Anulată de agenție'], ['cancelled', 'Anulată']]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {(activeTab === 'active' ? [['pending', 'În așteptare'], ['confirmed', 'Confirmată'], ['checked_in', 'Prezență confirmată']] : activeTab === 'followup' ? [['completed', 'Finalizată']] : [['completed', 'Fără continuare'], ['no_show', 'Neprezentare'], ['cancelled_by_client', 'Anulată de client'], ['cancelled_by_agent', 'Anulată de agenție'], ['cancelled', 'Anulată']]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select></div>
         </div>
 
@@ -512,13 +324,14 @@ export function VizionarileMelePage() {
           <TabsList className="w-full h-auto mb-6">
             <TabsTrigger value="active" className="min-h-11 flex-1 gap-1.5">
               <CalendarDays className="h-3.5 w-3.5 hidden sm:block" />
-              Vizionări active
+              Programări
               {activeVizionari.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] text-[10px] px-1.5">
                   {activeVizionari.length}
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="followup" className="min-h-11 flex-1 gap-1.5">După vizită <Badge variant="secondary">{followupVizionari.length}</Badge></TabsTrigger>
             <TabsTrigger value="history" className="min-h-11 flex-1 gap-1.5">
               <CalendarX2 className="h-3.5 w-3.5 hidden sm:block" />
               Istoric
@@ -577,6 +390,23 @@ export function VizionarileMelePage() {
             )}
           </TabsContent>
 
+          <TabsContent value="followup">
+            <p className="mb-4 text-sm text-muted-foreground">Aici decizi dacă proprietatea ți se potrivește și continui cu oferta. Actele contractului urmează după acceptarea ofertei.</p>
+            <div className="space-y-3">
+              {followupVizionari.filter(matchesViewing).map(v => (
+                <VizionareCard key={v.id} vizionare={v} canManage={canManage} currentUserId={user.id}
+                  onCancel={id => requestCancellation(id, 'client')} onAddFeedback={handleAddFeedback}
+                  onReschedule={requestReschedule}
+                      onConfirm={(id) => void runOperationalAction(id, () => confirmViewing(id), 'Programarea a fost confirmată.')}
+                      onCheckIn={(id) => void runOperationalAction(id, () => checkInViewing(id), 'Prezența clientului a fost confirmată.')}
+                      onComplete={(id) => void runOperationalAction(id, () => completeViewing(id), 'Vizionarea a fost finalizată. Fișa poate fi generată.')}
+                      onNoShow={(id) => void runOperationalAction(id, () => markViewingNoShow(id), 'Neprezentarea a fost consemnată fără penalizare automată.')}
+                      onCancelByAgent={(id) => requestCancellation(id, 'agency')} />
+              ))}
+              {!followupVizionari.filter(matchesViewing).length && <PageState compact icon={CalendarCheck} title="Nicio vizită de continuat" description="Vizitele finalizate apar aici până când clientul decide să nu continue." />}
+            </div>
+          </TabsContent>
+
           {/* History Tab */}
           <TabsContent value="history">
             <AnimatePresence mode="popLayout">
@@ -612,7 +442,7 @@ export function VizionarileMelePage() {
                   icon={Inbox}
                   title={historyVizionari.length ? "Nicio vizionare pentru aceste filtre" : "Istoricul este gol"}
                   action={search || statusFilter !== 'all' ? <Button variant="outline" onClick={() => { setSearch(''); setStatusFilter('all') }}>Resetează filtrele</Button> : undefined}
-                  description={historyVizionari.length ? "Schimbă căutarea sau alege toate stările." : "Vizionările finalizate sau anulate vor apărea aici."}
+                  description={historyVizionari.length ? "Schimbă căutarea sau alege toate stările." : "Programările anulate și vizitele fără continuare apar aici."}
                 />
               )}
             </AnimatePresence>
@@ -688,12 +518,12 @@ export function VizionarileMelePage() {
       </Dialog>
 
       {/* Feedback Dialog */}
-      <VizionareFeedbackDialog
+      {feedbackOpen && <VizionareFeedbackDialog
         open={feedbackOpen}
         onOpenChange={setFeedbackOpen}
         vizionare={feedbackVizionare}
         onSaved={handleFeedbackSaved}
-      />
+      />}
     </PageShell>
   )
 }

@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import { Star, User, CalendarDays, Clock, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
@@ -92,10 +91,10 @@ export function VizionareFeedbackDialog({
   vizionare,
   onSaved,
 }: VizionareFeedbackDialogProps) {
-  const [rating, setRating] = useState(0)
-  const [feedback, setFeedback] = useState('')
-  const [wouldProceed, setWouldProceed] = useState(false)
-  const [notes, setNotes] = useState('')
+  const [rating, setRating] = useState(vizionare?.rating || 0)
+  const [feedback, setFeedback] = useState(vizionare?.feedback || '')
+  const [wouldProceed, setWouldProceed] = useState<boolean | null>(vizionare?.wouldProceed ?? null)
+  const [notes, setNotes] = useState(vizionare?.notes || '')
   const [saving, setSaving] = useState(false)
 
   // Reset form when dialog opens with a new vizionare
@@ -104,7 +103,7 @@ export function VizionareFeedbackDialog({
       if (isOpen && vizionare) {
         setRating(vizionare.rating || 0)
         setFeedback(vizionare.feedback || '')
-        setWouldProceed(vizionare.wouldProceed ?? false)
+        setWouldProceed(vizionare.wouldProceed ?? null)
         setNotes(vizionare.notes || '')
       }
       onOpenChange(isOpen)
@@ -113,7 +112,7 @@ export function VizionareFeedbackDialog({
   )
 
   const handleSave = useCallback(async () => {
-    if (!vizionare) return
+    if (!vizionare || wouldProceed === null) return
     if (rating === 0) {
       toast.error('Rating obligatoriu', {
         description: 'Te rugam sa selectezi un rating intre 1 si 5 stele.',
@@ -144,7 +143,7 @@ export function VizionareFeedbackDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto p-0">
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -154,7 +153,7 @@ export function VizionareFeedbackDialog({
           {/* Header */}
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">
-              Feedback Vizionare
+              Decizia după vizionare
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground line-clamp-2">
               {vizionare.propertyTitle}
@@ -185,6 +184,17 @@ export function VizionareFeedbackDialog({
               </div>
             </div>
           </div>
+
+          <fieldset className="space-y-3 rounded-xl border p-4">
+            <legend className="px-1 text-sm font-semibold">Vrei să continui cu această proprietate?</legend>
+            <p className="text-sm text-muted-foreground">Alege explicit. Poți reveni asupra deciziei.</p>
+            {[{ value: true, label: 'Da, vreau să discut oferta' }, { value: false, label: 'Nu, proprietatea nu mi se potrivește' }].map(choice => (
+              <label key={String(choice.value)} className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
+                <input type="radio" name="viewing-decision" checked={wouldProceed === choice.value} onChange={() => setWouldProceed(choice.value)} />
+                {choice.label}
+              </label>
+            ))}
+          </fieldset>
 
           {/* Star Rating */}
           <div className="space-y-2">
@@ -221,35 +231,6 @@ export function VizionareFeedbackDialog({
             />
           </div>
 
-          {/* Would Proceed Toggle */}
-          <div className="glass-card rounded-xl p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium">
-                  Ai vrea sa continui cu aceasta proprietate?
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Inchiriere sau cumparare
-                </p>
-              </div>
-              <div className="flex items-center gap-2.5 flex-shrink-0">
-                {wouldProceed ? (
-                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                    Da
-                  </span>
-                ) : (
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Nu
-                  </span>
-                )}
-                <Switch
-                  checked={wouldProceed}
-                  onCheckedChange={setWouldProceed}
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Notes */}
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-2">
@@ -276,10 +257,10 @@ export function VizionareFeedbackDialog({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={saving || rating === 0}
+              disabled={saving || rating === 0 || wouldProceed === null}
               className="text-sm"
             >
-              {saving ? 'Se salveaza...' : 'Salveaza Feedback'}
+              {saving ? 'Se salveaza...' : 'Salvează decizia'}
             </Button>
           </DialogFooter>
         </motion.div>

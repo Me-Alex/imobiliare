@@ -1,13 +1,12 @@
 'use client'
 
-import { AccountHelp } from '@/components/account/account-help'
+import { getTransactionProcess, PROCESS_PHASES, type TransactionProcess } from '@/lib/transaction-process'
 
-import { useCallback, useEffect, useMemo, useState, type ElementType } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight,
   Building2,
   CalendarCheck,
-  Check,
   CheckCircle2,
   Clock3,
   FileCheck2,
@@ -22,7 +21,6 @@ import {
   Undo2,
   UserRoundCheck,
   Users,
-  WalletCards,
   XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -31,7 +29,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/contexts/auth-context'
@@ -46,7 +43,6 @@ import {
   fetchDealRooms,
   getActiveDealOffer,
   getAllowedDealOfferActions,
-  getDealRoomActionSummary,
   getDealRequirementState,
   getDealStageGate,
   summarizeDealRequirements,
@@ -55,13 +51,6 @@ import {
   transitionDealOffer,
   updateDealNextStep,
 } from '@/lib/transaction-workspace'
-import {
-  getDealRoomJourney,
-  type DealRoomJourney,
-  type DealRoomJourneyStage,
-  type DealRoomJourneyState,
-  type DealRoomJourneyTarget,
-} from '@/lib/deal-room-journey'
 import {
   openViewingDocuments,
   readAppointmentContext,
@@ -94,139 +83,11 @@ function formatMoney(value: number | string, currency = 'EUR') {
   return new Intl.NumberFormat('ro-RO', { style: 'currency', currency, maximumFractionDigits: 0 }).format(Number(value))
 }
 
-const DEAL_JOURNEY_ICONS: Record<DealRoomJourneyStage['id'], ElementType> = {
-  viewing: CalendarCheck,
-  participants: Users,
-  offer: HandCoins,
-  documents: FileSignature,
-  nextStep: ArrowRight,
-}
-
-const DEAL_JOURNEY_STATE_META: Record<DealRoomJourneyState, {
-  label: string
-  icon: ElementType
-  className: string
-  markerClassName: string
-  badgeClassName: string
-}> = {
-  blocked: {
-    label: 'Blocat',
-    icon: XCircle,
-    className: 'border-rose-300 bg-rose-50/80 dark:border-rose-900/70 dark:bg-rose-950/25',
-    markerClassName: 'bg-rose-600 text-white',
-    badgeClassName: 'bg-rose-600 text-white hover:bg-rose-600',
-  },
-  attention: {
-    label: 'Atenție',
-    icon: ShieldCheck,
-    className: 'border-amber-300 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/25',
-    markerClassName: 'bg-amber-500 text-white',
-    badgeClassName: 'bg-amber-500 text-white hover:bg-amber-500',
-  },
-  active: {
-    label: 'Activ',
-    icon: ArrowRight,
-    className: 'border-primary/25 bg-primary/[0.05]',
-    markerClassName: 'bg-primary text-primary-foreground',
-    badgeClassName: 'bg-primary text-primary-foreground',
-  },
-  waiting: {
-    label: 'Așteaptă',
-    icon: Clock3,
-    className: 'border-blue-200 bg-blue-50/70 dark:border-blue-900/70 dark:bg-blue-950/25',
-    markerClassName: 'bg-blue-600 text-white',
-    badgeClassName: 'bg-blue-600 text-white hover:bg-blue-600',
-  },
-  complete: {
-    label: 'Complet',
-    icon: CheckCircle2,
-    className: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
-    markerClassName: 'bg-emerald-600 text-white',
-    badgeClassName: 'bg-emerald-600 text-white hover:bg-emerald-600',
-  },
-}
-
-function DealRoomJourneyPanel({
-  journey,
-  onFocus,
-}: {
-  journey: DealRoomJourney
-  onFocus: (target: DealRoomJourneyTarget) => void
-}) {
-  const PrimaryIcon = DEAL_JOURNEY_ICONS[journey.primaryStage.id]
-
-  return (
-    <Card className="overflow-hidden border-primary/15">
-      <CardHeader className="border-b bg-background/75 pb-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">
-              Hartă tranzacție
-            </Badge>
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <PrimaryIcon className="h-5 w-5 text-primary" />
-              {journey.headline}
-            </CardTitle>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-              {journey.description}
-            </p>
-          </div>
-          <div className="min-w-[220px] rounded-2xl border bg-card p-4 shadow-sm">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  progres tranzacție
-                </p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{journey.progressPercent}%</p>
-              </div>
-              <Badge variant="secondary">
-                {journey.completedCount}/{journey.totalCount} gata
-              </Badge>
-            </div>
-            <Progress value={journey.progressPercent} className="mt-3 h-2" />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-5">
-        {journey.stages.map((stageItem) => {
-          const Icon = DEAL_JOURNEY_ICONS[stageItem.id]
-          const meta = DEAL_JOURNEY_STATE_META[stageItem.state]
-          const StatusIcon = meta.icon
-
-          return (
-            <button
-              key={stageItem.id}
-              type="button"
-              onClick={() => onFocus(stageItem.target)}
-              className={`group rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${meta.className}`}
-            >
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${meta.markerClassName}`}>
-                  <Icon className="h-5 w-5" />
-                </span>
-                <Badge className={`gap-1 text-[10px] ${meta.badgeClassName}`}>
-                  <StatusIcon className="h-3 w-3" />
-                  {meta.label}
-                </Badge>
-              </div>
-              <p className="text-sm font-semibold">{stageItem.title}</p>
-              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{stageItem.description}</p>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
-                {stageItem.value}
-                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-              </span>
-            </button>
-          )
-        })}
-      </CardContent>
-    </Card>
-  )
-}
-
 export function DealRoomPage() {
   const { user, profile, loading: authLoading } = useAuth()
   const navigateTo = useAppStore((state) => state.navigateTo)
-  const [section, setSection] = useState('overview')
+  const [section, setSection] = useState('')
+  const [unresolvedContext, setUnresolvedContext] = useState(false)
   const [focusRequest, setFocusRequest] = useState<{ id: string } | null>(null)
   useEffect(() => {
     if (!focusRequest) return
@@ -259,11 +120,12 @@ export function DealRoomPage() {
       setRooms(nextRooms)
       const requestedAppointment = readAppointmentContext()
       const requestedDeal = readDealContext()
-      const requestedRoom = nextRooms.find((room) => room.id === requestedDeal)
-        || (requestedAppointment
-          ? nextRooms.find((room) => room.deal_appointments?.some((item) => item.appointment_id === requestedAppointment))
-          : null)
-      setSelectedId((current) => requestedRoom?.id || (current && nextRooms.some((room) => room.id === current) ? current : nextRooms[0]?.id || null))
+      const requestedRoom = requestedDeal
+        ? nextRooms.find(room => room.id === requestedDeal && (!requestedAppointment || room.deal_appointments?.some(link => link.appointment_id === requestedAppointment)))
+        : requestedAppointment ? nextRooms.find(room => room.deal_appointments?.some(link => link.appointment_id === requestedAppointment)) : null
+      setUnresolvedContext(Boolean((requestedAppointment || requestedDeal) && !requestedRoom))
+      setSelectedId(current => requestedRoom?.id || (!requestedAppointment && !requestedDeal && current && nextRooms.some(room => room.id === current) ? current : null))
+
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Deal Room nu a putut fi încărcat.')
     } finally {
@@ -272,6 +134,14 @@ export function DealRoomPage() {
   }, [user])
 
   useEffect(() => { void loadRooms() }, [loadRooms])
+
+  useEffect(() => {
+    setOfferAmount('')
+    setOfferNotes('')
+    setDecisionNote('')
+    setShowAllRequirements(false)
+    setFocusRequest(null)
+  }, [selectedId])
 
   const room = useMemo(() => rooms.find((item) => item.id === selectedId) || null, [rooms, selectedId])
   const property = relationOne(room?.properties)
@@ -304,24 +174,25 @@ export function DealRoomPage() {
     )
   }
 
-  if (!room) {
-    const requestedAppointment = readAppointmentContext()
-    return (
-      <div className="mx-auto flex min-h-[65vh] max-w-xl flex-col items-center justify-center px-4 text-center">
-        <WalletCards className="h-11 w-11 text-primary" />
-        <h1 className="mt-4 text-2xl font-bold">Prima tranzacție începe cu o vizionare</h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">După programarea unei vizionări, platforma creează automat spațiul comun pentru participanți, documente, oferte și pașii următori.</p>
-        <Button
-          className="mt-6"
-          onClick={() => requestedAppointment
-            ? openViewingDocuments(navigateTo, requestedAppointment, null, { focus: 'primary' })
-            : navigateTo(profile.role === 'CLIENT' ? 'programare-vizionare' : 'vizionarile-mele')}
-        >
-          {requestedAppointment ? 'Deschide dosarul vizionării' : 'Deschide vizionările'}
-        </Button>
-      </div>
-    )
-  }
+  if (!room) return <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+    <h1 className="text-3xl font-semibold">Tranzacții</h1>
+    <p className="mt-2 text-muted-foreground">Alege proprietatea și clientul. Fiecare dosar păstrează vizionarea, decizia, oferta și contractul împreună.</p>
+    {unresolvedContext && <div role="alert" className="mt-6 rounded-xl border border-amber-300 p-4"><p className="font-medium">Dosarul cerut nu este disponibil pentru acest cont.</p><p className="mt-1 text-sm">Revino la vizionare sau alege explicit un dosar din lista de mai jos.</p><Button variant="outline" className="mt-3" onClick={() => navigateTo('vizionarile-mele')}>Înapoi la vizionări</Button></div>}
+    <div className="mt-7 divide-y rounded-xl border bg-card px-4">
+      {rooms.map(item => {
+        const process = getTransactionProcess(item, profile.role, user.id)
+        const client = item.deal_appointments?.map(link => relationOne(link.appointments)?.client_name).find(Boolean)
+        return <button key={item.id} type="button" className="flex w-full flex-col gap-3 py-5 text-left hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-center sm:justify-between" onClick={() => { setSelectedId(item.id); setSection(''); setUnresolvedContext(false); selectDealRoom(item.id, item.deal_appointments?.[0]?.appointment_id) }}>
+          <span className="min-w-0"><span className="block text-lg font-semibold">{relationOne(item.properties)?.title || item.title}</span><span className="mt-1 block text-sm text-muted-foreground">{client ? `Client: ${client} · ` : ''}{process.title}</span><span className="mt-1 block text-xs text-muted-foreground">{process.actionable ? 'De făcut de tine' : `În așteptare: ${process.actor}`}</span></span><span className="inline-flex shrink-0 items-center gap-2 text-sm font-medium">Deschide dosarul <ArrowRight className="h-4 w-4" /></span>
+        </button>
+      })}
+      {!rooms.length && <div className="py-8"><h2 className="font-semibold">Nu ai încă un dosar de tranzacție</h2><p className="mt-2 text-sm text-muted-foreground">Începe cu o vizionare. Vei regăsi aici dosarul asociat proprietății.</p><Button className="mt-4" onClick={() => navigateTo('vizionarile-mele')}>Vezi vizionările</Button></div>}
+    </div>
+  </div>
+
+  const process = getTransactionProcess(room, profile.role, user.id)
+  const defaultSection = process.target === 'viewings' ? 'overview' : process.target
+  const activeSection = section || defaultSection
 
   const participants = room.deal_participants || []
   const appointments = room.deal_appointments || []
@@ -331,17 +202,16 @@ export function DealRoomPage() {
   const documentSummary = summarizeDealRequirements(requirements)
   const completedDocs = documentSummary.complete
   const progress = documentSummary.receivedProgress
+  const hasAcceptedOffer = offers.some(offer => offer.status === 'ACCEPTED')
   const activeOffer = getActiveDealOffer(offers)
-  const allowedOfferActions = getAllowedDealOfferActions(activeOffer, profile.role, user.id, room)
+  const allowedOfferActions = process.phase === 'negotiation' ? getAllowedDealOfferActions(activeOffer, profile.role, user.id, room) : []
   const decisionActions = allowedOfferActions.filter((action) => action !== 'COUNTERED')
-  const canSendOffer = canSubmitDealOffer(profile.role, activeOffer)
+  const canSendOffer = process.phase === 'negotiation' && canSubmitDealOffer(profile.role, activeOffer)
   const offerKind = profile.role === 'CLIENT' ? 'OFFER' : 'COUNTER_OFFER'
   const offerButtonLabel = activeOffer
     ? offerKind === 'COUNTER_OFFER' ? 'Trimite contraoferta' : 'Trimite oferta revizuita'
     : 'Trimite oferta'
-  const hasAcceptedOffer = offers.some((offer) => offer.status === 'ACCEPTED')
   const selectedStageGate = getDealStageGate(stage, offers, requirements)
-  const roleAction = getDealRoomActionSummary({ room, role: profile.role, userId: user.id })
   const requestedAppointmentId = readAppointmentContext()
   const appointmentId = requestedAppointmentId && appointments.some((item) => item.appointment_id === requestedAppointmentId)
     ? requestedAppointmentId
@@ -357,35 +227,15 @@ export function DealRoomPage() {
     )
     || requirements.find((requirement) => !getDealRequirementState(requirement).isComplete)
   const visibleRequirements = showAllRequirements ? requirements : requirements.slice(0, 4)
-  const suggestedNextStep = pendingSignatureRequirement
-    ? `Semneaza documentul: ${pendingSignatureRequirement.label}`
-    : documentSummary.blocked > 0
-      ? 'Corecteaza documentele respinse inainte de contract.'
-      : documentSummary.missing > 0
-        ? 'Completeaza documentele lipsa din dosarul tranzactiei.'
-        : activeOffer
-          ? activeOffer.offer_kind === 'COUNTER_OFFER'
-            ? 'Clientul trebuie sa raspunda la contraoferta.'
-            : 'Proprietarul sau agentul trebuie sa raspunda la oferta.'
-          : hasAcceptedOffer
-            ? 'Pregateste contractele si semnaturile finale.'
-            : room.next_step || 'Stabiliti urmatoarea actiune pentru tranzactie.'
-  const dealJourney = getDealRoomJourney({
-    room,
-    appointments,
-    participants,
-    offers,
-    requirements,
-    selectedStage: stage,
-  })
+  const suggestedNextStep = process.description
 
   const handleOpenDocuments = (focus: DocumentFocusTarget = 'primary') => {
     if (appointmentId) openViewingDocuments(navigateTo, appointmentId, room.id, { focus })
     else navigateTo('documente')
   }
 
-  const handleJourneyFocus = (target: DealRoomJourneyTarget) => {
-    const targetId: Record<DealRoomJourneyTarget, string> = {
+  const handleJourneyFocus = (target: 'viewing' | 'participants' | 'offers' | 'documents' | 'next-step') => {
+    const targetId: Record<string, string> = {
       viewing: 'deal-viewing',
       participants: 'deal-participants',
       offers: 'deal-offers',
@@ -396,12 +246,17 @@ export function DealRoomPage() {
     setFocusRequest({ id: targetId[target] })
   }
 
-  const handleRoleAction = () => {
-    if (roleAction.page === 'documente') {
-      handleOpenDocuments('primary')
-      return
-    }
-    handleJourneyFocus(roleAction.offerId ? 'offers' : 'next-step')
+  const handleProcessAction = () => {
+    if (process.target === 'viewings') {
+      navigateTo('vizionarile-mele')
+      if (appointmentId) {
+        const url = new URL(window.location.href)
+        url.searchParams.set('appointment', appointmentId)
+        window.history.replaceState(window.history.state, '', url)
+      }
+    } else if (process.target === 'documents') handleOpenDocuments('primary')
+    else if (process.target === 'activity') { setSection('activity'); setFocusRequest({ id: 'deal-activity' }) }
+    else handleJourneyFocus(process.target === 'offers' ? 'offers' : 'next-step')
   }
 
   const handleOffer = async () => {
@@ -495,6 +350,7 @@ export function DealRoomPage() {
     <div className="min-h-screen bg-muted/20">
       <div className="border-b bg-background">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+          <Button variant="ghost" className="mb-3 px-0" onClick={() => { setSelectedId(null); setSection(''); selectDealRoom('', null) }}>Înapoi la toate dosarele</Button>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -512,7 +368,7 @@ export function DealRoomPage() {
                 onChange={(event) => {
                   const dealId = event.target.value
                   const selectedRoom = rooms.find((item) => item.id === dealId)
-                  setSection('overview')
+                  setSection('')
                   setSelectedId(dealId)
                   selectDealRoom(dealId, selectedRoom?.deal_appointments?.[0]?.appointment_id)
                 }}
@@ -526,33 +382,21 @@ export function DealRoomPage() {
       </div>
 
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
-        <StageProgress current={room.stage} />
+        <ProcessProgress process={process} />
 
-        <Card className={roleAction.priority === 'high' ? 'py-0 border-amber-300/60 bg-amber-500/[0.06]' : 'py-0 border-primary/20 bg-primary/[0.03]'}>
-          <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-start gap-4">
-              <div className="min-w-0">
-                <h2 className="text-lg font-semibold tracking-tight">{roleAction.title}</h2>
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{roleAction.description}</p>
-              </div>
-            </div>
-            {roleAction.state !== 'complete' ? (
-              <Button className="shrink-0 gap-2" variant={roleAction.priority === 'high' ? 'default' : 'outline'} onClick={handleRoleAction}>
-                {roleAction.page === 'documente' ? 'Deschide dosarul' : roleAction.offerId ? 'Vezi oferta' : 'Vezi următorul pas'}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            ) : null}
-          </CardContent>
-        </Card>
+        <section aria-label="Ce urmează în acest dosar" className="rounded-xl border bg-card p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-semibold">{process.title}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{process.description}</p><p className="mt-3 text-sm font-medium">{process.actionable ? 'Acum acționezi tu.' : `Următoarea acțiune: ${process.actor}.`}</p></div><Button className="h-auto min-h-11 shrink-0 gap-2 whitespace-normal" variant={process.actionable ? 'default' : 'outline'} onClick={handleProcessAction}>{process.actionLabel}<ArrowRight className="h-4 w-4" /></Button></div>
+        </section>
 
-        <Tabs value={section} onValueChange={setSection} className="gap-5">
-          <TabsList aria-label="Secțiunile tranzacției" className="grid h-auto w-full grid-cols-3 gap-1 p-1 sm:grid-cols-5">
+        <Tabs value={activeSection} onValueChange={value => { setSection(value); setFocusRequest(null) }} className="gap-5">
+          <details className="rounded-xl border p-4"><summary className="cursor-pointer text-sm font-medium">Consultă alte informații din dosar</summary>
+          <TabsList aria-label="Secțiunile tranzacției" className="mt-4 grid h-auto w-full grid-cols-3 gap-1 p-1 sm:grid-cols-5">
             <TabsTrigger value="overview" className="min-h-12 gap-2 whitespace-normal px-2"><CalendarCheck className="hidden h-4 w-4 sm:block" />Vizionare</TabsTrigger>
             <TabsTrigger value="documents" className="min-h-12 gap-2 whitespace-normal px-2"><FileText className="hidden h-4 w-4 sm:block" />Documente</TabsTrigger>
             <TabsTrigger value="offers" className="min-h-12 gap-2 whitespace-normal px-2"><HandCoins className="hidden h-4 w-4 sm:block" />Oferte</TabsTrigger>
             <TabsTrigger value="next" className="min-h-12 gap-2 whitespace-normal px-2"><ArrowRight className="hidden h-4 w-4 sm:block" />Pașii următori</TabsTrigger>
             <TabsTrigger value="activity" className="min-h-12 gap-2 whitespace-normal px-2"><History className="hidden h-4 w-4 sm:block" />Activitate</TabsTrigger>
-          </TabsList>
+          </TabsList></details>
           <TabsContent value="overview" forceMount className="space-y-4 data-[state=inactive]:hidden">
             <div><h2 className="text-xl font-semibold">Vizionarea și participanții</h2><p className="mt-1 text-sm text-muted-foreground">Verifică programarea și persoanele implicate în această tranzacție.</p></div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -697,7 +541,7 @@ export function DealRoomPage() {
                   <Badge variant="outline" className="mb-2 text-[10px]">Sugestie</Badge>
                   <p className="text-sm font-medium">{suggestedNextStep}</p>
                 </div>
-                {canManage ? (
+                {canManage && process.phase !== 'closed' ? (
                   <>
                     <div><Label htmlFor="deal-stage">Etapă</Label><select id="deal-stage" className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={stage} onChange={(event) => setStage(event.target.value as DealStage)}>{DEAL_STAGES.map((value) => <option key={value} value={value}>{STAGE_LABELS[value]}</option>)}</select></div>
                     <div><Label htmlFor="next-step">Acțiune</Label><Textarea id="next-step" className="mt-1" value={nextStep} onChange={(event) => setNextStep(event.target.value)} rows={3} /></div>
@@ -717,7 +561,7 @@ export function DealRoomPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="activity" forceMount className="space-y-4 data-[state=inactive]:hidden">
+          <TabsContent id="deal-activity" value="activity" forceMount className="space-y-4 data-[state=inactive]:hidden">
             <div><h2 className="text-xl font-semibold">Istoricul tranzacției</h2><p className="mt-1 text-sm text-muted-foreground">Modificările recente, în ordine de la cea mai nouă.</p></div>
             <Card>
               <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><History className="h-4 w-4 text-primary" /> Activitate recentă</CardTitle></CardHeader>
@@ -734,29 +578,15 @@ export function DealRoomPage() {
           </TabsContent>
         </Tabs>
 
-        <AccountHelp title="Etapele tranzacției"><DealRoomJourneyPanel journey={dealJourney} onFocus={handleJourneyFocus} /></AccountHelp>
+
       </main>
     </div>
   )
 }
 
-function StageProgress({ current }: { current: DealStage }) {
-  const path = DEAL_STAGES.filter(stage => stage !== 'CLOSED_LOST')
-  const closedWithoutSale = current === 'CLOSED_LOST'
-  const currentIndex = path.findIndex(stage => stage === current)
-  return <section aria-label="Progresul tranzacției" className="rounded-xl border bg-card p-4 sm:p-5">
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <h2 className="font-semibold">{closedWithoutSale ? 'Tranzacție închisă fără finalizare' : `Etapa curentă: ${STAGE_LABELS[current]}`}</h2>
-      {!closedWithoutSale && <span className="text-sm text-muted-foreground">{currentIndex + 1} din {path.length} etape</span>}
-    </div>
-    <ol className="grid grid-cols-3 gap-2 lg:grid-cols-6">
-      {path.map((stage, index) => <li key={stage} aria-current={stage === current ? 'step' : undefined} className={`flex items-center gap-2 rounded-lg px-1 py-2 text-xs sm:text-sm ${stage === current ? 'bg-primary/10 font-semibold text-primary' : 'text-muted-foreground'}`}>
-        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs ${!closedWithoutSale && index < currentIndex ? 'border-primary bg-primary text-primary-foreground' : ''}`}>
-          {!closedWithoutSale && index < currentIndex ? <Check className="h-4 w-4" aria-hidden="true" /> : index + 1}
-        </span>{STAGE_LABELS[stage]}
-      </li>)}
-    </ol>
-    {closedWithoutSale && <p className="mt-3 text-sm text-muted-foreground">Consultă documentele și activitatea pentru detaliile închiderii.</p>}
+function ProcessProgress({ process }: { process: TransactionProcess }) {
+  return <section aria-label="Parcursul dosarului" className="border-b pb-5">
+    <ol className="grid grid-cols-2 gap-3 sm:grid-cols-5">{PROCESS_PHASES.map((phase, index) => <li key={phase.id} aria-current={phase.id === process.phase ? 'step' : undefined} className={`flex items-center gap-2 text-sm ${phase.id === process.phase ? 'font-semibold text-primary' : 'text-muted-foreground'}`}><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs ${phase.id === process.phase ? 'border-primary bg-primary text-primary-foreground' : ''}`}>{index + 1}</span>{phase.label}</li>)}</ol>
   </section>
 }
 

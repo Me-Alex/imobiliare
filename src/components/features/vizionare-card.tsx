@@ -143,6 +143,7 @@ export function VizionareCard({
 
   return (
     <motion.div
+      id={`viewing-${vizionare.id}`}
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}

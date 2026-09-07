@@ -66,7 +66,7 @@ export function getViewingGuidance(
     }
     return {
       title: 'Vizionarea este confirmată',
-      description: 'Prezintă-te la ora programată. Agentul va confirma prezența la întâlnire.',
+      description: audience === 'client' ? 'Prezintă-te la ora programată. Agentul va confirma prezența la întâlnire.' : 'Clientul și agentul au o întâlnire confirmată. Vei vedea aici rezultatul vizitei.',
       action: 'none',
       tone: 'success',
     }
@@ -91,42 +91,20 @@ export function getViewingGuidance(
   }
 
   if (viewing.status === 'completed') {
-    if (audience === 'staff') {
-      return {
-        title: 'Pregătește fișa de vizionare',
-        description: 'Vizionarea este finalizată. Verifică datele și generează documentul pentru semnare.',
-        action: 'documents',
-        actionLabel: 'Deschide fișa de vizionare',
-        tone: 'success',
-      }
+    if (viewing.wouldProceed === true) return {
+      title: 'Continuă cu oferta', description: 'Decizia este înregistrată. Oferta, răspunsurile și contractul se urmăresc în dosarul tranzacției.',
+      action: 'deal_room', actionLabel: 'Deschide tranzacția', tone: 'success',
     }
-
-    if (audience === 'client' && !hasFeedback) {
-      return {
-        title: 'Spune-ne cum a fost',
-        description: 'Feedbackul tău îl ajută pe agent să pregătească următorul pas potrivit.',
-        action: 'feedback',
-        actionLabel: 'Adaugă feedback',
-        tone: 'success',
-      }
+    if (!hasFeedback || viewing.wouldProceed == null) return {
+      title: audience === 'client' ? 'Alege dacă vrei să continui' : 'Se așteaptă decizia clientului',
+      description: 'După vizită, clientul decide dacă dorește să discute o ofertă pentru această proprietate.',
+      action: audience === 'client' ? 'feedback' : 'documents',
+      actionLabel: audience === 'client' ? 'Înregistrează decizia' : 'Consultă fișa vizitei', tone: 'info',
     }
-
-    if (audience === 'client' && viewing.wouldProceed === true) {
-      return {
-        title: 'Continuă tranzacția',
-        description: 'Ai confirmat că proprietatea te interesează. Urmărește oferta și documentele într-un singur loc.',
-        action: 'deal_room',
-        actionLabel: 'Deschide Deal Room',
-        tone: 'success',
-      }
-    }
-
     return {
-      title: 'Consultă dosarul vizionării',
-      description: 'Vezi fișa, documentele și istoricul păstrat pentru această vizionare.',
-      action: 'documents',
-      actionLabel: 'Deschide dosarul',
-      tone: 'neutral',
+      title: 'Clientul nu dorește să continue', description: 'Vizita rămâne în arhivă. Clientul își poate actualiza decizia.',
+      action: audience === 'client' ? 'feedback' : 'documents',
+      actionLabel: audience === 'client' ? 'Actualizează decizia' : 'Consultă fișa vizitei', tone: 'neutral',
     }
   }
 
@@ -170,4 +148,10 @@ export function getViewingGuidance(
     action: 'none',
     tone: 'neutral',
   }
+}
+
+export function getViewingProcessGroup(viewing: Pick<Vizionare, 'status' | 'rating' | 'wouldProceed'>): 'active' | 'followup' | 'history' {
+  if (['pending', 'confirmed', 'checked_in'].includes(viewing.status)) return 'active'
+  if (viewing.status === 'completed' && !(viewing.wouldProceed === false && (viewing.rating || 0) > 0)) return 'followup'
+  return 'history'
 }
