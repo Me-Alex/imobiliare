@@ -92,114 +92,56 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
     onRemove: () => setVirtualTourFilter('all'),
   })
 
+  const advancedFilterCount = activeFilters.filter((filter) => !['type', 'tx', 'search'].includes(filter.key)).length
   const clearAll = resetFilters
 
   return (
     <div id="proprietati" className="scroll-mt-20">
-      <div className="mb-5 max-w-2xl">
-        <Label htmlFor="catalog-search" className="mb-2 block">Caută în proprietăți</Label>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input id="catalog-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Zonă, adresă sau cuvânt cheie" className="h-12 pl-10" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="sm:col-span-2 lg:col-span-1">
+          <Label htmlFor="catalog-search" className="mb-2 block">Unde cauți?</Label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input id="catalog-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Zonă, adresă sau cuvânt cheie" className="h-12 pl-10" />
+          </div>
         </div>
-      </div>
-      {/* One set of property types, shared by list and map. */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant={!selectedType ? 'default' : 'outline'}
-            onClick={() => setSelectedType('')}
-            aria-pressed={!selectedType}
-            className="h-10 rounded-full"
-          >
-            Toate
-          </Button>
-          {propertyTypes.map((type) => (
-            <Button
-              key={type.value}
-              size="sm"
-              variant={selectedType === type.value ? 'default' : 'outline'}
-              onClick={() => setSelectedType(selectedType === type.value ? '' : type.value)}
-              aria-pressed={selectedType === type.value}
-              className="h-10 rounded-full"
-            >
-              {type.label}
-            </Button>
-          ))}
-        </div>
-
-        <div className="flex w-full flex-wrap items-center gap-2 xl:max-w-lg">
-          {/* Save Search */}
-          {onSaveSearch && <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={onSaveSearch}
-          >
-            <Bookmark className="h-4 w-4" />
-            <span className="hidden sm:inline">Salvează căutarea</span>
-            <span className="sm:hidden">Salvează</span>
-          </Button>}
-
-          {/* Sort */}
-          <Select value={sort} onValueChange={setSort}>
-            <SelectTrigger aria-label="Ordonează proprietățile" className="h-10 min-w-0 flex-1 text-sm sm:w-48 sm:flex-none">
-              <SelectValue placeholder="Cele mai noi" />
+        <div>
+          <Label htmlFor="catalog-transaction" className="mb-2 block">Vrei să</Label>
+          <Select value={transaction || 'all'} onValueChange={(value) => setTransaction(value === 'all' ? '' : value)}>
+            <SelectTrigger id="catalog-transaction" className="h-12 w-full data-[size=default]:h-12" aria-label="Tranzacție">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {sortOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">Cumperi sau închiriezi</SelectItem>
+              <SelectItem value="SALE">Cumperi</SelectItem>
+              <SelectItem value="RENT">Închiriezi</SelectItem>
             </SelectContent>
           </Select>
-
-          {/* View toggle */}
-          <div className="flex items-center border rounded-md">
-            <Button
-              variant={viewMode === 'grid' && !mapViewMode ? 'default' : 'ghost'}
-              size="icon"
-              className="h-10 w-10 rounded-r-none rounded-l-md"
-              onClick={() => { setViewMode('grid'); setMapViewMode(false) }}
-              aria-label="Vizualizare grilă" aria-pressed={viewMode === 'grid' && !mapViewMode}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'list' && !mapViewMode ? 'default' : 'ghost'}
-              size="icon"
-              className="h-10 w-10 rounded-none"
-              onClick={() => { setViewMode('list'); setMapViewMode(false) }}
-              aria-label="Vizualizare listă" aria-pressed={viewMode === 'list' && !mapViewMode}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={mapViewMode ? 'default' : 'ghost'}
-              size="icon"
-              className="h-10 w-10 rounded-l-none rounded-r-md"
-              onClick={() => setMapViewMode(!mapViewMode)}
-              aria-label="Vizualizare hartă" aria-pressed={mapViewMode}
-            >
-              <Map className="h-4 w-4" />
-            </Button>
-          </div>
-
-
+        </div>
+        <div>
+          <Label htmlFor="catalog-type" className="mb-2 block">Tip de proprietate</Label>
+          <Select value={selectedType || 'all'} onValueChange={(value) => setSelectedType(value === 'all' ? '' : value)}>
+            <SelectTrigger id="catalog-type" className="h-12 w-full data-[size=default]:h-12" aria-label="Tip de proprietate">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toate tipurile</SelectItem>
+              {propertyTypes.map((type) => <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </div>
+      <p className="mt-2 text-xs text-muted-foreground">Rezultatele se actualizează când schimbi criteriile.</p>
 
           {/* Additional criteria stay together on every screen. */}
-          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="mb-5 w-full">
+          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="mt-4 w-full">
             <CollapsibleTrigger asChild>
               <Button variant="outline" size="sm" className="h-11 gap-2">
                 <SlidersHorizontal className="h-4 w-4" />
-                {filtersOpen ? 'Ascunde filtrele' : 'Mai multe filtre'}
-                {activeFilters.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{activeFilters.length}</Badge>
+                {filtersOpen ? 'Ascunde filtrele' : 'Zonă, buget și alte filtre'}
+                {advancedFilterCount > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{advancedFilterCount}</Badge>
                 )}
                 <ChevronDown className={`h-3 w-3 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
               </Button>
@@ -217,8 +159,6 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
                 setMinArea={setMinArea}
                 maxArea={maxArea}
                 setMaxArea={setMaxArea}
-                transaction={transaction}
-                setTransaction={setTransaction}
                 featuredOnly={featuredOnly}
                 setFeaturedOnly={setFeaturedOnly}
                 virtualTourFilter={virtualTourFilter}
@@ -226,6 +166,9 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
               />
             </CollapsibleContent>
           </Collapsible>
+      {(priceRange[0] > priceRange[1] || (minArea && maxArea && Number(minArea) > Number(maxArea))) && (
+        <p role="alert" className="mt-4 text-sm text-destructive">Valoarea minimă trebuie să fie mai mică decât valoarea maximă.</p>
+      )}
 
       {/* Active filter tags */}
       <AnimatePresence>
@@ -234,7 +177,7 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex flex-wrap items-center gap-2 mb-6"
+            className="mt-4 flex flex-wrap items-center gap-2"
           >
             <span className="text-sm text-muted-foreground">Filtre active:</span>
             {activeFilters.map((f) => (
@@ -255,6 +198,35 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
           </motion.div>
         )}
       </AnimatePresence>
+      <div className="mt-5 flex flex-col gap-3 border-t pt-4 lg:flex-row lg:items-center lg:justify-between">
+        <div role="group" aria-label="Afișarea proprietăților" className="inline-flex w-fit max-w-full rounded-lg bg-muted p-1">
+          {([
+            { value: 'grid', label: 'Grilă', icon: LayoutGrid, active: viewMode === 'grid' && !mapViewMode },
+            { value: 'list', label: 'Listă', icon: List, active: viewMode === 'list' && !mapViewMode },
+            { value: 'map', label: 'Hartă', icon: Map, active: mapViewMode },
+          ] as const).map(({ value, label, icon: Icon, active }) => (
+            <Button key={value} variant={active ? 'secondary' : 'ghost'}
+              className={`h-11 gap-2 px-3 ${active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+              aria-label={`Vizualizare ${label.toLocaleLowerCase('ro-RO')}`} aria-pressed={active}
+              onClick={() => { if (value === 'map') setMapViewMode(true); else { setViewMode(value); setMapViewMode(false) } }}>
+              <Icon className="h-4 w-4" aria-hidden="true" />{label}
+            </Button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={sort} onValueChange={setSort}>
+            <SelectTrigger aria-label="Ordonează proprietățile" className="h-11 data-[size=default]:h-11 w-auto min-w-40 flex-1 sm:flex-none">
+              <SelectValue placeholder="Cele mai noi" />
+            </SelectTrigger>
+            <SelectContent>
+              {sortOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {onSaveSearch && <Button variant="outline" className="h-11" onClick={onSaveSearch}>
+            <Bookmark className="h-4 w-4" aria-hidden="true" />Salvează căutarea
+          </Button>}
+        </div>
+      </div>
     </div>
   )
 }
@@ -271,8 +243,6 @@ function FilterPanel({
   setMinArea,
   maxArea,
   setMaxArea,
-  transaction,
-  setTransaction,
   featuredOnly,
   setFeaturedOnly,
   virtualTourFilter,
@@ -289,15 +259,13 @@ function FilterPanel({
   setMinArea: (v: string) => void
   maxArea: string
   setMaxArea: (v: string) => void
-  transaction: string
-  setTransaction: (v: string) => void
   featuredOnly: boolean
   setFeaturedOnly: (v: boolean) => void
   virtualTourFilter: VirtualTourFilterValue
   setVirtualTourFilter: (v: VirtualTourFilterValue) => void
 }) {
   return (
-    <div className="rounded-xl border bg-card p-4 sm:p-6">
+    <div className="border-t pt-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Zone */}
         <div>
@@ -311,21 +279,6 @@ function FilterPanel({
               {zones?.map((z) => (
                 <SelectItem key={z.id} value={z.name}>{z.name}</SelectItem>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Transaction type */}
-        <div>
-          <Label className="text-sm font-medium text-muted-foreground mb-1.5 block">Tranzacție</Label>
-          <Select value={transaction || 'all'} onValueChange={(v) => setTransaction(v === 'all' ? '' : v)}>
-            <SelectTrigger className="h-11 w-full" aria-label="Tranzacție">
-              <SelectValue placeholder="Vânzare și închiriere" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Vânzare și închiriere</SelectItem>
-              <SelectItem value="SALE">Vânzare</SelectItem>
-              <SelectItem value="RENT">Închiriere</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -439,9 +392,7 @@ function FilterPanel({
           </div>
         </div>
       </div>
-      {(priceRange[0] > priceRange[1] || (minArea && maxArea && Number(minArea) > Number(maxArea))) && (
-        <p role="alert" className="mt-4 text-sm text-destructive">Valoarea minimă trebuie să fie mai mică decât valoarea maximă.</p>
-      )}
+
     </div>
   )
 }

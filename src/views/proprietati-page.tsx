@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { Building2, Loader2, MapPinOff } from 'lucide-react'
+import { Loader2, MapPinOff } from 'lucide-react'
 import { PageContainer, PageHero } from '@/components/layout'
 import { PropertyFilters } from '@/components/property/property-filters'
 import { PropertyGrid } from '@/components/property/property-grid'
@@ -59,9 +59,9 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
   return (
     <>
       <PageHero
-        icon={Building2}
+        variant="border"
         title="Proprietăți"
-        description="Descoperă proprietăți verificate și filtrează rapid ofertele potrivite pentru tine."
+        description="Alege ce cauți, apoi explorează ofertele în listă sau pe hartă."
         breadcrumb={[{ label: 'Proprietăți' }]}
       />
 

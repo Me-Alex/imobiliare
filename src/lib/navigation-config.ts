@@ -93,16 +93,14 @@ export function getAccountMenuItems(role: AccountRole): AccountNavigationItem[] 
 
 export function getAccountNavigationGroups(role: AccountRole) {
   const items = getAccountMenuItems(role)
-  const primary: Record<AccountRole, PageKey[]> = {
-    CLIENT: ['dashboard', 'vizionarile-mele', 'deal-room', 'documente'],
-    OWNER: ['dashboard', 'proprietatile-mele', 'vizionarile-mele', 'deal-room', 'documente'],
-    AGENT: ['dashboard', 'crm', 'vizionarile-mele', 'deal-room', 'documente'],
-    ADMIN: ['dashboard', 'crm', 'vizionarile-mele', 'deal-room', 'documente'],
-  }
+  const workflow: PageKey[] = ['dashboard', 'programare-vizionare', 'vizionarile-mele', 'deal-room', 'documente']
+  const account: PageKey[] = ['profil', 'monede']
   return [
-    { label: 'Activitate', items: primary[role].map(page => items.find(item => item.page === page)!).filter(Boolean) },
-    { label: 'Instrumente și cont', items: items.filter(item => !primary[role].includes(item.page)) },
-  ]
+    { label: 'Dosare și programări', items: items.filter(item => workflow.includes(item.page)) },
+    { label: 'Proprietăți și echipă', items: items.filter(item => !workflow.includes(item.page) && !account.includes(item.page)) },
+    { label: 'Contul meu', items: items.filter(item => account.includes(item.page)) },
+  ].filter(group => group.items.length > 0)
+
 }
 
 export function getWorkspaceNavigation(role: AccountRole): AccountNavigationItem[] {
