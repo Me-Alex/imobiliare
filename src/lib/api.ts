@@ -58,7 +58,7 @@ function buildPropertyParams(filters: PropertyFilters): URLSearchParams {
   if (filters.type) params.set('type', filters.type)
   if (filters.transaction) params.set('transaction', filters.transaction)
   if (filters.minPrice !== undefined && filters.minPrice > 0) params.set('minPrice', String(filters.minPrice))
-  if (filters.maxPrice !== undefined && filters.maxPrice > 0) params.set('maxPrice', String(filters.maxPrice))
+  if (filters.maxPrice !== undefined && filters.maxPrice >= 0) params.set('maxPrice', String(filters.maxPrice))
   if (filters.rooms && filters.rooms > 0) params.set('rooms', String(filters.rooms))
   if (filters.featured) params.set('featured', 'true')
   if (filters.search) params.set('search', filters.search)

@@ -1,5 +1,7 @@
 'use client'
 
+import { priceRangeQuery } from '@/lib/property-price-range'
+
 import { motion, AnimatePresence } from 'framer-motion'
 import { Loader2, MapPinOff } from 'lucide-react'
 import { PageContainer, PageHero } from '@/components/layout'
@@ -38,8 +40,7 @@ export function ProprietatiPage({ onSaveSearch }: ProprietatiPageProps) {
   if (selectedType) mapFilters.type = selectedType
   if (selectedZone) mapFilters.zone = selectedZone
   if (searchQuery) mapFilters.search = searchQuery
-  if (priceRange[0] > 0) mapFilters.minPrice = priceRange[0]
-  if (priceRange[1] < 1000000) mapFilters.maxPrice = priceRange[1]
+  Object.assign(mapFilters, priceRangeQuery(priceRange))
   if (rooms > 0) mapFilters.rooms = rooms
   if (transaction) mapFilters.transaction = transaction
   if (featuredOnly) mapFilters.featured = true

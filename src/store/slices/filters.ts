@@ -1,3 +1,4 @@
+import type { PropertyPriceRange } from '@/lib/property-price-range'
 import type { StateCreator } from 'zustand'
 
 export interface FiltersSlice {
@@ -7,8 +8,8 @@ export interface FiltersSlice {
   setSelectedZone: (z: string) => void
   selectedType: string
   setSelectedType: (t: string) => void
-  priceRange: [number, number]
-  setPriceRange: (range: [number, number]) => void
+  priceRange: PropertyPriceRange
+  setPriceRange: (range: PropertyPriceRange) => void
   viewMode: 'grid' | 'list'
   setViewMode: (mode: 'grid' | 'list') => void
   mapViewMode: boolean
@@ -39,7 +40,7 @@ export const createFiltersSlice: StateCreator<FiltersSlice> = (set) => ({
   setSelectedZone: (z) => set({ selectedZone: z }),
   selectedType: '',
   setSelectedType: (t) => set({ selectedType: t }),
-  priceRange: [0, 1000000],
+  priceRange: [0, null],
   setPriceRange: (range) => set({ priceRange: range }),
   viewMode: 'grid',
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -62,7 +63,7 @@ export const createFiltersSlice: StateCreator<FiltersSlice> = (set) => ({
   virtualTourFilter: 'all',
   setVirtualTourFilter: (v) => set({ virtualTourFilter: v }),
   resetFilters: () => set({
-    searchQuery: '', selectedZone: '', selectedType: '', priceRange: [0, 1000000],
+    searchQuery: '', selectedZone: '', selectedType: '', priceRange: [0, null],
     rooms: 0, transaction: '', featuredOnly: false, sort: '', minArea: '', maxArea: '',
     virtualTourFilter: 'all',
   }),

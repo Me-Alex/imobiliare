@@ -73,10 +73,10 @@ export function SaveSearchDialog({ open, onOpenChange }: SaveSearchDialogProps) 
   if (selectedZone) filterBadges.push(selectedZone)
   if (rooms > 0) filterBadges.push(`${rooms}+ camere`)
   if (transaction) filterBadges.push(transactionLabels[transaction] || transaction)
-  if (priceRange[0] > 0 || priceRange[1] < 1000000) {
+  if (priceRange[0] > 0 || priceRange[1] !== null) {
     const parts: string[] = []
     if (priceRange[0] > 0) parts.push(`${priceRange[0].toLocaleString()}€`)
-    if (priceRange[1] < 1000000) parts.push(`${priceRange[1].toLocaleString()}€`)
+    if (priceRange[1] !== null) parts.push(`${priceRange[1].toLocaleString()}€`)
     filterBadges.push(parts.join(' - '))
   }
   if (minArea) filterBadges.push(`Min ${minArea}m²`)
@@ -103,6 +103,7 @@ export function SaveSearchDialog({ open, onOpenChange }: SaveSearchDialogProps) 
         selectedType: selectedType || undefined,
         selectedZone: selectedZone || undefined,
         priceRange: priceRange,
+        priceRangeVersion: 2,
         rooms: rooms || undefined,
         transaction: transaction || undefined,
         featuredOnly: featuredOnly || undefined,

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { PropertyPriceRange } from '@/lib/property-price-range'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, SlidersHorizontal, LayoutGrid, List, ChevronDown, Bookmark, Map, Rotate3D, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -79,7 +80,7 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
   if (selectedType) activeFilters.push({ key: 'type', label: propertyTypes.find(t => t.value === selectedType)?.label || selectedType, onRemove: () => setSelectedType('') })
   if (selectedZone) activeFilters.push({ key: 'zone', label: selectedZone, onRemove: () => setSelectedZone('') })
   if (priceRange[0] > 0) activeFilters.push({ key: 'minP', label: `Min ${priceRange[0].toLocaleString()}€`, onRemove: () => setPriceRange([0, priceRange[1]]) })
-  if (priceRange[1] < 1000000) activeFilters.push({ key: 'maxP', label: `Max ${priceRange[1].toLocaleString()}€`, onRemove: () => setPriceRange([priceRange[0], 1000000]) })
+  if (priceRange[1] !== null) activeFilters.push({ key: 'maxP', label: `Max ${priceRange[1].toLocaleString()}€`, onRemove: () => setPriceRange([priceRange[0], null]) })
   if (rooms > 0) activeFilters.push({ key: 'rooms', label: `${rooms}+ camere`, onRemove: () => setRooms(0) })
   if (transaction) activeFilters.push({ key: 'tx', label: transaction === 'RENT' ? 'Închiriere' : 'Vânzare', onRemove: () => setTransaction('') })
   if (featuredOnly) activeFilters.push({ key: 'feat', label: 'Doar populare', onRemove: () => setFeaturedOnly(false) })
@@ -166,7 +167,7 @@ export function PropertyFilters({ onSaveSearch }: PropertyFiltersProps) {
               />
             </CollapsibleContent>
           </Collapsible>
-      {(priceRange[0] > priceRange[1] || (minArea && maxArea && Number(minArea) > Number(maxArea))) && (
+      {((priceRange[1] !== null && priceRange[0] > priceRange[1]) || (minArea && maxArea && Number(minArea) > Number(maxArea))) && (
         <p role="alert" className="mt-4 text-sm text-destructive">Valoarea minimă trebuie să fie mai mică decât valoarea maximă.</p>
       )}
 
@@ -251,8 +252,8 @@ function FilterPanel({
   zones: { id: string; name: string }[] | undefined
   selectedZone: string
   setSelectedZone: (z: string) => void
-  priceRange: [number, number]
-  setPriceRange: (r: [number, number]) => void
+  priceRange: PropertyPriceRange
+  setPriceRange: (r: PropertyPriceRange) => void
   rooms: number
   setRooms: (r: number) => void
   minArea: string
@@ -299,8 +300,8 @@ function FilterPanel({
               type="number"
               placeholder="Max"
               aria-label="Preț maxim în euro" min={0}
-              value={priceRange[1] >= 1000000 ? '' : priceRange[1]}
-              onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value) || 1000000])}
+              value={priceRange[1] ?? ''}
+              onChange={(e) => setPriceRange([priceRange[0], e.target.value === '' ? null : Number(e.target.value)])}
               className="h-11"
             />
           </div>

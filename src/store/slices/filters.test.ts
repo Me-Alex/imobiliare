@@ -13,7 +13,7 @@ describe('clearing a property search', () => {
     })
     store.getState().resetFilters()
     expect(store.getState()).toMatchObject({
-      searchQuery: '', selectedZone: '', selectedType: '', priceRange: [0, 1000000],
+      searchQuery: '', selectedZone: '', selectedType: '', priceRange: [0, null],
       rooms: 0, transaction: '', featuredOnly: false, sort: '', minArea: '', maxArea: '',
       virtualTourFilter: 'all', viewMode: 'list', mapViewMode: true,
     })

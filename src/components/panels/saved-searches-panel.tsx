@@ -1,5 +1,7 @@
 'use client'
 
+import { restorePriceRange } from '@/lib/property-price-range'
+
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bookmark, Trash2, RotateCcw, SlidersHorizontal, MapPin, BedDouble, Euro } from 'lucide-react'
@@ -58,10 +60,11 @@ export function SavedSearchesPanel({ open, onOpenChange }: SavedSearchesPanelPro
   const handleLoad = (search: SavedSearch) => {
     const store = useAppStore.getState()
     const f = search.filters
+    store.resetFilters()
 
     if (f.selectedType !== undefined) store.setSelectedType(f.selectedType || '')
     if (f.selectedZone !== undefined) store.setSelectedZone(f.selectedZone || '')
-    if (f.priceRange) store.setPriceRange(f.priceRange)
+    store.setPriceRange(restorePriceRange(f.priceRange, f.priceRangeVersion))
     if (f.rooms !== undefined) store.setRooms(f.rooms || 0)
     if (f.transaction !== undefined) store.setTransaction(f.transaction || '')
     if (f.featuredOnly !== undefined) store.setFeaturedOnly(f.featuredOnly || false)
@@ -188,11 +191,11 @@ function SavedSearchItem({
     badges.push({ label: `${search.filters.rooms}+ camere`, icon: <BedDouble className="h-3 w-3" /> })
   }
   if (search.filters.priceRange) {
-    const [min, max] = search.filters.priceRange
-    if (min > 0 || max < 1000000) {
+    const [min, max] = restorePriceRange(search.filters.priceRange, search.filters.priceRangeVersion)
+    if (min > 0 || max !== null) {
       const parts: string[] = []
       if (min > 0) parts.push(`${min.toLocaleString()}€`)
-      if (max < 1000000) parts.push(`${max.toLocaleString()}€`)
+      if (max !== null) parts.push(`${max.toLocaleString()}€`)
       badges.push({ label: parts.join(' - '), icon: <Euro className="h-3 w-3" /> })
     }
   }

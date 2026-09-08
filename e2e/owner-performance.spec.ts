@@ -1,0 +1,57 @@
+import { test, expect } from '@playwright/test'
+
+const accounts: Record<string, string> = JSON.parse(process.env.AUTH_SMOKE_ACCOUNTS || '{}')
+for (const role of ['OWNER', 'ADMIN']) {
+  test(`${role} can understand and explore property performance`, async ({ page }) => {
+    test.setTimeout(180_000)
+    test.skip(!accounts[role] || !process.env.AUTH_SMOKE_PASSWORD, 'Provide dedicated demo credentials.')
+    const errors: string[] = []
+    page.on('pageerror', error => errors.push(error.message))
+    await page.goto('/?page=login')
+    await page.getByLabel('Email', { exact: true }).fill(accounts[role])
+    await page.getByLabel('Parola', { exact: true }).fill(process.env.AUTH_SMOKE_PASSWORD!)
+    await page.getByRole('button', { name: 'Autentifică-te', exact: true }).click()
+    await expect(page).toHaveURL(/page=dashboard/)
+    const cookies = page.getByRole('button', { name: 'Doar necesare', exact: true })
+    if (await cookies.isVisible()) await cookies.click()
+    await page.goto('/?page=owner-dashboard')
+    const select = page.getByLabel('Selectează proprietatea', { exact: true })
+    await expect(select).toBeVisible()
+    const firstId = await select.inputValue()
+    for (const width of [1280, 390, 320]) {
+      await page.setViewportSize({ width, height: 900 })
+      await expect(page.getByRole('heading', { name: 'Rezultate în ultimele 30 de zile', exact: true })).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Următorul pas recomandat' }).getByRole('button')).toHaveCount(1)
+      const daily = page.locator('summary').filter({ hasText: 'Vezi valorile pe zile' })
+      await daily.click()
+      await expect(page.getByRole('table', { name: 'Interesul zilnic pentru anunț' }).getByRole('row')).toHaveCount(15)
+      await daily.click()
+      const guide = page.locator('summary').filter({ hasText: 'Etapele vânzării și recomandări' })
+      await guide.click()
+      await expect(guide.locator('..').getByRole('button')).toHaveCount(4)
+      await guide.click()
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      if (process.env.WORKSPACE_CAPTURE) await page.screenshot({ path: `tool-results/owner-performance-${role}-${width}.png`, fullPage: true })
+    }
+    const options = await select.locator('option').evaluateAll(nodes => nodes.map(node => (node as HTMLOptionElement).value))
+    if (options.length > 1) {
+      await select.selectOption(options.find(id => id !== firstId)!)
+      await expect(select).not.toHaveValue(firstId)
+      await select.selectOption(firstId)
+    }
+    await page.getByRole('button', { name: 'Reîncarcă dashboardul', exact: true }).click()
+    await expect(select).toHaveValue(firstId)
+    await page.getByRole('button', { name: 'Alege dosarul pentru documente', exact: true }).click()
+    await expect(page).toHaveURL(/page=documente/)
+    expect(new URL(page.url()).searchParams.has('appointment')).toBe(false)
+    expect(new URL(page.url()).searchParams.has('deal')).toBe(false)
+    await expect(page.getByRole('region', { name: 'Alege dosarul', exact: true })).toBeVisible()
+    await page.goto('/?page=owner-dashboard')
+    await page.getByRole('button', { name: 'Alege tranzacția', exact: true }).click()
+    await expect(page).toHaveURL(/page=deal-room/)
+    expect(new URL(page.url()).searchParams.has('appointment')).toBe(false)
+    expect(new URL(page.url()).searchParams.has('deal')).toBe(false)
+    expect(errors).toEqual([])
+  })
+}

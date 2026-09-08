@@ -1,3 +1,4 @@
+import type { PropertyPriceRange } from './property-price-range'
 import type { VirtualTour } from '@/lib/virtual-tours'
 
 // Staff Member
@@ -347,7 +348,8 @@ export interface SavedSearch {
   filters: {
     selectedType?: string
     selectedZone?: string
-    priceRange?: [number, number]
+    priceRange?: PropertyPriceRange
+    priceRangeVersion?: 2
     rooms?: number
     transaction?: string
     featuredOnly?: boolean

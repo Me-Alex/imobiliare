@@ -36,3 +36,14 @@ describe('the catalog map result set', () => {
     await expect(getAllProperties()).rejects.toThrow('API error: 503')
   })
 })
+
+
+describe('catalog maximum budget serialization', () => {
+  it.each([0, 1_000_000, 1_200_000, undefined])('sends the exact maximum %s and omits only an absent bound', async (maxPrice) => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ properties: [], hasMore: false }) })
+    vi.stubGlobal('fetch', fetchMock)
+    await getAllProperties({ maxPrice })
+    const params = new URL(String(fetchMock.mock.calls[0][0]), 'https://example.test').searchParams
+    expect(params.get('maxPrice')).toBe(maxPrice === undefined ? null : String(maxPrice))
+  })
+})

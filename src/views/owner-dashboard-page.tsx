@@ -2,7 +2,7 @@
 
 import { AccountHelp } from '@/components/account/account-help'
 
-import { useCallback, useEffect, useMemo, useState, type ElementType } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Activity,
   ArrowDownRight,
@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Eye,
-  FileText,
   FileWarning,
   Heart,
   HelpCircle,
@@ -30,30 +29,26 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
 import {
   type PropertyMetric,
-  type WorkspaceProperty,
   fetchOwnerSnapshot,
   listingQuality,
   relationOne,
 } from '@/lib/transaction-workspace'
-import { openDealRoomForViewing, openViewingDocuments } from '@/lib/document-navigation'
 import { getStatusLabel } from '@/lib/presentation'
 import {
   getOwnerDashboardPriority,
   type OwnerDashboardActionTarget,
-  type OwnerDashboardSignal,
 } from '@/lib/owner-dashboard-guidance'
 import {
   getOwnerDashboardJourney,
   type OwnerDashboardJourney,
-  type OwnerDashboardJourneyStage,
-  type OwnerDashboardJourneyStageState,
 } from '@/lib/owner-dashboard-journey'
+
+import { analyzeOwnerProperty, ownerFeedbackText, ownerEventSummary } from '@/lib/owner-performance'
 
 type OwnerSnapshot = Awaited<ReturnType<typeof fetchOwnerSnapshot>>
 
@@ -107,7 +102,7 @@ export function OwnerDashboardPage() {
   const appointments = useMemo(() => snapshot?.appointments.filter((item) => item.property_id === selectedId) || [], [selectedId, snapshot?.appointments])
   const requirements = useMemo(() => snapshot?.requirements.filter((item) => relationPropertyId(item.deal_rooms) === selectedId) || [], [selectedId, snapshot?.requirements])
   const events = useMemo(() => snapshot?.events.filter((item) => relationPropertyId(item.deal_rooms) === selectedId) || [], [selectedId, snapshot?.events])
-  const analysis = useMemo(() => property ? analyzeProperty(property, snapshot?.comparables || []) : null, [property, snapshot?.comparables])
+  const analysis = useMemo(() => property ? analyzeOwnerProperty(property, snapshot?.comparables || []) : null, [property, snapshot?.comparables])
   const quality = useMemo(() => property ? listingQuality(property) : null, [property])
 
   if (authLoading || loading) return <div className="flex min-h-[65vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -126,16 +121,8 @@ export function OwnerDashboardPage() {
   }
 
   const totals = sumMetrics(metrics)
-  const selectedAppointmentId = typeof appointments[0]?.id === 'string' ? appointments[0].id : undefined
-  const selectedDealId = typeof requirements[0]?.deal_id === 'string' ? requirements[0].deal_id : undefined
-  const openSelectedDeal = () => {
-    if (selectedAppointmentId) {
-      openDealRoomForViewing(navigateTo, selectedAppointmentId, selectedDealId)
-      return
-    }
-    navigateTo('deal-room')
-  }
-  const feedbackRows = appointments.filter((item) => typeof item.rating === 'number' || typeof item.feedback === 'string')
+  const openSelectedDeal = () => navigateTo('deal-room')
+  const feedbackRows = appointments.filter((item) => (typeof item.rating === 'number' && item.rating > 0) || (typeof item.feedback === 'string' && item.feedback.trim().length > 0) || typeof item.would_proceed === 'boolean')
   const ratedRows = feedbackRows.filter((item) => Number(item.rating || 0) > 0)
   const averageRating = ratedRows.length
     ? ratedRows.reduce((sum, item) => sum + Number(item.rating || 0), 0) / ratedRows.length
@@ -148,27 +135,26 @@ export function OwnerDashboardPage() {
     adjustmentPercent: analysis.adjustmentPercent,
     views: totals.views,
     inquiries: totals.inquiries,
-    viewings: Math.max(totals.viewings, appointments.length),
+    viewings: totals.viewings,
     feedbackCount: feedbackRows.length,
   })
+  if (ownerPriority.guidance.target === 'documents') {
+    ownerPriority.guidance.title = `${missingDocuments.length} documente de verificat`
+    ownerPriority.guidance.description = 'Cerințe nefinalizate în dosarele proprietății. Alege dosarul pentru a vedea ce lipsește sau așteaptă verificarea.'
+    ownerPriority.guidance.actionLabel = 'Alege dosarul'
+  }
   const ownerJourney = getOwnerDashboardJourney({
     qualityScore: quality.score,
     adjustmentPercent: analysis.adjustmentPercent,
     views: totals.views,
     inquiries: totals.inquiries,
-    viewings: Math.max(totals.viewings, appointments.length),
+    viewings: totals.viewings,
     feedbackCount: feedbackRows.length,
     missingDocuments: missingDocuments.length,
   })
-  const openSelectedDocuments = () => {
-    if (selectedAppointmentId) {
-      openViewingDocuments(navigateTo, selectedAppointmentId, selectedDealId, { focus: 'primary' })
-      return
-    }
-    navigateTo('documente')
-  }
+  const openSelectedDocuments = () => navigateTo('documente')
   const scrollToOwnerSection = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })
   }
   const handleOwnerPriority = (target: OwnerDashboardActionTarget) => {
     if (target === 'documents') {
@@ -196,21 +182,18 @@ export function OwnerDashboardPage() {
         <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <Badge className="mb-2 border-0 bg-primary/10 text-primary hover:bg-primary/10">
-                {isAdminPerformance ? 'Audit portofoliu proprietari' : 'Dashboard proprietar'}
-              </Badge>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
                 {isAdminPerformance ? 'Performanța proprietăților administrate' : 'Performanța proprietății tale'}
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
                 {isAdminPerformance
-                  ? 'Date operaționale pe ultimele 30 de zile pentru anunțuri, cereri, feedback și documente.'
-                  : 'Datele ultimelor 30 de zile și următorii pași recomandați.'}
+                  ? 'Rezultatele anunțurilor și starea dosarelor din portofoliu.'
+                  : 'Vezi interesul pentru anunț și ce poți face în continuare.'}
               </p>
             </div>
-            <div className="flex min-w-0 gap-2">
-              <label className="sr-only" htmlFor="owner-property">Selectează proprietatea</label>
-              <select id="owner-property" className="h-10 min-w-0 w-full flex-1 sm:w-64 rounded-md border bg-background px-3 text-sm" value={property.id} onChange={(event) => setSelectedId(event.target.value)}>{snapshot.properties.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select>
+            <div className="flex min-w-0 flex-wrap items-end gap-2 lg:max-w-sm">
+              <label className="w-full text-sm font-medium" htmlFor="owner-property">Selectează proprietatea</label>
+              <select id="owner-property" className="h-11 min-w-0 w-full flex-1 sm:w-64 rounded-md border bg-background px-3 text-sm" value={property.id} onChange={(event) => setSelectedId(event.target.value)}>{snapshot.properties.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select>
               <Button variant="outline" size="icon" aria-label="Reîncarcă dashboardul" onClick={() => void load()}><RefreshCw className="h-4 w-4" /></Button>
             </div>
           </div>
@@ -218,46 +201,39 @@ export function OwnerDashboardPage() {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-7 sm:px-6 lg:px-8">
-        <Card className="overflow-hidden">
-          <div className="grid md:grid-cols-[220px_minmax(0,1fr)]">
-            <div className="h-44 bg-muted md:h-full">{property.cover_image_url ? <img src={property.cover_image_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Building2 className="h-10 w-10 text-muted-foreground/40" /></div>}</div>
-            <CardContent className="flex flex-col justify-between gap-5 p-5 sm:p-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-bold">{property.title}</h2><StatusBadge status={property.status} /></div><p className="mt-2 text-sm text-muted-foreground">{property.address || property.zone || property.city}</p></div><p className="text-2xl font-bold text-primary">{formatMoney(Number(property.price || 0), property.currency || 'EUR')}</p></div>
-              <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => navigateTo('proprietatile-mele')}>{isAdminPerformance ? 'Gestionează portofoliul' : 'Gestionează proprietățile'}</Button><Button onClick={openSelectedDeal}>Deschide tranzacția <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
-            </CardContent>
-          </div>
-        </Card>
+        <section aria-label="Proprietatea selectată" className="flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="break-words text-lg font-semibold">{property.title}</h2><StatusBadge status={property.status} /></div><p className="mt-1 text-sm text-muted-foreground">{property.address || property.zone || property.city}</p><p className="mt-2 font-semibold">{formatMoney(Number(property.price || 0), property.currency || 'EUR')}</p></div>
+          <Button variant="outline" className="shrink-0" onClick={() => navigateTo('proprietatile-mele')}>{isAdminPerformance ? 'Gestionează portofoliul' : 'Gestionează proprietățile'}</Button>
+        </section>
 
         <OwnerPriorityPanel priority={ownerPriority} onAction={handleOwnerPriority} />
 
-        <AccountHelp title="Etapele vânzării și recomandări"><OwnerJourneyPanel journey={ownerJourney} onAction={handleOwnerPriority} /></AccountHelp>
-
-        <div id="owner-metrics" className="grid scroll-mt-24 grid-cols-2 gap-4 lg:grid-cols-4">
-          <MetricCard icon={Eye} label="Vizualizări" value={totals.views} detail="vizitatori unici/zi" tone="violet" />
-          <MetricCard icon={Heart} label="Favorite" value={totals.favorites} detail={ratio(totals.favorites, totals.views, 'din vizualizări')} tone="rose" />
-          <MetricCard icon={MessageSquare} label="Cereri" value={totals.inquiries} detail={ratio(totals.inquiries, totals.views, 'rată de interes')} tone="blue" />
-          <MetricCard icon={CalendarCheck} label="Vizionări" value={Math.max(totals.viewings, appointments.length)} detail={`${appointments.filter((item) => ['COMPLETED', 'DONE'].includes(String(item.status))).length} finalizate`} tone="emerald" />
-        </div>
+        <section id="owner-metrics" className="scroll-mt-36"><h2 className="mb-4 text-lg font-semibold">Rezultate în ultimele 30 de zile</h2><div className="grid grid-cols-2 gap-x-6 gap-y-5 border-y py-5 lg:grid-cols-4">
+          <MetricCard icon={Eye} label="Vizualizări" value={totals.views} detail="accesări ale anunțului" />
+          <MetricCard icon={Heart} label="Favorite" value={totals.favorites} detail={ratio(totals.favorites, totals.views, 'din vizualizări')} />
+          <MetricCard icon={MessageSquare} label="Cereri" value={totals.inquiries} detail={ratio(totals.inquiries, totals.views, 'rată de interes')} />
+          <MetricCard icon={CalendarCheck} label="Vizionări" value={totals.viewings} detail="înregistrate în statisticile anunțului" />
+        </div></section>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
           <Card>
-            <CardHeader className="pb-3"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><BarChart3 className="h-4 w-4 text-primary" /> Interes în ultimele 14 zile</CardTitle><Badge variant="secondary">{totals.views} vizualizări</Badge></div></CardHeader>
+            <CardHeader className="pb-3"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><BarChart3 className="h-4 w-4 text-primary" /> Interes în ultimele 14 zile</CardTitle></div></CardHeader>
             <CardContent><MetricChart metrics={metrics} /></CardContent>
           </Card>
 
-          <Card id="owner-pricing" className={analysis.adjustmentPercent > 0 ? 'scroll-mt-24 border-amber-500/30 bg-amber-500/[0.04]' : 'scroll-mt-24 border-emerald-500/30 bg-emerald-500/[0.04]'}>
+          <Card id="owner-pricing" className="scroll-mt-36">
             <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Scale className="h-4 w-4 text-primary" /> Poziționare în piață</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div><p className="text-sm text-muted-foreground">Prețul tău / m²</p><p className="text-2xl font-bold">{formatMoney(analysis.propertyPricePerSqm)}</p></div>
-              <div className="grid grid-cols-2 gap-3 rounded-xl border bg-background/70 p-3 text-sm"><div><p className="text-xs text-muted-foreground">Media comparabilelor</p><p className="mt-1 font-semibold">{formatMoney(analysis.marketAverage)}</p></div><div><p className="text-xs text-muted-foreground">Anunțuri comparate</p><p className="mt-1 font-semibold">{analysis.comparableCount}</p></div></div>
-              {analysis.adjustmentPercent > 0 ? <div className="flex gap-3 rounded-xl bg-amber-100 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200"><ArrowDownRight className="mt-0.5 h-4 w-4 shrink-0" /><p>Ia în calcul o ajustare de aproximativ <strong>{analysis.adjustmentPercent}%</strong> pentru a ajunge la {formatMoney(analysis.recommendedPrice, property.currency || 'EUR')}.</p></div> : <div className="flex gap-3 rounded-xl bg-emerald-100 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /><p>Prețul este aliniat cu proprietățile comparabile din zonă.</p></div>}
+              <div><p className="text-sm text-muted-foreground">Prețul tău / m²</p><p className="text-2xl font-bold">{analysis.propertyPricePerSqm === null ? 'Suprafață sau preț lipsă' : formatMoney(analysis.propertyPricePerSqm, property.currency || 'EUR')}</p></div>
+              <div className="grid grid-cols-2 gap-3 border-y py-3 text-sm"><div><p className="text-xs text-muted-foreground">Media comparabilelor</p><p className="mt-1 font-semibold">{analysis.marketAverage === null ? 'Date insuficiente' : formatMoney(analysis.marketAverage, property.currency || 'EUR')}</p></div><div><p className="text-xs text-muted-foreground">Anunțuri comparate</p><p className="mt-1 font-semibold">{analysis.comparableCount}</p></div></div>
+              {!analysis.hasComparison ? <p className="text-sm text-muted-foreground">Nu sunt suficiente anunțuri comparabile în aceeași zonă, pentru același tip de tranzacție și aceeași monedă. Discută prețul cu agentul.</p> : analysis.adjustmentPercent > 0 ? <div className="flex gap-3 rounded-xl bg-amber-100 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200"><ArrowDownRight className="mt-0.5 h-4 w-4 shrink-0" /><p>Ia în calcul o ajustare de aproximativ <strong>{analysis.adjustmentPercent}%</strong> pentru a ajunge la {formatMoney(analysis.recommendedPrice, property.currency || 'EUR')}.</p></div> : <div className="flex gap-3 rounded-xl bg-emerald-100 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /><p>Prețul nu depășește semnificativ media anunțurilor comparate.</p></div>}
               <p className="text-[11px] leading-relaxed text-muted-foreground">Estimare orientativă, nu raport de evaluare ANEVAR. Se bazează pe anunțurile publice comparabile disponibile.</p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <Card id="owner-listing-quality" className="scroll-mt-24">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+          <Card id="owner-listing-quality" className="scroll-mt-36">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" /> Calitatea anunțului</CardTitle>
@@ -272,7 +248,7 @@ export function OwnerDashboardPage() {
               {quality.recommendations.length ? (
                 <div className="space-y-2">
                   {quality.recommendations.slice(0, 3).map((item) => (
-                    <div key={item.id} className="flex gap-2 rounded-lg bg-muted/50 p-3 text-sm">
+                    <div key={item.id} className="flex gap-2 border-b py-3 text-sm last:border-0">
                       <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
                       <div>
                         <p className="font-medium">{item.title}</p>
@@ -288,232 +264,32 @@ export function OwnerDashboardPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Star className="h-4 w-4 text-primary" /> Feedback anonim agregat</CardTitle></CardHeader>
-            <CardContent>{feedbackRows.length ? <><div className="flex items-end gap-2"><span className="text-3xl font-bold">{Number.isFinite(averageRating) ? averageRating.toFixed(1) : '—'}</span><span className="pb-1 text-sm text-muted-foreground">din 5 · {feedbackRows.length} răspunsuri</span></div><div className="mt-4 space-y-2">{feedbackRows.slice(0, 3).map((item, index) => <div key={String(item.id || index)} className="rounded-lg border p-3 text-sm text-muted-foreground">{String(item.feedback || (item.would_proceed ? 'Interes confirmat după vizionare.' : 'Nu dorește să continue în acest moment.'))}</div>)}</div></> : <Empty message="Feedbackul apare după vizionările finalizate, fără datele de contact ale clientului." />}</CardContent>
+            <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Star className="h-4 w-4 text-primary" /> Feedback după vizionări</CardTitle></CardHeader>
+            <CardContent>{feedbackRows.length ? <><div className="flex items-end gap-2"><span className="text-3xl font-bold">{ratedRows.length ? averageRating.toFixed(1) : '—'}</span><span className="pb-1 text-sm text-muted-foreground">{ratedRows.length ? `din 5 · ${ratedRows.length} evaluări` : 'fără evaluări numerice'} · {feedbackRows.length} răspunsuri</span></div><div className="mt-4 space-y-2">{feedbackRows.slice(0, 3).map((item, index) => <div key={String(item.id || index)} className="border-b py-3 text-sm text-muted-foreground last:border-0">{ownerFeedbackText(item)}</div>)}</div></> : <Empty message="Feedbackul apare după vizionările finalizate, fără datele de contact ale clientului." />}</CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-3"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><FileWarning className="h-4 w-4 text-primary" /> Documente necesare</CardTitle><Badge variant={missingDocuments.length ? 'destructive' : 'secondary'}>{missingDocuments.length} lipsă</Badge></div></CardHeader>
-            <CardContent className="space-y-2">{requirements.length ? requirements.slice(0, 6).map((item) => <div key={String(item.id)} className="flex items-center gap-3 rounded-lg border p-3"><ClipboardCheck className={`h-4 w-4 shrink-0 ${['APPROVED', 'WAIVED'].includes(String(item.status)) ? 'text-emerald-500' : 'text-amber-500'}`} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{String(item.label)}</p><p className="text-xs text-muted-foreground">{getStatusLabel(item.status)}</p></div></div>) : <Empty message="Cerințele apar automat după prima vizionare." />}<Button variant="outline" className="mt-2 w-full" onClick={openSelectedDeal}>Vezi checklistul complet</Button></CardContent>
+            <CardHeader className="pb-3"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><FileWarning className="h-4 w-4 text-primary" /> Documente din toate dosarele</CardTitle><Badge variant={missingDocuments.length ? 'destructive' : 'secondary'}>{missingDocuments.length} de rezolvat</Badge></div></CardHeader>
+            <CardContent className="space-y-2">{requirements.length ? requirements.slice(0, 6).map((item) => <div key={String(item.id)} className="flex items-center gap-3 border-b py-3 last:border-0"><ClipboardCheck className={`h-4 w-4 shrink-0 ${['APPROVED', 'WAIVED'].includes(String(item.status)) ? 'text-emerald-500' : 'text-amber-500'}`} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{String(item.label)}</p><p className="text-xs text-muted-foreground">{getStatusLabel(item.status)}</p></div></div>) : <Empty message="Cerințele apar automat după prima vizionare." />}<Button variant="outline" className="mt-2 w-full" onClick={openSelectedDocuments}>Alege dosarul pentru documente</Button></CardContent>
           </Card>
         </div>
 
         <Card>
-          <CardHeader className="pb-3"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><Activity className="h-4 w-4 text-primary" /> Activitatea agentului</CardTitle><Button variant="ghost" size="sm" onClick={openSelectedDeal}>Jurnal complet</Button></div></CardHeader>
-          <CardContent>{events.length ? <div className="grid gap-3 md:grid-cols-2">{events.slice(0, 6).map((event) => <div key={String(event.id)} className="flex items-start gap-3 rounded-xl border p-3"><div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" /><div><p className="text-sm font-medium">{String(event.summary)}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(event.created_at)}</p></div></div>)}</div> : <Empty message="Activitatea agentului va fi înregistrată automat în jurnalul tranzacției." />}</CardContent>
+          <CardHeader className="pb-3"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><Activity className="h-4 w-4 text-primary" /> Activitatea agentului</CardTitle><Button variant="ghost" size="sm" onClick={openSelectedDeal}>Alege tranzacția</Button></div></CardHeader>
+          <CardContent><p className="mb-4 text-sm text-muted-foreground">Activitate pentru această proprietate din ultimele 40 de evenimente ale portofoliului. Pentru istoricul complet, alege tranzacția.</p>{events.length ? <div className="grid gap-3 md:grid-cols-2">{events.slice(0, 6).map((event) => <div key={String(event.id)} className="flex items-start gap-3 border-b py-3"><div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" /><div><p className="text-sm font-medium">{ownerEventSummary(event.summary)}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(event.created_at)}</p></div></div>)}</div> : <Empty message="Nu există evenimente pentru această proprietate în activitatea recentă a portofoliului." />}</CardContent>
         </Card>
+        <AccountHelp title="Etapele vânzării și recomandări"><OwnerJourneyPanel journey={ownerJourney} onAction={handleOwnerPriority} /></AccountHelp>
       </main>
     </div>
   )
 }
 
-const OWNER_SIGNAL_ICONS: Record<OwnerDashboardSignal['id'], ElementType> = {
-  listing: Sparkles,
-  interest: MessageSquare,
-  pricing: Scale,
-  documents: FileText,
+function OwnerJourneyPanel({ journey, onAction }: { journey: OwnerDashboardJourney; onAction: (target: OwnerDashboardActionTarget) => void }) {
+  return <div className="divide-y">{journey.stages.map(stage => <div key={stage.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="font-medium">{stage.title}</h3><p className="mt-1 max-w-2xl text-sm text-muted-foreground">{stage.description}</p></div><Button variant="outline" className="shrink-0" onClick={() => onAction(stage.target)}>{stage.value}<ArrowRight className="ml-2 h-4 w-4" /></Button></div>)}</div>
 }
 
-const OWNER_JOURNEY_ICONS: Record<OwnerDashboardJourneyStage['id'], ElementType> = {
-  listing: Sparkles,
-  market: Scale,
-  viewings: CalendarCheck,
-  transaction: FileText,
-}
-
-const OWNER_JOURNEY_STATE_META: Record<OwnerDashboardJourneyStageState, {
-  label: string
-  className: string
-  markerClassName: string
-  badgeClassName: string
-}> = {
-  attention: {
-    label: 'Atenție',
-    className: 'border-amber-300 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/25',
-    markerClassName: 'bg-amber-500 text-white',
-    badgeClassName: 'bg-amber-500 text-white hover:bg-amber-500',
-  },
-  active: {
-    label: 'Activ',
-    className: 'border-primary/25 bg-primary/[0.05]',
-    markerClassName: 'bg-primary text-primary-foreground',
-    badgeClassName: 'bg-primary text-primary-foreground',
-  },
-  waiting: {
-    label: 'Așteaptă',
-    className: 'border-blue-200 bg-blue-50/70 dark:border-blue-900/70 dark:bg-blue-950/25',
-    markerClassName: 'bg-blue-600 text-white',
-    badgeClassName: 'bg-blue-600 text-white hover:bg-blue-600',
-  },
-  good: {
-    label: 'Bine',
-    className: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/25',
-    markerClassName: 'bg-emerald-600 text-white',
-    badgeClassName: 'bg-emerald-600 text-white hover:bg-emerald-600',
-  },
-}
-
-function OwnerJourneyPanel({
-  journey,
-  onAction,
-}: {
-  journey: OwnerDashboardJourney
-  onAction: (target: OwnerDashboardActionTarget) => void
-}) {
-  const PrimaryIcon = OWNER_JOURNEY_ICONS[journey.primaryStage.id]
-
-  return (
-    <Card className="overflow-hidden border-primary/15">
-      <CardHeader className="border-b bg-background/75 pb-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <Badge className="mb-2 w-fit bg-primary/10 text-primary hover:bg-primary/10">
-              Parcurs proprietate
-            </Badge>
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <PrimaryIcon className="h-5 w-5 text-primary" />
-              {journey.headline}
-            </CardTitle>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-              {journey.description}
-            </p>
-          </div>
-          <div className="min-w-[210px] rounded-2xl border bg-card p-4 shadow-sm">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  progres traseu
-                </p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{journey.progressPercent}%</p>
-              </div>
-              <Badge variant="secondary">
-                {journey.completedCount}/{journey.totalCount} gata
-              </Badge>
-            </div>
-            <Progress value={journey.progressPercent} className="mt-3 h-2" />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
-        {journey.stages.map((stage) => {
-          const Icon = OWNER_JOURNEY_ICONS[stage.id]
-          const meta = OWNER_JOURNEY_STATE_META[stage.state]
-          const target: OwnerDashboardActionTarget = stage.target === 'monitoring'
-            ? 'monitoring'
-            : stage.target
-
-          return (
-            <button
-              key={stage.id}
-              type="button"
-              onClick={() => onAction(target)}
-              className={`group rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${meta.className}`}
-            >
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${meta.markerClassName}`}>
-                  <Icon className="h-5 w-5" />
-                </span>
-                <Badge className={`text-[10px] ${meta.badgeClassName}`}>{meta.label}</Badge>
-              </div>
-              <p className="text-sm font-semibold">{stage.title}</p>
-              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{stage.description}</p>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
-                {stage.value}
-                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-              </span>
-            </button>
-          )
-        })}
-      </CardContent>
-    </Card>
-  )
-}
-
-function OwnerPriorityPanel({
-  priority,
-  onAction,
-}: {
-  priority: ReturnType<typeof getOwnerDashboardPriority>
-  onAction: (target: OwnerDashboardActionTarget) => void
-}) {
-  const high = priority.guidance.priority === 'high'
-
-  return (
-    <Card className={high ? 'border-amber-300/60 bg-amber-500/[0.06]' : 'border-primary/20 bg-primary/[0.03]'}>
-      <CardContent className="p-5 sm:p-6">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
-          <div className="flex min-w-0 gap-4">
-            <span className={high
-              ? 'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-700 dark:text-amber-300'
-              : 'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary'}
-            >
-              {high ? <Lightbulb className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
-            </span>
-            <div className="min-w-0">
-              <Badge variant={high ? 'destructive' : 'secondary'} className="mb-2">
-                Prioritatea proprietarului
-              </Badge>
-              <h2 className="text-xl font-semibold tracking-tight">{priority.guidance.title}</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{priority.guidance.description}</p>
-              <Button
-                className="mt-4 gap-2"
-                variant={high ? 'default' : 'outline'}
-                onClick={() => onAction(priority.guidance.target)}
-              >
-                {priority.guidance.actionLabel}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {priority.signals.map((signal) => {
-              const Icon = OWNER_SIGNAL_ICONS[signal.id]
-              return (
-                <button
-                  key={signal.id}
-                  type="button"
-                  onClick={() => onAction(signal.id === 'documents'
-                    ? 'documents'
-                    : signal.id === 'pricing'
-                      ? 'pricing'
-                      : signal.id === 'listing'
-                        ? 'listing-quality'
-                        : 'appointments')}
-                  className="rounded-2xl border bg-background/70 p-3 text-left transition-colors hover:border-primary/25 hover:bg-primary/[0.04]"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                      <Icon className="h-3.5 w-3.5 text-primary" />
-                      {signal.label}
-                    </span>
-                    <span className={signal.state === 'attention' ? 'text-xs font-semibold text-amber-600' : signal.state === 'good' ? 'text-xs font-semibold text-emerald-600' : 'text-xs font-semibold text-muted-foreground'}>
-                      {signal.value}
-                    </span>
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{signal.description}</p>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function analyzeProperty(property: WorkspaceProperty, allComparables: WorkspaceProperty[]) {
-  const area = Number(property.area_sqm || 0)
-  const price = Number(property.price || 0)
-  const candidates = allComparables.filter((item) => item.id !== property.id && item.type === property.type && item.zone === property.zone && Number(item.area_sqm) > 0 && Number(item.price) > 0)
-  const expanded = candidates.length >= 3 ? candidates : allComparables.filter((item) => item.id !== property.id && item.type === property.type && Number(item.area_sqm) > 0 && Number(item.price) > 0)
-  const values = expanded.map((item) => Number(item.price) / Number(item.area_sqm)).filter(Number.isFinite)
-  const marketAverage = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : area ? price / area : 0
-  const propertyPricePerSqm = area ? price / area : 0
-  const difference = marketAverage ? (propertyPricePerSqm - marketAverage) / marketAverage * 100 : 0
-  const adjustmentPercent = difference > 8 ? Math.min(15, Math.max(3, Math.round(difference - 3))) : 0
-  const recommendedPrice = adjustmentPercent ? Math.round(price * (1 - adjustmentPercent / 100) / 1000) * 1000 : price
-  return { marketAverage, propertyPricePerSqm, comparableCount: values.length, adjustmentPercent, recommendedPrice }
+function OwnerPriorityPanel({ priority, onAction }: { priority: ReturnType<typeof getOwnerDashboardPriority>; onAction: (target: OwnerDashboardActionTarget) => void }) {
+  return <section aria-label="Următorul pas recomandat" className="flex flex-col gap-4 rounded-xl bg-muted/60 p-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-lg font-semibold">{priority.guidance.title}</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{priority.guidance.description}</p></div><Button className="h-auto min-h-11 shrink-0 whitespace-normal py-2 sm:max-w-60" onClick={() => onAction(priority.guidance.target)}>{priority.guidance.actionLabel}<ArrowRight className="ml-2 h-4 w-4 shrink-0" /></Button></section>
 }
 
 function sumMetrics(metrics: PropertyMetric[]) {
@@ -525,14 +301,25 @@ function ratio(part: number, total: number, suffix: string) {
 }
 
 function MetricChart({ metrics }: { metrics: PropertyMetric[] }) {
-  const days = Array.from({ length: 14 }, (_, index) => { const date = new Date(); date.setDate(date.getDate() - (13 - index)); const key = date.toISOString().slice(0, 10); const row = metrics.find((item) => item.metric_date === key); return { key, label: new Intl.DateTimeFormat('ro-RO', { day: '2-digit', month: 'short' }).format(date), views: row?.views || 0, interest: (row?.favorites || 0) + (row?.inquiries || 0) } })
-  const max = Math.max(1, ...days.map((day) => Math.max(day.views, day.interest)))
-  return <div><div className="flex h-40 items-end gap-1 sm:h-56 sm:gap-2">{days.map((day) => <div key={day.key} className="group flex h-full flex-1 items-end justify-center gap-0.5" title={`${day.label}: ${day.views} vizualizări, ${day.interest} acțiuni`}><div className="w-1/2 rounded-t bg-primary/35 transition-colors group-hover:bg-primary/55" style={{ height: `${Math.max(day.views ? 6 : 1, day.views / max * 100)}%` }} /><div className="w-1/2 rounded-t bg-primary" style={{ height: `${Math.max(day.interest ? 6 : 1, day.interest / max * 100)}%` }} /></div>)}</div><div className="mt-3 flex flex-wrap justify-between gap-2 text-[10px] text-muted-foreground"><span>{days[0].label}</span><div className="flex gap-4"><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-sm bg-primary/35" /> Vizualizări</span><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-sm bg-primary" /> Acțiuni</span></div><span>{days[days.length - 1].label}</span></div></div>
+  const days = Array.from({ length: 14 }, (_, index) => {
+    const date = new Date()
+    date.setUTCDate(date.getUTCDate() - (13 - index))
+    const key = date.toISOString().slice(0, 10)
+    const row = metrics.find(item => item.metric_date === key)
+    return { key, label: new Intl.DateTimeFormat('ro-RO', { day: '2-digit', month: 'short', timeZone: 'UTC' }).format(date), views: row?.views || 0, interest: (row?.favorites || 0) + (row?.inquiries || 0) }
+  })
+  const max = Math.max(1, ...days.map(day => Math.max(day.views, day.interest)))
+  const total = days.reduce((sum, day) => sum + day.views, 0)
+  return <div>
+    <p className="mb-4 text-sm text-muted-foreground">{total} vizualizări în perioada afișată. Acțiuni = favorite și cereri.</p>
+    {days.some(day => day.views > 0 || day.interest > 0) ? <><div aria-hidden="true" className="flex h-40 items-end gap-1 sm:h-56 sm:gap-2">{days.map(day => <div key={day.key} className="flex h-full flex-1 items-end justify-center gap-0.5"><div className="w-1/2 rounded-t bg-primary/35" style={{ height: `${day.views / max * 100}%` }} /><div className="w-1/2 rounded-t bg-primary" style={{ height: `${day.interest / max * 100}%` }} /></div>)}</div>
+    <div className="mt-3 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground"><span>{days[0].label}</span><div className="flex gap-4"><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-sm bg-primary/35" />Vizualizări</span><span className="flex items-center gap-1"><i className="h-2 w-2 rounded-sm bg-primary" />Acțiuni</span></div><span>{days[13].label}</span></div></> : <p className="border-y py-5 text-sm text-muted-foreground">Nu sunt înregistrate vizualizări sau acțiuni în aceste 14 zile.</p>}
+    <details className="mt-5 border-t pt-3"><summary className="cursor-pointer rounded text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Vezi valorile pe zile</summary><table className="mt-3 w-full text-left text-sm tabular-nums"><caption className="sr-only">Interesul zilnic pentru anunț</caption><thead><tr className="border-b"><th scope="col" className="py-2">Data</th><th scope="col" className="py-2 text-right">Vizualizări</th><th scope="col" className="py-2 text-right">Acțiuni</th></tr></thead><tbody>{days.map(day => <tr key={day.key} className="border-b last:border-0"><th scope="row" className="py-2 font-normal">{day.label}</th><td className="text-right">{day.views}</td><td className="text-right">{day.interest}</td></tr>)}</tbody></table></details>
+  </div>
 }
 
-function MetricCard({ icon: Icon, label, value, detail, tone }: { icon: React.ElementType; label: string; value: number; detail: string; tone: 'violet' | 'rose' | 'blue' | 'emerald' }) {
-  const tones = { violet: 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300', rose: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300', blue: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300', emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' }
-  return <Card><CardContent className="p-4 sm:p-5"><div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ${tones[tone]}`}><Icon className="h-4 w-4" /></div><p className="text-3xl font-bold">{value}</p><p className="text-sm font-medium">{label}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></CardContent></Card>
+function MetricCard({ icon: Icon, label, value, detail }: { icon: React.ElementType; label: string; value: number; detail: string }) {
+  return <div><p className="flex items-center gap-2 text-sm font-medium"><Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />{label}</p><p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></div>
 }
 
 function Empty({ message }: { message: string }) { return <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">{message}</div> }

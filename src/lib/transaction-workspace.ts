@@ -807,7 +807,7 @@ export async function fetchOwnerSnapshot(ownerId: string, role: Extract<AccountR
   if (ids.length === 0) return { properties, metrics: [], appointments: [], requirements: [], events: [], comparables: [] }
 
   const since = new Date()
-  since.setDate(since.getDate() - 30)
+  since.setUTCDate(since.getUTCDate() - 29)
 
   const [metricsResult, appointmentResult, requirementsResult, eventResult, comparableResult] = await Promise.all([
     supabase
@@ -832,7 +832,7 @@ export async function fetchOwnerSnapshot(ownerId: string, role: Extract<AccountR
       .limit(40),
     supabase
       .from('properties')
-      .select('id,title,zone,type,price,currency,area_sqm,status')
+      .select('id,title,city,zone,type,transaction_type,price,currency,area_sqm,status')
       .eq('status', 'PUBLISHED')
       .limit(100),
   ])

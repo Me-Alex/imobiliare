@@ -1,5 +1,7 @@
 'use client'
 
+import { priceRangeQuery } from '@/lib/property-price-range'
+
 import { motion } from 'framer-motion'
 import { SearchX, Loader2, ChevronDown } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -18,8 +20,7 @@ export function PropertyGrid() {
   if (selectedType) filters.type = selectedType
   if (selectedZone) filters.zone = selectedZone
   if (searchQuery) filters.search = searchQuery
-  if (priceRange[0] > 0) filters.minPrice = priceRange[0]
-  if (priceRange[1] < 1000000) filters.maxPrice = priceRange[1]
+  Object.assign(filters, priceRangeQuery(priceRange))
   if (rooms > 0) filters.rooms = rooms
   if (transaction) filters.transaction = transaction
   if (featuredOnly) filters.featured = true
