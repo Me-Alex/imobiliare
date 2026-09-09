@@ -55,6 +55,7 @@ import { VirtualTourReviewPanel } from '@/components/admin/virtual-tour-review-p
 import { LegalCompliancePanel } from '@/components/features/documents/legal-compliance-panel'
 import { useAuth } from '@/contexts/auth-context'
 import { useAppStore } from '@/store/use-app-store'
+import { selectDealRoom } from '@/lib/document-navigation'
 import { ACCOUNT_ROLES, ACCOUNT_ROLE_DEFINITIONS, type AccountRole } from '@/lib/account-roles'
 import {
   ADMIN_PROPERTY_STATUSES,
@@ -143,6 +144,19 @@ type AdminTab =
   | 'compliance'
   | 'virtual-tours'
   | 'audit'
+
+const ADMIN_SECTIONS: { value: AdminTab; label: string; icon: ElementType }[] = [
+  { value: 'home', label: 'Prezentare', icon: LayoutDashboard },
+  { value: 'tasks', label: 'De rezolvat', icon: ListTodo },
+  { value: 'properties', label: 'Proprietăți', icon: Building2 },
+  { value: 'people', label: 'Clienți și agenți', icon: Users },
+  { value: 'transactions', label: 'Tranzacții', icon: Handshake },
+  { value: 'settings', label: 'Setări', icon: Settings2 },
+  { value: 'inbox', label: 'Mesaje și abonamente', icon: Inbox },
+  { value: 'compliance', label: 'Conformitate juridică', icon: FileCheck2 },
+  { value: 'virtual-tours', label: 'Tururi virtuale', icon: Rotate3D },
+  { value: 'audit', label: 'Jurnal administrativ', icon: Activity },
+]
 
 type WorkDestination = AdminOperationsDestination
 type PropertyQualityFilter = 'ALL' | 'NEEDS_OPTIMIZATION' | 'UNASSIGNED' | 'READY_TO_PUBLISH'
@@ -409,6 +423,7 @@ export function AdminPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<AdminTab>('home')
   const [globalSearch, setGlobalSearch] = useState('')
+  const [focusedRecordId, setFocusedRecordId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<'ALL' | AccountRole>('ALL')
   const [propertyFilter, setPropertyFilter] = useState<'ALL' | AdminPropertyStatus>('ALL')
@@ -530,8 +545,16 @@ export function AdminPage() {
   )
 
   const activeLeads = useMemo(
-    () => data?.leads.filter((item) => !['CLOSED', 'LOST', 'WON'].includes(item.status)).slice(0, 8) || [],
-    [data],
+    () => focusedRecordId?.startsWith('lead-')
+      ? data?.leads.filter(item => `lead-${item.id}` === focusedRecordId) || []
+      : data?.leads.filter((item) => !['CLOSED', 'LOST', 'WON'].includes(item.status)).slice(0, 8) || [],
+    [data, focusedRecordId],
+  )
+  const visibleDeals = useMemo(
+    () => focusedRecordId?.startsWith('deal-')
+      ? data?.deals.filter(item => `deal-${item.id}` === focusedRecordId) || []
+      : data?.deals.slice(0, 6) || [],
+    [data, focusedRecordId],
   )
   const activeAppointments = useMemo(
     () => data?.appointments.filter((item) => ['PENDING', 'REQUESTED', 'CONFIRMED', 'CHECKED_IN'].includes(item.status)).slice(0, 8) || [],
@@ -571,12 +594,12 @@ export function AdminPage() {
     if (data.stats.overdueLeads > 0) {
       items.push({
         id: 'overdue-leads',
-        title: 'Lead-uri fără răspuns la timp',
-        description: 'Repartizează un agent și stabilește următorul follow-up.',
+        title: 'Solicitări fără răspuns la timp',
+        description: 'Repartizează un agent și stabilește următoarea contactare.',
         count: data.stats.overdueLeads,
         priority: 'urgent',
         destination: 'crm',
-        actionLabel: 'Deschide CRM',
+        actionLabel: 'Lista clienților',
         icon: Handshake,
       })
     }
@@ -632,7 +655,7 @@ export function AdminPage() {
       items.push({
         id: 'unassigned-properties',
         title: 'Proprietăți fără agent',
-        description: 'Repartizarea unui agent clarifică responsabilul pentru lead-uri, vizionări și documente.',
+        description: 'Repartizarea unui agent clarifică responsabilul pentru solicitări, vizionări și documente.',
         count: propertyQualitySummary.unassigned.length,
         priority: 'normal',
         destination: 'property_unassigned',
@@ -699,7 +722,7 @@ export function AdminPage() {
     })
     data.leads.forEach((lead) => {
       if (includesQuery(`${lead.name} ${lead.email} ${lead.phone || ''}`)) {
-        results.push({ id: `lead-${lead.id}`, label: lead.name, meta: `${STATUS_LABELS[lead.status] || lead.status} · ${lead.source}`, kind: 'Lead', tab: 'transactions', icon: Handshake })
+        results.push({ id: `lead-${lead.id}`, label: lead.name, meta: `${STATUS_LABELS[lead.status] || lead.status} · ${lead.source}`, kind: 'Solicitare', tab: 'transactions', icon: Handshake })
       }
     })
     data.deals.forEach((deal) => {
@@ -719,6 +742,7 @@ export function AdminPage() {
   const openTab = (tab: AdminTab) => {
     setActiveTab(tab)
     setSearch('')
+    setFocusedRecordId(null)
   }
 
   const openWorkItem = (destination: WorkDestination) => {
@@ -762,8 +786,10 @@ export function AdminPage() {
       setPropertyQualityFilter('ALL')
     }
     setSearch(result.localSearch || '')
+    setFocusedRecordId(result.tab === 'transactions' ? result.id : null)
     setActiveTab(result.tab)
     setGlobalSearch('')
+    if (result.tab === 'transactions') requestAnimationFrame(() => document.getElementById('admin-search-target')?.focus())
   }
 
   const handleSignOut = async () => {
@@ -856,30 +882,19 @@ export function AdminPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={(value) => openTab(value as AdminTab)}>
-          <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1.5 md:grid-cols-3 2xl:grid-cols-6">
-            <TabsTrigger value="home" className="min-h-11 gap-2"><LayoutDashboard className="h-4 w-4" /> Acasă</TabsTrigger>
-            <TabsTrigger value="tasks" className="min-h-11 gap-2"><ListTodo className="h-4 w-4" /> De rezolvat {pendingWorkCount > 0 ? <Badge variant="destructive">{pendingWorkCount}</Badge> : null}</TabsTrigger>
-            <TabsTrigger value="properties" className="min-h-11 gap-2"><Building2 className="h-4 w-4" /> Proprietăți</TabsTrigger>
-            <TabsTrigger value="people" className="min-h-11 gap-2"><Users className="h-4 w-4" /> Clienți și agenți</TabsTrigger>
-            <TabsTrigger value="transactions" className="min-h-11 gap-2"><Handshake className="h-4 w-4" /> Tranzacții</TabsTrigger>
-            <TabsTrigger value="settings" className="min-h-11 gap-2"><Settings2 className="h-4 w-4" /> Setări</TabsTrigger>
-          </TabsList>
+          <div className="mb-5 sm:hidden">
+            <label htmlFor="admin-section" className="mb-2 block text-sm font-medium">Secțiunea administrativă</label>
+            <select id="admin-section" value={activeTab} onChange={(event) => openTab(event.target.value as AdminTab)} className="h-12 w-full min-w-0 rounded-lg border bg-background px-3 text-base">
+              {ADMIN_SECTIONS.map((section) => <option key={section.value} value={section.value}>{section.label}{section.value === 'tasks' && pendingWorkCount > 0 ? ` (${pendingWorkCount})` : ''}</option>)}
+            </select>
+          </div>
+          <div className="mb-6 hidden overflow-x-auto border-b sm:block">
+            <TabsList aria-label="Secțiunile administrării" className="h-auto w-max justify-start gap-1 rounded-none bg-transparent p-0 pb-2">
+              {ADMIN_SECTIONS.map((section) => <TabsTrigger key={section.value} value={section.value} className="min-h-11 shrink-0 gap-2 px-3"><section.icon className="h-4 w-4" aria-hidden="true" />{section.label}{section.value === 'tasks' && pendingWorkCount > 0 ? <Badge variant="secondary">{pendingWorkCount}</Badge> : null}</TabsTrigger>)}
+            </TabsList>
+          </div>
 
           <TabsContent value="home" className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard icon={ListTodo} label="De rezolvat" value={pendingWorkCount} note={`${workItems.length} categorii de lucru`} tone="bg-rose-500/10 text-rose-600" />
-              <MetricCard icon={Handshake} label="Lead-uri deschise" value={stats.openLeads} note={`${stats.overdueLeads} necesită răspuns`} tone="bg-amber-500/10 text-amber-600" />
-              <MetricCard icon={Building2} label="Proprietăți active" value={stats.publishedProperties} note={`${stats.draftProperties} așteaptă verificarea`} tone="bg-emerald-500/10 text-emerald-600" />
-              <MetricCard icon={CalendarDays} label="Tranzacții" value={stats.activeDeals} note={`${stats.upcomingViewings} vizionări viitoare`} tone="bg-violet-500/10 text-violet-600" />
-            </div>
-
-            {adminOperationsFlow ? (
-              <AdminOperationsCockpit
-                flow={adminOperationsFlow}
-                onOpenDestination={openWorkItem}
-              />
-            ) : null}
-
             <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
               <Card className={cn(workItems[0]?.priority === 'urgent' && 'border-amber-300/70 bg-amber-50/30 dark:bg-amber-950/10')}>
                 <CardHeader>
@@ -888,7 +903,7 @@ export function AdminPage() {
                 </CardHeader>
                 <CardContent>
                   {workItems[0] ? (
-                    <div className="flex flex-col gap-4 rounded-xl border bg-background p-4 sm:flex-row sm:items-center">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><PrimaryWorkIcon className="h-5 w-5" /></div>
                       <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{workItems[0].title}</p><Badge variant={workItems[0].priority === 'urgent' ? 'destructive' : 'secondary'}>{workItems[0].count}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{workItems[0].description}</p></div>
                       <Button onClick={() => openWorkItem(workItems[0].destination)}>{workItems[0].actionLabel}<ArrowRight className="ml-2 h-4 w-4" /></Button>
@@ -904,7 +919,7 @@ export function AdminPage() {
                 <CardHeader><CardTitle className="text-base">Acțiuni rapide</CardTitle><CardDescription>Cele mai frecvente operațiuni, fără navigare inutilă.</CardDescription></CardHeader>
                 <CardContent className="grid gap-2 sm:grid-cols-2">
                   {[
-                    { icon: Handshake, title: 'Repartizează lead-uri', run: () => navigateTo('crm') },
+                    { icon: Handshake, title: 'Repartizează solicitări', run: () => navigateTo('crm') },
                     { icon: Building2, title: 'Verifică proprietăți', run: () => openTab('properties') },
                     { icon: Users, title: 'Gestionează echipa', run: () => openTab('people') },
                     { icon: FileCheck2, title: 'Documente și contracte', run: () => navigateTo('documente') },
@@ -914,6 +929,25 @@ export function AdminPage() {
                 </CardContent>
               </Card>
             </div>
+            <details className="border-t pt-4">
+              <summary className="cursor-pointer rounded text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">Situația activității și fluxul operațional</summary>
+              <div className="mt-5 space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard icon={ListTodo} label="De rezolvat" value={pendingWorkCount} note={`${workItems.length} categorii de lucru`} tone="bg-rose-500/10 text-rose-600" />
+              <MetricCard icon={Handshake} label="Solicitări deschise" value={stats.openLeads} note={`${stats.overdueLeads} necesită răspuns`} tone="bg-amber-500/10 text-amber-600" />
+              <MetricCard icon={Building2} label="Proprietăți active" value={stats.publishedProperties} note={`${stats.draftProperties} așteaptă verificarea`} tone="bg-emerald-500/10 text-emerald-600" />
+              <MetricCard icon={CalendarDays} label="Tranzacții" value={stats.activeDeals} note={`${stats.upcomingViewings} vizionări viitoare`} tone="bg-violet-500/10 text-violet-600" />
+            </div>
+
+            {adminOperationsFlow ? (
+              <AdminOperationsCockpit
+                flow={adminOperationsFlow}
+                onOpenDestination={openWorkItem}
+              />
+            ) : null}
+
+              </div>
+            </details>
           </TabsContent>
 
           <TabsContent value="tasks" className="space-y-6">
@@ -929,7 +963,7 @@ export function AdminPage() {
                     </CardContent>
                   </Card>
                 ))}
-                {workItems.length === 0 ? <EmptyState icon={CheckCircle2} title="Totul este la zi" description="Nu există proprietăți, documente, lead-uri sau cereri care să necesite intervenția administratorului." /> : null}
+                {workItems.length === 0 ? <EmptyState icon={CheckCircle2} title="Totul este la zi" description="Nu există proprietăți, documente, solicitări sau cereri care să necesite intervenția administratorului." /> : null}
               </div>
               <Card className="h-fit lg:sticky lg:top-24">
                 <CardHeader><CardTitle className="text-base">Flux recomandat</CardTitle><CardDescription>Rezolvă lista în această ordine.</CardDescription></CardHeader>
@@ -949,9 +983,9 @@ export function AdminPage() {
             <div className="flex flex-wrap gap-3">
               <div className="relative min-w-64 flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Caută după nume, email sau telefon..." className="pl-9" />
+                <Input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Caută utilizatori" placeholder="Caută după nume, email sau telefon..." className="pl-9" />
               </div>
-              <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as 'ALL' | AccountRole)} className="h-9 rounded-md border bg-background px-3 text-sm">
+              <select aria-label="Rolul utilizatorilor" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as 'ALL' | AccountRole)} className="min-h-11 rounded-md border bg-background px-3 text-sm">
                 <option value="ALL">Toate rolurile</option>
                 {ACCOUNT_ROLES.map((role) => <option key={role} value={role}>{ACCOUNT_ROLE_DEFINITIONS[role].label}</option>)}
               </select>
@@ -1024,7 +1058,7 @@ export function AdminPage() {
             <SectionHeader
               icon={Building2}
               title="Moderare proprietăți"
-              description="Datele provin din Supabase, aceeași sursă folosită de publicare și paginile publice."
+              description="Verifică anunțurile, atribuie un agent și controlează ce apare pe site."
               action={<Button onClick={() => navigateTo('adauga-proprietate')}><Building2 className="mr-2 h-4 w-4" /> Adaugă proprietate</Button>}
             />
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -1034,12 +1068,12 @@ export function AdminPage() {
               <MetricCard icon={CheckCircle2} label="Gata de publicat" value={propertyQualitySummary.readyToPublish.length} note="drafturi cu scor bun și agent" tone="bg-emerald-500/10 text-emerald-600" />
             </div>
             <div className="flex flex-wrap gap-3">
-              <div className="relative min-w-64 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Caută după titlu, oraș, zonă sau tip..." className="pl-9" /></div>
-              <select value={propertyFilter} onChange={(event) => setPropertyFilter(event.target.value as 'ALL' | AdminPropertyStatus)} className="h-9 rounded-md border bg-background px-3 text-sm">
+              <div className="relative min-w-64 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Caută proprietăți în administrare" placeholder="Caută după titlu, oraș, zonă sau tip..." className="pl-9" /></div>
+              <select aria-label="Starea proprietăților" value={propertyFilter} onChange={(event) => setPropertyFilter(event.target.value as 'ALL' | AdminPropertyStatus)} className="h-9 rounded-md border bg-background px-3 text-sm">
                 <option value="ALL">Toate statusurile</option>
                 {ADMIN_PROPERTY_STATUSES.map((status) => <option key={status} value={status}>{PROPERTY_STATUS_LABELS[status]}</option>)}
               </select>
-              <select value={propertyQualityFilter} onChange={(event) => setPropertyQualityFilter(event.target.value as PropertyQualityFilter)} className="h-9 rounded-md border bg-background px-3 text-sm">
+              <select aria-label="Prioritatea proprietăților" value={propertyQualityFilter} onChange={(event) => setPropertyQualityFilter(event.target.value as PropertyQualityFilter)} className="h-9 rounded-md border bg-background px-3 text-sm">
                 <option value="ALL">Toate prioritățile</option>
                 <option value="NEEDS_OPTIMIZATION">Necesită optimizare</option>
                 <option value="UNASSIGNED">Fără agent</option>
@@ -1132,33 +1166,33 @@ export function AdminPage() {
           </TabsContent>
 
           <TabsContent value="transactions" className="space-y-6">
-            <SectionHeader icon={Activity} title="Operațiuni în desfășurare" description="Lead-uri, vizionări, tranzacții, documente, Coins și audit într-un singur loc." />
+            {focusedRecordId ? <div id="admin-search-target" tabIndex={-1} className="space-y-2 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"><h2 className="text-xl font-semibold">Rezultatul căutării</h2><Button variant="outline" className="min-h-11" onClick={() => openTab('transactions')}>Toate operațiunile</Button></div> : <SectionHeader icon={Activity} title="Operațiuni în desfășurare" description="Solicitări, vizionări, tranzacții, documente și recompense." />}
             <div className="grid gap-5 xl:grid-cols-2">
-              <Card>
-                <CardHeader><div className="flex items-center justify-between gap-3"><div><CardTitle className="flex items-center gap-2 text-base"><Handshake className="h-5 w-5 text-primary" /> Lead-uri active</CardTitle><CardDescription>{stats.overdueLeads} depășesc timpul de răspuns.</CardDescription></div><Button variant="outline" size="sm" onClick={() => navigateTo('crm')}>Deschide CRM</Button></div></CardHeader>
+              {(!focusedRecordId || focusedRecordId.startsWith('lead-')) && <Card className="min-w-0">
+                <CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><div><CardTitle className="flex items-center gap-2 text-base"><Handshake className="h-5 w-5 text-primary" /> {focusedRecordId ? 'Solicitarea găsită' : 'Solicitări active'}</CardTitle><CardDescription>{focusedRecordId ? 'Detalii pentru solicitarea selectată, inclusiv dacă este încheiată.' : `${stats.overdueLeads} depășesc timpul de răspuns.`}</CardDescription></div><Button variant="outline" size="sm" onClick={() => navigateTo('crm')}>Lista clienților</Button></div></CardHeader>
                 <CardContent className="space-y-2">
-                  {activeLeads.map((lead) => <div key={lead.id} className="flex items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{lead.name}</p><p className="truncate text-xs text-muted-foreground">{lead.email} · scor {lead.score}</p></div><StatusBadge status={lead.status} /></div>)}
-                  {activeLeads.length === 0 ? <EmptyState icon={Handshake} title="Pipeline liber" description="Nu există lead-uri active." /> : null}
+                  {activeLeads.map((lead) => <div key={lead.id} data-testid={`admin-lead-${lead.id}`} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><p className="break-words text-sm font-medium">{lead.name}</p><p className="break-all text-xs text-muted-foreground">{lead.email} · scor {lead.score}</p>{focusedRecordId && <div className="mt-3 space-y-1 text-sm text-muted-foreground">{lead.phone && <p>Telefon: {lead.phone}</p>}<p>Următoarea contactare: {formatDate(lead.next_follow_up_at)}</p></div>}</div><StatusBadge status={lead.status} /></div>)}
+                  {activeLeads.length === 0 ? <EmptyState icon={Handshake} title="Nicio solicitare activă" description="Nu există solicitări active." /> : null}
                 </CardContent>
-              </Card>
+              </Card>}
 
-              <Card>
-                <CardHeader><div className="flex items-center justify-between gap-3"><div><CardTitle className="flex items-center gap-2 text-base"><CalendarDays className="h-5 w-5 text-primary" /> Vizionări active</CardTitle><CardDescription>Confirmări, prezență și următorul pas.</CardDescription></div><Button variant="outline" size="sm" onClick={() => navigateTo('vizionarile-mele')}>Gestionează</Button></div></CardHeader>
+              {!focusedRecordId && <Card className="min-w-0">
+                <CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><div><CardTitle className="flex items-center gap-2 text-base"><CalendarDays className="h-5 w-5 text-primary" /> Vizionări active</CardTitle><CardDescription>Confirmări, prezență și următorul pas.</CardDescription></div><Button variant="outline" size="sm" onClick={() => navigateTo('vizionarile-mele')}>Gestionează</Button></div></CardHeader>
                 <CardContent className="space-y-2">
                   {activeAppointments.map((appointment) => <div key={appointment.id} className="flex items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{appointment.property_title || 'Proprietate nespecificată'}</p><p className="truncate text-xs text-muted-foreground">{appointment.client_name} · {formatDate(appointment.start_at || appointment.requested_at)}</p></div><StatusBadge status={appointment.status} /></div>)}
                   {activeAppointments.length === 0 ? <EmptyState icon={CalendarDays} title="Nicio vizionare activă" description="Programările noi vor apărea aici." /> : null}
                 </CardContent>
-              </Card>
+              </Card>}
 
-              <Card>
-                <CardHeader><div className="flex items-center justify-between gap-3"><div><CardTitle className="flex items-center gap-2 text-base"><ClipboardCheck className="h-5 w-5 text-primary" /> Deal Rooms și documente</CardTitle><CardDescription>{stats.activeDeals} tranzacții · {stats.pendingDocuments} documente restante.</CardDescription></div><Button variant="outline" size="sm" onClick={() => navigateTo('deal-room')}>Deschide</Button></div></CardHeader>
+              {(!focusedRecordId || focusedRecordId.startsWith('deal-')) && <Card className="min-w-0">
+                <CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><div><CardTitle className="flex items-center gap-2 text-base"><ClipboardCheck className="h-5 w-5 text-primary" /> Tranzacții și documente</CardTitle><CardDescription>{stats.activeDeals} tranzacții · {stats.pendingDocuments} documente restante.</CardDescription></div><Button variant="outline" className="min-h-11" onClick={() => { navigateTo('deal-room'); if (focusedRecordId?.startsWith('deal-')) selectDealRoom(focusedRecordId.slice(5)) }}>{focusedRecordId ? 'Deschide tranzacția' : 'Alege tranzacția'}</Button></div></CardHeader>
                 <CardContent className="space-y-2">
-                  {data.deals.slice(0, 6).map((deal) => <div key={deal.id} className="rounded-xl border p-3"><div className="flex items-center justify-between gap-3"><p className="truncate text-sm font-medium">{deal.title}</p><StatusBadge status={deal.stage} /></div><p className="mt-1 truncate text-xs text-muted-foreground">{deal.next_step || 'Următorul pas nu este setat'} · {formatDate(deal.next_step_due_at)}</p></div>)}
-                  {data.deals.length === 0 ? <EmptyState icon={ClipboardCheck} title="Nicio tranzacție" description="Deal Room-ul se creează la programarea vizionării." /> : null}
+                  {visibleDeals.map((deal) => <div key={deal.id} data-testid={`admin-deal-${deal.id}`} className="rounded-xl border p-3"><div className="flex flex-wrap items-center justify-between gap-3"><p className="break-words text-sm font-medium">{deal.title}</p><StatusBadge status={deal.stage} /></div><p className="mt-1 break-words text-xs text-muted-foreground">{deal.next_step || 'Următorul pas nu este setat'} · {formatDate(deal.next_step_due_at)}</p></div>)}
+                  {visibleDeals.length === 0 ? <EmptyState icon={ClipboardCheck} title="Nicio tranzacție" description="Tranzacția se creează la programarea vizionării." /> : null}
                 </CardContent>
-              </Card>
+              </Card>}
 
-              <Card>
+              {!focusedRecordId && <Card className="min-w-0">
                 <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Coins className="h-5 w-5 text-primary" /> Cereri HQS Coins</CardTitle><CardDescription>Onorează recompensa sau respinge cererea cu restituirea automată a monedelor.</CardDescription></CardHeader>
                 <CardContent className="space-y-3">
                   {pendingRedemptions.map((redemption) => {
@@ -1168,7 +1202,7 @@ export function AdminPage() {
                   })}
                   {pendingRedemptions.length === 0 ? <EmptyState icon={Coins} title="Nicio cerere Coins" description="Cererile de recompense vor apărea aici." /> : null}
                 </CardContent>
-              </Card>
+              </Card>}
             </div>
 
           </TabsContent>
@@ -1201,7 +1235,7 @@ export function AdminPage() {
           </TabsContent>
 
           <TabsContent value="inbox" className="space-y-6">
-            <SectionHeader icon={Inbox} title="Mesaje și abonamente" description="Contacte, newsletter și alerte de preț păstrate în baza operațională D1." action={<Button variant="outline" onClick={() => openTab('settings')}><ArrowRight className="mr-2 h-4 w-4 rotate-180" /> Înapoi la setări</Button>} />
+            <SectionHeader icon={Inbox} title="Mesaje și abonamente" description="Citește solicitările și gestionează abonamentele și alertele de preț." action={<Button variant="outline" onClick={() => openTab('settings')}><ArrowRight className="mr-2 h-4 w-4 rotate-180" /> Înapoi la setări</Button>} />
             <div className="grid gap-5 xl:grid-cols-3">
               <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><MessageSquare className="h-5 w-5 text-primary" /> Contacte <Badge variant="secondary">{data.contacts.length}</Badge></CardTitle></CardHeader><CardContent className="space-y-3">{data.contacts.slice(0, 30).map((contact) => <div key={contact.id} className="rounded-xl border p-3"><div className="flex justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-semibold">{contact.name}</p><a href={`mailto:${contact.email}`} className="truncate text-xs text-primary hover:underline">{contact.email}</a>{contact.propertyTitle ? <div className="mt-2"><Badge variant="outline" className="max-w-full truncate">{contact.propertyTitle}</Badge></div> : null}</div><Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmation({ title: 'Șterge mesajul', description: 'Mesajul va fi eliminat definitiv din D1.', confirmLabel: 'Șterge', destructive: true, run: () => runAction(`contact:${contact.id}`, { action: 'DELETE_LEGACY', entity: 'CONTACT', id: contact.id }, 'Mesajul a fost șters.') })}>Șterge</Button></div><p className="mt-2 line-clamp-3 text-xs text-muted-foreground">{contact.message}</p><p className="mt-2 text-[11px] text-muted-foreground">{formatDate(contact.createdAt)}</p></div>)}{data.contacts.length === 0 ? <EmptyState icon={MessageSquare} title="Fără mesaje" description="Cererile de contact vor apărea aici." /> : null}</CardContent></Card>
               <Card><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Mail className="h-5 w-5 text-primary" /> Newsletter <Badge variant="secondary">{data.newsletters.length}</Badge></CardTitle></CardHeader><CardContent className="space-y-2">{data.newsletters.slice(0, 40).map((subscriber) => <div key={subscriber.id} className="flex items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{subscriber.email}</p><p className="text-[11px] text-muted-foreground">{formatDate(subscriber.createdAt)}</p></div><Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmation({ title: 'Dezabonează adresa', description: 'Adresa va fi eliminată din lista newsletter.', confirmLabel: 'Dezabonează', destructive: true, run: () => runAction(`newsletter:${subscriber.id}`, { action: 'DELETE_LEGACY', entity: 'NEWSLETTER', id: subscriber.id }, 'Adresa a fost dezabonată.') })}>Elimină</Button></div>)}{data.newsletters.length === 0 ? <EmptyState icon={Mail} title="Fără abonați" description="Abonările noi vor apărea aici." /> : null}</CardContent></Card>
@@ -1213,8 +1247,8 @@ export function AdminPage() {
             <SectionHeader icon={FileCheck2} title="Conformitate juridică și documente" description="Starea profilului agenției, informarea GDPR și avizele nominale ale șabloanelor." action={<div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => openTab('settings')}><ArrowRight className="mr-2 h-4 w-4 rotate-180" /> Înapoi la setări</Button><Button variant="outline" onClick={() => navigateTo('documente')}><FileCheck2 className="mr-2 h-4 w-4" /> Deschide documentele</Button></div>} />
             <LegalCompliancePanel userId={user?.id || ''} />
             <div className="grid gap-5 lg:grid-cols-3">
-              <Card className="lg:col-span-1"><CardHeader><CardTitle className="text-base">Profil juridic agenție</CardTitle><CardDescription>Date folosite în contracte și fișe de vizionare.</CardDescription></CardHeader><CardContent className="space-y-3">{data.legalProfile ? <><div className="flex justify-between gap-3"><span className="text-sm text-muted-foreground">Status</span><StatusBadge status={data.legalProfile.status} /></div><div><p className="text-xs text-muted-foreground">Denumire legală</p><p className="mt-1 text-sm font-medium">{data.legalProfile.legal_name || data.legalProfile.trade_name || 'Necompletată'}</p></div><div><p className="text-xs text-muted-foreground">CUI / Registrul Comerțului</p><p className="mt-1 text-sm">{[data.legalProfile.cui, data.legalProfile.trade_registry_number].filter(Boolean).join(' · ') || 'Necompletat'}</p></div><div><p className="text-xs text-muted-foreground">Informare GDPR</p>{data.legalProfile.privacy_notice_url ? <a href={data.legalProfile.privacy_notice_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm text-primary hover:underline">Deschide versiunea {data.legalProfile.privacy_notice_version || 'curentă'} <ExternalLink className="h-3.5 w-3.5" /></a> : <p className="mt-1 text-sm text-destructive">URL lipsă</p>}</div><p className="text-[11px] text-muted-foreground">Actualizat {formatDate(data.legalProfile.updated_at)}</p></> : <EmptyState icon={ShieldAlert} title="Profil juridic lipsă" description="Programările și contractele finale trebuie blocate până la completare." />}</CardContent></Card>
-              <Card className="lg:col-span-2"><CardHeader><div className="flex items-center justify-between gap-3"><div><CardTitle className="text-base">Șabloane contractuale</CardTitle><CardDescription>Avizul trebuie să identifice nominal juristul sau avocatul.</CardDescription></div><Badge variant={stats.templatesPendingReview ? 'destructive' : 'default'}>{stats.templatesApproved} aprobate · {stats.templatesPendingReview} blocate</Badge></div></CardHeader><CardContent className="space-y-2">{data.templates.map((template) => <div key={template.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{template.name}</p><p className="text-xs text-muted-foreground">{template.type} · v{template.version} · versiune legală {template.legal_version || 'nespecificată'}</p>{template.legal_reviewer_name ? <p className="mt-1 text-xs text-muted-foreground">Revizuit de {template.legal_reviewer_name} · {formatDate(template.legal_reviewed_at)}</p> : null}</div><StatusBadge status={template.legal_review_status} /></div>)}{data.templates.length === 0 ? <EmptyState icon={FileCheck2} title="Fără șabloane" description="Adaugă șabloanele juridice înainte de generarea documentelor." /> : null}</CardContent></Card>
+              <Card className="min-w-0 lg:col-span-1"><CardHeader><CardTitle className="text-base">Profil juridic agenție</CardTitle><CardDescription>Date folosite în contracte și fișe de vizionare.</CardDescription></CardHeader><CardContent className="space-y-3">{data.legalProfile ? <><div className="flex justify-between gap-3"><span className="text-sm text-muted-foreground">Status</span><StatusBadge status={data.legalProfile.status} /></div><div><p className="text-xs text-muted-foreground">Denumire legală</p><p className="mt-1 text-sm font-medium">{data.legalProfile.legal_name || data.legalProfile.trade_name || 'Necompletată'}</p></div><div><p className="text-xs text-muted-foreground">CUI / Registrul Comerțului</p><p className="mt-1 text-sm">{[data.legalProfile.cui, data.legalProfile.trade_registry_number].filter(Boolean).join(' · ') || 'Necompletat'}</p></div><div><p className="text-xs text-muted-foreground">Informare GDPR</p>{data.legalProfile.privacy_notice_url ? <a href={data.legalProfile.privacy_notice_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm text-primary hover:underline">Deschide versiunea {data.legalProfile.privacy_notice_version || 'curentă'} <ExternalLink className="h-3.5 w-3.5" /></a> : <p className="mt-1 text-sm text-destructive">URL lipsă</p>}</div><p className="text-[11px] text-muted-foreground">Actualizat {formatDate(data.legalProfile.updated_at)}</p></> : <EmptyState icon={ShieldAlert} title="Profil juridic lipsă" description="Programările și contractele finale trebuie blocate până la completare." />}</CardContent></Card>
+              <Card className="min-w-0 lg:col-span-2"><CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><div><CardTitle className="text-base">Șabloane contractuale</CardTitle><CardDescription>Avizul trebuie să identifice nominal juristul sau avocatul.</CardDescription></div><Badge variant={stats.templatesPendingReview ? 'destructive' : 'default'}>{stats.templatesApproved} aprobate · {stats.templatesPendingReview} blocate</Badge></div></CardHeader><CardContent className="space-y-2">{data.templates.map((template) => <div key={template.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{template.name}</p><p className="text-xs text-muted-foreground">{template.type} · v{template.version} · versiune legală {template.legal_version || 'nespecificată'}</p>{template.legal_reviewer_name ? <p className="mt-1 text-xs text-muted-foreground">Revizuit de {template.legal_reviewer_name} · {formatDate(template.legal_reviewed_at)}</p> : null}</div><StatusBadge status={template.legal_review_status} /></div>)}{data.templates.length === 0 ? <EmptyState icon={FileCheck2} title="Fără șabloane" description="Adaugă șabloanele juridice înainte de generarea documentelor." /> : null}</CardContent></Card>
             </div>
             {stats.templatesPendingReview > 0 ? <div className="flex items-start gap-3 rounded-2xl border border-rose-300 bg-rose-50/50 p-4 text-rose-800 dark:bg-rose-950/20 dark:text-rose-200"><ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" /><div><p className="font-semibold">Generarea documentelor finale rămâne blocată</p><p className="mt-1 text-sm">Administratorul poate pregăti ciornele, însă numai un profesionist juridic identificat nominal poate acorda avizul șablonului.</p></div></div> : <div className="flex items-start gap-3 rounded-2xl border border-emerald-300 bg-emerald-50/50 p-4 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /><div><p className="font-semibold">Șabloanele juridice sunt aprobate</p><p className="mt-1 text-sm">Verifică periodic termenele de valabilitate și versiunile informărilor.</p></div></div>}
           </TabsContent>

@@ -1,40 +1,16 @@
 'use client'
 
-import { restorePriceRange } from '@/lib/property-price-range'
-
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Bookmark, Trash2, RotateCcw, SlidersHorizontal, MapPin, BedDouble, Euro } from 'lucide-react'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet'
+import { useState, useEffect, useRef } from 'react'
+import { ArrowRight, Bookmark, Trash2, Undo2 } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { useAppStore } from '@/store/use-app-store'
-import { loadFromLS, saveToLS } from '@/lib/storage'
+import { restorePriceRange } from '@/lib/property-price-range'
+import { describeSavedSearch, readSavedSearches, restoreDeletedSearches, savedSearchFilterError, SAVED_SEARCHES_UPDATED, updateSavedSearches } from '@/lib/saved-searches'
 import { LS_KEYS } from '@/lib/constants'
 import { formatRelativeTime } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { SavedSearch } from '@/lib/types'
-
-const propertyTypeLabels: Record<string, string> = {
-  APARTMENT: 'Apartament',
-  HOUSE: 'Casa',
-  VILLA: 'Vila',
-  LAND: 'Teren',
-  COMMERCIAL: 'Comercial',
-}
-
-const transactionLabels: Record<string, string> = {
-  SALE: 'Vanzare',
-  RENT: 'Inchiriere',
-}
 
 interface SavedSearchesPanelProps {
   open: boolean
@@ -42,26 +18,35 @@ interface SavedSearchesPanelProps {
 }
 
 export function SavedSearchesPanel({ open, onOpenChange }: SavedSearchesPanelProps) {
-  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(() =>
-    loadFromLS<SavedSearch[]>(LS_KEYS.SAVED_SEARCHES, []),
-  )
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([])
+  const [removed, setRemoved] = useState<SavedSearch[]>([])
+  const [error, setError] = useState('')
+  const undoButton = useRef<HTMLButtonElement>(null)
+  const list = useRef<HTMLDivElement>(null)
 
-  // Listen for external updates (from save/delete operations)
   useEffect(() => {
-    const handler = () => setSavedSearches(loadFromLS<SavedSearch[]>(LS_KEYS.SAVED_SEARCHES, []))
-    window.addEventListener('storage', handler)
-    window.addEventListener('pm-saved-searches-updated', handler)
-    return () => {
-      window.removeEventListener('storage', handler)
-      window.removeEventListener('pm-saved-searches-updated', handler)
+    function reload() {
+      try { setSavedSearches(readSavedSearches()); setError('') }
+      catch { setError('Căutările salvate nu pot fi citite. Verifică setările de stocare ale browserului. Datele existente nu au fost modificate.') }
     }
-  }, [])
+    function onStorage(event: StorageEvent) {
+      if (event.key === LS_KEYS.SAVED_SEARCHES || event.key === null) reload()
+    }
+    reload()
+    window.addEventListener('storage', onStorage)
+    window.addEventListener(SAVED_SEARCHES_UPDATED, reload)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener(SAVED_SEARCHES_UPDATED, reload)
+    }
+  }, [open])
 
-  const handleLoad = (search: SavedSearch) => {
+  function handleLoad(search: SavedSearch) {
+    const filterError = savedSearchFilterError(search.filters)
+    if (filterError) { setError(filterError); list.current?.scrollTo({ top: 0 }); return }
     const store = useAppStore.getState()
     const f = search.filters
     store.resetFilters()
-
     if (f.selectedType !== undefined) store.setSelectedType(f.selectedType || '')
     if (f.selectedZone !== undefined) store.setSelectedZone(f.selectedZone || '')
     store.setPriceRange(restorePriceRange(f.priceRange, f.priceRangeVersion))
@@ -73,206 +58,87 @@ export function SavedSearchesPanel({ open, onOpenChange }: SavedSearchesPanelPro
     if (f.maxArea !== undefined) store.setMaxArea(f.maxArea || '')
     if (f.searchQuery !== undefined) store.setSearchQuery(f.searchQuery || '')
     store.setVirtualTourFilter(f.virtualTourFilter ?? 'all')
-
-    // Navigate to proprietati page
-    if (store.currentPage !== 'proprietati') {
-      store.navigateTo('proprietati')
-    }
-
+    if (store.currentPage !== 'proprietati') store.navigateTo('proprietati')
     onOpenChange(false)
-    toast.success('Cautarea a fost incarcata!')
+    toast.success(`Filtrele „${search.name}” au fost aplicate.`)
   }
 
-  const handleDelete = (id: string) => {
-    const updated = savedSearches.filter((s) => s.id !== id)
-    saveToLS(LS_KEYS.SAVED_SEARCHES, updated)
-    setSavedSearches(updated)
-    window.dispatchEvent(new Event('pm-saved-searches-updated'))
-    toast.success('Cautarea a fost stearsa!')
-  }
-
-  const handleClearAll = () => {
-    saveToLS(LS_KEYS.SAVED_SEARCHES, [])
-    setSavedSearches([])
-    window.dispatchEvent(new Event('pm-saved-searches-updated'))
-    toast.success('Toate cautarile au fost sterse!')
-  }
-
-  const formatDate = (isoString: string) => {
+  function handleDelete(id?: string) {
     try {
-      return formatRelativeTime(isoString)
+      let deleted: SavedSearch[] = []
+      updateSavedSearches(current => {
+        deleted = current.filter(search => id === undefined || search.id === id)
+        return current.filter(search => id !== undefined && search.id !== id)
+      })
+      setRemoved(previous => [...previous.filter(search => !deleted.some(item => item.id === search.id)), ...deleted])
+      requestAnimationFrame(() => undoButton.current?.focus())
     } catch {
-      return isoString
+      setError('Ștergerea nu a reușit. Căutările au fost păstrate. Verifică stocarea browserului și încearcă din nou.')
+      list.current?.scrollTo({ top: 0 })
+    }
+  }
+
+  function handleUndo() {
+    try {
+      restoreDeletedSearches(removed)
+      setRemoved([])
+      requestAnimationFrame(() => list.current?.querySelector<HTMLButtonElement>('button[aria-label^="Vezi proprietățile"]')?.focus())
+    } catch {
+      setError('Căutările nu au putut fi recuperate. Verifică stocarea browserului și apasă din nou „Anulează ștergerea”.')
+      list.current?.scrollTo({ top: 0 })
     }
   }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
-        <SheetHeader className="px-6 pt-6 pb-2">
-          <SheetTitle className="flex items-center gap-2 text-xl">
-            <Bookmark className="h-5 w-5 text-primary" />
-            Cautari Salvate
-          </SheetTitle>
-          <SheetDescription>
-            {savedSearches.length === 0
-              ? 'Nu ai salvat nicio cautare inca.'
-              : `${savedSearches.length} ${savedSearches.length === 1 ? 'cautare' : 'cautari'} salvate`}
-          </SheetDescription>
+      <SheetContent side="right" className="flex h-dvh w-full min-w-0 flex-col gap-0 p-0 sm:max-w-md" closeLabel="Închide căutările salvate" closeButtonClassName="right-2 top-2 flex size-11 items-center justify-center rounded-lg">
+        <SheetHeader className="shrink-0 border-b px-5 py-5 pr-14 text-left">
+          <SheetTitle className="text-xl">Căutări salvate</SheetTitle>
+          <SheetDescription>Doar în acest browser, pe acest dispozitiv.</SheetDescription>
         </SheetHeader>
-
-        <Separator className="mt-2" />
-
-        <div className="flex-1 overflow-hidden">
+        <div ref={list} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5" aria-label="Lista căutărilor salvate">
+          {error && <p role="alert" className="my-4 text-sm text-destructive">{error}</p>}
           {savedSearches.length === 0 ? (
-            <EmptyState />
+            <div className="space-y-3 py-10">
+              <Bookmark className="size-7 text-muted-foreground" aria-hidden="true" />
+              <h3 className="text-lg font-semibold">{error ? 'Căutări indisponibile' : 'Nicio căutare salvată'}</h3>
+              <p className="text-sm text-muted-foreground">Alege filtrele din lista de proprietăți, apoi apasă „Salvează căutarea”.</p>
+              <Button variant="outline" className="min-h-11" onClick={() => { useAppStore.getState().navigateTo('proprietati'); onOpenChange(false) }}>Caută proprietăți<ArrowRight className="size-4" /></Button>
+            </div>
           ) : (
-            <ScrollArea className="h-full">
-              <div className="px-6 py-4 space-y-3">
-                <AnimatePresence>
-                  {savedSearches.map((search, index) => (
-                    <SavedSearchItem
-                      key={search.id}
-                      search={search}
-                      index={index}
-                      onLoad={() => handleLoad(search)}
-                      onDelete={() => handleDelete(search.id)}
-                      formatDate={formatDate}
-                    />
-                  ))}
-                </AnimatePresence>
-              </div>
-            </ScrollArea>
+            <ul className="divide-y" aria-label="Căutări">
+              {savedSearches.map(search => <SavedSearchItem key={search.id} search={search} onLoad={() => handleLoad(search)} onDelete={() => handleDelete(search.id)} />)}
+            </ul>
           )}
         </div>
-
-        {savedSearches.length > 0 && (
-          <>
-            <Separator />
-            <div className="px-6 py-4">
-              <Button
-                variant="outline"
-                className="w-full gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={handleClearAll}
-              >
-                <Trash2 className="h-4 w-4" />
-                Sterge Toate Cautarile
-              </Button>
-            </div>
-          </>
+        {(removed.length > 0 || savedSearches.length > 0) && (
+          <div className="shrink-0 space-y-2 border-t px-5 py-3">
+            {removed.length > 0 && <div className="space-y-1">
+              <p role="status" className="text-sm">{removed.length === 1 ? 'O căutare ștearsă.' : `${removed.length} căutări șterse.`}</p>
+              <Button ref={undoButton} variant="outline" className="min-h-11 w-full" onClick={handleUndo}><Undo2 className="size-4" />Anulează ștergerea</Button>
+            </div>}
+            {savedSearches.length > 0 && <Button variant="ghost" className="min-h-11 w-full text-muted-foreground hover:text-destructive" onClick={() => handleDelete()}><Trash2 className="size-4" />Șterge toate căutările ({savedSearches.length})</Button>}
+          </div>
         )}
       </SheetContent>
     </Sheet>
   )
 }
 
-function SavedSearchItem({
-  search,
-  index,
-  onLoad,
-  onDelete,
-  formatDate,
-}: {
-  search: SavedSearch
-  index: number
-  onLoad: () => void
-  onDelete: () => void
-  formatDate: (iso: string) => string
-}) {
-  const badges: { label: string; icon?: React.ReactNode }[] = []
-
-  if (search.filters.selectedType) {
-    badges.push({ label: propertyTypeLabels[search.filters.selectedType] || search.filters.selectedType })
-  }
-  if (search.filters.selectedZone) {
-    badges.push({ label: search.filters.selectedZone, icon: <MapPin className="h-3 w-3" /> })
-  }
-  if (search.filters.rooms && search.filters.rooms > 0) {
-    badges.push({ label: `${search.filters.rooms}+ camere`, icon: <BedDouble className="h-3 w-3" /> })
-  }
-  if (search.filters.priceRange) {
-    const [min, max] = restorePriceRange(search.filters.priceRange, search.filters.priceRangeVersion)
-    if (min > 0 || max !== null) {
-      const parts: string[] = []
-      if (min > 0) parts.push(`${min.toLocaleString()}€`)
-      if (max !== null) parts.push(`${max.toLocaleString()}€`)
-      badges.push({ label: parts.join(' - '), icon: <Euro className="h-3 w-3" /> })
-    }
-  }
-  if (search.filters.transaction) {
-    badges.push({ label: transactionLabels[search.filters.transaction] || search.filters.transaction })
-  }
-  if (search.filters.virtualTourFilter && search.filters.virtualTourFilter !== 'all') {
-    badges.push({
-      label: search.filters.virtualTourFilter === 'with' ? 'Cu tur virtual' : 'Fără tur virtual',
-    })
-  }
-
+function SavedSearchItem({ search, onLoad, onDelete }: { search: SavedSearch; onLoad: () => void; onDelete: () => void }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: 40, transition: { duration: 0.2 } }}
-      transition={{ duration: 0.25, delay: index * 0.05 }}
-      layout
-      className="group rounded-xl border bg-card p-4 transition-all hover:shadow-md"
-    >
-      <div className="flex items-start justify-between gap-3 mb-3">
+    <li className="py-5">
+      <div className="mb-3 flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-sm line-clamp-1">{search.name}</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">{formatDate(search.createdAt)}</p>
+          <h3 className="text-base font-semibold [overflow-wrap:anywhere]">{search.name}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">{Number.isNaN(Date.parse(search.createdAt)) ? 'Dată indisponibilă' : formatRelativeTime(search.createdAt)}</p>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-primary"
-            onClick={onLoad}
-            aria-label="Incarca cautarea"
-          >
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            onClick={onDelete}
-            aria-label="Sterge cautarea"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button variant="ghost" size="icon" className="size-11 shrink-0 text-muted-foreground hover:text-destructive" onClick={onDelete} aria-label={`Șterge căutarea „${search.name}”`}><Trash2 className="size-4" /></Button>
       </div>
-
-      {badges.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5">
-          {badges.map((badge, i) => (
-            <Badge key={i} variant="secondary" className="gap-1 text-xs font-normal">
-              {badge.icon}
-              {badge.label}
-            </Badge>
-          ))}
-        </div>
-      ) : (
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <SlidersHorizontal className="h-3 w-3" />
-          <span>Filtre implicite</span>
-        </div>
-      )}
-    </motion.div>
-  )
-}
-
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
-        <Bookmark className="h-8 w-8 text-primary" />
-      </div>
-      <h3 className="font-semibold text-lg mb-1">Nicio cautare salvata</h3>
-      <p className="text-sm text-muted-foreground max-w-xs">
-        Foloseste filtrele si salveaza-le ca profil de cautare.
-      </p>
-    </div>
+      <ul className="mb-4 space-y-1 text-sm text-muted-foreground" aria-label={`Criterii pentru ${search.name}`}>
+        {describeSavedSearch(search.filters).map((label, index) => <li key={index} className="[overflow-wrap:anywhere]">{label}</li>)}
+      </ul>
+      <Button variant="outline" className="min-h-11 w-full justify-between" onClick={onLoad} aria-label={`Vezi proprietățile: ${search.name}`}>Vezi proprietățile<ArrowRight className="size-4" /></Button>
+    </li>
   )
 }

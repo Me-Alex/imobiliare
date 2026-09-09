@@ -46,15 +46,15 @@ export function AccountWorkspaceNavContent({ role, currentPage, onNavigate }: Ac
   return <div className="sticky top-16 z-30 border-b bg-background">
     <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
       <nav aria-label="Acces rapid în cont" className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
-        {quickItems.map(item => <button key={item.page} type="button" onClick={() => navigate(item.page)} aria-current={currentPage === item.page ? 'page' : undefined} className={cn('flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4 sm:text-sm', currentPage === item.page ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
+        {quickItems.map(item => <button key={item.page} type="button" onClick={() => navigate(item.page)} aria-current={currentPage === item.page ? 'page' : undefined} className={cn('flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4 sm:text-sm', currentPage === item.page ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
           <item.icon className="hidden h-4 w-4 shrink-0 sm:block" />
-          <span className="truncate">{item.page === 'dashboard' ? 'Dosare' : item.page === 'proprietatile-mele' ? 'Proprietăți' : item.label}</span>
+          <span className="whitespace-nowrap">{item.page === 'dashboard' ? 'Dosare' : item.page === 'proprietatile-mele' ? 'Proprietăți' : item.label}</span>
         </button>)}
       </nav>
       <Sheet open={open} onOpenChange={changeOpen}>
         <SheetTrigger asChild>
           <button type="button" className={cn('flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border px-2 text-sm sm:px-3 font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2', open && 'border-primary/40 bg-primary/10 text-primary')} aria-label="Deschide meniul contului">
-            <Menu className="h-4 w-4" aria-hidden="true" />
+            <Menu className="hidden h-4 w-4 min-[360px]:block" aria-hidden="true" />
             <span>Meniu</span>
             {current && !quickPages.includes(currentPage) && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />}
           </button>

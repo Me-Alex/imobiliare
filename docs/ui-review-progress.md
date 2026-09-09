@@ -1,6 +1,6 @@
 # UI improvement progress
 
-The project-wide improvement goal remains open. Review scores describe inspected evidence; they are not a claim that every screen is flawless. Nine independent review rounds have been completed: four general UI rounds and five document-drafting rounds (see document-drafting-review.md). The requested minimum of 100 rounds has not been completed.
+The project-wide improvement goal remains open. Review scores describe inspected evidence; they are not a claim that every screen is flawless. Twelve independent review rounds have been completed: four general UI rounds, five document-drafting rounds (see document-drafting-review.md), and three administration/saved-search rounds. The requested minimum of 100 rounds has not been completed.
 
 ## Current batch
 
@@ -22,7 +22,8 @@ Round 1 identified opening-scroll displacement, missing reduced-motion overlay h
 - Owner performance: continue task-based review after simplified hierarchy, corrected metric periods, conservative comparable-property analysis, nullable feedback, and explicit dossier navigation.
 - Documents: staff dossier identity is visible and drafting improvements passed five focused reviews; continue broader workflow coverage beyond the tested scope.
 - Public price filter: explicit finite limits now remain visible/effective across grid, map and versioned saved searches; unlimited uses null, legacy saved searches retain their previous unlimited semantics.
-- Audit administration by real user tasks, then remaining pages and mobile footer.
+- Administration: the section selector, task hierarchy and exact search-result navigation are improved; continue reviewing the remaining workflows and mobile header density.
+- Continue reviewing remaining pages and mobile footer.
 - Continue meaningful independent reviews of concrete changes; do not manufacture perfect scores or count repeated messages as reviews.
 
 ## Owner performance and budget batch
@@ -34,3 +35,21 @@ Round 4 inspected fresh owner desktop/mobile screenshots and source: dossier nav
 Implemented: neutral 30-day results; one recommended action; compact property summary; retained detailed guidance; daily chart table and honest zero state; same-city/zone/type/transaction/currency comparisons requiring at least three candidates; absent-rating/null-decision handling; recent-activity scope explained; known generated activity summaries translated without altering free text.
 
 Budget verification covers explicit zero, 999999, 1000000, 1200000, unlimited, legacy saved searches, JSON serialization and actual API parameter construction. Browser checks exercise grid/map queries and local saved-search reload without external mutations. Owner/admin browser checks cover 1280/390/320 layouts, daily table, guidance, property switching, refresh and aggregate chooser destinations without arbitrary appointment/deal context.
+
+## Administration and saved-search batch — September 10, 2026
+
+Saved searches now use a shared complete criteria description, including explicit minimum/maximum budgets, keyword, area, featured status, virtual tours and ordering. The interface explains that persistence is limited to this browser/device. Every opening starts with a fresh name; failed storage leaves the form open with its input intact. Invalid ranges cannot be saved or applied. Damaged storage is not overwritten. Deletion offers accessible cumulative undo inside the panel; recovery merges with the current stored list, preserving later additions and edits. Search rows use a visible result action and individually named 44px deletion controls.
+
+Administration exposes all ten destinations through a mobile section selector and desktop tabs. The next task precedes optional statistics and operational guidance. Search results identify the exact lead/deal, including closed requests or records beyond the overview's preview limit; a focused transaction opens its own deal context. Role/property filters have accessible names. The account shortcuts retain full labels at 320px.
+
+| Round | Saved clarity | Saved reliability | Admin search | Hierarchy | Compact navigation | Accessibility |
+| --- | --- | --- | --- | --- | --- | --- |
+| 10 | 6 | 6 | 5 | 6.5 | Not rated | 6.5 |
+| 11 | 9 | 9 | 8.5 | 8 | 7 | 8 |
+| 12 | 9 | 9 | 9 | 8.5 | 9 | 9 |
+
+Round 10 was a source audit: incomplete/ambiguous summaries, silent storage failure, irreversible immediate deletion, duplicated admin orientation and misleading search destinations. Round 11 inspected changed source and the supplied narrow admin screenshot, finding the focused deal's generic open action, truncated shortcuts and an unlabeled role filter. These were corrected. Round 12 inspected source plus fresh 320px/1280px saved-search and 320px admin screenshots; no further material defect was found in that bounded pass. The reviewer identified mobile admin header density as a remaining refinement opportunity, not a functional blocker. No 10/10 or project-wide completion is claimed.
+
+Validation before commit: ESLint and TypeScript passed; 112 unit tests passed, including six new criteria/storage/recovery tests. Two focused Playwright tests passed: saved searches exercise failure/retry, fresh forms, explicit million-euro restoration, complete summaries at 1280/390/320, failed deletion and undo retaining later saves; administration exercises all ten sections at those widths, readable shortcuts, out-of-preview/closed results and exact deal navigation. Admin search edge cases use synthetic rows substituted into a read-only response. No account roles, live documents, rewards or other production records were changed by these tests.
+
+The production Next.js build also passed, including static generation. Checks were completed before committing, per the user's requested workflow.
