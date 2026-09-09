@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   History,
@@ -20,6 +20,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import type { DocumentEvent, ViewingDocument } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { getRoleLabel, getStatusLabel } from '@/lib/presentation'
 
 const EVENT_CONFIG: Record<
   DocumentEvent['eventType'],
@@ -56,6 +57,7 @@ interface DocumentEventTimelineProps {
 
 export function DocumentEventTimeline({ document }: DocumentEventTimelineProps) {
   const [expanded, setExpanded] = useState(false)
+  const panelId = useId()
   const events = document.events || []
   const signers = document.signers || []
 
@@ -93,7 +95,7 @@ export function DocumentEventTimeline({ document }: DocumentEventTimelineProps) 
       id: `sg-${signer.id}`,
       type: 'signer',
       label,
-      description: signer.signatureName ? `Semnat ca: ${signer.signatureName}` : `Rol: ${signer.role}`,
+      description: signer.signatureName ? `Semnat ca: ${signer.signatureName}` : `Rol: ${getRoleLabel(signer.role)}`,
       date: signer.signedAt || document.uploadedAt,
       icon: Icon,
       color,
@@ -109,11 +111,14 @@ export function DocumentEventTimeline({ document }: DocumentEventTimelineProps) 
   return (
     <div className="mt-3 pt-3 border-t">
       <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={panelId}
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        className="flex min-h-11 items-center gap-2 rounded text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
       >
         <History className="h-3.5 w-3.5" />
-        <span>Istoric & semnături</span>
+        <span>Istoric și semnături</span>
         {hasMore && (
           <Badge variant="outline" className="text-[10px] h-4 px-1">
             {timelineItems.length}
@@ -122,7 +127,7 @@ export function DocumentEventTimeline({ document }: DocumentEventTimelineProps) 
         <ChevronDown className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')} />
       </button>
 
-      <AnimatePresence>
+      <div id={panelId}><AnimatePresence>
         {expanded && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
@@ -151,14 +156,14 @@ export function DocumentEventTimeline({ document }: DocumentEventTimelineProps) 
                         <span className="text-xs font-medium">{item.label}</span>
                         {item.status && (
                           <Badge variant="outline" className="text-[10px] h-4 px-1">
-                            {item.status}
+                            {getStatusLabel(item.status)}
                           </Badge>
                         )}
                       </div>
                       {item.description && (
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{item.description}</p>
+                        <p className="break-words text-xs text-muted-foreground mt-0.5">{item.description}</p>
                       )}
-                      <p className="text-[10px] text-muted-foreground/70 mt-0.5">{formatEventDate(item.date)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{formatEventDate(item.date)}</p>
                     </div>
                   </div>
                 )
@@ -166,7 +171,7 @@ export function DocumentEventTimeline({ document }: DocumentEventTimelineProps) 
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence></div>
     </div>
   )
 }

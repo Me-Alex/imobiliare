@@ -13,7 +13,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import type { ViewingDocument } from '@/lib/types'
 import { DocumentEventTimeline } from './document-event-timeline'
 
@@ -38,19 +38,20 @@ export function DocumentPreviewModal({
 }: DocumentPreviewModalProps) {
   return (
     <Dialog open={Boolean(document)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col gap-0">
+      <DialogContent showCloseButton={false} className="w-[calc(100vw-1rem)] max-w-none sm:max-w-5xl h-[92dvh] p-0 flex flex-col gap-0">
         <DialogHeader className="px-4 py-3 border-b shrink-0">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-sm font-medium flex items-center gap-2 truncate pr-4">
+            <DialogTitle className="min-w-0 text-sm font-medium flex items-center gap-2 pr-4">
               <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="truncate">{document?.title}</span>
+              <span className="line-clamp-2 break-words">{document?.title}</span>
             </DialogTitle>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose} aria-label="Inchide previzualizarea">
+              <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" onClick={onClose} aria-label="Închide previzualizarea">
                 <X className="h-4 w-4" />
               </Button>
             </div>
           </div>
+          <DialogDescription className="sr-only">Citește documentul, descarcă o copie sau consultă istoricul lui.</DialogDescription>
         </DialogHeader>
         {/* key remounts inner component when document changes, resetting scale/rotation */}
         <DocumentPreviewInner
@@ -90,24 +91,24 @@ function DocumentPreviewInner({
 
   return (
     <>
-      <div className="shrink-0 border-b px-4 py-2 flex items-center gap-2 bg-background">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomOut} disabled={!signedUrl || loading} aria-label="Micsoreaza documentul">
+      <div className="shrink-0 border-b px-4 py-2 flex flex-wrap items-center gap-2 bg-background">
+        {isImage && <><Button variant="ghost" size="icon" className="h-11 w-11" onClick={handleZoomOut} disabled={!signedUrl || loading || scale <= 0.5} aria-label="Micșorează documentul">
           <ZoomOut className="h-4 w-4" />
         </Button>
         <span className="text-xs text-muted-foreground w-12 text-center">{Math.round(scale * 100)}%</span>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomIn} disabled={!signedUrl || loading} aria-label="Mareste documentul">
+        <Button variant="ghost" size="icon" className="h-11 w-11" onClick={handleZoomIn} disabled={!signedUrl || loading || scale >= 3} aria-label="Mărește documentul">
           <ZoomIn className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRotate} disabled={!signedUrl || loading} aria-label="Roteste documentul">
+        <Button variant="ghost" size="icon" className="h-11 w-11" onClick={handleRotate} disabled={!signedUrl || loading} aria-label="Rotește documentul">
           <RotateCcw className="h-4 w-4" />
         </Button>
-        <div className="w-px h-5 bg-border mx-1" />
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDownload} disabled={!signedUrl || loading} aria-label="Descarca documentul">
-          <Download className="h-4 w-4" />
+        <div className="w-px h-5 bg-border mx-1" /></>}
+        <Button variant="ghost" className="h-11 gap-2" onClick={onDownload} disabled={!signedUrl || loading} aria-label="Descarcă documentul">
+          <Download className="h-4 w-4" />Descarcă
         </Button>
       </div>
 
-      <div className="flex-1 overflow-auto bg-muted/30 flex items-center justify-center relative">
+      <div className="min-h-0 flex-1 overflow-auto bg-muted/30 flex items-center justify-center relative">
         <AnimatePresence mode="wait">
           {loading && (
             <motion.div
@@ -132,7 +133,7 @@ function DocumentPreviewInner({
             >
               <AlertCircle className="h-8 w-8 text-destructive" />
               <p className="text-sm text-destructive">{error}</p>
-              <Button variant="outline" size="sm" onClick={onClose}>Inchide</Button>
+              <Button variant="outline" size="sm" onClick={onClose}>Închide</Button>
             </motion.div>
           )}
 
@@ -171,11 +172,11 @@ function DocumentPreviewInner({
             >
               <FileText className="h-12 w-12 text-muted-foreground/50" />
               <p className="text-sm text-muted-foreground">
-                Prevualizare indisponibila pentru acest format.
+                Previzualizare indisponibilă pentru acest format.
               </p>
               <Button onClick={onDownload} className="gap-2">
                 <Download className="h-4 w-4" />
-                Descarca documentul
+                Descarcă documentul
               </Button>
             </motion.div>
           )}
@@ -183,7 +184,7 @@ function DocumentPreviewInner({
       </div>
 
       {document && (
-        <div className="shrink-0 border-t px-4 py-3 bg-background">
+        <div className="max-h-32 shrink-0 overflow-y-auto border-t px-4 py-3 bg-background">
           <DocumentEventTimeline document={document} />
         </div>
       )}

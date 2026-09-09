@@ -661,7 +661,7 @@ export function DocumentePage() {
               {dossierQuery && !viewings.some(viewing => [viewing.propertyTitle, viewing.userName, viewing.userEmail].join(' ').toLocaleLowerCase('ro').includes(dossierQuery.trim().toLocaleLowerCase('ro'))) && <p role="status" className="py-6 text-sm text-muted-foreground">Niciun dosar găsit. Încearcă alt nume sau altă proprietate.</p>}
             </section> : <>
               <div className="mb-5 flex items-start justify-between gap-3 border-b pb-4">
-                <div className="min-w-0"><h2 className="break-words font-semibold">{selectedViewing.propertyTitle}</h2><p className="mt-1 text-sm text-muted-foreground">{formatDateRO(selectedViewing.date)}, {selectedViewing.startTime}</p></div>
+                <div className="min-w-0"><h2 className="break-words font-semibold">{selectedViewing.propertyTitle}</h2><p className="mt-1 text-sm text-muted-foreground">{formatDateRO(selectedViewing.date)}, {selectedViewing.startTime}</p>{canGenerateDocuments && <p className="mt-1 break-words text-sm" data-testid="dossier-client">Client: {selectedViewing.userName || selectedViewing.userEmail || 'Date de identitate necompletate'}</p>}</div>
 
               </div>
               {(documentsLoading || requestsLoading) && <p role="status" className="mb-5 text-sm text-muted-foreground">Verificăm documentele și datele trimise agentului…</p>}
@@ -708,13 +708,13 @@ export function DocumentePage() {
             {tool === 'generate' && !canGenerateDocuments && <p className="text-sm text-muted-foreground">Agentul pregătește documentele. Tu poți completa informațiile din secțiunea „Date pentru agent”.</p>}
 
             {selectedViewing && canGenerateDocuments && tool === 'generate' && (
-              <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 mb-6">
+              <div className="space-y-5 mb-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Generează alt document</CardTitle>
+                    <CardTitle className="text-base">Ce document pregătești?</CardTitle>
                     <CardDescription>Datele verificate sunt reutilizate; alegi doar documentul necesar etapei.</CardDescription>
                   </CardHeader>
-                  <CardContent className="grid sm:grid-cols-2 gap-3">
+                  <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {LEGAL_DOCUMENT_ORDER.map((kind) => {
                       const definition = getLegalDocumentDefinition(kind)
                       const viewingReportBlocked = kind === 'viewing_report'

@@ -6,7 +6,9 @@
  * kept here for backwards compatibility with the 18+ files that still
  * depend on its types; do not add new consumers.
  */
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
+import { createDocumentPdf as createPdfFile } from '@/lib/documents/pdf'
+import { getDraftIssues, prepareDraftValues, renderDraftText } from '@/lib/documents/drafting'
+import { assertDraftContextCurrent } from '@/lib/documents/draft-context'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { VIEWING_BOOKING_TERMS, VIEWING_BOOKING_TERMS_VERSION } from '@/lib/constants'
@@ -540,95 +542,6 @@ export async function signViewingDocument(
   if (!data) throw new Error('Semnătura nu a fost înregistrată. Reîncarcă dosarul și verifică drepturile contului.')
 }
 
-function renderTemplate(body: string, values: Record<string, string>): string {
-  return body.replace(/{{([a-z0-9_]+)}}/g, (_match, key: string) => values[key] || '________________')
-}
-
-function pdfSafeText(value: string): string {
-  return value
-    .replace(/[ȘŞ]/g, 'S')
-    .replace(/[șş]/g, 's')
-    .replace(/[ȚŢ]/g, 'T')
-    .replace(/[țţ]/g, 't')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, '')
-}
-
-function wrapLine(value: string, font: PDFFont, size: number, maxWidth: number): string[] {
-  if (!value.trim()) return ['']
-  const words = value.split(/\s+/)
-  const lines: string[] = []
-  let line = ''
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word
-    if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
-      line = candidate
-    } else {
-      if (line) lines.push(line)
-      line = word
-    }
-  }
-  if (line) lines.push(line)
-  return lines
-}
-
-function drawHeader(page: PDFPage, font: PDFFont, bold: PDFFont): number {
-  const { height, width } = page.getSize()
-  page.drawText('HQS IMOBILIARE', { x: 48, y: height - 48, size: 10, font: bold, color: rgb(0.12, 0.42, 0.36) })
-  page.drawText('Document electronic', { x: width - 150, y: height - 48, size: 9, font, color: rgb(0.45, 0.45, 0.45) })
-  page.drawLine({ start: { x: 48, y: height - 58 }, end: { x: width - 48, y: height - 58 }, thickness: 1, color: rgb(0.86, 0.88, 0.87) })
-  return height - 84
-}
-
-async function createPdfFile(title: string, body: string, fileName: string): Promise<File> {
-  const pdf = await PDFDocument.create()
-  pdf.setTitle(title)
-  pdf.setAuthor('HQS Imobiliare')
-  pdf.setCreationDate(new Date())
-  const font = await pdf.embedFont(StandardFonts.Helvetica)
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
-  const size = 10.5
-  const lineHeight = 15
-  const margin = 48
-  let page = pdf.addPage([595.28, 841.89])
-  let y = drawHeader(page, font, bold)
-
-  for (const paragraph of pdfSafeText(body).split('\n')) {
-    const paragraphLines = wrapLine(paragraph, font, size, page.getWidth() - margin * 2)
-    for (const line of paragraphLines) {
-      if (y < 64) {
-        page = pdf.addPage([595.28, 841.89])
-        y = drawHeader(page, font, bold)
-      }
-      const isHeading = line.length > 0 && line === line.toUpperCase() && line.length < 80
-      page.drawText(line, {
-        x: margin,
-        y,
-        size: isHeading ? 11.5 : size,
-        font: isHeading ? bold : font,
-        color: rgb(0.12, 0.14, 0.13),
-      })
-      y -= lineHeight
-    }
-    y -= 5
-  }
-
-  for (const [index, currentPage] of pdf.getPages().entries()) {
-    currentPage.drawText(`Pagina ${index + 1} din ${pdf.getPageCount()}`, {
-      x: currentPage.getWidth() - 120,
-      y: 28,
-      size: 8,
-      font,
-      color: rgb(0.5, 0.5, 0.5),
-    })
-  }
-
-  const bytes = await pdf.save()
-  const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
-  return new File([arrayBuffer], fileName, { type: 'application/pdf', lastModified: Date.now() })
-}
-
 export interface AgencyLegalProfile {
   id: string
   status: 'INCOMPLETE' | 'ACTIVE' | 'ARCHIVED'
@@ -830,7 +743,7 @@ function plusYears(value: Date, years: number): Date {
 
 export async function loadLegalDocumentContext(
   kind: LegalDocumentKind,
-  user: User,
+  _user: User,
   viewing: Vizionare,
 ): Promise<LegalDocumentContext> {
   const definition = getLegalDocumentDefinition(kind)
@@ -873,7 +786,8 @@ export async function loadLegalDocumentContext(
   const agency = agencyResult.data
     ? mapAgencyLegalProfile(agencyResult.data as Record<string, unknown>)
     : null
-  const appointment = (appointmentResult.data || {}) as Record<string, unknown>
+  if (!appointmentResult.data) throw new Error('Dosarul nu mai este disponibil. Reîncarcă lista dosarelor.')
+  const appointment = appointmentResult.data as Record<string, unknown>
   if (kind === 'viewing_report' && (
     !['COMPLETED', 'DONE'].includes(String(appointment.status || '').toUpperCase())
     || !appointment.checked_in_at
@@ -900,13 +814,14 @@ export async function loadLegalDocumentContext(
     clientProfile?.full_name
       || clientProfile?.name
       || appointment.client_name
-      || user.user_metadata?.full_name
-      || user.email?.split('@')[0]
       || '',
   )
   const propertyAddress = String(property?.address || '')
   const propertyTitle = String(appointment.property_title || property?.title || viewing.propertyTitle)
   const privacyUrl = agency?.privacyNoticeUrl || ''
+  const transactionType = String(property?.transaction_type || '').toUpperCase()
+  const isRental = ['RENT', 'ÎNCHIRIERE'].includes(transactionType)
+  const isSale = ['SALE', 'VÂNZARE', 'CUMPĂRARE'].includes(transactionType)
 
   const values: Record<string, string> = {
     legal_version: template.legalVersion,
@@ -922,7 +837,7 @@ export async function loadLegalDocumentContext(
       : '',
     agent_name: viewing.staffName || '',
     client_name: clientName,
-    client_email: String(clientProfile?.email || appointment.client_email || user.email || ''),
+    client_email: String(clientProfile?.email || appointment.client_email || ''),
     client_phone: String(clientProfile?.phone || appointment.client_phone || ''),
     client_id_document: '',
     client_address: '',
@@ -931,7 +846,7 @@ export async function loadLegalDocumentContext(
     owner_phone: String(owner?.phone || ''),
     owner_id_document: '',
     owner_address: '',
-    owner_payment_account: agency?.iban || '',
+    owner_payment_account: '',
     property_title: propertyTitle,
     property_reference: String(appointment.property_reference || viewing.propertyId || ''),
     property_address: propertyAddress,
@@ -939,7 +854,7 @@ export async function loadLegalDocumentContext(
     property_description: propertyTitle,
     property_encumbrances: '',
     ownership_title: '',
-    transaction_type: String(property?.transaction_type || 'închiriere').toLocaleLowerCase('ro-RO'),
+    transaction_type: isRental ? 'închiriere' : isSale ? (kind === 'brokerage_agreement' ? 'cumpărare' : 'vânzare') : '',
     asking_price: property?.price == null ? '' : String(property.price),
     offered_price: property?.price == null ? '' : String(property.price),
     currency: String(property?.currency || 'EUR'),
@@ -983,12 +898,12 @@ export async function loadLegalDocumentContext(
     lease_start_date: leaseStart,
     lease_end_date: leaseEnd,
     handover_date: leaseStart,
-    rent_amount: property?.price == null ? '' : String(property.price),
+    rent_amount: !isRental || property?.price == null ? '' : String(property.price),
     rent_due_day: '5',
     rent_payment_method: 'transfer bancar',
     exchange_rate_rule: 'cursul BNR din ziua plății',
     rent_adjustment_rule: 'numai prin act adițional acceptat de ambele părți',
-    deposit_amount: property?.price == null ? '' : String(property.price),
+    deposit_amount: '',
     deposit_return_term: '15 zile calendaristice',
     tenant_costs: 'utilitățile și cheltuielile de consum individual aferente perioadei de folosință',
     landlord_costs: 'impozitele proprietății și reparațiile care revin locatorului potrivit legii',
@@ -1019,35 +934,6 @@ export async function loadLegalDocumentContext(
   }
 }
 
-function validateLegalValues(
-  kind: LegalDocumentKind,
-  template: LegalTemplateSummary,
-  values: Record<string, string>,
-): void {
-  const missing = template.requiredFields.filter((key) => !values[key]?.trim())
-  if (missing.length > 0) {
-    throw new Error(`Completează toate câmpurile obligatorii: ${missing.join(', ')}.`)
-  }
-
-  const datePairs: Array<[string, string]> = kind === 'rental_contract'
-    ? [['lease_start_date', 'lease_end_date']]
-    : kind === 'brokerage_agreement' || kind === 'owner_mandate'
-      ? [['contract_start_date', 'contract_end_date']]
-      : []
-  for (const [startKey, endKey] of datePairs) {
-    if (new Date(values[endKey]).getTime() <= new Date(values[startKey]).getTime()) {
-      throw new Error('Data încetării trebuie să fie ulterioară datei începerii.')
-    }
-  }
-
-  if (kind === 'rental_contract') {
-    const dueDay = Number(values.rent_due_day)
-    if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
-      throw new Error('Ziua scadenței chiriei trebuie să fie între 1 și 31.')
-    }
-  }
-}
-
 function slugPart(value: string): string {
   return value
     .normalize('NFD')
@@ -1064,6 +950,7 @@ export async function generateLegalDocument(input: {
   viewing: Vizionare
   values: Record<string, string>
   consumerContract?: boolean
+  expectedContext?: LegalDocumentContext
 }): Promise<ViewingDocument> {
   const definition = getLegalDocumentDefinition(input.kind)
   const context = await loadLegalDocumentContext(input.kind, input.user, input.viewing)
@@ -1071,21 +958,14 @@ export async function generateLegalDocument(input: {
     throw new Error('Profilul juridic al agenției trebuie completat și activat de administrator.')
   }
 
-  const trustedKeys = new Set(
-    definition.fields.filter((field) => field.readOnly).map((field) => field.key),
-  )
-  const values = Object.fromEntries(
-    Object.entries({ ...context.values, ...input.values }).map(([key, value]) => [key, String(value || '').trim()]),
-  )
-  for (const key of trustedKeys) values[key] = context.values[key] || ''
-  values.legal_version = context.template.legalVersion
-  values.document_reference = context.values.document_reference
-
-  validateLegalValues(input.kind, context.template, values)
-  const body = renderTemplate(context.template.body || '', values)
-  if (/{{[a-z0-9_]+}}/.test(body)) {
-    throw new Error('Șablonul conține câmpuri care nu au fost rezolvate.')
-  }
+  if (input.expectedContext) assertDraftContextCurrent(definition, input.expectedContext, context)
+  const values = prepareDraftValues(definition, context.values, input.values)
+  // Keep the reference shown during review; all other system values come from the fresh context.
+  if (input.expectedContext) values.document_reference = input.expectedContext.values.document_reference
+  const issues = getDraftIssues(definition, context.template, values)
+  if (issues.length) throw new Error(issues.map(issue => `${issue.label}: ${issue.message}`).join(' '))
+  const body = renderDraftText(context.template.body || '', values)
+  if (/{{[^{}]*}}/.test(body)) throw new Error('Șablonul conține câmpuri care nu au fost rezolvate.')
 
   const reviewed = context.template.legalReviewStatus === 'APPROVED'
   const status: ViewingDocument['status'] = reviewed

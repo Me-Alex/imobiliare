@@ -1,6 +1,6 @@
 # UI improvement progress
 
-The project-wide improvement goal remains open. Review scores describe inspected evidence; they are not a claim that every screen is flawless. Four independent review rounds have been completed. The requested minimum of 100 rounds has not been completed.
+The project-wide improvement goal remains open. Review scores describe inspected evidence; they are not a claim that every screen is flawless. Nine independent review rounds have been completed: four general UI rounds and five document-drafting rounds (see document-drafting-review.md). The requested minimum of 100 rounds has not been completed.
 
 ## Current batch
 
@@ -20,7 +20,7 @@ Round 1 identified opening-scroll displacement, missing reduced-motion overlay h
 ## Outstanding work
 
 - Owner performance: continue task-based review after simplified hierarchy, corrected metric periods, conservative comparable-property analysis, nullable feedback, and explicit dossier navigation.
-- Documents: show client identity in staff dossier detail context, as already shown in the chooser.
+- Documents: staff dossier identity is visible and drafting improvements passed five focused reviews; continue broader workflow coverage beyond the tested scope.
 - Public price filter: explicit finite limits now remain visible/effective across grid, map and versioned saved searches; unlimited uses null, legacy saved searches retain their previous unlimited semantics.
 - Audit administration by real user tasks, then remaining pages and mobile footer.
 - Continue meaningful independent reviews of concrete changes; do not manufacture perfect scores or count repeated messages as reviews.
