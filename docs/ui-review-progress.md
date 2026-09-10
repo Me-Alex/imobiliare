@@ -1,6 +1,6 @@
 # UI improvement progress
 
-The project-wide improvement goal remains open. Review scores describe inspected evidence; they are not a claim that every screen is flawless. Twelve independent review rounds have been completed: four general UI rounds, five document-drafting rounds (see document-drafting-review.md), and three administration/saved-search rounds. The requested minimum of 100 rounds has not been completed.
+The project-wide improvement goal remains open. Review scores describe inspected evidence; they are not a claim that every screen is flawless. Sixteen independent review rounds have been completed: four general UI rounds, five document-drafting rounds (see document-drafting-review.md), three administration/saved-search rounds, and four admin-header/footer rounds. The requested minimum of 100 rounds has not been completed.
 
 ## Current batch
 
@@ -22,8 +22,8 @@ Round 1 identified opening-scroll displacement, missing reduced-motion overlay h
 - Owner performance: continue task-based review after simplified hierarchy, corrected metric periods, conservative comparable-property analysis, nullable feedback, and explicit dossier navigation.
 - Documents: staff dossier identity is visible and drafting improvements passed five focused reviews; continue broader workflow coverage beyond the tested scope.
 - Public price filter: explicit finite limits now remain visible/effective across grid, map and versioned saved searches; unlimited uses null, legacy saved searches retain their previous unlimited semantics.
-- Administration: the section selector, task hierarchy and exact search-result navigation are improved; continue reviewing the remaining workflows and mobile header density.
-- Continue reviewing remaining pages and mobile footer.
+- Administration: the section selector, task hierarchy, compact header and exact search-result navigation are improved; continue reviewing the remaining workflows and discoverability of the trailing desktop tabs.
+- Continue reviewing remaining pages; the mobile footer and newsletter flow now have focused browser coverage.
 - Continue meaningful independent reviews of concrete changes; do not manufacture perfect scores or count repeated messages as reviews.
 
 ## Owner performance and budget batch
@@ -53,3 +53,24 @@ Round 10 was a source audit: incomplete/ambiguous summaries, silent storage fail
 Validation before commit: ESLint and TypeScript passed; 112 unit tests passed, including six new criteria/storage/recovery tests. Two focused Playwright tests passed: saved searches exercise failure/retry, fresh forms, explicit million-euro restoration, complete summaries at 1280/390/320, failed deletion and undo retaining later saves; administration exercises all ten sections at those widths, readable shortcuts, out-of-preview/closed results and exact deal navigation. Admin search edge cases use synthetic rows substituted into a read-only response. No account roles, live documents, rewards or other production records were changed by these tests.
 
 The production Next.js build also passed, including static generation. Checks were completed before committing, per the user's requested workflow.
+
+## Compact administration header and footer — September 10, 2026
+
+The administration header now shows the task title, a 44px refresh action and the timestamp of the displayed data. Identity, logout and public browsing remain in the existing user menu. When a refresh fails, previously loaded data stays visible with a persistent explanation and retry action. The header stays below 150px at 1280/390/320 widths in the browser regression.
+
+The public footer groups its existing destinations into three disclosures and retains contact information and newsletter access. Category and popular-search shortcuts reset every old criterion before applying their own selection. Room labels now state the actual minimum (1+/2+/3+). Dead social buttons were removed; no destinations or contact information were invented.
+
+Newsletter submission now has labeled 44px controls, duplicate-submission protection, inline errors, retained input on failure and explicit confirmation. The API returns 503 when no database is available, instead of reporting an unsaved subscription as successful. Existing persistence and duplicate-email handling remain intact. Footer scrolling respects reduced-motion preference; mobile legal links reserve horizontal space for the chat launcher.
+
+| Round | Admin header | Footer navigation | Newsletter reliability | Footer accessibility |
+| --- | --- | --- | --- | --- |
+| 13 | 7 | 5 | 4 | 5 |
+| 14 | 9 | 9 | 9 | 8.5 |
+| 15 | 9 | 8.5 | Not rerated | 9 |
+| 16 | Not rerated | 9 | Not rerated | 9 |
+
+Round 13 audited source and found stale shortcut filters, misleading room labels, false newsletter success without storage, missing newsletter labels and nonpersistent admin refresh errors. Round 14 inspected source and fresh desktop/mobile screenshots; it found the newsletter input rendering around 32px on mobile despite its height utility. The input now has a minimum height and correct flex sizing. Round 15 confirmed that correction and identified chat overlap with the privacy link at intermediate mobile scroll positions. A right gutter now prevents overlap by geometry. Round 16 inspected the final mobile screenshot and source and found no further material defect in this bounded scope. Scores are evidence-specific and do not establish project-wide perfection.
+
+Validation: ESLint/TypeScript and all 115 unit tests passed, including three newsletter route tests. Two Playwright regressions passed for the changed administration and footer flows. They cover failed refresh/retry with retained data, user-menu access, all ten admin sections and exact result navigation; newsletter validation, pending state, mocked failure and success; complete shortcut reset; responsive sizing, cookie preferences, reduced-motion scrolling and legal-link/chat geometry. The final footer regression passed again after the last spacing correction. No real subscription, message, role change or administrative mutation was submitted by QA.
+
+The final production build passed after the spacing correction, including TypeScript and static-page generation. All validation preceded the commit.

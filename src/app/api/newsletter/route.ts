@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  if (!email || !isValidEmail(email)) {
+  if (typeof email !== 'string' || !isValidEmail(email.trim())) {
     return NextResponse.json(
       { error: 'Adresa de email nu este valida.' },
       { status: 400 }
@@ -42,8 +42,10 @@ export async function POST(request: NextRequest) {
   // ── Persist to database ─────────────────────────────────────
   const db = await getSafeDb()
   if (!db) {
-    // No database on edge — accept subscription silently (demo mode)
-    return NextResponse.json({ success: true, message: 'Multumim pentru abonare!' })
+    return NextResponse.json(
+      { error: 'Abonarea nu este disponibilă momentan. Încearcă din nou mai târziu.' },
+      { status: 503 },
+    )
   }
 
   try {

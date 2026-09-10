@@ -5,9 +5,14 @@ test('admin navigation exposes every section and global search opens the exact r
   test.setTimeout(180_000)
   test.skip(!process.env.AUTH_ADMIN_EMAIL || !process.env.AUTH_SMOKE_PASSWORD, 'Dedicated demo admin credentials required.')
   const errors: string[] = []
+  let failRefresh = false
   page.on('pageerror', error => errors.push(error.message))
   // Read the dashboard, then replace only the search rows with synthetic edge cases.
   await page.route('**/api/admin/dashboard', async route => {
+    if (failRefresh) {
+      await route.fulfill({ status: 503, json: { error: 'Serviciul este temporar indisponibil.' } })
+      return
+    }
     const response = await route.fetch()
     const data: AdminDashboardData = await response.json()
     data.leads = Array.from({ length: 12 }, (_, index) => ({
@@ -27,12 +32,28 @@ test('admin navigation exposes every section and global search opens the exact r
   await page.getByRole('button', { name: 'Autentifică-te', exact: true }).click()
   await expect(page).toHaveURL(/page=dashboard/)
   await page.goto('/?page=admin')
-  await expect(page.getByRole('heading', { name: 'Centru de administrare', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Administrare', exact: true })).toBeVisible()
   const cookies = page.getByRole('button', { name: 'Doar necesare', exact: true })
   if (await cookies.isVisible()) await cookies.click()
+  const header = page.locator('header[aria-label="Antet administrare"]')
+  const timestamp = await header.locator('time').getAttribute('datetime')
+  failRefresh = true
+  await header.getByRole('button', { name: 'Actualizează', exact: true }).click()
+  await expect(header.getByRole('alert')).toContainText('ultimele date încărcate')
+  await expect(header.locator('time')).toHaveAttribute('datetime', timestamp!)
+  await expect(page.getByRole('tabpanel')).toBeVisible()
+  failRefresh = false
+  await header.getByRole('button', { name: 'Actualizează', exact: true }).click()
+  await expect(header.getByRole('alert')).toHaveCount(0)
+  await expect(header.getByRole('button', { name: 'Actualizează', exact: true })).toBeEnabled()
+  await page.getByRole('button', { name: 'Meniu utilizator', exact: true }).click()
+  await expect(page.getByRole('menuitem', { name: 'Deconectare', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Caută proprietăți', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
   const sections = ['home', 'tasks', 'properties', 'people', 'transactions', 'settings', 'inbox', 'compliance', 'virtual-tours', 'audit']
   for (const width of [1280, 390, 320]) {
     await page.setViewportSize({ width, height: 900 })
+    expect(await header.evaluate(element => element.getBoundingClientRect().height)).toBeLessThan(150)
     for (const [index, section] of sections.entries()) {
       if (width < 640) await page.getByLabel('Secțiunea administrativă', { exact: true }).selectOption(section)
       else await page.getByRole('tablist', { name: 'Secțiunile administrării', exact: true }).getByRole('tab').nth(index).click()
@@ -42,7 +63,7 @@ test('admin navigation exposes every section and global search opens the exact r
     await expect.poll(() => page.getByRole('navigation', { name: 'Acces rapid în cont' }).locator('button > span').evaluateAll(labels => labels.every(label => label.scrollWidth <= label.clientWidth))).toBe(true)
     if (width < 640) await page.getByLabel('Secțiunea administrativă', { exact: true }).selectOption('home')
     else await page.getByRole('tab', { name: 'Prezentare', exact: true }).click()
-    await page.screenshot({ path: `tool-results/admin-final-${width}.png`, animations: 'disabled', fullPage: true })
+    await page.screenshot({ path: `tool-results/admin-compact-${width}.png`, animations: 'disabled', fullPage: true })
   }
   for (const item of [
     { query: 'Solicitare QA 10', target: 'admin-lead-qa-lead-10' },

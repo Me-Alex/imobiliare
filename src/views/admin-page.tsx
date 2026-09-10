@@ -21,14 +21,12 @@ import {
   LayoutDashboard,
   ListTodo,
   Loader2,
-  LogOut,
   Mail,
   MessageSquare,
   RefreshCw,
   Rotate3D,
   Search,
   Settings2,
-  Shield,
   ShieldAlert,
   Sparkles,
   UserCheck,
@@ -49,7 +47,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { PageHero } from '@/components/layout/page-hero'
 import { RoleAccessDenied } from '@/components/account/role-access-denied'
 import { VirtualTourReviewPanel } from '@/components/admin/virtual-tour-review-panel'
 import { LegalCompliancePanel } from '@/components/features/documents/legal-compliance-panel'
@@ -416,7 +413,7 @@ function AdminOperationsCockpit({
 }
 
 export function AdminPage() {
-  const { user, session, profile, signOut, loading: authLoading } = useAuth()
+  const { user, session, profile, loading: authLoading } = useAuth()
   const navigateTo = useAppStore((state) => state.navigateTo)
   const [data, setData] = useState<AdminDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -792,15 +789,6 @@ export function AdminPage() {
     if (result.tab === 'transactions') requestAnimationFrame(() => document.getElementById('admin-search-target')?.focus())
   }
 
-  const handleSignOut = async () => {
-    const result = await signOut()
-    if (result.error) {
-      toast.error(result.error)
-      return
-    }
-    navigateTo('acasa')
-  }
-
   if (!authLoading && profile && profile.role !== 'ADMIN') {
     return <RoleAccessDenied currentRole={profile.role} allowedRoles={['ADMIN']} />
   }
@@ -832,27 +820,25 @@ export function AdminPage() {
 
   return (
     <div className="min-h-screen">
-      <PageHero
-        variant="border"
-        icon={Shield}
-        title="Centru de administrare"
-        description={`${user?.email || 'Administrator'} · sincronizat ${formatDate(data.generatedAt)}`}
-        breadcrumb={[{ label: 'Acasă', page: 'acasa' }, { label: 'Administrare' }]}
-      >
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => void fetchDashboard()} disabled={loading}>
-            <RefreshCw className={cn('mr-2 h-4 w-4', loading && 'animate-spin')} /> Actualizează
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigateTo('acasa')}>
-            <Building2 className="mr-2 h-4 w-4" /> Site public
-          </Button>
-          <Button variant="destructive" size="sm" onClick={() => void handleSignOut()}>
-            <LogOut className="mr-2 h-4 w-4" /> Deconectare
-          </Button>
+      <header aria-label="Antet administrare" className="border-b bg-background">
+        <div className="mx-auto max-w-[1500px] px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-xl font-semibold sm:text-2xl">Administrare</h1>
+            <Button variant="outline" className="min-h-11 shrink-0" onClick={() => void fetchDashboard()} disabled={loading}>
+              <RefreshCw className={cn('size-4', loading && 'animate-spin')} aria-hidden="true" />
+              {loading ? 'Actualizare…' : 'Actualizează'}
+            </Button>
+          </div>
+          <p role="status" className="mt-2 text-xs leading-5 text-muted-foreground">
+            {loading ? 'Se preiau datele…' : <>Date din <time dateTime={data.generatedAt}>{formatDate(data.generatedAt)}</time></>}
+          </p>
+          {loadError && <p role="alert" data-testid="admin-refresh-error" className="mt-2 max-w-prose text-sm text-destructive">
+            Actualizarea a eșuat. Sunt afișate ultimele date încărcate. Apasă „Actualizează” pentru a încerca din nou.
+          </p>}
         </div>
-      </PageHero>
+      </header>
 
-      <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:px-8">
         <div className="relative z-20 mb-5">
           <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <Input
